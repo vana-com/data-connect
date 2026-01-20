@@ -6,6 +6,7 @@ use commands::{
     open_folder, open_platform_export_folder, start_connector_run, stop_connector_run,
     write_export_data,
 };
+use tauri::{Listener, Manager};
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
@@ -21,6 +22,22 @@ pub fn run() {
                         .build(),
                 )?;
             }
+
+            // Listen for close window events from connectors
+            let app_handle = app.handle().clone();
+            app.listen("connector-close-window", move |event| {
+                let payload_str = event.payload();
+                if let Ok(payload) = serde_json::from_str::<serde_json::Value>(payload_str) {
+                    if let Some(run_id) = payload.get("runId").and_then(|v| v.as_str()) {
+                        let window_label = format!("connector-{}", run_id);
+                        if let Some(window) = app_handle.get_webview_window(&window_label) {
+                            log::info!("Closing connector window: {}", window_label);
+                            let _ = window.close();
+                        }
+                    }
+                }
+            });
+
             Ok(())
         })
         .invoke_handler(tauri::generate_handler![

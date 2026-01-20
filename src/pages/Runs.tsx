@@ -107,9 +107,19 @@ function RunItem({ run, onStop }: { run: Run; onStop: (id: string) => void }) {
           </div>
           <div style={{ fontSize: '13px', color: '#6b7280', marginTop: '2px' }}>
             {formatDate(run.startDate)}
-            {run.itemsExported !== undefined && run.status === 'success' && (
+            {run.status === 'success' && run.itemsExported !== undefined && (
               <span style={{ marginLeft: '8px', color: '#22c55e' }}>
-                {run.itemsExported} items
+                {run.itemsExported} conversations
+              </span>
+            )}
+            {run.status === 'error' && (
+              <span style={{ marginLeft: '8px', color: '#ef4444' }}>
+                Failed
+              </span>
+            )}
+            {run.status === 'stopped' && (
+              <span style={{ marginLeft: '8px', color: '#9ca3af' }}>
+                Stopped
               </span>
             )}
           </div>
@@ -177,12 +187,45 @@ function RunItem({ run, onStop }: { run: Run; onStop: (id: string) => void }) {
         </div>
       </div>
 
-      {/* Progress bar for running */}
+      {/* Progress section for running */}
       {run.status === 'running' && (
-        <div style={{ padding: '0 16px 12px' }}>
+        <div style={{ padding: '0 16px 16px' }}>
+          {/* Step indicator */}
+          {run.phase && (
+            <div style={{ marginBottom: '12px' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '8px' }}>
+                {/* Step dots */}
+                {Array.from({ length: run.phase.total }, (_, i) => (
+                  <div
+                    key={i}
+                    style={{
+                      width: '8px',
+                      height: '8px',
+                      borderRadius: '50%',
+                      backgroundColor: i + 1 <= run.phase!.step ? '#6366f1' : '#e5e7eb',
+                      transition: 'background-color 0.3s ease',
+                    }}
+                  />
+                ))}
+                <span style={{ fontSize: '12px', color: '#9ca3af', marginLeft: '4px' }}>
+                  Step {run.phase.step} of {run.phase.total}
+                </span>
+              </div>
+              <div style={{ fontSize: '13px', color: '#4b5563', fontWeight: 500 }}>
+                {run.phase.label}
+                {run.itemCount !== undefined && run.itemCount > 0 && (
+                  <span style={{ color: '#6366f1', marginLeft: '8px' }}>
+                    ({run.itemCount} found)
+                  </span>
+                )}
+              </div>
+            </div>
+          )}
+
+          {/* Progress bar */}
           <div
             style={{
-              height: '3px',
+              height: '4px',
               backgroundColor: '#f3f4f6',
               borderRadius: '2px',
               overflow: 'hidden',
@@ -191,15 +234,19 @@ function RunItem({ run, onStop }: { run: Run; onStop: (id: string) => void }) {
             <div
               style={{
                 height: '100%',
-                width: '66%',
+                width: run.phase ? `${(run.phase.step / run.phase.total) * 100}%` : '25%',
                 backgroundColor: '#6366f1',
                 borderRadius: '2px',
-                animation: 'pulse 2s ease-in-out infinite',
+                transition: 'width 0.5s ease',
               }}
             />
           </div>
+
+          {/* Status message */}
           {run.statusMessage && (
-            <p style={{ fontSize: '12px', color: '#6b7280', marginTop: '8px' }}>{run.statusMessage}</p>
+            <p style={{ fontSize: '12px', color: '#6b7280', marginTop: '8px' }}>
+              {run.statusMessage}
+            </p>
           )}
         </div>
       )}

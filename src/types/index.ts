@@ -13,6 +13,12 @@ export interface Platform {
   vectorize_config: Record<string, unknown> | null;
 }
 
+export interface ProgressPhase {
+  step: number;
+  total: number;
+  label: string;
+}
+
 export interface Run {
   id: string;
   platformId: string;
@@ -31,6 +37,9 @@ export interface Run {
   statusMessage?: string;
   itemsExported?: number;
   exportData?: ExportedData;
+  // Progress tracking
+  phase?: ProgressPhase;
+  itemCount?: number;  // Real-time count during collection
 }
 
 export interface ExportedData {
@@ -69,9 +78,17 @@ export interface ConnectorLogEvent {
   timestamp: number;
 }
 
+export interface ConnectorStatusPayload {
+  type: string;
+  message: string;
+  phase?: ProgressPhase;
+  count?: number;
+  data?: unknown;
+}
+
 export interface ConnectorStatusEvent {
   runId: string;
-  status: string | { data: unknown };
+  status: ConnectorStatusPayload;
   timestamp: number;
 }
 

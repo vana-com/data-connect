@@ -16,8 +16,172 @@
 
   const { log, waitForElement, wait, sendStatus } = api;
 
+  // Progress phases for clear UX
+  const PHASES = {
+    INITIALIZING: { step: 1, total: 4, label: 'Initializing' },
+    WAITING_LOGIN: { step: 2, total: 4, label: 'Waiting for login' },
+    LOADING: { step: 3, total: 4, label: 'Loading conversations' },
+    SCRAPING: { step: 4, total: 4, label: 'Collecting data' },
+  };
+
+  // Create progress overlay UI
+  const createOverlay = () => {
+    const overlay = document.createElement('div');
+    overlay.id = 'databridge-overlay';
+    overlay.innerHTML = `
+      <style>
+        #databridge-overlay {
+          position: fixed;
+          top: 16px;
+          right: 16px;
+          width: 320px;
+          background: white;
+          border-radius: 12px;
+          box-shadow: 0 4px 24px rgba(0,0,0,0.15);
+          padding: 16px;
+          z-index: 999999;
+          font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+        }
+        #databridge-overlay .db-header {
+          display: flex;
+          align-items: center;
+          gap: 8px;
+          margin-bottom: 12px;
+        }
+        #databridge-overlay .db-logo {
+          width: 24px;
+          height: 24px;
+          background: linear-gradient(135deg, #6366f1, #8b5cf6);
+          border-radius: 6px;
+        }
+        #databridge-overlay .db-title {
+          font-weight: 600;
+          font-size: 14px;
+          color: #1a1a1a;
+        }
+        #databridge-overlay .db-steps {
+          display: flex;
+          gap: 6px;
+          margin-bottom: 8px;
+        }
+        #databridge-overlay .db-step {
+          width: 8px;
+          height: 8px;
+          border-radius: 50%;
+          background: #e5e7eb;
+          transition: background 0.3s;
+        }
+        #databridge-overlay .db-step.active {
+          background: #6366f1;
+        }
+        #databridge-overlay .db-step-label {
+          font-size: 12px;
+          color: #6b7280;
+          margin-bottom: 4px;
+        }
+        #databridge-overlay .db-message {
+          font-size: 13px;
+          color: #1a1a1a;
+          font-weight: 500;
+        }
+        #databridge-overlay .db-count {
+          color: #6366f1;
+          margin-left: 6px;
+        }
+        #databridge-overlay .db-progress {
+          height: 4px;
+          background: #f3f4f6;
+          border-radius: 2px;
+          margin-top: 12px;
+          overflow: hidden;
+        }
+        #databridge-overlay .db-progress-bar {
+          height: 100%;
+          background: #6366f1;
+          border-radius: 2px;
+          transition: width 0.5s ease;
+        }
+        #databridge-overlay.db-success {
+          border: 2px solid #22c55e;
+        }
+        #databridge-overlay.db-success .db-message {
+          color: #22c55e;
+        }
+      </style>
+      <div class="db-header">
+        <div class="db-logo"></div>
+        <span class="db-title">DataBridge</span>
+      </div>
+      <div class="db-steps">
+        <div class="db-step" data-step="1"></div>
+        <div class="db-step" data-step="2"></div>
+        <div class="db-step" data-step="3"></div>
+        <div class="db-step" data-step="4"></div>
+      </div>
+      <div class="db-step-label">Step 1 of 4</div>
+      <div class="db-message">Initializing...</div>
+      <div class="db-progress">
+        <div class="db-progress-bar" style="width: 25%"></div>
+      </div>
+    `;
+    document.body.appendChild(overlay);
+    return overlay;
+  };
+
+  const updateOverlay = (step: number, total: number, label: string, message: string, count?: number) => {
+    const overlay = document.getElementById('databridge-overlay');
+    if (!overlay) return;
+
+    // Update steps
+    overlay.querySelectorAll('.db-step').forEach((el, i) => {
+      el.classList.toggle('active', i < step);
+    });
+
+    // Update label and message
+    const stepLabel = overlay.querySelector('.db-step-label');
+    const messageEl = overlay.querySelector('.db-message');
+    const progressBar = overlay.querySelector('.db-progress-bar') as HTMLElement;
+
+    if (stepLabel) stepLabel.textContent = `Step ${step} of ${total} — ${label}`;
+    if (messageEl) {
+      messageEl.innerHTML = message + (count !== undefined ? `<span class="db-count">(${count} found)</span>` : '');
+    }
+    if (progressBar) progressBar.style.width = `${(step / total) * 100}%`;
+  };
+
+  const completeOverlay = (count: number) => {
+    const overlay = document.getElementById('databridge-overlay');
+    if (!overlay) return;
+
+    overlay.classList.add('db-success');
+    overlay.querySelectorAll('.db-step').forEach(el => el.classList.add('active'));
+
+    const stepLabel = overlay.querySelector('.db-step-label');
+    const messageEl = overlay.querySelector('.db-message');
+    const progressBar = overlay.querySelector('.db-progress-bar') as HTMLElement;
+
+    if (stepLabel) stepLabel.textContent = 'Complete!';
+    if (messageEl) {
+      messageEl.innerHTML = `
+        Successfully exported ${count} conversations<br>
+        <span style="font-size: 12px; color: #6b7280; font-weight: 400;">
+          You can close this window now
+        </span>
+      `;
+    }
+    if (progressBar) progressBar.style.width = '100%';
+  };
+
+  // Initialize overlay
+  createOverlay();
+
   log('ChatGPT Connector started');
-  sendStatus({ type: 'STARTED', message: 'ChatGPT connector initialized' });
+  sendStatus({
+    type: 'STARTED',
+    message: 'Connecting to ChatGPT...',
+    phase: PHASES.INITIALIZING
+  });
+  updateOverlay(1, 4, 'Initializing', 'Connecting to ChatGPT...');
 
   // Wait for page to fully load
   await wait(2);
@@ -52,7 +216,12 @@
 
   while (!loggedIn && waitCount < maxWait) {
     log(`Waiting for login... (${waitCount}/${maxWait}s)`);
-    sendStatus({ type: 'WAITING_LOGIN', message: 'Please log in to ChatGPT' });
+    sendStatus({
+      type: 'WAITING_LOGIN',
+      message: 'Please log in to ChatGPT',
+      phase: PHASES.WAITING_LOGIN
+    });
+    updateOverlay(2, 4, 'Waiting for login', 'Please log in to ChatGPT');
     await wait(2);
     waitCount += 2;
     loggedIn = await isLoggedIn();
@@ -60,30 +229,107 @@
 
   if (!loggedIn) {
     log('Login timeout - user did not log in');
-    sendStatus({ type: 'ERROR', message: 'Login timeout' });
+    sendStatus({ type: 'ERROR', message: 'Login timeout - please try again' });
+    const overlay = document.getElementById('databridge-overlay');
+    if (overlay) overlay.remove();
     return;
   }
 
   log('User is logged in, starting data collection');
-  sendStatus({ type: 'COLLECTING', message: 'Collecting conversations...' });
+  sendStatus({
+    type: 'COLLECTING',
+    message: 'Loading your conversations...',
+    phase: PHASES.LOADING
+  });
+  updateOverlay(3, 4, 'Loading conversations', 'Loading your conversations...');
 
   // Give the page time to load conversations
   await wait(3);
 
   // Scroll the sidebar to load more conversations
   const scrollSidebar = async () => {
-    const sidebar = document.querySelector('nav');
-    if (sidebar) {
-      log('Scrolling sidebar to load more conversations...');
-      const scrollContainer = sidebar.querySelector('[class*="overflow"]') || sidebar;
+    log('Looking for scroll container...');
 
-      for (let i = 0; i < 5; i++) {
-        scrollContainer.scrollTop = scrollContainer.scrollHeight;
-        await wait(1);
+    // Find the scrollable container - look for the element that actually scrolls
+    const findScrollContainer = (): Element | null => {
+      const nav = document.querySelector('nav');
+      if (!nav) return null;
+
+      // Find all potentially scrollable elements
+      const candidates: Element[] = [];
+      const walk = (el: Element) => {
+        if (el.scrollHeight > el.clientHeight + 50) {
+          candidates.push(el);
+        }
+        for (const child of Array.from(el.children)) {
+          walk(child);
+        }
+      };
+      walk(nav);
+
+      // Sort by scroll height (largest first) and pick the best one
+      candidates.sort((a, b) => b.scrollHeight - a.scrollHeight);
+
+      if (candidates.length > 0) {
+        log(`Found ${candidates.length} scrollable candidates, using largest`);
+        return candidates[0];
       }
+
+      return nav;
+    };
+
+    const scrollContainer = findScrollContainer();
+
+    if (scrollContainer) {
+      log(`Scroll container: scrollHeight=${scrollContainer.scrollHeight}, clientHeight=${scrollContainer.clientHeight}`);
+
+      let lastCount = 0;
+      let noNewCount = 0;
+      let lastScrollHeight = 0;
+
+      // Keep scrolling until we stop getting new content
+      while (noNewCount < 8) {
+        // Scroll to absolute bottom
+        scrollContainer.scrollTop = scrollContainer.scrollHeight + 10000;
+
+        await wait(1.5); // Wait for lazy loading
+
+        const currentCount = document.querySelectorAll('nav a[href^="/c/"]').length;
+        const currentScrollHeight = scrollContainer.scrollHeight;
+
+        log(`Scroll: ${currentCount} conversations, scrollHeight=${currentScrollHeight}`);
+
+        sendStatus({
+          type: 'COLLECTING',
+          message: `Loading conversations...`,
+          phase: PHASES.LOADING,
+          count: currentCount
+        });
+        updateOverlay(3, 4, 'Loading conversations', 'Scrolling to load more...', currentCount);
+
+        // Check if we're still loading new content (either new conversations or scroll height changed)
+        if (currentCount === lastCount && currentScrollHeight === lastScrollHeight) {
+          noNewCount++;
+        } else {
+          noNewCount = 0;
+        }
+
+        lastCount = currentCount;
+        lastScrollHeight = currentScrollHeight;
+
+        // Safety limit
+        if (currentCount > 1000) {
+          log('Reached 1000 conversations limit');
+          break;
+        }
+      }
+
+      log(`Finished scrolling after ${noNewCount} stable scrolls. Total: ${lastCount}`);
 
       // Scroll back to top
       scrollContainer.scrollTop = 0;
+    } else {
+      log('Error: No scroll container found');
     }
   };
 
@@ -92,6 +338,12 @@
 
   // Scrape conversations from the sidebar
   log('Scraping conversations from sidebar...');
+  sendStatus({
+    type: 'COLLECTING',
+    message: 'Collecting conversation data...',
+    phase: PHASES.SCRAPING
+  });
+  updateOverlay(4, 4, 'Collecting data', 'Processing conversations...');
 
   interface ConversationItem {
     id: string;
@@ -160,11 +412,15 @@
 
   log(`Export complete: ${conversations.length} conversations`);
 
+  // Update overlay to show completion
+  completeOverlay(conversations.length);
+
   // Send the data back to the Rust backend
   sendStatus({
     type: 'COMPLETE',
-    message: `Exported ${conversations.length} conversations`,
-    data: result
+    message: `Successfully exported ${conversations.length} conversations`,
+    data: result,
+    count: conversations.length
   });
 
   // Also emit a dedicated export-complete event with the data

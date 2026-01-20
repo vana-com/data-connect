@@ -1,6 +1,6 @@
 import { configureStore, createSlice } from '@reduxjs/toolkit';
 import type { PayloadAction } from '@reduxjs/toolkit';
-import type { Run, Platform, AppState, ExportedData } from '../types';
+import type { Run, Platform, AppState, ExportedData, ProgressPhase } from '../types';
 
 const initialState: AppState = {
   route: '/',
@@ -114,6 +114,8 @@ const appSlice = createSlice({
         statusMessage?: string;
         itemsExported?: number;
         exportData?: ExportedData;
+        phase?: ProgressPhase;
+        itemCount?: number;
       }>
     ) {
       const run = state.runs.find((r) => r.id === action.payload.runId);
@@ -126,6 +128,12 @@ const appSlice = createSlice({
         }
         if (action.payload.exportData) {
           run.exportData = action.payload.exportData;
+        }
+        if (action.payload.phase) {
+          run.phase = action.payload.phase;
+        }
+        if (action.payload.itemCount !== undefined) {
+          run.itemCount = action.payload.itemCount;
         }
       }
     },

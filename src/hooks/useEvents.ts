@@ -14,6 +14,7 @@ import type {
   DownloadProgressEvent,
   ExportCompleteEvent,
   ExportedData,
+  ProgressPhase,
 } from '../types';
 
 // Extended connector status event that can handle both string and object status
@@ -23,6 +24,8 @@ interface ConnectorStatusEventPayload {
     type: string;
     message?: string;
     data?: unknown;
+    phase?: ProgressPhase;
+    count?: number;
   };
   timestamp: number;
 }
@@ -62,25 +65,31 @@ export function useEvents() {
       // Handle both string and object status formats
       const statusType = typeof status === 'string' ? status : status.type;
 
-      // Get message from status if it's an object
+      // Get message, phase, and count from status if it's an object
       const statusMessage = typeof status === 'object' ? status.message : undefined;
+      const phase = typeof status === 'object' ? status.phase : undefined;
+      const itemCount = typeof status === 'object' ? status.count : undefined;
+
+      // Helper to dispatch progress update
+      const updateProgress = () => {
+        dispatch(updateRunExportData({
+          runId,
+          statusMessage,
+          phase,
+          itemCount,
+        }));
+      };
 
       if (statusType === 'CONNECT_WEBSITE' || statusType === 'WAITING_LOGIN') {
         dispatch(updateRunConnected({ runId, isConnected: false }));
-        if (statusMessage) {
-          dispatch(updateRunExportData({ runId, statusMessage }));
-        }
+        updateProgress();
       } else if (statusType === 'DOWNLOADING' || statusType === 'COLLECTING') {
         dispatch(updateRunStatus({ runId, status: 'running' }));
         dispatch(updateRunConnected({ runId, isConnected: true }));
-        if (statusMessage) {
-          dispatch(updateRunExportData({ runId, statusMessage }));
-        }
+        updateProgress();
       } else if (statusType === 'STARTED') {
         dispatch(updateRunStatus({ runId, status: 'running' }));
-        if (statusMessage) {
-          dispatch(updateRunExportData({ runId, statusMessage }));
-        }
+        updateProgress();
       } else if (statusType === 'COMPLETE') {
         dispatch(
           updateRunStatus({

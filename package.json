@@ -6,12 +6,11 @@
   "scripts": {
     "dev": "vite",
     "build": "tsc -b && vite build",
-    "build:connectors": "tsc connectors/openai/chatgpt.ts --outDir connectors/openai --target ES2020 --module ES2020 --esModuleInterop --skipLibCheck",
     "lint": "eslint .",
     "preview": "vite preview",
     "tauri": "tauri",
-    "tauri:dev": "npm run build:connectors && tauri dev",
-    "tauri:build": "npm run build:connectors && tauri build"
+    "tauri:dev": "tauri dev",
+    "tauri:build": "tauri build"
   },
   "dependencies": {
     "@reduxjs/toolkit": "^2.11.2",

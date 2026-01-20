@@ -1,0 +1,12 @@
+{
+  "id": "chatgpt-001",
+  "name": "ChatGPT",
+  "company": "OpenAI",
+  "description": "Exports your entire ChatGPT conversation history.",
+  "connectURL": "https://chatgpt.com",
+  "connectSelector": "img[alt='User']",
+  "exportFrequency": "daily",
+  "vectorize_config": {
+    "documents": "title"
+  }
+}

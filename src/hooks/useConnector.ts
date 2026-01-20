@@ -62,11 +62,15 @@ export function useConnector() {
 
   const stopExport = useCallback(
     async (runId: string) => {
+      // Always update Redux state first to ensure UI updates
+      dispatch(stopRun(runId));
+
+      // Then try to close the window (may fail if already closed)
       try {
         await invoke('stop_connector_run', { runId });
-        dispatch(stopRun(runId));
       } catch (error) {
-        console.error('Failed to stop connector run:', error);
+        // Window may already be closed, that's ok
+        console.log('Stop connector run (window may be closed):', error);
       }
     },
     [dispatch]

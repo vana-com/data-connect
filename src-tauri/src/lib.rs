@@ -3,7 +3,7 @@ mod processors;
 
 use commands::{
     check_connected_platforms, get_platforms, get_run_files, get_user_data_path, handle_download,
-    open_folder, open_platform_export_folder, start_connector_run, stop_connector_run,
+    load_runs, open_folder, open_platform_export_folder, start_connector_run, stop_connector_run,
     write_export_data,
 };
 use tauri::{Listener, Manager};
@@ -51,6 +51,7 @@ pub fn run() {
             get_run_files,
             write_export_data,
             open_platform_export_folder,
+            load_runs,
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

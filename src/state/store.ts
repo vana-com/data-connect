@@ -45,6 +45,9 @@ const appSlice = createSlice({
     setPlatforms(state, action: PayloadAction<Platform[]>) {
       state.platforms = action.payload;
     },
+    setRuns(state, action: PayloadAction<Run[]>) {
+      state.runs = action.payload;
+    },
     setConnectedPlatforms(state, action: PayloadAction<Record<string, boolean>>) {
       state.connectedPlatforms = action.payload;
     },
@@ -166,6 +169,7 @@ export const {
   setIsMac,
   setPlatforms,
   setConnectedPlatforms,
+  setRuns,
   startRun,
   deleteRun,
   updateRunStatus,

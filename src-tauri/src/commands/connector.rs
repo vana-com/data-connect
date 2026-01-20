@@ -571,18 +571,20 @@ fn chrono_timestamp() -> i64 {
 /// Stop a connector run by closing its webview
 #[tauri::command]
 pub async fn stop_connector_run(app: AppHandle, run_id: String) -> Result<(), String> {
+    // Try to get and remove the window label from the map
     let window_label = CONNECTOR_WINDOWS
         .lock()
         .unwrap()
-        .remove(&run_id)
-        .ok_or_else(|| "Run not found".to_string())?;
+        .remove(&run_id);
 
-    if let Some(window) = app.get_webview_window(&window_label) {
-        window
-            .close()
-            .map_err(|e| format!("Failed to close window: {}", e))?;
+    // If we have a window label, try to close the window
+    if let Some(label) = window_label {
+        if let Some(window) = app.get_webview_window(&label) {
+            let _ = window.close(); // Ignore close errors
+        }
     }
 
+    // Always return Ok - the run state is handled in the frontend
     Ok(())
 }
 

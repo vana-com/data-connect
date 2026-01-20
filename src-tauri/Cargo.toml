@@ -30,3 +30,4 @@ zip = "0.6"
 walkdir = "2"
 futures-util = "0.3"
 base64 = "0.21"
+chrono = { version = "0.4", features = ["serde"] }

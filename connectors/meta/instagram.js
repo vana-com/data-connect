@@ -3,6 +3,8 @@
  *
  * Exports Instagram profile info, posts, and liked posts.
  * Can be copy-pasted into browser console for testing.
+ *
+ * Uses Instagram's internal GraphQL API for reliable data extraction.
  */
 (async function() {
   // ============================================
@@ -180,336 +182,418 @@
   };
 
   // ============================================
-  // Helper Functions
+  // Instagram API Helpers
   // ============================================
 
-  // Fetch user info from web_info endpoint
-  const fetchWebInfo = async () => {
+  // Get CSRF token from cookies
+  const getCSRFToken = () => {
+    const match = document.cookie.match(/csrftoken=([^;]+)/);
+    return match ? match[1] : '';
+  };
+
+  // Get App ID from page
+  const getAppId = () => {
+    // Try to find it in scripts
+    const scripts = document.querySelectorAll('script');
+    for (const script of scripts) {
+      const content = script.textContent || '';
+      const match = content.match(/"APP_ID":"(\d+)"/);
+      if (match) return match[1];
+    }
+    // Default Instagram web app ID
+    return '936619743392459';
+  };
+
+  // Make Instagram GraphQL request
+  const graphqlRequest = async (docId, variables) => {
+    const csrfToken = getCSRFToken();
+    const appId = getAppId();
+
+    const response = await fetch('https://www.instagram.com/graphql/query', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/x-www-form-urlencoded',
+        'X-CSRFToken': csrfToken,
+        'X-IG-App-ID': appId,
+        'X-Requested-With': 'XMLHttpRequest',
+      },
+      credentials: 'include',
+      body: `variables=${encodeURIComponent(JSON.stringify(variables))}&doc_id=${docId}`,
+    });
+
+    if (!response.ok) {
+      throw new Error(`GraphQL request failed: ${response.status}`);
+    }
+
+    return response.json();
+  };
+
+  // ============================================
+  // User Info
+  // ============================================
+
+  const getUserInfo = async () => {
     try {
-      const response = await fetch('https://www.instagram.com/accounts/web_info/', {
-        headers: { 'X-Requested-With': 'XMLHttpRequest' },
-        credentials: 'include',
-      });
-
-      if (!response.ok) return null;
-
-      const html = await response.text();
-      const parser = new DOMParser();
-      const doc = parser.parseFromString(html, 'text/html');
-      const scripts = doc.querySelectorAll('script[type="application/json"][data-sjs]');
-
-      const findPolarisData = (obj) => {
-        if (!obj || typeof obj !== 'object') return null;
-        if (Array.isArray(obj) && obj[0] === 'PolarisViewer' && obj.length >= 3) {
-          return obj[2];
-        }
-        for (const key in obj) {
-          if (Object.prototype.hasOwnProperty.call(obj, key)) {
-            const found = findPolarisData(obj[key]);
-            if (found) return found;
-          }
-        }
-        return null;
-      };
-
+      // Try to get from window.__additionalData or __REDUX_STATE__
+      const scripts = document.querySelectorAll('script');
       for (const script of scripts) {
-        try {
-          const jsonContent = JSON.parse(script.textContent);
-          const foundData = findPolarisData(jsonContent);
-          if (foundData && foundData.data) {
+        const content = script.textContent || '';
+
+        // Look for viewer data
+        const viewerMatch = content.match(/"viewer":\s*\{[^}]*"username":\s*"([^"]+)"[^}]*"id":\s*"(\d+)"/);
+        if (viewerMatch) {
+          return {
+            username: viewerMatch[1],
+            userId: viewerMatch[2],
+            isLoggedIn: true,
+          };
+        }
+
+        // Look for PolarisViewer
+        if (content.includes('PolarisViewer')) {
+          const usernameMatch = content.match(/"username":"([^"]+)"/);
+          const idMatch = content.match(/"id":"(\d+)"/);
+          if (usernameMatch) {
             return {
-              username: foundData.data.username || '',
-              userId: foundData.data.id || '',
-              fullName: foundData.data.full_name || '',
-              isLoggedIn: !!foundData.data.username,
+              username: usernameMatch[1],
+              userId: idMatch ? idMatch[1] : '',
+              isLoggedIn: true,
             };
           }
-        } catch (e) {
-          // Continue to next script
         }
+      }
+
+      // Try web_info endpoint
+      const response = await fetch('https://www.instagram.com/api/v1/web/accounts/web_info/', {
+        credentials: 'include',
+        headers: {
+          'X-CSRFToken': getCSRFToken(),
+          'X-IG-App-ID': getAppId(),
+        },
+      });
+
+      if (response.ok) {
+        const data = await response.json();
+        if (data.data?.user) {
+          return {
+            username: data.data.user.username,
+            userId: data.data.user.id,
+            isLoggedIn: true,
+          };
+        }
+      }
+
+      // Check DOM for login indicators
+      const homeIcon = document.querySelector('svg[aria-label="Home"]');
+      if (homeIcon) {
+        // Try to extract username from profile link
+        const profileLink = document.querySelector('a[href^="/"][role="link"] img[alt$="profile picture"]');
+        if (profileLink) {
+          const link = profileLink.closest('a');
+          const href = link?.getAttribute('href') || '';
+          const match = href.match(/^\/([a-zA-Z0-9._]+)\/?$/);
+          if (match) {
+            return { username: match[1], userId: '', isLoggedIn: true };
+          }
+        }
+        return { username: '', userId: '', isLoggedIn: true };
       }
 
       return null;
     } catch (e) {
-      log('Error fetching web info:', e.message);
+      log('Error getting user info:', e.message);
       return null;
     }
   };
 
-  // Check login state from DOM
-  const checkLoginState = () => {
-    // Check for shared data
-    const sharedData = window._sharedData?.config?.viewer;
-    if (sharedData?.username) {
-      return {
-        username: sharedData.username,
-        userId: sharedData.id || '',
-        fullName: sharedData.full_name || '',
-        isLoggedIn: true,
-      };
-    }
+  // ============================================
+  // Profile Info
+  // ============================================
 
-    // Check for profile links with avatar
-    const profileLinks = document.querySelectorAll('a[href^="/"]');
-    for (const link of profileLinks) {
-      const href = link.getAttribute('href');
-      if (href && /^\/[a-zA-Z0-9._]+\/$/.test(href)) {
-        const hasAvatar = link.querySelector('img[alt*="profile" i]') ||
-          link.querySelector('img[alt$="\'s profile picture" i]');
-
-        if (hasAvatar) {
-          const username = href.replace(/\//g, '');
-          const excluded = ['explore', 'reels', 'direct', 'accounts', 'stories', 'p', 'reel'];
-          if (!excluded.includes(username.toLowerCase())) {
-            return { username, userId: '', fullName: '', isLoggedIn: true };
-          }
-        }
-      }
-    }
-
-    // Check for Home icon (logged in indicator)
-    const homeIcon = document.querySelector('svg[aria-label="Home"]') ||
-      document.querySelector('a[href="/direct/inbox/"]');
-    if (homeIcon) {
-      return { username: '', userId: '', fullName: '', isLoggedIn: true };
-    }
-
-    // Check for login form
-    const loginForm = document.querySelector('input[name="username"]') ||
-      document.querySelector('form[id="loginForm"]');
-    const isLoginPage = window.location.pathname.includes('/accounts/login');
-
-    if (loginForm && isLoginPage) {
-      return null;
-    }
-
-    return null;
-  };
-
-  // Extract username from profile link in sidebar
-  const extractUsernameFromProfileLink = () => {
-    const allLinks = document.querySelectorAll('a[href^="/"]');
-
-    for (const link of allLinks) {
-      const href = link.getAttribute('href') || '';
-      const ariaLabel = (link.getAttribute('aria-label') || '').toLowerCase();
-      const textContent = (link.textContent || '').trim().toLowerCase();
-
-      const isProfileLink = ariaLabel === 'profile' ||
-        textContent === 'profile' ||
-        (link.querySelector('span')?.textContent?.trim().toLowerCase() === 'profile');
-
-      if (isProfileLink && href) {
-        const match = href.match(/^\/([a-zA-Z0-9._]+)\/?$/);
-        if (match) {
-          const username = match[1];
-          const reserved = ['explore', 'reels', 'direct', 'accounts', 'stories', 'p', 'reel', 'home', 'search', 'create', 'notifications', 'messages'];
-          if (!reserved.includes(username.toLowerCase())) {
-            return username;
-          }
-        }
-      }
-    }
-
-    return null;
-  };
-
-  // Scrape profile info from DOM
-  const scrapeProfileFromDOM = async (username) => {
+  const getProfileInfo = async (username) => {
     try {
-      const header = document.querySelector('header section');
-      if (!header) return null;
-
-      const statElements = header.querySelectorAll('ul li');
-      let postsCount = 0;
-      let followersCount = 0;
-      let followingCount = 0;
-
-      statElements.forEach((el) => {
-        const text = el.textContent?.toLowerCase() || '';
-        const numMatch = text.match(/[\d,]+/);
-        const num = numMatch ? parseInt(numMatch[0].replace(/,/g, ''), 10) : 0;
-
-        if (text.includes('post')) postsCount = num;
-        else if (text.includes('follower')) followersCount = num;
-        else if (text.includes('following')) followingCount = num;
+      // Use the web profile info API
+      const response = await fetch(`https://www.instagram.com/api/v1/users/web_profile_info/?username=${username}`, {
+        credentials: 'include',
+        headers: {
+          'X-CSRFToken': getCSRFToken(),
+          'X-IG-App-ID': getAppId(),
+          'X-Requested-With': 'XMLHttpRequest',
+        },
       });
 
-      const fullNameEl = header.querySelector('span[class*="name"]') ||
-        header.querySelector('h1 + span');
-      const bioEl = header.querySelector('div[class*="biography"]') ||
-        header.querySelector('h1 ~ div');
-      const avatarEl = header.querySelector('img[alt*="profile"]') ||
-        header.querySelector('canvas + img');
-      const verifiedEl = document.querySelector('[aria-label="Verified"]') ||
-        document.querySelector('svg[aria-label="Verified"]');
+      if (!response.ok) {
+        log('Profile API failed, status:', response.status);
+        return null;
+      }
+
+      const data = await response.json();
+      const user = data.data?.user;
+
+      if (!user) return null;
 
       return {
-        username,
-        fullName: fullNameEl?.textContent?.trim() || '',
-        bio: bioEl?.textContent?.trim() || '',
-        avatarUrl: avatarEl?.src || '',
-        followersCount,
-        followingCount,
-        postsCount,
-        isVerified: !!verifiedEl,
-        isPrivate: false,
-        isBusinessAccount: false,
-        userId: '',
+        username: user.username,
+        userId: user.id,
+        fullName: user.full_name || '',
+        bio: user.biography || '',
+        avatarUrl: user.profile_pic_url_hd || user.profile_pic_url || '',
+        followersCount: user.edge_followed_by?.count || 0,
+        followingCount: user.edge_follow?.count || 0,
+        postsCount: user.edge_owner_to_timeline_media?.count || 0,
+        isVerified: user.is_verified || false,
+        isPrivate: user.is_private || false,
+        isBusinessAccount: user.is_business_account || false,
       };
     } catch (e) {
-      log('Error scraping profile from DOM:', e.message);
+      log('Error fetching profile:', e.message);
       return null;
     }
   };
 
-  // Collect posts by scrolling
-  const collectPosts = async (maxPosts = 50) => {
+  // ============================================
+  // Posts Collection via API
+  // ============================================
+
+  const fetchUserPosts = async (userId, maxPosts = 50) => {
     const posts = [];
+    let endCursor = null;
+    let hasNext = true;
     const seenIds = new Set();
-    let scrollAttempts = 0;
-    const maxScrollAttempts = 20;
-    let noNewPostsCount = 0;
 
-    while (scrollAttempts < maxScrollAttempts && posts.length < maxPosts) {
-      scrollAttempts++;
+    // Doc ID for user timeline query
+    const docId = '8845758582119845'; // PolarisProfilePostsTabContentQuery_connection
 
-      // Extract posts from DOM
-      const postLinks = document.querySelectorAll('a[href^="/p/"], a[href^="/reel/"]');
+    while (hasNext && posts.length < maxPosts) {
+      try {
+        const variables = {
+          id: userId,
+          first: 12,
+          after: endCursor,
+        };
 
-      for (const link of postLinks) {
-        const href = link.getAttribute('href');
-        if (!href) continue;
+        log(`Fetching posts batch... (${posts.length} so far)`);
+        updateOverlay(4, 5, 'Collecting posts', 'Fetching from API...', posts.length);
+        sendStatus({ type: 'COLLECTING', message: 'Fetching posts...', phase: PHASES.POSTS, count: posts.length });
 
-        const match = href.match(/\/(p|reel)\/([A-Za-z0-9_-]+)/);
-        if (!match) continue;
+        const data = await graphqlRequest(docId, variables);
 
-        const shortcode = match[2];
-        if (seenIds.has(shortcode)) continue;
-        seenIds.add(shortcode);
-
-        const img = link.querySelector('img');
-        const video = link.querySelector('video');
-
-        posts.push({
-          id: shortcode,
-          shortcode: shortcode,
-          url: 'https://www.instagram.com' + href,
-          thumbnailUrl: img?.src || '',
-          mediaType: video ? 'video' : (href.includes('/reel/') ? 'video' : 'image'),
-          scrapedAt: new Date().toISOString(),
-        });
-
-        if (posts.length >= maxPosts) break;
-      }
-
-      const beforeCount = posts.length;
-
-      // Update status
-      sendStatus({
-        type: 'COLLECTING',
-        message: 'Scrolling to load more posts...',
-        phase: PHASES.POSTS,
-        count: posts.length,
-      });
-      updateOverlay(4, 5, 'Collecting posts', 'Scrolling...', posts.length);
-
-      // Scroll down
-      window.scrollTo(0, document.body.scrollHeight);
-      await wait(1.5);
-
-      if (posts.length === beforeCount) {
-        noNewPostsCount++;
-        if (noNewPostsCount >= 3) {
-          log('No new posts found after 3 attempts, stopping');
+        const timeline = data.data?.xdt_api__v1__feed__user_timeline_graphql_connection;
+        if (!timeline) {
+          log('No timeline data in response');
           break;
         }
-      } else {
-        noNewPostsCount = 0;
+
+        const edges = timeline.edges || [];
+        const pageInfo = timeline.page_info || {};
+
+        for (const edge of edges) {
+          const node = edge.node;
+          const postId = node.id || node.pk || '';
+
+          if (seenIds.has(postId)) continue;
+          seenIds.add(postId);
+
+          const imgUrl = node.image_versions2?.candidates?.[0]?.url ||
+            node.carousel_media?.[0]?.image_versions2?.candidates?.[0]?.url || '';
+          const videoUrl = node.video_versions?.[0]?.url;
+          const caption = node.caption?.text || '';
+
+          let mediaType = 'image';
+          if (node.media_type === 2 || videoUrl) mediaType = 'video';
+          else if (node.media_type === 8 || node.carousel_media) mediaType = 'carousel';
+
+          posts.push({
+            id: postId,
+            shortcode: node.code || '',
+            caption,
+            mediaType,
+            mediaUrl: videoUrl || imgUrl,
+            thumbnailUrl: imgUrl,
+            timestamp: node.taken_at ? new Date(node.taken_at * 1000).toISOString() : new Date().toISOString(),
+            likeCount: node.like_count || 0,
+            commentCount: node.comment_count || 0,
+          });
+
+          if (posts.length >= maxPosts) break;
+        }
+
+        hasNext = pageInfo.has_next_page || false;
+        endCursor = pageInfo.end_cursor || null;
+
+        if (edges.length === 0) break;
+
+        await wait(0.5); // Rate limiting
+
+      } catch (e) {
+        log('Error fetching posts:', e.message);
+        break;
       }
     }
 
-    log(`Collected ${posts.length} posts`);
+    log(`Collected ${posts.length} posts via API`);
     return posts;
   };
 
-  // Collect liked posts
-  const collectLikedPosts = async (maxLikedPosts = 100) => {
-    log('Navigating to liked posts...');
-    window.location.href = 'https://www.instagram.com/your_activity/interactions/likes/';
-    await wait(3);
+  // ============================================
+  // Liked Posts Collection via API
+  // ============================================
 
-    const likedPosts = [];
+  const fetchLikedPosts = async (maxPosts = 100) => {
+    const posts = [];
+    let endCursor = null;
+    let hasNext = true;
     const seenIds = new Set();
-    let scrollAttempts = 0;
-    const maxScrollAttempts = 50;
-    let noNewPostsCount = 0;
 
-    while (scrollAttempts < maxScrollAttempts && likedPosts.length < maxLikedPosts) {
-      scrollAttempts++;
+    // Doc ID for liked posts query
+    const docId = '9549055498521777'; // liked_posts query
 
-      // Extract liked posts from DOM using image cache keys
-      const images = document.querySelectorAll('img[src*="instagram"]');
+    while (hasNext && posts.length < maxPosts) {
+      try {
+        const variables = {
+          first: 12,
+          after: endCursor,
+        };
 
-      for (const img of images) {
-        const src = img.src;
-        if (src.includes('s150x150') || src.includes('44x44') || src.includes('profile')) continue;
+        log(`Fetching liked posts batch... (${posts.length} so far)`);
+        updateOverlay(5, 5, 'Collecting liked posts', 'Fetching from API...', posts.length);
+        sendStatus({ type: 'COLLECTING', message: 'Fetching liked posts...', phase: PHASES.LIKED, count: posts.length });
 
-        const cacheKeyMatch = src.match(/ig_cache_key=([^&]+)/);
-        if (!cacheKeyMatch) continue;
+        const data = await graphqlRequest(docId, variables);
 
-        const cacheKey = decodeURIComponent(cacheKeyMatch[1]);
-        let mediaId = '';
-        try {
-          mediaId = atob(cacheKey).split('.')[0];
-        } catch {
-          mediaId = cacheKey;
-        }
+        // Try different response structures
+        const likedData = data.data?.xdt_api__v1__feed__liked_connection ||
+          data.data?.xdt_api__v1__activity__interactions__likes ||
+          data.data?.liked_media;
 
-        if (!mediaId || seenIds.has(mediaId)) continue;
-        seenIds.add(mediaId);
-
-        let mediaType = 'image';
-        if (src.includes('t51.71878')) mediaType = 'video';
-
-        likedPosts.push({
-          id: mediaId,
-          thumbnailUrl: src,
-          mediaType: mediaType,
-          scrapedAt: new Date().toISOString(),
-        });
-
-        if (likedPosts.length >= maxLikedPosts) break;
-      }
-
-      const beforeCount = likedPosts.length;
-
-      // Update status
-      sendStatus({
-        type: 'COLLECTING',
-        message: 'Scrolling to load more liked posts...',
-        phase: PHASES.LIKED,
-        count: likedPosts.length,
-      });
-      updateOverlay(5, 5, 'Collecting liked posts', 'Scrolling...', likedPosts.length);
-
-      // Scroll down
-      window.scrollTo(0, document.body.scrollHeight);
-      await wait(1.5);
-
-      if (likedPosts.length === beforeCount) {
-        noNewPostsCount++;
-        if (noNewPostsCount >= 3) {
-          log('No new liked posts found after 3 attempts, stopping');
+        if (!likedData) {
+          log('No liked posts data in response, trying alternative API...');
+          // Try alternative endpoint
+          const altPosts = await fetchLikedPostsAlternative(maxPosts - posts.length);
+          posts.push(...altPosts);
           break;
         }
-      } else {
-        noNewPostsCount = 0;
+
+        const edges = likedData.edges || [];
+        const pageInfo = likedData.page_info || {};
+
+        for (const edge of edges) {
+          const node = edge.node;
+          const postId = node.id || node.pk || '';
+
+          if (seenIds.has(postId)) continue;
+          seenIds.add(postId);
+
+          const imgUrl = node.image_versions2?.candidates?.[0]?.url ||
+            node.display_url || '';
+          const videoUrl = node.video_versions?.[0]?.url || node.video_url;
+
+          let mediaType = 'image';
+          if (node.media_type === 2 || node.is_video || videoUrl) mediaType = 'video';
+          else if (node.media_type === 8 || node.carousel_media) mediaType = 'carousel';
+
+          posts.push({
+            id: postId,
+            shortcode: node.code || node.shortcode || '',
+            ownerUsername: node.user?.username || node.owner?.username || '',
+            caption: node.caption?.text || '',
+            mediaType,
+            mediaUrl: videoUrl || imgUrl,
+            thumbnailUrl: imgUrl,
+            timestamp: node.taken_at ? new Date(node.taken_at * 1000).toISOString() : new Date().toISOString(),
+            likeCount: node.like_count || 0,
+            commentCount: node.comment_count || 0,
+          });
+
+          if (posts.length >= maxPosts) break;
+        }
+
+        hasNext = pageInfo.has_next_page || false;
+        endCursor = pageInfo.end_cursor || null;
+
+        if (edges.length === 0) break;
+
+        await wait(0.5); // Rate limiting
+
+      } catch (e) {
+        log('Error fetching liked posts:', e.message);
+        // Try alternative method
+        const altPosts = await fetchLikedPostsAlternative(maxPosts - posts.length);
+        posts.push(...altPosts);
+        break;
       }
     }
 
-    log(`Collected ${likedPosts.length} liked posts`);
-    return likedPosts;
+    log(`Collected ${posts.length} liked posts`);
+    return posts;
+  };
+
+  // Alternative method: Use REST API for liked posts
+  const fetchLikedPostsAlternative = async (maxPosts = 100) => {
+    const posts = [];
+    let maxId = null;
+    const seenIds = new Set();
+
+    log('Trying alternative liked posts API...');
+
+    for (let i = 0; i < 10 && posts.length < maxPosts; i++) {
+      try {
+        let url = 'https://www.instagram.com/api/v1/feed/liked/';
+        if (maxId) url += `?max_id=${maxId}`;
+
+        const response = await fetch(url, {
+          credentials: 'include',
+          headers: {
+            'X-CSRFToken': getCSRFToken(),
+            'X-IG-App-ID': getAppId(),
+            'X-Requested-With': 'XMLHttpRequest',
+          },
+        });
+
+        if (!response.ok) {
+          log('Alternative liked API failed:', response.status);
+          break;
+        }
+
+        const data = await response.json();
+        const items = data.items || [];
+
+        if (items.length === 0) break;
+
+        for (const item of items) {
+          const postId = item.id || item.pk || '';
+          if (seenIds.has(postId)) continue;
+          seenIds.add(postId);
+
+          const imgUrl = item.image_versions2?.candidates?.[0]?.url || '';
+          const videoUrl = item.video_versions?.[0]?.url;
+
+          posts.push({
+            id: postId,
+            shortcode: item.code || '',
+            ownerUsername: item.user?.username || '',
+            caption: item.caption?.text || '',
+            mediaType: item.media_type === 2 ? 'video' : item.media_type === 8 ? 'carousel' : 'image',
+            mediaUrl: videoUrl || imgUrl,
+            thumbnailUrl: imgUrl,
+            timestamp: item.taken_at ? new Date(item.taken_at * 1000).toISOString() : new Date().toISOString(),
+          });
+
+          if (posts.length >= maxPosts) break;
+        }
+
+        if (!data.more_available) break;
+        maxId = data.next_max_id;
+
+        await wait(0.5);
+
+      } catch (e) {
+        log('Alternative liked posts error:', e.message);
+        break;
+      }
+    }
+
+    return posts;
   };
 
   // ============================================
@@ -523,34 +607,25 @@
   sendStatus({ type: 'STARTED', message: 'Connecting to Instagram...', phase: PHASES.INITIALIZING });
   updateOverlay(1, 5, 'Initializing', 'Connecting to Instagram...');
 
-  await wait(2);
+  await wait(1);
 
   // Check login status
   log('Checking login status...');
-  let webInfo = await fetchWebInfo();
+  let userInfo = await getUserInfo();
 
-  if (!webInfo?.isLoggedIn) {
-    webInfo = checkLoginState();
-  }
-
-  let loggedIn = webInfo?.isLoggedIn || false;
   let waitCount = 0;
   const maxWait = 120;
 
-  while (!loggedIn && waitCount < maxWait) {
+  while (!userInfo?.isLoggedIn && waitCount < maxWait) {
     log(`Waiting for login... (${waitCount}/${maxWait}s)`);
     sendStatus({ type: 'WAITING_LOGIN', message: 'Please log in to Instagram', phase: PHASES.WAITING_LOGIN });
     updateOverlay(2, 5, 'Waiting for login', 'Please log in to Instagram');
     await wait(2);
     waitCount += 2;
-    webInfo = await fetchWebInfo();
-    if (!webInfo?.isLoggedIn) {
-      webInfo = checkLoginState();
-    }
-    loggedIn = webInfo?.isLoggedIn || false;
+    userInfo = await getUserInfo();
   }
 
-  if (!loggedIn) {
+  if (!userInfo?.isLoggedIn) {
     log('Login timeout');
     sendStatus({ type: 'ERROR', message: 'Login timeout - please try again' });
     const overlay = document.getElementById('databridge-overlay');
@@ -558,47 +633,40 @@
     return;
   }
 
-  log('User is logged in');
+  log('User is logged in:', userInfo.username || '(username pending)');
 
-  // Get username if not available
-  let username = webInfo?.username || '';
-  if (!username || username === '__needs_profile_navigation__') {
-    username = extractUsernameFromProfileLink() || '';
-    if (username) {
-      log(`Extracted username from profile link: ${username}`);
-    }
-  }
-
-  // Navigate to profile to get profile info and posts
+  // Get profile info
   sendStatus({ type: 'COLLECTING', message: 'Collecting profile info...', phase: PHASES.PROFILE });
-  updateOverlay(3, 5, 'Collecting profile', 'Navigating to profile...');
+  updateOverlay(3, 5, 'Collecting profile', 'Fetching profile data...');
 
-  if (username) {
-    const profileUrl = `https://www.instagram.com/${username}/`;
-    if (window.location.href !== profileUrl) {
-      window.location.href = profileUrl;
-      await wait(3);
-    }
-  }
-
-  // Scrape profile info
   let profileInfo = null;
+  let username = userInfo.username;
+  let userId = userInfo.userId;
+
   if (username) {
-    profileInfo = await scrapeProfileFromDOM(username);
-    log('Profile info:', profileInfo);
+    profileInfo = await getProfileInfo(username);
+    if (profileInfo) {
+      userId = profileInfo.userId || userId;
+      log('Profile info fetched:', profileInfo.username);
+    }
   }
 
   // Collect posts
   sendStatus({ type: 'COLLECTING', message: 'Collecting posts...', phase: PHASES.POSTS });
   updateOverlay(4, 5, 'Collecting posts', 'Starting posts collection...');
 
-  const posts = await collectPosts(100);
+  let posts = [];
+  if (userId) {
+    posts = await fetchUserPosts(userId, 100);
+  } else {
+    log('No user ID available, skipping posts collection');
+  }
 
   // Collect liked posts
   sendStatus({ type: 'COLLECTING', message: 'Collecting liked posts...', phase: PHASES.LIKED });
   updateOverlay(5, 5, 'Collecting liked posts', 'Starting liked posts collection...');
 
-  const likedPosts = await collectLikedPosts(200);
+  const likedPosts = await fetchLikedPosts(200);
 
   // Prepare result
   const result = {
@@ -607,6 +675,7 @@
     exportedAt: new Date().toISOString(),
     userInfo: {
       username: username || profileInfo?.username || undefined,
+      userId: userId || undefined,
       fullName: profileInfo?.fullName || undefined,
       bio: profileInfo?.bio || undefined,
       avatarUrl: profileInfo?.avatarUrl || undefined,

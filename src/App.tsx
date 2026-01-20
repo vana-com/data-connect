@@ -2,6 +2,7 @@ import { BrowserRouter, Routes, Route } from 'react-router-dom';
 import { Provider } from 'react-redux';
 import { store } from './state/store';
 import { useEvents } from './hooks/useEvents';
+import { useInitialize } from './hooks/useInitialize';
 import { TopNav } from './components/TopNav';
 import { Home } from './pages/Home';
 import { Runs } from './pages/Runs';
@@ -9,6 +10,7 @@ import { Settings } from './pages/Settings';
 
 function AppContent() {
   useEvents();
+  useInitialize();
 
   return (
     <div

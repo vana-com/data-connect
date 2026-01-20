@@ -11,6 +11,7 @@
     "core:window:allow-set-position",
     "core:window:allow-show",
     "core:window:allow-hide",
+    "core:window:allow-start-dragging",
     "core:webview:default",
     "core:webview:allow-create-webview-window",
     "core:event:default",

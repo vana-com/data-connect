@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { invoke } from '@tauri-apps/api/core';
-import { Folder, ExternalLink } from 'lucide-react';
+import { FolderOpen, ExternalLink, Database, Info } from 'lucide-react';
 
 export function Settings() {
   const [dataPath, setDataPath] = useState<string>('');
@@ -19,84 +19,174 @@ export function Settings() {
     }
   };
 
+  const cardStyle: React.CSSProperties = {
+    backgroundColor: '#ffffff',
+    border: '1px solid #e5e7eb',
+    borderRadius: '12px',
+    overflow: 'hidden',
+  };
+
+  const rowStyle: React.CSSProperties = {
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    padding: '16px',
+  };
+
   return (
-    <div className="p-6">
-      <div className="mb-6">
-        <h1 className="text-2xl font-bold text-gray-900 dark:text-white">
+    <div style={{ flex: 1, overflow: 'auto', backgroundColor: '#f5f5f7' }}>
+      <div style={{ maxWidth: '560px', margin: '0 auto', padding: '48px 24px' }}>
+        <h1 style={{ fontSize: '24px', fontWeight: 600, color: '#1a1a1a', marginBottom: '8px' }}>
           Settings
         </h1>
-        <p className="text-gray-500 dark:text-gray-400 mt-1">
-          Configure DataBridge preferences
+        <p style={{ fontSize: '14px', color: '#6b7280', marginBottom: '32px' }}>
+          Manage your preferences
         </p>
-      </div>
 
-      <div className="space-y-6">
-        <div className="bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700 p-4">
-          <h2 className="font-medium text-gray-900 dark:text-white mb-4">
-            Data Storage
+        {/* Data Storage */}
+        <section style={{ marginBottom: '24px' }}>
+          <h2 style={{ fontSize: '13px', fontWeight: 500, color: '#6b7280', marginBottom: '12px' }}>
+            Data storage
           </h2>
-          <div className="space-y-3">
-            <div>
-              <label className="text-sm text-gray-500 dark:text-gray-400">
-                Export Data Location
-              </label>
-              <div className="flex items-center gap-2 mt-1">
-                <code className="flex-1 px-3 py-2 bg-gray-100 dark:bg-gray-900 rounded text-sm text-gray-700 dark:text-gray-300 truncate">
-                  {dataPath}
-                </code>
-                <button
-                  onClick={openDataFolder}
-                  className="flex items-center gap-2 px-3 py-2 bg-gray-100 hover:bg-gray-200 dark:bg-gray-700 dark:hover:bg-gray-600 text-gray-600 dark:text-gray-300 rounded transition-colors"
-                >
-                  <Folder className="w-4 h-4" />
-                  Open
-                </button>
+          <div style={cardStyle}>
+            <div style={{ ...rowStyle, gap: '16px' }}>
+              <div
+                style={{
+                  width: '40px',
+                  height: '40px',
+                  borderRadius: '10px',
+                  backgroundColor: '#eef2ff',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  flexShrink: 0,
+                }}
+              >
+                <Database style={{ width: '20px', height: '20px', color: '#6366f1' }} />
               </div>
+              <div style={{ flex: 1, minWidth: 0 }}>
+                <div style={{ fontWeight: 500, color: '#1a1a1a', fontSize: '15px' }}>Export location</div>
+                <div
+                  style={{
+                    fontSize: '13px',
+                    color: '#6b7280',
+                    overflow: 'hidden',
+                    textOverflow: 'ellipsis',
+                    whiteSpace: 'nowrap',
+                  }}
+                >
+                  {dataPath}
+                </div>
+              </div>
+              <button
+                onClick={openDataFolder}
+                style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '6px',
+                  padding: '8px 12px',
+                  fontSize: '13px',
+                  color: '#4b5563',
+                  backgroundColor: 'transparent',
+                  border: '1px solid #e5e7eb',
+                  borderRadius: '8px',
+                  cursor: 'pointer',
+                  transition: 'all 0.15s ease',
+                }}
+                onMouseEnter={(e) => {
+                  e.currentTarget.style.backgroundColor = '#f9fafb';
+                }}
+                onMouseLeave={(e) => {
+                  e.currentTarget.style.backgroundColor = 'transparent';
+                }}
+              >
+                <FolderOpen style={{ width: '16px', height: '16px' }} />
+                Open
+              </button>
             </div>
           </div>
-        </div>
+        </section>
 
-        <div className="bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700 p-4">
-          <h2 className="font-medium text-gray-900 dark:text-white mb-4">
+        {/* About */}
+        <section style={{ marginBottom: '24px' }}>
+          <h2 style={{ fontSize: '13px', fontWeight: 500, color: '#6b7280', marginBottom: '12px' }}>
             About
           </h2>
-          <div className="space-y-2 text-sm text-gray-600 dark:text-gray-300">
-            <div className="flex items-center justify-between">
-              <span>Version</span>
-              <span className="text-gray-400">0.1.0</span>
+          <div style={cardStyle}>
+            <div style={{ ...rowStyle, gap: '16px' }}>
+              <div
+                style={{
+                  width: '40px',
+                  height: '40px',
+                  borderRadius: '10px',
+                  backgroundColor: '#f3f4f6',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  flexShrink: 0,
+                }}
+              >
+                <Info style={{ width: '20px', height: '20px', color: '#6b7280' }} />
+              </div>
+              <span style={{ flex: 1, fontWeight: 500, color: '#1a1a1a', fontSize: '15px' }}>Version</span>
+              <span style={{ color: '#6b7280', fontSize: '14px' }}>0.1.0</span>
             </div>
-            <div className="flex items-center justify-between">
-              <span>Framework</span>
-              <span className="text-gray-400">Tauri v2</span>
+            <div style={{ ...rowStyle, borderTop: '1px solid #f3f4f6' }}>
+              <span style={{ marginLeft: '56px', color: '#4b5563', fontSize: '14px' }}>Framework</span>
+              <span style={{ color: '#6b7280', fontSize: '14px' }}>Tauri v2</span>
             </div>
           </div>
-        </div>
+        </section>
 
-        <div className="bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700 p-4">
-          <h2 className="font-medium text-gray-900 dark:text-white mb-4">
+        {/* Resources */}
+        <section>
+          <h2 style={{ fontSize: '13px', fontWeight: 500, color: '#6b7280', marginBottom: '12px' }}>
             Resources
           </h2>
-          <div className="space-y-2">
+          <div style={cardStyle}>
             <a
               href="https://github.com"
               target="_blank"
               rel="noopener noreferrer"
-              className="flex items-center gap-2 text-sm text-primary-600 hover:text-primary-700 dark:text-primary-400 dark:hover:text-primary-300"
+              style={{
+                ...rowStyle,
+                textDecoration: 'none',
+                color: '#1a1a1a',
+                transition: 'background-color 0.15s ease',
+              }}
+              onMouseEnter={(e) => {
+                e.currentTarget.style.backgroundColor = '#f9fafb';
+              }}
+              onMouseLeave={(e) => {
+                e.currentTarget.style.backgroundColor = 'transparent';
+              }}
             >
-              <ExternalLink className="w-4 h-4" />
-              GitHub Repository
+              <span style={{ fontSize: '14px' }}>GitHub Repository</span>
+              <ExternalLink style={{ width: '16px', height: '16px', color: '#9ca3af' }} />
             </a>
             <a
               href="https://docs.databridge.dev"
               target="_blank"
               rel="noopener noreferrer"
-              className="flex items-center gap-2 text-sm text-primary-600 hover:text-primary-700 dark:text-primary-400 dark:hover:text-primary-300"
+              style={{
+                ...rowStyle,
+                borderTop: '1px solid #f3f4f6',
+                textDecoration: 'none',
+                color: '#1a1a1a',
+                transition: 'background-color 0.15s ease',
+              }}
+              onMouseEnter={(e) => {
+                e.currentTarget.style.backgroundColor = '#f9fafb';
+              }}
+              onMouseLeave={(e) => {
+                e.currentTarget.style.backgroundColor = 'transparent';
+              }}
             >
-              <ExternalLink className="w-4 h-4" />
-              Documentation
+              <span style={{ fontSize: '14px' }}>Documentation</span>
+              <ExternalLink style={{ width: '16px', height: '16px', color: '#9ca3af' }} />
             </a>
           </div>
-        </div>
+        </section>
       </div>
     </div>
   );

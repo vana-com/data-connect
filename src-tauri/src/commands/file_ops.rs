@@ -64,6 +64,7 @@ pub async fn write_export_data(
     run_id: String,
     platform_id: String,
     company: String,
+    name: Option<String>, // Optional display name from frontend
     data: String, // JSON string from frontend
 ) -> Result<String, String> {
     let timestamp = std::time::SystemTime::now()
@@ -75,12 +76,14 @@ pub async fn write_export_data(
     let content: serde_json::Value = serde_json::from_str(&data)
         .map_err(|e| format!("Failed to parse data: {}", e))?;
 
-    // Try to extract name from the content, default to platform_id
-    let name = content
-        .get("platform")
-        .and_then(|v| v.as_str())
-        .unwrap_or(&platform_id)
-        .to_string();
+    // Use provided name, or try to extract from content, or default to platform_id
+    let name = name.unwrap_or_else(|| {
+        content
+            .get("platform")
+            .and_then(|v| v.as_str())
+            .unwrap_or(&platform_id)
+            .to_string()
+    });
 
     let data_dir = app
         .path()
@@ -132,6 +135,8 @@ pub struct SavedRun {
     pub export_path: Option<String>,
     #[serde(rename = "itemsExported")]
     pub items_exported: Option<i64>,
+    #[serde(rename = "itemLabel")]
+    pub item_label: Option<String>,
 }
 
 /// Load all runs from the exported_data directory
@@ -192,14 +197,42 @@ pub async fn load_runs(app: AppHandle) -> Result<Vec<SavedRun>, String> {
                     // Read the JSON file to get more details
                     if let Ok(content) = fs::read_to_string(&json_path) {
                         if let Ok(data) = serde_json::from_str::<serde_json::Value>(&content) {
-                            // Extract items count from the content
-                            let items_exported = data.get("content")
-                                .and_then(|c| {
+                            // Extract items count and label from the content
+                            // First try exportSummary (new standard), then fallback to legacy fields
+                            let content = data.get("content");
+                            let export_summary = content.and_then(|c| c.get("exportSummary"));
+
+                            let items_exported = export_summary
+                                .and_then(|s| s.get("count").and_then(|v| v.as_i64()))
+                                .or_else(|| content.and_then(|c| {
                                     c.get("totalConversations").and_then(|v| v.as_i64())
                                         .or_else(|| c.get("totalPosts").and_then(|v| v.as_i64()))
                                         .or_else(|| c.get("conversations").and_then(|v| v.as_array()).map(|a| a.len() as i64))
                                         .or_else(|| c.get("posts").and_then(|v| v.as_array()).map(|a| a.len() as i64))
+                                        // Fallback for Instagram media_count from profile
+                                        .or_else(|| c.get("media_count").and_then(|v| v.as_i64()))
+                                }));
+
+                            // Determine label based on platform/content type
+                            let item_label = export_summary
+                                .and_then(|s| s.get("label").and_then(|v| v.as_str()).map(|s| s.to_string()))
+                                .or_else(|| {
+                                    // Infer label from content type
+                                    if content.map_or(false, |c| c.get("posts").is_some() || c.get("media_count").is_some()) {
+                                        Some("posts".to_string())
+                                    } else if content.map_or(false, |c| c.get("conversations").is_some()) {
+                                        Some("conversations".to_string())
+                                    } else {
+                                        None
+                                    }
                                 });
+
+                            // Extract display name from JSON, fallback to directory name
+                            let display_name = data
+                                .get("name")
+                                .and_then(|v| v.as_str())
+                                .map(|s| s.to_string())
+                                .unwrap_or_else(|| platform_name.clone());
 
                             // Convert timestamp to ISO date string
                             let start_date = chrono::DateTime::from_timestamp(timestamp as i64, 0)
@@ -211,12 +244,13 @@ pub async fn load_runs(app: AppHandle) -> Result<Vec<SavedRun>, String> {
                                 platform_id: platform_name.clone(),
                                 filename: platform_name.clone(),
                                 company: company.clone(),
-                                name: platform_name.clone(),
+                                name: display_name,
                                 start_date: start_date.clone(),
                                 end_date: Some(start_date),
                                 status: "success".to_string(),
                                 export_path: Some(run_path.to_string_lossy().to_string()),
                                 items_exported,
+                                item_label,
                             });
                         }
                     }

@@ -43,6 +43,7 @@ export function useConnector() {
           company: platform.company,
           name: platform.name,
           connectUrl: platform.connectURL || '',
+          runtime: platform.runtime || null,
         });
       } catch (error) {
         console.error('Failed to start connector run:', error);

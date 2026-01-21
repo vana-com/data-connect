@@ -467,6 +467,11 @@
     totalConversations: conversations.length,
     memories: memories,
     totalMemories: memories.length,
+    // Standard export summary for consistent UI display
+    exportSummary: {
+      count: conversations.length,
+      label: conversations.length === 1 ? 'conversation' : 'conversations'
+    },
   };
 
   log(`Export complete: ${conversations.length} conversations, ${memories.length} memories`);

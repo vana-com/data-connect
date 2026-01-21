@@ -30,12 +30,12 @@ interface ConnectorStatusEventPayload {
   timestamp: number;
 }
 
-// Export complete event from connector
+// Export complete event from connector (includes display name)
 interface ConnectorExportCompleteEvent {
   runId: string;
   platformId: string;
   company: string;
-  name: string;
+  name: string; // Display name (e.g., "Instagram (Playwright)")
   data: unknown;
   timestamp: number;
 }
@@ -106,11 +106,20 @@ export function useEvents() {
           console.log('[Connector Status] Export complete with data:', exportData);
 
           // Update the UI with export data
+          // Use exportSummary if available, fallback to legacy fields
+          const summary = (exportData as unknown as Record<string, unknown>).exportSummary as { count: number; label: string } | undefined;
+          const itemsExported = summary?.count
+            ?? exportData.totalConversations
+            ?? exportData.conversations?.length
+            ?? 0;
+          const itemLabel = summary?.label || 'items';
+
           dispatch(
             updateRunExportData({
               runId,
               statusMessage: status.message || 'Export complete',
-              itemsExported: exportData.totalConversations || exportData.conversations?.length || 0,
+              itemsExported,
+              itemLabel,
               exportData,
             })
           );
@@ -147,6 +156,18 @@ export function useEvents() {
         if (statusMessage) {
           dispatch(updateRunExportData({ runId, statusMessage }));
         }
+      } else if (statusType === 'STOPPED') {
+        // Browser was closed or process ended without completing
+        dispatch(
+          updateRunStatus({
+            runId,
+            status: 'stopped',
+            endDate: new Date().toISOString(),
+          })
+        );
+        if (statusMessage) {
+          dispatch(updateRunExportData({ runId, statusMessage }));
+        }
       }
     }).then((unlisten) => unlisteners.push(unlisten));
 
@@ -157,8 +178,8 @@ export function useEvents() {
 
     // Listen for export complete events from connector
     listen<ConnectorExportCompleteEvent>('export-complete', (event) => {
-      const { runId, platformId, company, data } = event.payload;
-      console.log('[Export Complete]', runId, platformId);
+      const { runId, platformId, company, name, data } = event.payload;
+      console.log('[Export Complete]', runId, platformId, name);
 
       dispatch(
         updateRunStatus({
@@ -168,11 +189,32 @@ export function useEvents() {
         })
       );
 
+      // Extract exportSummary for UI display
+      const exportData = data as ExportedData;
+      const summary = (exportData as unknown as Record<string, unknown>).exportSummary as { count: number; label: string } | undefined;
+      const itemsExported = summary?.count
+        ?? exportData.totalConversations
+        ?? exportData.conversations?.length
+        ?? 0;
+      const itemLabel = summary?.label || 'items';
+
+      // Update the UI with export data
+      dispatch(
+        updateRunExportData({
+          runId,
+          statusMessage: 'Export complete',
+          itemsExported,
+          itemLabel,
+          exportData,
+        })
+      );
+
       // Save the export data
       invoke('write_export_data', {
         runId: runId,
         platformId: platformId,
         company,
+        name: name || platformId, // Use display name if available
         data: JSON.stringify(data),
       }).then((result) => {
         console.log('[Export Saved]', result);

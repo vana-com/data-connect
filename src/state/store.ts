@@ -116,6 +116,7 @@ const appSlice = createSlice({
         runId: string;
         statusMessage?: string;
         itemsExported?: number;
+        itemLabel?: string;
         exportData?: ExportedData;
         phase?: ProgressPhase;
         itemCount?: number;
@@ -128,6 +129,9 @@ const appSlice = createSlice({
         }
         if (action.payload.itemsExported !== undefined) {
           run.itemsExported = action.payload.itemsExported;
+        }
+        if (action.payload.itemLabel) {
+          run.itemLabel = action.payload.itemLabel;
         }
         if (action.payload.exportData) {
           run.exportData = action.payload.exportData;

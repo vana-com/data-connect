@@ -107,9 +107,9 @@ function RunItem({ run, onStop }: { run: Run; onStop: (id: string) => void }) {
           </div>
           <div style={{ fontSize: '13px', color: '#6b7280', marginTop: '2px' }}>
             {formatDate(run.startDate)}
-            {run.status === 'success' && run.itemsExported !== undefined && (
+            {run.status === 'success' && run.itemsExported != null && run.itemsExported > 0 && (
               <span style={{ marginLeft: '8px', color: '#22c55e' }}>
-                {run.itemsExported} conversations
+                {run.itemsExported} {run.itemLabel || 'items'}
               </span>
             )}
             {run.status === 'error' && (

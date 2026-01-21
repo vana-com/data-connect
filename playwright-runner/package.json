@@ -1,0 +1,14 @@
+{
+  "name": "databridge-playwright-runner",
+  "version": "1.0.0",
+  "description": "Playwright sidecar for DataBridge connectors",
+  "main": "index.js",
+  "type": "module",
+  "scripts": {
+    "start": "node index.js",
+    "postinstall": "playwright install chromium"
+  },
+  "dependencies": {
+    "playwright": "^1.40.0"
+  }
+}

@@ -11,6 +11,8 @@ export interface Platform {
   connectSelector: string | null;
   exportFrequency: string | null;
   vectorize_config: Record<string, unknown> | null;
+  /** Runtime type: "vanilla" (default) or "network-capture" (uses network interception) */
+  runtime?: string | null;
 }
 
 export interface ProgressPhase {
@@ -36,6 +38,7 @@ export interface Run {
   logs?: string;
   statusMessage?: string;
   itemsExported?: number;
+  itemLabel?: string;  // e.g., "posts", "conversations"
   exportData?: ExportedData;
   // Progress tracking
   phase?: ProgressPhase;

@@ -16,6 +16,7 @@ interface SavedRun {
   status: string;
   exportPath?: string;
   itemsExported?: number;
+  itemLabel?: string;
 }
 
 export function useInitialize() {
@@ -48,6 +49,7 @@ export function useInitialize() {
           isConnected: true,
           exportPath: saved.exportPath,
           itemsExported: saved.itemsExported,
+          itemLabel: saved.itemLabel,
           logs: '',
         }));
 

@@ -41,10 +41,9 @@ jobs:
         with:
           node-version: '20'
           cache: 'npm'
-          cache-dependency-path: databridge/package-lock.json
 
       - name: Setup Rust
-        uses: dtolnay/rust-action@stable
+        uses: dtolnay/rust-toolchain@stable
         with:
           targets: ${{ matrix.target }}
 
@@ -55,25 +54,24 @@ jobs:
           sudo apt-get install -y libwebkit2gtk-4.1-dev libappindicator3-dev librsvg2-dev patchelf
 
       - name: Install frontend dependencies
-        working-directory: databridge
         run: npm ci
 
       - name: Install playwright-runner dependencies
-        working-directory: databridge/playwright-runner
+        working-directory: playwright-runner
         run: npm ci
 
       - name: Install Playwright Chromium
-        working-directory: databridge/playwright-runner
+        working-directory: playwright-runner
         run: npx playwright install chromium
 
       - name: Build playwright-runner binary
-        working-directory: databridge/playwright-runner
+        working-directory: playwright-runner
         run: |
           npx pkg index.js -t ${{ matrix.pkg_target }} -o dist/${{ matrix.binary_name }} --no-bytecode --public-packages '*' --public
 
       - name: Bundle Chromium (macOS)
         if: matrix.platform == 'macos-latest'
-        working-directory: databridge/playwright-runner
+        working-directory: playwright-runner
         run: |
           mkdir -p dist/browsers
           BROWSER_PATH="$HOME/Library/Caches/ms-playwright"
@@ -84,7 +82,7 @@ jobs:
 
       - name: Bundle Chromium (Linux)
         if: matrix.platform == 'ubuntu-22.04'
-        working-directory: databridge/playwright-runner
+        working-directory: playwright-runner
         run: |
           mkdir -p dist/browsers
           BROWSER_PATH="$HOME/.cache/ms-playwright"
@@ -95,7 +93,7 @@ jobs:
 
       - name: Bundle Chromium (Windows)
         if: matrix.platform == 'windows-latest'
-        working-directory: databridge/playwright-runner
+        working-directory: playwright-runner
         shell: pwsh
         run: |
           New-Item -ItemType Directory -Force -Path dist/browsers
@@ -106,10 +104,8 @@ jobs:
           }
 
       - name: Update tauri.conf.json for production
-        working-directory: databridge
         shell: bash
         run: |
-          # Update resources to include binaries
           node -e "
             const fs = require('fs');
             const conf = JSON.parse(fs.readFileSync('src-tauri/tauri.conf.json', 'utf8'));
@@ -125,7 +121,6 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         with:
-          projectPath: databridge
           tagName: ${{ github.ref_name }}
           releaseName: 'DataBridge v__VERSION__'
           releaseBody: 'See the assets to download this version and install.'

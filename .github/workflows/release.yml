@@ -1,0 +1,134 @@
+name: Release
+
+on:
+  release:
+    types: [created]
+
+env:
+  CARGO_TERM_COLOR: always
+
+jobs:
+  build:
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - platform: macos-latest
+            target: aarch64-apple-darwin
+            pkg_target: node20-macos-arm64
+            binary_name: playwright-runner
+          - platform: macos-latest
+            target: x86_64-apple-darwin
+            pkg_target: node20-macos-x64
+            binary_name: playwright-runner
+          - platform: ubuntu-22.04
+            target: x86_64-unknown-linux-gnu
+            pkg_target: node20-linux-x64
+            binary_name: playwright-runner
+          - platform: windows-latest
+            target: x86_64-pc-windows-msvc
+            pkg_target: node20-win-x64
+            binary_name: playwright-runner.exe
+
+    runs-on: ${{ matrix.platform }}
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+          cache-dependency-path: databridge/package-lock.json
+
+      - name: Setup Rust
+        uses: dtolnay/rust-action@stable
+        with:
+          targets: ${{ matrix.target }}
+
+      - name: Install dependencies (Ubuntu)
+        if: matrix.platform == 'ubuntu-22.04'
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y libwebkit2gtk-4.1-dev libappindicator3-dev librsvg2-dev patchelf
+
+      - name: Install frontend dependencies
+        working-directory: databridge
+        run: npm ci
+
+      - name: Install playwright-runner dependencies
+        working-directory: databridge/playwright-runner
+        run: npm ci
+
+      - name: Install Playwright Chromium
+        working-directory: databridge/playwright-runner
+        run: npx playwright install chromium
+
+      - name: Build playwright-runner binary
+        working-directory: databridge/playwright-runner
+        run: |
+          npx pkg index.js -t ${{ matrix.pkg_target }} -o dist/${{ matrix.binary_name }} --no-bytecode --public-packages '*' --public
+
+      - name: Bundle Chromium (macOS)
+        if: matrix.platform == 'macos-latest'
+        working-directory: databridge/playwright-runner
+        run: |
+          mkdir -p dist/browsers
+          BROWSER_PATH="$HOME/Library/Caches/ms-playwright"
+          CHROMIUM_DIR=$(ls -d "$BROWSER_PATH"/chromium-* 2>/dev/null | head -1)
+          if [ -n "$CHROMIUM_DIR" ]; then
+            cp -R "$CHROMIUM_DIR" dist/browsers/
+          fi
+
+      - name: Bundle Chromium (Linux)
+        if: matrix.platform == 'ubuntu-22.04'
+        working-directory: databridge/playwright-runner
+        run: |
+          mkdir -p dist/browsers
+          BROWSER_PATH="$HOME/.cache/ms-playwright"
+          CHROMIUM_DIR=$(ls -d "$BROWSER_PATH"/chromium-* 2>/dev/null | head -1)
+          if [ -n "$CHROMIUM_DIR" ]; then
+            cp -R "$CHROMIUM_DIR" dist/browsers/
+          fi
+
+      - name: Bundle Chromium (Windows)
+        if: matrix.platform == 'windows-latest'
+        working-directory: databridge/playwright-runner
+        shell: pwsh
+        run: |
+          New-Item -ItemType Directory -Force -Path dist/browsers
+          $browserPath = "$env:LOCALAPPDATA\ms-playwright"
+          $chromiumDir = Get-ChildItem -Path $browserPath -Directory -Filter "chromium-*" | Select-Object -First 1
+          if ($chromiumDir) {
+            Copy-Item -Path $chromiumDir.FullName -Destination "dist/browsers/$($chromiumDir.Name)" -Recurse
+          }
+
+      - name: Update tauri.conf.json for production
+        working-directory: databridge
+        shell: bash
+        run: |
+          # Update resources to include binaries
+          node -e "
+            const fs = require('fs');
+            const conf = JSON.parse(fs.readFileSync('src-tauri/tauri.conf.json', 'utf8'));
+            conf.bundle.resources = {
+              '../connectors/**/*': './',
+              '../playwright-runner/dist/**/*': 'binaries/'
+            };
+            fs.writeFileSync('src-tauri/tauri.conf.json', JSON.stringify(conf, null, 2));
+          "
+
+      - name: Build Tauri app
+        uses: tauri-apps/tauri-action@v0
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          projectPath: databridge
+          tagName: ${{ github.ref_name }}
+          releaseName: 'DataBridge v__VERSION__'
+          releaseBody: 'See the assets to download this version and install.'
+          releaseDraft: false
+          prerelease: false
+          args: --target ${{ matrix.target }}

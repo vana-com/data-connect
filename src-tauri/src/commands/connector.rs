@@ -241,6 +241,34 @@ static PLAYWRIGHT_PROCESSES: std::sync::LazyLock<
     std::sync::Mutex<HashMap<String, std::process::Child>>,
 > = std::sync::LazyLock::new(|| std::sync::Mutex::new(HashMap::new()));
 
+/// Get the path to the bundled Playwright runner binary (production) or None (dev)
+fn get_bundled_playwright_runner(app: &AppHandle) -> Option<(PathBuf, Option<PathBuf>)> {
+    // In production, the binary is in the resources directory
+    let resource_dir = app.path().resource_dir().ok()?;
+
+    #[cfg(target_os = "macos")]
+    let binary_name = "playwright-runner";
+    #[cfg(target_os = "windows")]
+    let binary_name = "playwright-runner.exe";
+    #[cfg(target_os = "linux")]
+    let binary_name = "playwright-runner";
+
+    let binary_path = resource_dir.join("binaries").join(binary_name);
+    let browsers_path = resource_dir.join("binaries").join("browsers");
+
+    if binary_path.exists() {
+        log::info!("Found bundled Playwright runner at {:?}", binary_path);
+        let browsers = if browsers_path.exists() {
+            Some(browsers_path)
+        } else {
+            None
+        };
+        Some((binary_path, browsers))
+    } else {
+        None
+    }
+}
+
 /// Start a connector run using Playwright sidecar
 async fn start_playwright_run(
     app: AppHandle,
@@ -266,24 +294,40 @@ async fn start_playwright_run(
         return Err(format!("Connector script not found: {:?}", connector_path));
     }
 
-    // Get playwright-runner directory
-    let runner_dir = connectors_dir.parent()
-        .map(|p| p.join("playwright-runner"))
-        .ok_or("Could not find playwright-runner directory")?;
+    // Try to use bundled binary first (production), fall back to dev mode
+    let mut child = if let Some((binary_path, browsers_path)) = get_bundled_playwright_runner(&app) {
+        // Production mode: use bundled binary
+        let mut cmd = Command::new(&binary_path);
+        cmd.stdin(Stdio::piped())
+            .stdout(Stdio::piped())
+            .stderr(Stdio::piped());
 
-    if !runner_dir.exists() {
-        return Err(format!("Playwright runner not found: {:?}. Run 'npm install' in playwright-runner directory.", runner_dir));
-    }
+        // Set browser path if bundled
+        if let Some(browsers) = browsers_path {
+            cmd.env("PLAYWRIGHT_BROWSERS_PATH", browsers);
+        }
 
-    // Spawn the Node.js process
-    let mut child = Command::new("node")
-        .arg("index.js")
-        .current_dir(&runner_dir)
-        .stdin(Stdio::piped())
-        .stdout(Stdio::piped())
-        .stderr(Stdio::piped())
-        .spawn()
-        .map_err(|e| format!("Failed to spawn Playwright runner: {}", e))?;
+        cmd.spawn()
+            .map_err(|e| format!("Failed to spawn bundled Playwright runner: {}", e))?
+    } else {
+        // Dev mode: use node index.js
+        let runner_dir = connectors_dir.parent()
+            .map(|p| p.join("playwright-runner"))
+            .ok_or("Could not find playwright-runner directory")?;
+
+        if !runner_dir.exists() {
+            return Err(format!("Playwright runner not found: {:?}. Run 'npm install' in playwright-runner directory.", runner_dir));
+        }
+
+        Command::new("node")
+            .arg("index.js")
+            .current_dir(&runner_dir)
+            .stdin(Stdio::piped())
+            .stdout(Stdio::piped())
+            .stderr(Stdio::piped())
+            .spawn()
+            .map_err(|e| format!("Failed to spawn Playwright runner: {}", e))?
+    };
 
     // Get handles to stdin/stdout
     let mut stdin = child.stdin.take().ok_or("Failed to get stdin")?;
@@ -794,7 +838,7 @@ fn chrono_timestamp() -> i64 {
         .as_millis() as i64
 }
 
-/// Stop a connector run by closing its webview or killing the Playwright process
+/// Stop a connector run by closing its webview or killing the browser process
 #[tauri::command]
 pub async fn stop_connector_run(app: AppHandle, run_id: String) -> Result<(), String> {
     // Try to stop Playwright process first

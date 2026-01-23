@@ -10,7 +10,8 @@
     "preview": "vite preview",
     "tauri": "tauri",
     "tauri:dev": "tauri dev",
-    "tauri:build": "tauri build"
+    "tauri:build": "tauri build",
+    "build:prod": "node scripts/build-prod.js"
   },
   "dependencies": {
     "@reduxjs/toolkit": "^2.11.2",

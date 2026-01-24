@@ -113,7 +113,7 @@ jobs:
             const fs = require('fs');
             const conf = JSON.parse(fs.readFileSync('src-tauri/tauri.conf.json', 'utf8'));
             conf.bundle.resources = {
-              '../connectors/**/*': './',
+              '../connectors/**/*': './connectors/',
               '../playwright-runner/dist/**/*': 'binaries/'
             };
             fs.writeFileSync('src-tauri/tauri.conf.json', JSON.stringify(conf, null, 2));

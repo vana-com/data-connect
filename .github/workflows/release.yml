@@ -99,6 +99,13 @@ jobs:
         run: |
           npx pkg index.js -t ${{ matrix.pkg_target }} -o dist/${{ matrix.binary_name }} --no-bytecode --public-packages '*' --public
 
+      - name: Sign playwright-runner binary (macOS)
+        if: matrix.platform == 'macos-latest'
+        run: |
+          codesign --force --options runtime --timestamp \
+            --sign "Developer ID Application: Corsali, Inc (${{ secrets.APPLE_TEAM_ID }})" \
+            playwright-runner/dist/${{ matrix.binary_name }}
+
       - name: Build Tauri app
         uses: tauri-apps/tauri-action@v0
         env:

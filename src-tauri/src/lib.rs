@@ -2,8 +2,8 @@ mod commands;
 mod processors;
 
 use commands::{
-    check_browser_available, check_connected_platforms, download_browser, get_platforms,
-    get_run_files, get_user_data_path, handle_download, load_runs, open_folder,
+    check_browser_available, check_connected_platforms, debug_connector_paths, download_browser,
+    get_platforms, get_run_files, get_user_data_path, handle_download, load_runs, open_folder,
     open_platform_export_folder, start_connector_run, stop_connector_run, test_nodejs,
     write_export_data,
 };
@@ -49,6 +49,7 @@ pub fn run() {
             check_browser_available,
             download_browser,
             test_nodejs,
+            debug_connector_paths,
             get_user_data_path,
             handle_download,
             open_folder,

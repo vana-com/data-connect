@@ -108,6 +108,47 @@ fn get_connectors_dir(app: &AppHandle) -> PathBuf {
     resource_path
 }
 
+/// Debug connector paths - helps diagnose why connectors aren't found
+#[tauri::command]
+pub async fn debug_connector_paths(app: AppHandle) -> Result<serde_json::Value, String> {
+    let resource_dir = app.path().resource_dir().unwrap_or_default();
+    let connectors_dir = get_connectors_dir(&app);
+
+    // Check various paths
+    let paths_to_check = vec![
+        ("resource_dir", resource_dir.clone()),
+        ("resource_dir/connectors", resource_dir.join("connectors")),
+        ("resource_dir/_up_/connectors", resource_dir.join("_up_").join("connectors")),
+        ("connectors_dir (resolved)", connectors_dir.clone()),
+    ];
+
+    let mut results = serde_json::Map::new();
+
+    for (name, path) in paths_to_check {
+        let exists = path.exists();
+        let contents = if exists && path.is_dir() {
+            std::fs::read_dir(&path)
+                .map(|entries| {
+                    entries
+                        .filter_map(|e| e.ok())
+                        .map(|e| e.file_name().to_string_lossy().to_string())
+                        .collect::<Vec<_>>()
+                })
+                .unwrap_or_default()
+        } else {
+            vec![]
+        };
+
+        results.insert(name.to_string(), serde_json::json!({
+            "path": path.to_string_lossy(),
+            "exists": exists,
+            "contents": contents
+        }));
+    }
+
+    Ok(serde_json::Value::Object(results))
+}
+
 /// Load all platform connectors from the connectors directory
 #[tauri::command]
 pub async fn get_platforms(app: AppHandle) -> Result<Vec<Platform>, String> {

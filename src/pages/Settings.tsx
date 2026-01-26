@@ -17,6 +17,7 @@ export function Settings() {
   const [nodeTestStatus, setNodeTestStatus] = useState<'idle' | 'testing' | 'success' | 'error'>('idle');
   const [nodeTestResult, setNodeTestResult] = useState<NodeJsTestResult | null>(null);
   const [nodeTestError, setNodeTestError] = useState<string | null>(null);
+  const [pathsDebug, setPathsDebug] = useState<Record<string, unknown> | null>(null);
 
   useEffect(() => {
     invoke<string>('get_user_data_path').then((path) => {
@@ -43,6 +44,15 @@ export function Settings() {
     } catch (error) {
       setNodeTestError(String(error));
       setNodeTestStatus('error');
+    }
+  };
+
+  const debugPaths = async () => {
+    try {
+      const result = await invoke<Record<string, unknown>>('debug_connector_paths');
+      setPathsDebug(result);
+    } catch (error) {
+      console.error('Debug paths error:', error);
     }
   };
 
@@ -239,6 +249,34 @@ export function Settings() {
                   <div><span style={{ color: '#6b7280' }}>Memory:</span> <span style={{ color: '#1a1a1a' }}>{nodeTestResult.memory}</span></div>
                   <div><span style={{ color: '#6b7280' }}>Uptime:</span> <span style={{ color: '#1a1a1a' }}>{nodeTestResult.uptime}</span></div>
                 </div>
+              </div>
+            )}
+            {/* Connector Paths Debug */}
+            <div style={{ ...rowStyle, borderTop: '1px solid #f3f4f6', gap: '16px' }}>
+              <div style={{ flex: 1, minWidth: 0 }}>
+                <div style={{ fontWeight: 500, color: '#1a1a1a', fontSize: '15px' }}>Connector Paths</div>
+                <div style={{ fontSize: '13px', color: '#6b7280' }}>
+                  Debug where app looks for connectors
+                </div>
+              </div>
+              <button
+                onClick={debugPaths}
+                style={{
+                  padding: '8px 12px',
+                  fontSize: '13px',
+                  color: '#4b5563',
+                  backgroundColor: 'transparent',
+                  border: '1px solid #e5e7eb',
+                  borderRadius: '8px',
+                  cursor: 'pointer',
+                }}
+              >
+                Debug
+              </button>
+            </div>
+            {pathsDebug && (
+              <div style={{ padding: '12px 16px', borderTop: '1px solid #f3f4f6', backgroundColor: '#f9fafb', fontSize: '12px', fontFamily: 'monospace', whiteSpace: 'pre-wrap', wordBreak: 'break-all' }}>
+                {JSON.stringify(pathsDebug, null, 2)}
               </div>
             )}
           </div>

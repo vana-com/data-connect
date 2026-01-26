@@ -1,9 +1,22 @@
 import { useEffect, useState } from 'react';
 import { invoke } from '@tauri-apps/api/core';
-import { FolderOpen, ExternalLink, Database, Info } from 'lucide-react';
+import { FolderOpen, ExternalLink, Database, Info, Play, CheckCircle, XCircle, Loader } from 'lucide-react';
+
+interface NodeJsTestResult {
+  nodejs: string;
+  platform: string;
+  arch: string;
+  hostname: string;
+  cpus: number;
+  memory: string;
+  uptime: string;
+}
 
 export function Settings() {
   const [dataPath, setDataPath] = useState<string>('');
+  const [nodeTestStatus, setNodeTestStatus] = useState<'idle' | 'testing' | 'success' | 'error'>('idle');
+  const [nodeTestResult, setNodeTestResult] = useState<NodeJsTestResult | null>(null);
+  const [nodeTestError, setNodeTestError] = useState<string | null>(null);
 
   useEffect(() => {
     invoke<string>('get_user_data_path').then((path) => {
@@ -16,6 +29,20 @@ export function Settings() {
       await invoke('open_folder', { path: dataPath });
     } catch (error) {
       console.error('Failed to open folder:', error);
+    }
+  };
+
+  const testNodeJs = async () => {
+    setNodeTestStatus('testing');
+    setNodeTestResult(null);
+    setNodeTestError(null);
+    try {
+      const result = await invoke<NodeJsTestResult>('test_nodejs');
+      setNodeTestResult(result);
+      setNodeTestStatus('success');
+    } catch (error) {
+      setNodeTestError(String(error));
+      setNodeTestStatus('error');
     }
   };
 
@@ -135,6 +162,85 @@ export function Settings() {
               <span style={{ marginLeft: '56px', color: '#4b5563', fontSize: '14px' }}>Framework</span>
               <span style={{ color: '#6b7280', fontSize: '14px' }}>Tauri v2</span>
             </div>
+          </div>
+        </section>
+
+        {/* Diagnostics */}
+        <section style={{ marginBottom: '24px' }}>
+          <h2 style={{ fontSize: '13px', fontWeight: 500, color: '#6b7280', marginBottom: '12px' }}>
+            Diagnostics
+          </h2>
+          <div style={cardStyle}>
+            <div style={{ ...rowStyle, gap: '16px' }}>
+              <div
+                style={{
+                  width: '40px',
+                  height: '40px',
+                  borderRadius: '10px',
+                  backgroundColor: nodeTestStatus === 'success' ? '#dcfce7' : nodeTestStatus === 'error' ? '#fee2e2' : '#f0fdf4',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  flexShrink: 0,
+                }}
+              >
+                {nodeTestStatus === 'testing' ? (
+                  <Loader style={{ width: '20px', height: '20px', color: '#6b7280', animation: 'spin 1s linear infinite' }} />
+                ) : nodeTestStatus === 'success' ? (
+                  <CheckCircle style={{ width: '20px', height: '20px', color: '#22c55e' }} />
+                ) : nodeTestStatus === 'error' ? (
+                  <XCircle style={{ width: '20px', height: '20px', color: '#ef4444' }} />
+                ) : (
+                  <Play style={{ width: '20px', height: '20px', color: '#22c55e' }} />
+                )}
+              </div>
+              <div style={{ flex: 1, minWidth: 0 }}>
+                <div style={{ fontWeight: 500, color: '#1a1a1a', fontSize: '15px' }}>Node.js Runtime</div>
+                <div style={{ fontSize: '13px', color: '#6b7280' }}>
+                  {nodeTestStatus === 'idle' && 'Test bundled Node.js runtime'}
+                  {nodeTestStatus === 'testing' && 'Testing...'}
+                  {nodeTestStatus === 'success' && nodeTestResult && `${nodeTestResult.nodejs} on ${nodeTestResult.platform}/${nodeTestResult.arch}`}
+                  {nodeTestStatus === 'error' && (nodeTestError || 'Test failed')}
+                </div>
+              </div>
+              <button
+                onClick={testNodeJs}
+                disabled={nodeTestStatus === 'testing'}
+                style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '6px',
+                  padding: '8px 12px',
+                  fontSize: '13px',
+                  color: nodeTestStatus === 'testing' ? '#9ca3af' : '#4b5563',
+                  backgroundColor: 'transparent',
+                  border: '1px solid #e5e7eb',
+                  borderRadius: '8px',
+                  cursor: nodeTestStatus === 'testing' ? 'not-allowed' : 'pointer',
+                  transition: 'all 0.15s ease',
+                }}
+                onMouseEnter={(e) => {
+                  if (nodeTestStatus !== 'testing') {
+                    e.currentTarget.style.backgroundColor = '#f9fafb';
+                  }
+                }}
+                onMouseLeave={(e) => {
+                  e.currentTarget.style.backgroundColor = 'transparent';
+                }}
+              >
+                {nodeTestStatus === 'testing' ? 'Testing...' : 'Test'}
+              </button>
+            </div>
+            {nodeTestStatus === 'success' && nodeTestResult && (
+              <div style={{ padding: '12px 16px', borderTop: '1px solid #f3f4f6', backgroundColor: '#f9fafb' }}>
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '8px', fontSize: '13px' }}>
+                  <div><span style={{ color: '#6b7280' }}>Hostname:</span> <span style={{ color: '#1a1a1a' }}>{nodeTestResult.hostname}</span></div>
+                  <div><span style={{ color: '#6b7280' }}>CPUs:</span> <span style={{ color: '#1a1a1a' }}>{nodeTestResult.cpus}</span></div>
+                  <div><span style={{ color: '#6b7280' }}>Memory:</span> <span style={{ color: '#1a1a1a' }}>{nodeTestResult.memory}</span></div>
+                  <div><span style={{ color: '#6b7280' }}>Uptime:</span> <span style={{ color: '#1a1a1a' }}>{nodeTestResult.uptime}</span></div>
+                </div>
+              </div>
+            )}
           </div>
         </section>
 

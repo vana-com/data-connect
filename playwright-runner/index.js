@@ -421,6 +421,23 @@ async function main() {
           process.exit(0);
           break;
 
+        case 'test':
+          // Simple test to prove Node.js is working
+          const os = require('os');
+          send({
+            type: 'test-result',
+            data: {
+              nodejs: process.version,
+              platform: process.platform,
+              arch: process.arch,
+              hostname: os.hostname(),
+              cpus: os.cpus().length,
+              memory: Math.round(os.totalmem() / 1024 / 1024 / 1024) + ' GB',
+              uptime: Math.round(os.uptime() / 60) + ' minutes'
+            }
+          });
+          break;
+
         default:
           log(`Unknown command: ${cmd.type}`);
       }

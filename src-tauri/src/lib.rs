@@ -4,7 +4,8 @@ mod processors;
 use commands::{
     check_browser_available, check_connected_platforms, download_browser, get_platforms,
     get_run_files, get_user_data_path, handle_download, load_runs, open_folder,
-    open_platform_export_folder, start_connector_run, stop_connector_run, write_export_data,
+    open_platform_export_folder, start_connector_run, stop_connector_run, test_nodejs,
+    write_export_data,
 };
 use tauri::{Listener, Manager};
 
@@ -47,6 +48,7 @@ pub fn run() {
             check_connected_platforms,
             check_browser_available,
             download_browser,
+            test_nodejs,
             get_user_data_path,
             handle_download,
             open_folder,

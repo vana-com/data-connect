@@ -1053,6 +1053,44 @@ pub async fn download_browser(app: AppHandle) -> Result<(), String> {
     }
 }
 
+/// Test that Node.js runtime is working
+#[tauri::command]
+pub async fn test_nodejs(app: AppHandle) -> Result<serde_json::Value, String> {
+    use std::io::{BufRead, BufReader, Write};
+    use std::process::{Command, Stdio};
+
+    // Get the playwright runner binary
+    let (binary_path, _) = get_bundled_playwright_runner(&app)
+        .ok_or("Playwright runner not found")?;
+
+    let mut child = Command::new(&binary_path)
+        .stdin(Stdio::piped())
+        .stdout(Stdio::piped())
+        .stderr(Stdio::piped())
+        .spawn()
+        .map_err(|e| format!("Failed to spawn playwright runner: {}", e))?;
+
+    let mut stdin = child.stdin.take().ok_or("Failed to get stdin")?;
+    let stdout = child.stdout.take().ok_or("Failed to get stdout")?;
+
+    // Send test command
+    writeln!(stdin, r#"{{"type":"test"}}"#)
+        .map_err(|e| format!("Failed to send command: {}", e))?;
+
+    // Read response
+    let reader = BufReader::new(stdout);
+    for line in reader.lines().flatten() {
+        if let Ok(msg) = serde_json::from_str::<serde_json::Value>(&line) {
+            if msg.get("type").and_then(|v| v.as_str()) == Some("test-result") {
+                let _ = child.kill();
+                return Ok(msg.get("data").cloned().unwrap_or(serde_json::Value::Null));
+            }
+        }
+    }
+
+    Err("No response from Node.js runtime".to_string())
+}
+
 /// Get downloaded Chromium path from ~/.databridge/browsers
 fn get_downloaded_chromium_path() -> Option<PathBuf> {
     let home = std::env::var("HOME")

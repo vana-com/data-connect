@@ -18,6 +18,7 @@ export function Settings() {
   const [nodeTestResult, setNodeTestResult] = useState<NodeJsTestResult | null>(null);
   const [nodeTestError, setNodeTestError] = useState<string | null>(null);
   const [pathsDebug, setPathsDebug] = useState<Record<string, unknown> | null>(null);
+  const [browserStatus, setBrowserStatus] = useState<{ available: boolean; browser_type: string } | null>(null);
 
   useEffect(() => {
     invoke<string>('get_user_data_path').then((path) => {
@@ -55,6 +56,19 @@ export function Settings() {
       console.error('Debug paths error:', error);
     }
   };
+
+  const checkBrowserStatus = async () => {
+    try {
+      const result = await invoke<{ available: boolean; browser_type: string; needs_download: boolean }>('check_browser_available');
+      setBrowserStatus(result);
+    } catch (error) {
+      console.error('Browser check error:', error);
+    }
+  };
+
+  useEffect(() => {
+    checkBrowserStatus();
+  }, []);
 
   const cardStyle: React.CSSProperties = {
     backgroundColor: '#ffffff',
@@ -251,6 +265,49 @@ export function Settings() {
                 </div>
               </div>
             )}
+            {/* Browser Status */}
+            <div style={{ ...rowStyle, borderTop: '1px solid #f3f4f6', gap: '16px' }}>
+              <div
+                style={{
+                  width: '40px',
+                  height: '40px',
+                  borderRadius: '10px',
+                  backgroundColor: browserStatus?.available ? '#dcfce7' : '#fef3c7',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  flexShrink: 0,
+                }}
+              >
+                {browserStatus?.available ? (
+                  <CheckCircle style={{ width: '20px', height: '20px', color: '#22c55e' }} />
+                ) : (
+                  <XCircle style={{ width: '20px', height: '20px', color: '#f59e0b' }} />
+                )}
+              </div>
+              <div style={{ flex: 1, minWidth: 0 }}>
+                <div style={{ fontWeight: 500, color: '#1a1a1a', fontSize: '15px' }}>Browser</div>
+                <div style={{ fontSize: '13px', color: '#6b7280' }}>
+                  {browserStatus === null ? 'Checking...' :
+                   browserStatus.available ? `${browserStatus.browser_type === 'system' ? 'System Chrome/Edge' : 'Downloaded Chromium'} found` :
+                   'No browser found'}
+                </div>
+              </div>
+              <button
+                onClick={checkBrowserStatus}
+                style={{
+                  padding: '8px 12px',
+                  fontSize: '13px',
+                  color: '#4b5563',
+                  backgroundColor: 'transparent',
+                  border: '1px solid #e5e7eb',
+                  borderRadius: '8px',
+                  cursor: 'pointer',
+                }}
+              >
+                Refresh
+              </button>
+            </div>
             {/* Connector Paths Debug */}
             <div style={{ ...rowStyle, borderTop: '1px solid #f3f4f6', gap: '16px' }}>
               <div style={{ flex: 1, minWidth: 0 }}>

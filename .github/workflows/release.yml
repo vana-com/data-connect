@@ -63,48 +63,10 @@ jobs:
         working-directory: playwright-runner
         run: npm ci
 
-      - name: Install Playwright Chromium
-        working-directory: playwright-runner
-        run: npx playwright install chromium
-
       - name: Build playwright-runner binary
         working-directory: playwright-runner
         run: |
           npx pkg index.js -t ${{ matrix.pkg_target }} -o dist/${{ matrix.binary_name }} --no-bytecode --public-packages '*' --public
-
-      - name: Bundle Chromium (macOS)
-        if: matrix.platform == 'macos-latest'
-        working-directory: playwright-runner
-        run: |
-          mkdir -p dist/browsers
-          BROWSER_PATH="$HOME/Library/Caches/ms-playwright"
-          CHROMIUM_DIR=$(ls -d "$BROWSER_PATH"/chromium-* 2>/dev/null | head -1)
-          if [ -n "$CHROMIUM_DIR" ]; then
-            cp -R "$CHROMIUM_DIR" dist/browsers/
-          fi
-
-      - name: Bundle Chromium (Linux)
-        if: matrix.platform == 'ubuntu-22.04'
-        working-directory: playwright-runner
-        run: |
-          mkdir -p dist/browsers
-          BROWSER_PATH="$HOME/.cache/ms-playwright"
-          CHROMIUM_DIR=$(ls -d "$BROWSER_PATH"/chromium-* 2>/dev/null | head -1)
-          if [ -n "$CHROMIUM_DIR" ]; then
-            cp -R "$CHROMIUM_DIR" dist/browsers/
-          fi
-
-      - name: Bundle Chromium (Windows)
-        if: matrix.platform == 'windows-latest'
-        working-directory: playwright-runner
-        shell: pwsh
-        run: |
-          New-Item -ItemType Directory -Force -Path dist/browsers
-          $browserPath = "$env:LOCALAPPDATA\ms-playwright"
-          $chromiumDir = Get-ChildItem -Path $browserPath -Directory -Filter "chromium-*" | Select-Object -First 1
-          if ($chromiumDir) {
-            Copy-Item -Path $chromiumDir.FullName -Destination "dist/browsers/$($chromiumDir.Name)" -Recurse
-          }
 
       - name: Update tauri.conf.json for production
         shell: bash
@@ -112,9 +74,10 @@ jobs:
           node -e "
             const fs = require('fs');
             const conf = JSON.parse(fs.readFileSync('src-tauri/tauri.conf.json', 'utf8'));
+            // Only bundle connectors and playwright-runner binary (no browsers - downloaded on-demand)
             conf.bundle.resources = {
               '../connectors/**/*': './connectors/',
-              '../playwright-runner/dist/**/*': 'binaries/'
+              '../playwright-runner/dist/playwright-runner*': 'binaries/'
             };
             fs.writeFileSync('src-tauri/tauri.conf.json', JSON.stringify(conf, null, 2));
           "

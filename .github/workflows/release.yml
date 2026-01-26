@@ -68,20 +68,6 @@ jobs:
         run: |
           npx pkg index.js -t ${{ matrix.pkg_target }} -o dist/${{ matrix.binary_name }} --no-bytecode --public-packages '*' --public
 
-      - name: Update tauri.conf.json for production
-        shell: bash
-        run: |
-          node -e "
-            const fs = require('fs');
-            const conf = JSON.parse(fs.readFileSync('src-tauri/tauri.conf.json', 'utf8'));
-            // Only bundle connectors and playwright-runner binary (no browsers - downloaded on-demand)
-            conf.bundle.resources = {
-              '../connectors/**/*': './connectors/',
-              '../playwright-runner/dist/playwright-runner*': 'binaries/'
-            };
-            fs.writeFileSync('src-tauri/tauri.conf.json', JSON.stringify(conf, null, 2));
-          "
-
       - name: Build Tauri app
         uses: tauri-apps/tauri-action@v0
         env:

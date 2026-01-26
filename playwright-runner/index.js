@@ -9,9 +9,125 @@
  * - { type: "quit" }
  */
 
-import { chromium } from 'playwright';
-import * as fs from 'fs';
-import * as readline from 'readline';
+const { chromium } = require('playwright');
+const fs = require('fs');
+const readline = require('readline');
+const path = require('path');
+const { execSync } = require('child_process');
+
+// System Chrome paths by platform
+const CHROME_PATHS = {
+  darwin: '/Applications/Google Chrome.app/Contents/MacOS/Google Chrome',
+  win32: 'C:\\Program Files\\Google\\Chrome\\Application\\chrome.exe',
+  linux: '/usr/bin/google-chrome'
+};
+
+// Get browser cache directory
+function getBrowserCacheDir() {
+  const home = process.env.HOME || process.env.USERPROFILE || '';
+  return path.join(home, '.databridge', 'browsers');
+}
+
+// Check if system Chrome exists
+function getSystemChromePath() {
+  const chromePath = CHROME_PATHS[process.platform];
+  if (chromePath && fs.existsSync(chromePath)) {
+    return chromePath;
+  }
+  // Try alternative Windows paths
+  if (process.platform === 'win32') {
+    const altPaths = [
+      'C:\\Program Files (x86)\\Google\\Chrome\\Application\\chrome.exe',
+      path.join(process.env.LOCALAPPDATA || '', 'Google\\Chrome\\Application\\chrome.exe')
+    ];
+    for (const p of altPaths) {
+      if (fs.existsSync(p)) return p;
+    }
+  }
+  // Try Edge on Windows
+  if (process.platform === 'win32') {
+    const edgePath = 'C:\\Program Files (x86)\\Microsoft\\Edge\\Application\\msedge.exe';
+    if (fs.existsSync(edgePath)) return edgePath;
+  }
+  return null;
+}
+
+// Check if Playwright Chromium is already downloaded
+function getDownloadedChromiumPath() {
+  const cacheDir = getBrowserCacheDir();
+  if (!fs.existsSync(cacheDir)) return null;
+
+  // Look for chromium directory
+  const entries = fs.readdirSync(cacheDir);
+  const chromiumDir = entries.find(e => e.startsWith('chromium-') && !e.includes('headless'));
+  if (!chromiumDir) return null;
+
+  const chromiumPath = path.join(cacheDir, chromiumDir);
+
+  // Platform-specific executable paths (Playwright's "Chrome for Testing" structure)
+  if (process.platform === 'darwin') {
+    // Try arm64 first, then x64
+    const paths = [
+      path.join(chromiumPath, 'chrome-mac-arm64', 'Google Chrome for Testing.app', 'Contents', 'MacOS', 'Google Chrome for Testing'),
+      path.join(chromiumPath, 'chrome-mac', 'Google Chrome for Testing.app', 'Contents', 'MacOS', 'Google Chrome for Testing'),
+      // Legacy paths
+      path.join(chromiumPath, 'chrome-mac-arm64', 'Chromium.app', 'Contents', 'MacOS', 'Chromium'),
+      path.join(chromiumPath, 'chrome-mac', 'Chromium.app', 'Contents', 'MacOS', 'Chromium'),
+    ];
+    for (const p of paths) {
+      if (fs.existsSync(p)) return p;
+    }
+  } else if (process.platform === 'win32') {
+    const paths = [
+      path.join(chromiumPath, 'chrome-win', 'chrome.exe'),
+      path.join(chromiumPath, 'chrome-win64', 'chrome.exe'),
+    ];
+    for (const p of paths) {
+      if (fs.existsSync(p)) return p;
+    }
+  } else {
+    const paths = [
+      path.join(chromiumPath, 'chrome-linux', 'chrome'),
+      path.join(chromiumPath, 'chrome-linux64', 'chrome'),
+    ];
+    for (const p of paths) {
+      if (fs.existsSync(p)) return p;
+    }
+  }
+
+  return null;
+}
+
+// Download Chromium using Playwright
+async function downloadChromium(sendStatus) {
+  const cacheDir = getBrowserCacheDir();
+
+  // Create cache directory
+  if (!fs.existsSync(cacheDir)) {
+    fs.mkdirSync(cacheDir, { recursive: true });
+  }
+
+  log('Downloading Chromium browser (one-time setup)...');
+  if (sendStatus) {
+    sendStatus('DOWNLOADING_BROWSER');
+  }
+
+  // Set environment for Playwright to use our cache dir
+  process.env.PLAYWRIGHT_BROWSERS_PATH = cacheDir;
+
+  try {
+    // Use Playwright's CLI to download Chromium
+    execSync('npx playwright install chromium', {
+      stdio: 'inherit',
+      env: { ...process.env, PLAYWRIGHT_BROWSERS_PATH: cacheDir }
+    });
+    log('Chromium download complete');
+    return getDownloadedChromiumPath();
+  } catch (error) {
+    log('Failed to download Chromium:', error.message);
+    throw new Error('Failed to download browser. Please install Google Chrome or try again.');
+  }
+}
 
 // Active browser contexts by runId
 const activeRuns = new Map();
@@ -140,11 +256,45 @@ async function runConnector(runId, connectorPath, url) {
     // Read connector script
     const connectorCode = fs.readFileSync(connectorPath, 'utf-8');
 
-    // Launch browser
-    const browser = await chromium.launch({
+    // Launch browser - prefer system Chrome for smaller app size
+    const launchOptions = {
       headless: false, // User needs to see and interact
       args: ['--disable-blink-features=AutomationControlled']
-    });
+    };
+
+    // Try to find a browser in this order:
+    // 1. System Chrome/Edge
+    // 2. Previously downloaded Chromium
+    // 3. Download Chromium on-demand
+    let browserPath = getSystemChromePath();
+
+    if (browserPath) {
+      log(`Using system browser: ${browserPath}`);
+      launchOptions.executablePath = browserPath;
+    } else {
+      // Check for previously downloaded Chromium
+      browserPath = getDownloadedChromiumPath();
+
+      if (browserPath) {
+        log(`Using downloaded Chromium: ${browserPath}`);
+        launchOptions.executablePath = browserPath;
+      } else {
+        // Download Chromium on-demand
+        send({ type: 'log', runId, message: 'No browser found. Downloading Chromium (one-time, ~170MB)...' });
+        browserPath = await downloadChromium((status) => {
+          send({ type: 'status', runId, status });
+        });
+
+        if (browserPath) {
+          log(`Using newly downloaded Chromium: ${browserPath}`);
+          launchOptions.executablePath = browserPath;
+        } else {
+          throw new Error('No browser available. Please install Google Chrome.');
+        }
+      }
+    }
+
+    const browser = await chromium.launch(launchOptions);
 
     const context = await browser.newContext({
       viewport: { width: 1280, height: 800 },

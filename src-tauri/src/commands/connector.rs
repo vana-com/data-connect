@@ -90,11 +90,20 @@ fn get_connectors_dir(app: &AppHandle) -> PathBuf {
     }
 
     // Try resource path for bundled app (production)
-    let resource_path = app.path()
+    // Tauri converts "../connectors" to "_up_/connectors" in resources
+    let resource_dir = app.path()
         .resource_dir()
-        .unwrap_or_default()
-        .join("connectors");
+        .unwrap_or_default();
 
+    // Check for _up_/connectors first (from "../connectors" resource path)
+    let up_path = resource_dir.join("_up_").join("connectors");
+    if up_path.exists() {
+        log::info!("Found connectors at: {:?}", up_path);
+        return up_path;
+    }
+
+    // Fallback to direct connectors path
+    let resource_path = resource_dir.join("connectors");
     log::info!("Using resource connectors path: {:?}", resource_path);
     resource_path
 }
@@ -253,6 +262,7 @@ fn get_bundled_playwright_runner(app: &AppHandle) -> Option<(PathBuf, Option<Pat
     #[cfg(target_os = "linux")]
     let binary_name = "playwright-runner";
 
+    // Try binaries/ path first (CI builds)
     let binary_path = resource_dir.join("binaries").join(binary_name);
     let browsers_path = resource_dir.join("binaries").join("browsers");
 
@@ -263,10 +273,25 @@ fn get_bundled_playwright_runner(app: &AppHandle) -> Option<(PathBuf, Option<Pat
         } else {
             None
         };
-        Some((binary_path, browsers))
-    } else {
-        None
+        return Some((binary_path, browsers));
     }
+
+    // Try _up_/playwright-runner/dist path (local builds with "../playwright-runner/dist" resource)
+    let up_path = resource_dir.join("_up_").join("playwright-runner").join("dist");
+    let up_binary = up_path.join(binary_name);
+    let up_browsers = up_path.join("browsers");
+
+    if up_binary.exists() {
+        log::info!("Found bundled Playwright runner at {:?}", up_binary);
+        let browsers = if up_browsers.exists() {
+            Some(up_browsers)
+        } else {
+            None
+        };
+        return Some((up_binary, browsers));
+    }
+
+    None
 }
 
 /// Start a connector run using Playwright sidecar
@@ -895,4 +920,198 @@ pub fn get_user_data_path(app: AppHandle) -> Result<String, String> {
         .app_data_dir()
         .map(|p| p.to_string_lossy().to_string())
         .map_err(|e| format!("Failed to get app data dir: {}", e))
+}
+
+/// Check if a browser is available for automation
+#[tauri::command]
+pub async fn check_browser_available() -> Result<BrowserStatus, String> {
+    // Check for system Chrome/Edge first
+    let system_browser = get_system_browser_path();
+    if system_browser.is_some() {
+        return Ok(BrowserStatus {
+            available: true,
+            browser_type: "system".to_string(),
+            needs_download: false,
+        });
+    }
+
+    // Check for downloaded Chromium
+    let downloaded = get_downloaded_chromium_path();
+    if downloaded.is_some() {
+        return Ok(BrowserStatus {
+            available: true,
+            browser_type: "downloaded".to_string(),
+            needs_download: false,
+        });
+    }
+
+    // No browser available
+    Ok(BrowserStatus {
+        available: false,
+        browser_type: "none".to_string(),
+        needs_download: true,
+    })
+}
+
+#[derive(Debug, Serialize, Deserialize)]
+pub struct BrowserStatus {
+    pub available: bool,
+    pub browser_type: String,
+    pub needs_download: bool,
+}
+
+/// Get system browser path (Chrome/Edge)
+fn get_system_browser_path() -> Option<PathBuf> {
+    #[cfg(target_os = "macos")]
+    {
+        let paths = [
+            "/Applications/Google Chrome.app/Contents/MacOS/Google Chrome",
+        ];
+        for p in paths {
+            let path = PathBuf::from(p);
+            if path.exists() {
+                return Some(path);
+            }
+        }
+    }
+
+    #[cfg(target_os = "windows")]
+    {
+        let paths = [
+            "C:\\Program Files\\Google\\Chrome\\Application\\chrome.exe",
+            "C:\\Program Files (x86)\\Google\\Chrome\\Application\\chrome.exe",
+            "C:\\Program Files (x86)\\Microsoft\\Edge\\Application\\msedge.exe",
+        ];
+        for p in paths {
+            let path = PathBuf::from(p);
+            if path.exists() {
+                return Some(path);
+            }
+        }
+    }
+
+    #[cfg(target_os = "linux")]
+    {
+        let paths = [
+            "/usr/bin/google-chrome",
+            "/usr/bin/google-chrome-stable",
+            "/usr/bin/chromium",
+            "/usr/bin/chromium-browser",
+        ];
+        for p in paths {
+            let path = PathBuf::from(p);
+            if path.exists() {
+                return Some(path);
+            }
+        }
+    }
+
+    None
+}
+
+/// Download Chromium browser using playwright
+#[tauri::command]
+pub async fn download_browser(app: AppHandle) -> Result<(), String> {
+    use std::process::Command;
+
+    let home = std::env::var("HOME")
+        .or_else(|_| std::env::var("USERPROFILE"))
+        .map_err(|_| "Could not determine home directory")?;
+
+    let browsers_dir = PathBuf::from(&home).join(".databridge").join("browsers");
+
+    // Create directory if needed
+    std::fs::create_dir_all(&browsers_dir)
+        .map_err(|e| format!("Failed to create browsers directory: {}", e))?;
+
+    log::info!("Downloading Chromium to {:?}", browsers_dir);
+
+    // Emit progress event
+    let _ = app.emit("browser-download-progress", serde_json::json!({
+        "status": "downloading",
+        "message": "Downloading Chromium browser..."
+    }));
+
+    // Run npx playwright install chromium
+    let output = Command::new("npx")
+        .args(["playwright", "install", "chromium"])
+        .env("PLAYWRIGHT_BROWSERS_PATH", &browsers_dir)
+        .output()
+        .map_err(|e| format!("Failed to run playwright install: {}", e))?;
+
+    if output.status.success() {
+        log::info!("Chromium download complete");
+        let _ = app.emit("browser-download-progress", serde_json::json!({
+            "status": "complete",
+            "message": "Browser download complete"
+        }));
+        Ok(())
+    } else {
+        let stderr = String::from_utf8_lossy(&output.stderr);
+        log::error!("Chromium download failed: {}", stderr);
+        Err(format!("Download failed: {}", stderr))
+    }
+}
+
+/// Get downloaded Chromium path from ~/.databridge/browsers
+fn get_downloaded_chromium_path() -> Option<PathBuf> {
+    let home = std::env::var("HOME")
+        .or_else(|_| std::env::var("USERPROFILE"))
+        .ok()?;
+
+    let browsers_dir = PathBuf::from(&home).join(".databridge").join("browsers");
+    if !browsers_dir.exists() {
+        return None;
+    }
+
+    // Find chromium directory
+    let entries = std::fs::read_dir(&browsers_dir).ok()?;
+    for entry in entries.flatten() {
+        let name = entry.file_name().to_string_lossy().to_string();
+        if name.starts_with("chromium-") && !name.contains("headless") {
+            let chromium_dir = entry.path();
+
+            #[cfg(target_os = "macos")]
+            {
+                // Try arm64 first, then x64
+                let paths = [
+                    chromium_dir.join("chrome-mac-arm64/Google Chrome for Testing.app/Contents/MacOS/Google Chrome for Testing"),
+                    chromium_dir.join("chrome-mac/Google Chrome for Testing.app/Contents/MacOS/Google Chrome for Testing"),
+                ];
+                for p in paths {
+                    if p.exists() {
+                        return Some(p);
+                    }
+                }
+            }
+
+            #[cfg(target_os = "windows")]
+            {
+                let paths = [
+                    chromium_dir.join("chrome-win/chrome.exe"),
+                    chromium_dir.join("chrome-win64/chrome.exe"),
+                ];
+                for p in paths {
+                    if p.exists() {
+                        return Some(p);
+                    }
+                }
+            }
+
+            #[cfg(target_os = "linux")]
+            {
+                let paths = [
+                    chromium_dir.join("chrome-linux/chrome"),
+                    chromium_dir.join("chrome-linux64/chrome"),
+                ];
+                for p in paths {
+                    if p.exists() {
+                        return Some(p);
+                    }
+                }
+            }
+        }
+    }
+
+    None
 }

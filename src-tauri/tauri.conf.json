@@ -39,9 +39,10 @@
       "icons/icon.icns",
       "icons/icon.ico"
     ],
-    "resources": {
-      "../connectors/**/*": "./connectors/"
-    },
+    "resources": [
+      "../connectors",
+      "../playwright-runner/dist"
+    ],
     "windows": {
       "nsis": {
         "installMode": "currentUser"

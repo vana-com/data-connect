@@ -2,9 +2,9 @@ mod commands;
 mod processors;
 
 use commands::{
-    check_connected_platforms, get_platforms, get_run_files, get_user_data_path, handle_download,
-    load_runs, open_folder, open_platform_export_folder, start_connector_run, stop_connector_run,
-    write_export_data,
+    check_browser_available, check_connected_platforms, download_browser, get_platforms,
+    get_run_files, get_user_data_path, handle_download, load_runs, open_folder,
+    open_platform_export_folder, start_connector_run, stop_connector_run, write_export_data,
 };
 use tauri::{Listener, Manager};
 
@@ -45,6 +45,8 @@ pub fn run() {
             start_connector_run,
             stop_connector_run,
             check_connected_platforms,
+            check_browser_available,
+            download_browser,
             get_user_data_path,
             handle_download,
             open_folder,

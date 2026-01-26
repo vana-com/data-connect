@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
 import { invoke } from '@tauri-apps/api/core';
+import { getVersion } from '@tauri-apps/api/app';
 import { FolderOpen, ExternalLink, Database, Info, Play, CheckCircle, XCircle, Loader } from 'lucide-react';
 
 interface NodeJsTestResult {
@@ -14,6 +15,7 @@ interface NodeJsTestResult {
 
 export function Settings() {
   const [dataPath, setDataPath] = useState<string>('');
+  const [appVersion, setAppVersion] = useState<string>('');
   const [nodeTestStatus, setNodeTestStatus] = useState<'idle' | 'testing' | 'success' | 'error'>('idle');
   const [nodeTestResult, setNodeTestResult] = useState<NodeJsTestResult | null>(null);
   const [nodeTestError, setNodeTestError] = useState<string | null>(null);
@@ -23,6 +25,9 @@ export function Settings() {
   useEffect(() => {
     invoke<string>('get_user_data_path').then((path) => {
       setDataPath(path);
+    });
+    getVersion().then((version) => {
+      setAppVersion(version);
     });
   }, []);
 
@@ -180,7 +185,9 @@ export function Settings() {
                 <Info style={{ width: '20px', height: '20px', color: '#6b7280' }} />
               </div>
               <span style={{ flex: 1, fontWeight: 500, color: '#1a1a1a', fontSize: '15px' }}>Version</span>
-              <span style={{ color: '#6b7280', fontSize: '14px' }}>0.1.0</span>
+              <span style={{ color: '#6b7280', fontSize: '14px' }}>
+                {appVersion || '...'} <span style={{ color: '#9ca3af', fontSize: '12px' }}>({__COMMIT_HASH__})</span>
+              </span>
             </div>
             <div style={{ ...rowStyle, borderTop: '1px solid #f3f4f6' }}>
               <span style={{ marginLeft: '56px', color: '#4b5563', fontSize: '14px' }}>Framework</span>

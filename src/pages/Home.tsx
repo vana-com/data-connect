@@ -1,8 +1,9 @@
 import { usePlatforms } from '../hooks/usePlatforms';
 import { useConnector } from '../hooks/useConnector';
 import { useSelector } from 'react-redux';
+import { useBrowserStatus } from '../context/BrowserContext';
 import type { Platform, RootState } from '../types';
-import { ArrowRight, Plus } from 'lucide-react';
+import { ArrowRight, Plus, Download, AlertCircle } from 'lucide-react';
 
 // Platform icon URLs
 const PLATFORM_ICONS: Record<string, string> = {
@@ -47,6 +48,7 @@ export function Home() {
   const { platforms, isPlatformConnected } = usePlatforms();
   const { startExport } = useConnector();
   const runs = useSelector((state: RootState) => state.app.runs);
+  const browserStatus = useBrowserStatus();
 
   const handleExport = async (platform: Platform) => {
     await startExport(platform);
@@ -113,8 +115,112 @@ export function Home() {
           Your sources
         </p>
 
-        {/* Connected Sources */}
-        {connectedPlatforms.length > 0 && (
+        {/* Browser Setup Status */}
+        {(browserStatus.status === 'checking' || browserStatus.status === 'downloading') && (
+          <div
+            style={{
+              backgroundColor: '#ffffff',
+              border: '1px solid #e5e7eb',
+              borderRadius: '12px',
+              padding: '32px 24px',
+              textAlign: 'center',
+              marginBottom: '24px',
+            }}
+          >
+            <div
+              style={{
+                width: '48px',
+                height: '48px',
+                margin: '0 auto 16px',
+                borderRadius: '12px',
+                background: 'linear-gradient(135deg, #6366f1, #8b5cf6)',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+              }}
+            >
+              <Download style={{ width: '24px', height: '24px', color: 'white' }} />
+            </div>
+            <h3 style={{ fontSize: '16px', fontWeight: 600, color: '#1a1a1a', marginBottom: '8px' }}>
+              {browserStatus.status === 'checking' ? 'Checking dependencies...' : 'Setting up DataBridge'}
+            </h3>
+            <p style={{ fontSize: '14px', color: '#6b7280', marginBottom: '16px' }}>
+              {browserStatus.status === 'checking'
+                ? 'Please wait...'
+                : 'Downloading browser (~160 MB). This only happens once.'}
+            </p>
+            {browserStatus.status === 'downloading' && (
+              <>
+                <div
+                  style={{
+                    width: '100%',
+                    height: '4px',
+                    backgroundColor: '#e5e7eb',
+                    borderRadius: '2px',
+                    overflow: 'hidden',
+                    marginBottom: '8px',
+                  }}
+                >
+                  <div
+                    style={{
+                      width: `${browserStatus.progress}%`,
+                      height: '100%',
+                      background: 'linear-gradient(90deg, #6366f1, #8b5cf6)',
+                      borderRadius: '2px',
+                      transition: 'width 0.3s ease',
+                    }}
+                  />
+                </div>
+                <p style={{ fontSize: '13px', color: '#9ca3af' }}>
+                  {Math.round(browserStatus.progress)}%
+                </p>
+              </>
+            )}
+          </div>
+        )}
+
+        {/* Browser Setup Error */}
+        {browserStatus.status === 'error' && (
+          <div
+            style={{
+              backgroundColor: '#fef2f2',
+              border: '1px solid #fecaca',
+              borderRadius: '12px',
+              padding: '24px',
+              marginBottom: '24px',
+            }}
+          >
+            <div style={{ display: 'flex', alignItems: 'flex-start', gap: '12px' }}>
+              <AlertCircle style={{ width: '20px', height: '20px', color: '#ef4444', flexShrink: 0, marginTop: '2px' }} />
+              <div style={{ flex: 1 }}>
+                <h3 style={{ fontSize: '15px', fontWeight: 600, color: '#991b1b', marginBottom: '4px' }}>
+                  Setup failed
+                </h3>
+                <p style={{ fontSize: '14px', color: '#b91c1c', marginBottom: '12px' }}>
+                  {browserStatus.error || 'Failed to download browser'}
+                </p>
+                <button
+                  onClick={browserStatus.retry}
+                  style={{
+                    padding: '8px 16px',
+                    backgroundColor: '#ef4444',
+                    color: 'white',
+                    border: 'none',
+                    borderRadius: '8px',
+                    fontSize: '13px',
+                    fontWeight: 500,
+                    cursor: 'pointer',
+                  }}
+                >
+                  Try Again
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* Connected Sources - only show when browser is ready */}
+        {browserStatus.status === 'ready' && connectedPlatforms.length > 0 && (
           <div style={{ marginBottom: '32px' }}>
             {connectedPlatforms.map((platform) => (
               <button
@@ -175,7 +281,7 @@ export function Home() {
         )}
 
         {/* Add source section */}
-        {(availablePlatforms.length > 0 || connectedPlatforms.length === 0) && (
+        {browserStatus.status === 'ready' && (availablePlatforms.length > 0 || connectedPlatforms.length === 0) && (
           <>
             <p
               style={{
@@ -241,7 +347,7 @@ export function Home() {
         )}
 
         {/* Empty state */}
-        {platforms.length === 0 && (
+        {browserStatus.status === 'ready' && platforms.length === 0 && (
           <div
             style={{
               textAlign: 'center',

@@ -4,7 +4,7 @@ import { store } from './state/store';
 import { useEvents } from './hooks/useEvents';
 import { useInitialize } from './hooks/useInitialize';
 import { TopNav } from './components/TopNav';
-import { BrowserSetup } from './components/BrowserSetup';
+import { BrowserProvider } from './context/BrowserContext';
 import { Home } from './pages/Home';
 import { Runs } from './pages/Runs';
 import { Settings } from './pages/Settings';
@@ -55,11 +55,11 @@ function AppContent() {
 function App() {
   return (
     <Provider store={store}>
-      <BrowserSetup>
+      <BrowserProvider>
         <BrowserRouter>
           <AppContent />
         </BrowserRouter>
-      </BrowserSetup>
+      </BrowserProvider>
     </Provider>
   );
 }

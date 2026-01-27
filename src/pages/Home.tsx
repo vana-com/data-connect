@@ -121,8 +121,8 @@ export function Home() {
           Your sources
         </p>
 
-        {/* Browser Setup Status */}
-        {(browserStatus.status === 'checking' || browserStatus.status === 'downloading') && (
+        {/* Browser Setup - Checking */}
+        {browserStatus.status === 'checking' && (
           <div
             style={{
               backgroundColor: '#ffffff',
@@ -148,40 +148,168 @@ export function Home() {
               <Download style={{ width: '24px', height: '24px', color: 'white' }} />
             </div>
             <h3 style={{ fontSize: '16px', fontWeight: 600, color: '#1a1a1a', marginBottom: '8px' }}>
-              {browserStatus.status === 'checking' ? 'Checking dependencies...' : 'Setting up DataBridge'}
+              Checking dependencies...
             </h3>
-            <p style={{ fontSize: '14px', color: '#6b7280', marginBottom: '16px' }}>
-              {browserStatus.status === 'checking'
-                ? 'Please wait...'
-                : 'Downloading browser (~160 MB). This only happens once.'}
+            <p style={{ fontSize: '14px', color: '#6b7280' }}>
+              Please wait...
             </p>
-            {browserStatus.status === 'downloading' && (
-              <>
-                <div
+          </div>
+        )}
+
+        {/* Browser Setup - Needs Browser (user must choose) */}
+        {browserStatus.status === 'needs_browser' && (
+          <div
+            style={{
+              backgroundColor: '#ffffff',
+              border: '1px solid #e5e7eb',
+              borderRadius: '12px',
+              padding: '32px 24px',
+              marginBottom: '24px',
+            }}
+          >
+            <div
+              style={{
+                width: '48px',
+                height: '48px',
+                margin: '0 auto 16px',
+                borderRadius: '12px',
+                background: 'linear-gradient(135deg, #6366f1, #8b5cf6)',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+              }}
+            >
+              <Download style={{ width: '24px', height: '24px', color: 'white' }} />
+            </div>
+            <h3 style={{ fontSize: '16px', fontWeight: 600, color: '#1a1a1a', marginBottom: '8px', textAlign: 'center' }}>
+              Browser Required
+            </h3>
+            <p style={{ fontSize: '14px', color: '#6b7280', marginBottom: '20px', textAlign: 'center', lineHeight: '1.5' }}>
+              DataBridge uses a browser to securely export your data from websites.
+              Your credentials stay on your device.
+            </p>
+
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+              <div
+                style={{
+                  padding: '16px',
+                  backgroundColor: '#f0fdf4',
+                  border: '1px solid #bbf7d0',
+                  borderRadius: '8px',
+                }}
+              >
+                <p style={{ fontSize: '14px', fontWeight: 500, color: '#166534', marginBottom: '4px' }}>
+                  Recommended: Install Google Chrome
+                </p>
+                <p style={{ fontSize: '13px', color: '#15803d', marginBottom: '12px' }}>
+                  If you have Chrome installed, DataBridge will use it automatically.
+                </p>
+                <button
+                  onClick={browserStatus.retry}
                   style={{
-                    width: '100%',
-                    height: '4px',
-                    backgroundColor: '#e5e7eb',
-                    borderRadius: '2px',
-                    overflow: 'hidden',
-                    marginBottom: '8px',
+                    padding: '8px 16px',
+                    backgroundColor: '#22c55e',
+                    color: 'white',
+                    border: 'none',
+                    borderRadius: '6px',
+                    fontSize: '13px',
+                    fontWeight: 500,
+                    cursor: 'pointer',
                   }}
                 >
-                  <div
-                    style={{
-                      width: `${browserStatus.progress}%`,
-                      height: '100%',
-                      background: 'linear-gradient(90deg, #6366f1, #8b5cf6)',
-                      borderRadius: '2px',
-                      transition: 'width 0.3s ease',
-                    }}
-                  />
-                </div>
-                <p style={{ fontSize: '13px', color: '#9ca3af' }}>
-                  {Math.round(browserStatus.progress)}%
+                  I've installed Chrome - Check again
+                </button>
+              </div>
+
+              <div
+                style={{
+                  padding: '16px',
+                  backgroundColor: '#fafafa',
+                  border: '1px solid #e5e7eb',
+                  borderRadius: '8px',
+                }}
+              >
+                <p style={{ fontSize: '14px', fontWeight: 500, color: '#374151', marginBottom: '4px' }}>
+                  Alternative: Download Chromium
                 </p>
-              </>
-            )}
+                <p style={{ fontSize: '13px', color: '#6b7280', marginBottom: '12px' }}>
+                  Download the open-source browser (~160 MB, one-time).
+                </p>
+                <button
+                  onClick={browserStatus.startDownload}
+                  style={{
+                    padding: '8px 16px',
+                    backgroundColor: '#6366f1',
+                    color: 'white',
+                    border: 'none',
+                    borderRadius: '6px',
+                    fontSize: '13px',
+                    fontWeight: 500,
+                    cursor: 'pointer',
+                  }}
+                >
+                  Download Chromium
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* Browser Setup - Downloading */}
+        {browserStatus.status === 'downloading' && (
+          <div
+            style={{
+              backgroundColor: '#ffffff',
+              border: '1px solid #e5e7eb',
+              borderRadius: '12px',
+              padding: '32px 24px',
+              textAlign: 'center',
+              marginBottom: '24px',
+            }}
+          >
+            <div
+              style={{
+                width: '48px',
+                height: '48px',
+                margin: '0 auto 16px',
+                borderRadius: '12px',
+                background: 'linear-gradient(135deg, #6366f1, #8b5cf6)',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+              }}
+            >
+              <Download style={{ width: '24px', height: '24px', color: 'white' }} />
+            </div>
+            <h3 style={{ fontSize: '16px', fontWeight: 600, color: '#1a1a1a', marginBottom: '8px' }}>
+              Downloading Chromium
+            </h3>
+            <p style={{ fontSize: '14px', color: '#6b7280', marginBottom: '16px' }}>
+              One-time setup (~160 MB)
+            </p>
+            <div
+              style={{
+                width: '100%',
+                height: '4px',
+                backgroundColor: '#e5e7eb',
+                borderRadius: '2px',
+                overflow: 'hidden',
+                marginBottom: '8px',
+              }}
+            >
+              <div
+                style={{
+                  width: `${browserStatus.progress}%`,
+                  height: '100%',
+                  background: 'linear-gradient(90deg, #6366f1, #8b5cf6)',
+                  borderRadius: '2px',
+                  transition: 'width 0.3s ease',
+                }}
+              />
+            </div>
+            <p style={{ fontSize: '13px', color: '#9ca3af' }}>
+              {Math.round(browserStatus.progress)}%
+            </p>
           </div>
         )}
 

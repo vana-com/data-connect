@@ -8,10 +8,11 @@ interface BrowserStatus {
 }
 
 interface BrowserContextType {
-  status: 'checking' | 'downloading' | 'ready' | 'error';
+  status: 'checking' | 'needs_browser' | 'downloading' | 'ready' | 'error';
   progress: number;
   error: string | null;
   retry: () => void;
+  startDownload: () => void;
 }
 
 const BrowserContext = createContext<BrowserContextType | null>(null);
@@ -29,7 +30,7 @@ interface BrowserProviderProps {
 }
 
 export function BrowserProvider({ children }: BrowserProviderProps) {
-  const [status, setStatus] = useState<'checking' | 'downloading' | 'ready' | 'error'>('checking');
+  const [status, setStatus] = useState<'checking' | 'needs_browser' | 'downloading' | 'ready' | 'error'>('checking');
   const [progress, setProgress] = useState(0);
   const [error, setError] = useState<string | null>(null);
 
@@ -72,14 +73,15 @@ export function BrowserProvider({ children }: BrowserProviderProps) {
         console.log('Browser available');
         setStatus('ready');
       } else {
-        console.log('No browser found, starting download');
-        await downloadBrowser();
+        // Don't auto-download - show explanation and let user decide
+        console.log('No browser found, waiting for user action');
+        setStatus('needs_browser');
       }
     } catch (err) {
       console.error('Failed to check browser:', err);
-      await downloadBrowser();
+      setStatus('needs_browser');
     }
-  }, [downloadBrowser]);
+  }, []);
 
   useEffect(() => {
     checkBrowser();
@@ -91,8 +93,12 @@ export function BrowserProvider({ children }: BrowserProviderProps) {
     checkBrowser();
   }, [checkBrowser]);
 
+  const startDownload = useCallback(() => {
+    downloadBrowser();
+  }, [downloadBrowser]);
+
   return (
-    <BrowserContext.Provider value={{ status, progress, error, retry }}>
+    <BrowserContext.Provider value={{ status, progress, error, retry, startDownload }}>
       {children}
     </BrowserContext.Provider>
   );

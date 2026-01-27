@@ -198,33 +198,49 @@ pub async fn load_runs(app: AppHandle) -> Result<Vec<SavedRun>, String> {
                     if let Ok(content) = fs::read_to_string(&json_path) {
                         if let Ok(data) = serde_json::from_str::<serde_json::Value>(&content) {
                             // Extract items count and label from the content
-                            // First try exportSummary (new standard), then fallback to legacy fields
+                            // Handle both direct content and nested content.data structures
                             let content = data.get("content");
-                            let export_summary = content.and_then(|c| c.get("exportSummary"));
+                            let content_data = content.and_then(|c| c.get("data"));
+
+                            // Try exportSummary at content.exportSummary or content.data.exportSummary
+                            let export_summary = content.and_then(|c| c.get("exportSummary"))
+                                .or_else(|| content_data.and_then(|d| d.get("exportSummary")));
 
                             let items_exported = export_summary
                                 .and_then(|s| s.get("count").and_then(|v| v.as_i64()))
-                                .or_else(|| content.and_then(|c| {
-                                    c.get("totalConversations").and_then(|v| v.as_i64())
-                                        .or_else(|| c.get("totalPosts").and_then(|v| v.as_i64()))
-                                        .or_else(|| c.get("conversations").and_then(|v| v.as_array()).map(|a| a.len() as i64))
-                                        .or_else(|| c.get("posts").and_then(|v| v.as_array()).map(|a| a.len() as i64))
-                                        // Fallback for Instagram media_count from profile
-                                        .or_else(|| c.get("media_count").and_then(|v| v.as_i64()))
-                                }));
+                                .or_else(|| {
+                                    // Try content level first, then content.data level
+                                    let sources = [content, content_data];
+                                    for src in sources.iter().flatten() {
+                                        let count = src.get("totalConversations").and_then(|v| v.as_i64())
+                                            .or_else(|| src.get("totalPosts").and_then(|v| v.as_i64()))
+                                            .or_else(|| src.get("conversations").and_then(|v| v.as_array()).map(|a| a.len() as i64))
+                                            .or_else(|| src.get("posts").and_then(|v| v.as_array()).map(|a| a.len() as i64))
+                                            .or_else(|| src.get("memories").and_then(|v| v.as_array()).map(|a| a.len() as i64))
+                                            .or_else(|| src.get("media_count").and_then(|v| v.as_i64()));
+                                        if count.is_some() {
+                                            return count;
+                                        }
+                                    }
+                                    None
+                                });
 
                             // Determine label based on platform/content type
                             let item_label = export_summary
                                 .and_then(|s| s.get("label").and_then(|v| v.as_str()).map(|s| s.to_string()))
                                 .or_else(|| {
-                                    // Infer label from content type
-                                    if content.map_or(false, |c| c.get("posts").is_some() || c.get("media_count").is_some()) {
-                                        Some("posts".to_string())
-                                    } else if content.map_or(false, |c| c.get("conversations").is_some()) {
-                                        Some("conversations".to_string())
-                                    } else {
-                                        None
+                                    // Infer label from content type - check both levels
+                                    let sources = [content, content_data];
+                                    for src in sources.iter().flatten() {
+                                        if src.get("posts").is_some() || src.get("media_count").is_some() {
+                                            return Some("posts".to_string());
+                                        } else if src.get("conversations").is_some() {
+                                            return Some("conversations".to_string());
+                                        } else if src.get("memories").is_some() {
+                                            return Some("memories".to_string());
+                                        }
                                     }
+                                    None
                                 });
 
                             // Extract display name from JSON, fallback to directory name

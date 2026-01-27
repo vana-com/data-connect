@@ -187,19 +187,39 @@ const fetchMemories = async (accessToken, deviceId) => {
   }
 };
 
-// Helper: Check if logged in
+// Helper: Check if logged in by looking for positive indicators
 const checkLoginStatus = async () => {
   try {
     const result = await page.evaluate(`
       (() => {
-        // Check for login button
-        const buttonElements = document.querySelectorAll('button, a');
-        const loginButtons = Array.from(buttonElements).filter(el =>
-          el.textContent?.toLowerCase().includes('log in') ||
-          el.getAttribute('data-testid')?.includes('login')
-        );
+        // Check for POSITIVE indicators of being logged in
 
-        return loginButtons.length === 0; // If no login buttons, we're logged in
+        // 1. Check for chat input textarea (main chat interface)
+        const chatInput = document.querySelector('textarea[placeholder], #prompt-textarea, [data-testid="text-input"]');
+        if (chatInput) return true;
+
+        // 2. Check for conversation links in sidebar
+        const conversationLinks = document.querySelectorAll('nav a[href^="/c/"]');
+        if (conversationLinks.length > 0) return true;
+
+        // 3. Check for user avatar/profile button
+        const profileButtons = document.querySelectorAll('[data-testid="profile-button"], button.rounded-full img, [aria-label*="Profile"], [aria-label*="Account"]');
+        if (profileButtons.length > 0) return true;
+
+        // 4. Check for email in page scripts (most reliable)
+        const scripts = document.querySelectorAll('script');
+        for (let script of scripts) {
+          const content = script.textContent || '';
+          if (content.includes('"email":"') && content.includes('@')) {
+            return true;
+          }
+        }
+
+        // 5. Check for the new chat button (only visible when logged in)
+        const newChatButton = document.querySelector('[data-testid="create-new-chat-button"], a[href="/"]');
+        if (newChatButton && document.querySelector('nav')) return true;
+
+        return false;
       })()
     `);
 
@@ -214,7 +234,7 @@ const checkLoginStatus = async () => {
   // Navigate to ChatGPT
   await page.setData('status', 'Navigating to ChatGPT...');
   await page.goto('https://chatgpt.com/');
-  await page.sleep(2000);
+  await page.sleep(3000);
 
   // Dismiss any interrupting dialogs
   await dismissInterruptingDialogs();
@@ -222,34 +242,59 @@ const checkLoginStatus = async () => {
 
   // Check if logged in
   await page.setData('status', 'Checking login status...');
-  const isLoggedIn = await checkLoginStatus();
+  let isLoggedIn = await checkLoginStatus();
+
+  // Double-check after a short delay (page might still be loading)
+  if (!isLoggedIn) {
+    await page.sleep(2000);
+    isLoggedIn = await checkLoginStatus();
+  }
 
   if (!isLoggedIn) {
-    // Wait for user to log in
+    await page.setData('status', 'Please log in to ChatGPT...');
+
+    // Wait for user to log in - check every 2 seconds
     await page.promptUser(
-      'Please log in to ChatGPT.',
+      'Please log in to ChatGPT. Click "Done" when you see the chat interface.',
       async () => {
+        // Dismiss any dialogs that appear during login
+        await dismissInterruptingDialogs();
         return await checkLoginStatus();
       },
       2000
     );
 
-    await page.setData('status', 'Login completed');
-    await page.sleep(2000);
+    await page.setData('status', 'Login completed, loading data...');
+    await page.sleep(3000);
+
+    // Dismiss any post-login dialogs
+    await dismissInterruptingDialogs();
+    await page.sleep(1000);
   } else {
     await page.setData('status', 'Already logged in');
   }
 
-  // Dismiss any post-login dialogs
+  // Final dialog dismissal
   await dismissInterruptingDialogs();
   await page.sleep(1000);
 
-  // Extract email
+  // Extract email (with retries)
   await page.setData('status', 'Extracting email...');
-  const email = await extractEmail();
+  let email = null;
+  let emailAttempts = 0;
+  const maxEmailAttempts = 5;
+
+  while (!email && emailAttempts < maxEmailAttempts) {
+    emailAttempts++;
+    email = await extractEmail();
+    if (!email) {
+      await page.setData('status', `Looking for email... (attempt ${emailAttempts}/${maxEmailAttempts})`);
+      await page.sleep(2000);
+    }
+  }
 
   if (!email) {
-    await page.setData('error', 'Could not extract email');
+    await page.setData('error', 'Could not extract email after multiple attempts');
     return { error: 'Could not extract email' };
   }
 

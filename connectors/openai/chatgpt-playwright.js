@@ -187,39 +187,36 @@ const fetchMemories = async (accessToken, deviceId) => {
   }
 };
 
-// Helper: Check if logged in by looking for positive indicators
+// Helper: Check if logged in
+// Key insight: ChatGPT shows a chat input even when NOT logged in!
+// The reliable indicator is the ABSENCE of "Log in" / "Sign up" buttons
 const checkLoginStatus = async () => {
   try {
     const result = await page.evaluate(`
       (() => {
-        // Check for POSITIVE indicators of being logged in
+        // FIRST: Check if "Log in" or "Sign up" buttons exist - if so, NOT logged in
+        const allButtons = document.querySelectorAll('button, a');
+        const hasLoginButton = Array.from(allButtons).some(el => {
+          const text = el.textContent?.toLowerCase() || '';
+          return text.includes('log in') || text.includes('sign up');
+        });
 
-        // 1. Check for chat input textarea (main chat interface)
-        const chatInput = document.querySelector('textarea[placeholder], #prompt-textarea, [data-testid="text-input"]');
-        if (chatInput) return true;
-
-        // 2. Check for conversation links in sidebar
-        const conversationLinks = document.querySelectorAll('nav a[href^="/c/"]');
-        if (conversationLinks.length > 0) return true;
-
-        // 3. Check for user avatar/profile button
-        const profileButtons = document.querySelectorAll('[data-testid="profile-button"], button.rounded-full img, [aria-label*="Profile"], [aria-label*="Account"]');
-        if (profileButtons.length > 0) return true;
-
-        // 4. Check for email in page scripts (most reliable)
-        const scripts = document.querySelectorAll('script');
-        for (let script of scripts) {
-          const content = script.textContent || '';
-          if (content.includes('"email":"') && content.includes('@')) {
-            return true;
-          }
+        // If login/signup buttons exist, user is definitely NOT logged in
+        if (hasLoginButton) {
+          return false;
         }
 
-        // 5. Check for the new chat button (only visible when logged in)
-        const newChatButton = document.querySelector('[data-testid="create-new-chat-button"], a[href="/"]');
-        if (newChatButton && document.querySelector('nav')) return true;
+        // No login buttons found - verify with positive indicators
+        // Check for sidebar navigation (only exists when logged in)
+        const hasSidebar = !!document.querySelector('nav[aria-label="Chat history"]') ||
+                          !!document.querySelector('nav a[href^="/c/"]') ||
+                          document.querySelectorAll('nav').length > 0;
 
-        return false;
+        // Check for user menu in sidebar (bottom left when logged in)
+        const hasUserMenu = !!document.querySelector('[data-testid="profile-button"]') ||
+                           !!document.querySelector('button[aria-label*="User menu"]');
+
+        return hasSidebar || hasUserMenu;
       })()
     `);
 

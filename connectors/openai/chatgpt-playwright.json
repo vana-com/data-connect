@@ -1,0 +1,13 @@
+{
+  "id": "chatgpt-playwright",
+  "name": "ChatGPT (Playwright)",
+  "company": "OpenAI",
+  "description": "Exports your email and memories from ChatGPT using Playwright browser automation.",
+  "connectURL": "https://chatgpt.com/",
+  "connectSelector": "nav a[href^='/c/']",
+  "exportFrequency": "daily",
+  "runtime": "playwright",
+  "vectorize_config": {
+    "documents": "content"
+  }
+}

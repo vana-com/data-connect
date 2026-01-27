@@ -79,7 +79,13 @@ export function BrowserProvider({ children }: BrowserProviderProps) {
       }
     } catch (err) {
       console.error('Failed to check browser:', err);
-      setStatus('needs_browser');
+      // If running on localhost without Tauri backend, assume Chrome is available (dev mode)
+      if (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1') {
+        console.log('Dev mode detected, assuming browser is available');
+        setStatus('ready');
+      } else {
+        setStatus('needs_browser');
+      }
     }
   }, []);
 

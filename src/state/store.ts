@@ -66,10 +66,16 @@ const appSlice = createSlice({
         runId: string;
         status: Run['status'];
         endDate?: string;
+        onlyIfRunning?: boolean;
       }>
     ) {
       const run = state.runs.find((r) => r.id === action.payload.runId);
       if (run) {
+        // If onlyIfRunning is true, don't overwrite success/error status
+        // This prevents STOPPED from overwriting a completed run
+        if (action.payload.onlyIfRunning && (run.status === 'success' || run.status === 'error')) {
+          return;
+        }
         run.status = action.payload.status;
         if (action.payload.endDate) {
           run.endDate = action.payload.endDate;

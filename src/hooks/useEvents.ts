@@ -158,11 +158,14 @@ export function useEvents() {
         }
       } else if (statusType === 'STOPPED') {
         // Browser was closed or process ended without completing
+        // Don't overwrite success/error status - STOPPED is only for incomplete runs
         dispatch(
           updateRunStatus({
             runId,
             status: 'stopped',
             endDate: new Date().toISOString(),
+            // Flag to indicate this should only apply if not already complete
+            onlyIfRunning: true,
           })
         );
         if (statusMessage) {

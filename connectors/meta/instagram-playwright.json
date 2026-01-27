@@ -1,6 +1,6 @@
 {
   "id": "instagram-playwright",
-  "name": "Instagram (Playwright)",
+  "name": "Instagram",
   "company": "Meta",
   "description": "Exports your Instagram profile and posts using Playwright browser automation.",
   "connectURL": "https://www.instagram.com/accounts/login/",

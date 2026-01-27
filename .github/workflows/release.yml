@@ -103,6 +103,7 @@ jobs:
         if: matrix.platform == 'macos-latest'
         run: |
           codesign --force --options runtime --timestamp \
+            --entitlements playwright-runner/entitlements.plist \
             --sign "Developer ID Application: Corsali, Inc (${{ secrets.APPLE_TEAM_ID }})" \
             playwright-runner/dist/${{ matrix.binary_name }}
 

@@ -348,20 +348,36 @@ async fn start_playwright_run(
     use std::io::{BufRead, BufReader, Write};
     use std::process::{Command, Stdio};
 
-    log::info!("Starting Playwright run for {}", run_id);
+    log::info!("Starting Playwright run for {} (platform: {}, company: {}, filename: {})",
+        run_id, platform_id, company, filename);
 
     // Get paths
     let connectors_dir = get_connectors_dir(&app);
+    log::info!("Connectors dir: {:?}", connectors_dir);
+
     let connector_path = connectors_dir
         .join(company.to_lowercase())
         .join(format!("{}.js", filename));
 
+    log::info!("Looking for connector at: {:?}", connector_path);
+
     if !connector_path.exists() {
-        return Err(format!("Connector script not found: {:?}", connector_path));
+        let err = format!("Connector script not found: {:?}", connector_path);
+        log::error!("{}", err);
+        // Emit error to UI
+        let _ = app.emit("connector-log", serde_json::json!({
+            "runId": run_id,
+            "message": format!("Error: {}", err),
+            "timestamp": chrono_timestamp()
+        }));
+        return Err(err);
     }
+
+    log::info!("Connector script found, looking for Playwright runner...");
 
     // Try to use bundled binary first (production), fall back to dev mode
     let mut child = if let Some((binary_path, browsers_path)) = get_bundled_playwright_runner(&app) {
+        log::info!("Found bundled Playwright runner at: {:?}", binary_path);
         // Production mode: use bundled binary
         let mut cmd = Command::new(&binary_path);
         cmd.stdin(Stdio::piped())
@@ -369,12 +385,28 @@ async fn start_playwright_run(
             .stderr(Stdio::piped());
 
         // Set browser path if bundled
-        if let Some(browsers) = browsers_path {
+        if let Some(ref browsers) = browsers_path {
+            log::info!("Setting PLAYWRIGHT_BROWSERS_PATH to: {:?}", browsers);
             cmd.env("PLAYWRIGHT_BROWSERS_PATH", browsers);
         }
 
-        cmd.spawn()
-            .map_err(|e| format!("Failed to spawn bundled Playwright runner: {}", e))?
+        log::info!("Spawning Playwright runner...");
+        match cmd.spawn() {
+            Ok(child) => {
+                log::info!("Playwright runner spawned successfully");
+                child
+            }
+            Err(e) => {
+                let err = format!("Failed to spawn bundled Playwright runner: {}", e);
+                log::error!("{}", err);
+                let _ = app.emit("connector-log", serde_json::json!({
+                    "runId": run_id,
+                    "message": format!("Error: {}", err),
+                    "timestamp": chrono_timestamp()
+                }));
+                return Err(err);
+            }
+        }
     } else {
         // Dev mode: use node index.js
         let runner_dir = connectors_dir.parent()

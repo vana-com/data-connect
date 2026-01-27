@@ -51,7 +51,13 @@ export function Home() {
   const browserStatus = useBrowserStatus();
 
   const handleExport = async (platform: Platform) => {
-    await startExport(platform);
+    console.log('Starting export for platform:', platform.id, platform.name, 'runtime:', platform.runtime);
+    try {
+      const runId = await startExport(platform);
+      console.log('Export started with runId:', runId);
+    } catch (error) {
+      console.error('Export failed:', error);
+    }
   };
 
   const getLastExportTime = (platformId: string) => {

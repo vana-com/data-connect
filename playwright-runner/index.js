@@ -296,6 +296,19 @@ async function runConnector(runId, connectorPath, url) {
 
     const browser = await chromium.launch(launchOptions);
 
+    // Track if connector completed successfully (to avoid sending STOPPED after COMPLETE)
+    let connectorCompleted = false;
+
+    // Handle browser disconnect (user closed browser window)
+    browser.on('disconnected', () => {
+      if (!connectorCompleted && activeRuns.has(runId)) {
+        log(`Browser disconnected for run ${runId} (user closed window)`);
+        activeRuns.delete(runId);
+        send({ type: 'status', runId, status: 'STOPPED' });
+        process.exit(0);
+      }
+    });
+
     const context = await browser.newContext({
       viewport: { width: 1280, height: 800 },
       userAgent: 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36'
@@ -304,7 +317,7 @@ async function runConnector(runId, connectorPath, url) {
     const page = await context.newPage();
 
     // Store for cleanup
-    activeRuns.set(runId, { browser, context, page });
+    activeRuns.set(runId, { browser, context, page, setCompleted: () => { connectorCompleted = true; } });
 
     // Create page API
     const pageApi = createPageApi(page, runId);
@@ -344,8 +357,13 @@ async function runConnector(runId, connectorPath, url) {
     const result = await runConnectorFn.call(null, pageApi);
     log('Connector function completed with result:', result ? 'has result' : 'undefined');
 
-    send({ type: 'result', runId, data: result });
+    // Unwrap the data if connector returns { success: true, data: ... }
+    const exportData = (result && result.success && result.data) ? result.data : result;
+    send({ type: 'result', runId, data: exportData });
     send({ type: 'status', runId, status: 'COMPLETE' });
+
+    // Mark as completed to prevent disconnect handler from sending STOPPED
+    connectorCompleted = true;
 
     // Keep browser open for a bit so user can see result
     await new Promise(resolve => setTimeout(resolve, 2000));

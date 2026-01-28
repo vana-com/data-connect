@@ -24,6 +24,48 @@ const ChatGPTIcon = () => (
 
 function RunItem({ run, onStop }: { run: Run; onStop: (id: string) => void }) {
   const [expanded, setExpanded] = useState(false);
+  const [exportData, setExportData] = useState<Run['exportData']>(run.exportData);
+  const [loadingData, setLoadingData] = useState(false);
+
+  // Load export data when expanded
+  const handleToggleExpanded = async () => {
+    if (!expanded && !exportData && run.exportPath) {
+      setLoadingData(true);
+      try {
+        const data = await invoke<Record<string, unknown>>('load_run_export_data', {
+          runId: run.id,
+          exportPath: run.exportPath,
+        });
+
+        // Transform data to ExportedData format
+        const transformed: Run['exportData'] = {
+          platform: data.platform as string || run.platformId,
+          company: data.company as string || run.company,
+          exportedAt: data.timestamp
+            ? new Date(typeof data.timestamp === 'number' ? data.timestamp : 0).toISOString()
+            : run.startDate,
+          conversations: ((data.data as Record<string, unknown>)?.conversations as Array<unknown> || [])
+            .map((c: unknown) => {
+              const conv = c as Record<string, unknown>;
+              return {
+                id: (conv.id as string) || '',
+                title: (conv.title as string) || (conv.name as string) || '',
+                url: (conv.url as string) || '',
+                scrapedAt: (conv.timestamp as string) || new Date().toISOString(),
+              };
+            }),
+          totalConversations: (data.data as Record<string, unknown>)?.totalConversations as number | undefined,
+        };
+
+        setExportData(transformed);
+      } catch (error) {
+        console.error('Failed to load export data:', error);
+      } finally {
+        setLoadingData(false);
+      }
+    }
+    setExpanded(!expanded);
+  };
 
   const getStatusIcon = () => {
     const iconStyle = { width: '20px', height: '20px' };
@@ -61,7 +103,7 @@ function RunItem({ run, onStop }: { run: Run; onStop: (id: string) => void }) {
     }
   };
 
-  const conversations = run.exportData?.conversations || [];
+  const conversations = exportData?.conversations || [];
 
   return (
     <div
@@ -162,9 +204,9 @@ function RunItem({ run, onStop }: { run: Run; onStop: (id: string) => void }) {
               <FolderOpen style={{ width: '18px', height: '18px' }} />
             </button>
           )}
-          {conversations.length > 0 && (
+          {run.exportPath && (conversations.length > 0 || (!expanded && !exportData)) && (
             <button
-              onClick={() => setExpanded(!expanded)}
+              onClick={handleToggleExpanded}
               style={{
                 padding: '8px',
                 color: '#6b7280',
@@ -252,7 +294,7 @@ function RunItem({ run, onStop }: { run: Run; onStop: (id: string) => void }) {
       )}
 
       {/* Expanded conversations */}
-      {expanded && conversations.length > 0 && (
+      {expanded && (
         <div
           style={{
             borderTop: '1px solid #f3f4f6',
@@ -260,23 +302,47 @@ function RunItem({ run, onStop }: { run: Run; onStop: (id: string) => void }) {
             overflowY: 'auto',
           }}
         >
-          {conversations.map((conv, index) => (
+          {loadingData ? (
             <div
-              key={conv.id}
               style={{
-                padding: '10px 16px',
+                padding: '20px',
+                textAlign: 'center',
+                color: '#6b7280',
                 fontSize: '13px',
-                backgroundColor: index % 2 === 0 ? '#fafafa' : '#ffffff',
               }}
             >
-              <div style={{ fontWeight: 500, color: '#4b5563', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                {conv.title}
-              </div>
-              <div style={{ fontSize: '11px', color: '#9ca3af', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                {conv.url}
-              </div>
+              Loading data...
             </div>
-          ))}
+          ) : conversations.length > 0 ? (
+            conversations.map((conv, index) => (
+              <div
+                key={conv.id}
+                style={{
+                  padding: '10px 16px',
+                  fontSize: '13px',
+                  backgroundColor: index % 2 === 0 ? '#fafafa' : '#ffffff',
+                }}
+              >
+                <div style={{ fontWeight: 500, color: '#4b5563', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                  {conv.title}
+                </div>
+                <div style={{ fontSize: '11px', color: '#9ca3af', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                  {conv.url}
+                </div>
+              </div>
+            ))
+          ) : (
+            <div
+              style={{
+                padding: '20px',
+                textAlign: 'center',
+                color: '#6b7280',
+                fontSize: '13px',
+              }}
+            >
+              No conversation data available
+            </div>
+          )}
         </div>
       )}
     </div>

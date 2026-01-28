@@ -282,6 +282,53 @@ pub async fn load_runs(app: AppHandle) -> Result<Vec<SavedRun>, String> {
     Ok(runs)
 }
 
+/// Load detailed export data for a specific run (conversations, posts, etc.)
+#[tauri::command]
+pub async fn load_run_export_data(_run_id: String, export_path: String) -> Result<serde_json::Value, String> {
+    let run_path = PathBuf::from(&export_path);
+
+    if !run_path.exists() {
+        return Err("Run path does not exist".to_string());
+    }
+
+    // Find the latest JSON file in the run directory
+    let mut latest_json: Option<PathBuf> = None;
+    let mut latest_timestamp: Option<u64> = None;
+
+    if let Ok(entries) = fs::read_dir(&run_path) {
+        for entry in entries.flatten() {
+            let path = entry.path();
+            if path.extension().map_or(false, |ext| ext == "json") {
+                // Extract timestamp from filename (format: platformId_timestamp.json)
+                let filename = path.file_stem().unwrap_or_default().to_string_lossy();
+                if let Some(ts_str) = filename.split('_').last() {
+                    if let Ok(ts) = ts_str.parse::<u64>() {
+                        if latest_timestamp.is_none() || ts > latest_timestamp.unwrap() {
+                            latest_json = Some(path);
+                            latest_timestamp = Some(ts);
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    if let Some(json_path) = latest_json {
+        if let Ok(content) = fs::read_to_string(&json_path) {
+            if let Ok(data) = serde_json::from_str::<serde_json::Value>(&content) {
+                // Extract the content field which contains the actual export data
+                if let Some(content) = data.get("content") {
+                    return Ok(content.clone());
+                }
+                // If no content field, return the whole data
+                return Ok(data);
+            }
+        }
+    }
+
+    Err("Failed to load export data".to_string())
+}
+
 /// Open the platform export folder
 #[tauri::command]
 pub async fn open_platform_export_folder(

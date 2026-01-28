@@ -331,6 +331,8 @@ pub async fn check_connector_updates(
 /// Download and install a connector
 #[tauri::command]
 pub async fn download_connector(_app: AppHandle, id: String) -> Result<(), String> {
+    log::info!("=== Starting connector download: {} ===", id);
+
     // Fetch registry to get connector info
     let registry = fetch_registry(false).await?;
 
@@ -340,16 +342,21 @@ pub async fn download_connector(_app: AppHandle, id: String) -> Result<(), Strin
         .find(|c| c.id == id)
         .ok_or_else(|| format!("Connector {} not found in registry", id))?;
 
-    log::info!("Downloading connector: {} v{}", connector.id, connector.version);
+    log::info!("Found connector in registry: {} v{} (company: {})",
+        connector.id, connector.version, connector.company);
 
     // Get user connectors directory
     let user_dir = get_user_connectors_dir()
         .ok_or("Could not determine user connectors directory")?;
 
+    log::info!("User connectors directory: {:?}", user_dir);
+
     // Create company subdirectory
     let company_dir = user_dir.join(connector.company.to_lowercase());
     fs::create_dir_all(&company_dir)
         .map_err(|e| format!("Failed to create connector directory: {}", e))?;
+
+    log::info!("Company directory: {:?}", company_dir);
 
     // Download script file
     let script_url = format!("{}/{}", registry.base_url, connector.files.script);
@@ -368,9 +375,16 @@ pub async fn download_connector(_app: AppHandle, id: String) -> Result<(), Strin
         .await
         .map_err(|e| format!("Failed to read script: {}", e))?;
 
+    log::info!("Downloaded {} bytes of script", script_bytes.len());
+
     // Verify script checksum
+    let actual_script_checksum = calculate_checksum(&script_bytes);
+    log::info!("Script checksum - expected: {}, actual: {}",
+        connector.checksums.script, actual_script_checksum);
+
     if !verify_checksum(&script_bytes, &connector.checksums.script) {
-        return Err("Script checksum verification failed".to_string());
+        return Err(format!("Script checksum verification failed. Expected: {}, Got: {}",
+            connector.checksums.script, actual_script_checksum));
     }
     log::info!("Script checksum verified");
 
@@ -391,9 +405,16 @@ pub async fn download_connector(_app: AppHandle, id: String) -> Result<(), Strin
         .await
         .map_err(|e| format!("Failed to read metadata: {}", e))?;
 
+    log::info!("Downloaded {} bytes of metadata", metadata_bytes.len());
+
     // Verify metadata checksum
+    let actual_metadata_checksum = calculate_checksum(&metadata_bytes);
+    log::info!("Metadata checksum - expected: {}, actual: {}",
+        connector.checksums.metadata, actual_metadata_checksum);
+
     if !verify_checksum(&metadata_bytes, &connector.checksums.metadata) {
-        return Err("Metadata checksum verification failed".to_string());
+        return Err(format!("Metadata checksum verification failed. Expected: {}, Got: {}",
+            connector.checksums.metadata, actual_metadata_checksum));
     }
     log::info!("Metadata checksum verified");
 
@@ -411,19 +432,31 @@ pub async fn download_connector(_app: AppHandle, id: String) -> Result<(), Strin
         .last()
         .ok_or("Invalid metadata path")?;
 
+    log::info!("Filenames: script={}, metadata={}", script_filename, metadata_filename);
+
     // Write files
     let script_path = company_dir.join(script_filename);
     let metadata_path = company_dir.join(metadata_filename);
 
+    log::info!("Writing script to: {:?}", script_path);
     fs::write(&script_path, &script_bytes)
-        .map_err(|e| format!("Failed to write script: {}", e))?;
-    log::info!("Wrote script to: {:?}", script_path);
+        .map_err(|e| format!("Failed to write script to {:?}: {}", script_path, e))?;
+    log::info!("Successfully wrote script");
 
+    log::info!("Writing metadata to: {:?}", metadata_path);
     fs::write(&metadata_path, &metadata_bytes)
-        .map_err(|e| format!("Failed to write metadata: {}", e))?;
-    log::info!("Wrote metadata to: {:?}", metadata_path);
+        .map_err(|e| format!("Failed to write metadata to {:?}: {}", metadata_path, e))?;
+    log::info!("Successfully wrote metadata");
 
-    log::info!("Successfully installed connector: {}", id);
+    // Verify files were written
+    if !script_path.exists() {
+        return Err(format!("Script file not found after write: {:?}", script_path));
+    }
+    if !metadata_path.exists() {
+        return Err(format!("Metadata file not found after write: {:?}", metadata_path));
+    }
+
+    log::info!("=== Successfully installed connector: {} ===", id);
     Ok(())
 }
 

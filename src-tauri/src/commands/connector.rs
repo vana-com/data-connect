@@ -45,7 +45,21 @@ pub struct Platform {
     pub runtime: Option<String>,
 }
 
-/// Get the connectors directory path
+/// Get the user connectors directory (~/.databridge/connectors/)
+fn get_user_connectors_dir() -> Option<PathBuf> {
+    let home = std::env::var("HOME")
+        .or_else(|_| std::env::var("USERPROFILE"))
+        .ok()?;
+    let path = PathBuf::from(home).join(".databridge").join("connectors");
+    if path.exists() {
+        log::info!("Found user connectors at: {:?}", path);
+        Some(path)
+    } else {
+        None
+    }
+}
+
+/// Get the bundled connectors directory path
 fn get_connectors_dir(app: &AppHandle) -> PathBuf {
     // In development, look in the project root directory
     // The project root is 3 levels up from src-tauri/target/debug/
@@ -57,7 +71,7 @@ fn get_connectors_dir(app: &AppHandle) -> PathBuf {
             .map(|p| p.join("connectors"))
             .unwrap_or_default();
         if dev_path.exists() {
-            log::info!("Found connectors at: {:?}", dev_path);
+            log::info!("Found bundled connectors at: {:?}", dev_path);
             return dev_path;
         }
     }
@@ -67,7 +81,7 @@ fn get_connectors_dir(app: &AppHandle) -> PathBuf {
         .unwrap_or_default()
         .join("connectors");
     if cwd_path.exists() {
-        log::info!("Found connectors at: {:?}", cwd_path);
+        log::info!("Found bundled connectors at: {:?}", cwd_path);
         return cwd_path;
     }
 
@@ -83,7 +97,7 @@ fn get_connectors_dir(app: &AppHandle) -> PathBuf {
         {
             let dev_path = project_root.join("connectors");
             if dev_path.exists() {
-                log::info!("Found connectors at: {:?}", dev_path);
+                log::info!("Found bundled connectors at: {:?}", dev_path);
                 return dev_path;
             }
         }
@@ -98,13 +112,13 @@ fn get_connectors_dir(app: &AppHandle) -> PathBuf {
     // Check for _up_/connectors first (from "../connectors" resource path)
     let up_path = resource_dir.join("_up_").join("connectors");
     if up_path.exists() {
-        log::info!("Found connectors at: {:?}", up_path);
+        log::info!("Found bundled connectors at: {:?}", up_path);
         return up_path;
     }
 
     // Fallback to direct connectors path
     let resource_path = resource_dir.join("connectors");
-    log::info!("Using resource connectors path: {:?}", resource_path);
+    log::info!("Using resource bundled connectors path: {:?}", resource_path);
     resource_path
 }
 
@@ -113,14 +127,20 @@ fn get_connectors_dir(app: &AppHandle) -> PathBuf {
 pub async fn debug_connector_paths(app: AppHandle) -> Result<serde_json::Value, String> {
     let resource_dir = app.path().resource_dir().unwrap_or_default();
     let connectors_dir = get_connectors_dir(&app);
+    let user_dir = get_user_connectors_dir();
 
     // Check various paths
-    let paths_to_check = vec![
+    let mut paths_to_check = vec![
         ("resource_dir", resource_dir.clone()),
         ("resource_dir/connectors", resource_dir.join("connectors")),
         ("resource_dir/_up_/connectors", resource_dir.join("_up_").join("connectors")),
-        ("connectors_dir (resolved)", connectors_dir.clone()),
+        ("connectors_dir (bundled)", connectors_dir.clone()),
     ];
+
+    // Add user directory if available
+    if let Some(ref user_path) = user_dir {
+        paths_to_check.push(("user_connectors_dir", user_path.clone()));
+    }
 
     let mut results = serde_json::Map::new();
 
@@ -149,19 +169,17 @@ pub async fn debug_connector_paths(app: AppHandle) -> Result<serde_json::Value, 
     Ok(serde_json::Value::Object(results))
 }
 
-/// Load all platform connectors from the connectors directory
-#[tauri::command]
-pub async fn get_platforms(app: AppHandle) -> Result<Vec<Platform>, String> {
-    let connectors_dir = get_connectors_dir(&app);
+/// Load platforms from a single directory
+fn load_platforms_from_dir(dir: &PathBuf) -> Vec<Platform> {
     let mut platforms = Vec::new();
 
-    if !connectors_dir.exists() {
-        log::warn!("Connectors directory not found: {:?}", connectors_dir);
-        return Ok(platforms);
+    if !dir.exists() {
+        log::warn!("Connectors directory not found: {:?}", dir);
+        return platforms;
     }
 
     // Walk through the connectors directory
-    for entry in walkdir::WalkDir::new(&connectors_dir)
+    for entry in walkdir::WalkDir::new(dir)
         .min_depth(2)
         .max_depth(2)
     {
@@ -223,6 +241,38 @@ pub async fn get_platforms(app: AppHandle) -> Result<Vec<Platform>, String> {
         }
     }
 
+    platforms
+}
+
+/// Load all platform connectors from both user and bundled connectors directories
+/// User connectors take precedence over bundled ones
+#[tauri::command]
+pub async fn get_platforms(app: AppHandle) -> Result<Vec<Platform>, String> {
+    let mut platforms = Vec::new();
+    let mut seen_ids = std::collections::HashSet::new();
+
+    // First, load from bundled directory
+    let bundled_dir = get_connectors_dir(&app);
+    log::info!("Loading bundled connectors from: {:?}", bundled_dir);
+    for platform in load_platforms_from_dir(&bundled_dir) {
+        seen_ids.insert(platform.id.clone());
+        platforms.push(platform);
+    }
+
+    // Then, load from user directory (overrides bundled)
+    if let Some(user_dir) = get_user_connectors_dir() {
+        log::info!("Loading user connectors from: {:?}", user_dir);
+        for platform in load_platforms_from_dir(&user_dir) {
+            if seen_ids.contains(&platform.id) {
+                // Remove the bundled version
+                platforms.retain(|p| p.id != platform.id);
+            }
+            seen_ids.insert(platform.id.clone());
+            platforms.push(platform);
+        }
+    }
+
+    log::info!("Loaded {} total platforms", platforms.len());
     Ok(platforms)
 }
 
@@ -232,19 +282,39 @@ static CONNECTOR_WINDOWS: std::sync::LazyLock<
 > = std::sync::LazyLock::new(|| std::sync::Mutex::new(HashMap::new()));
 
 /// Load connector script from the connectors directory
+/// Checks user directory first, then bundled directory
 fn load_connector_script(app: &AppHandle, company: &str, filename: &str) -> Option<String> {
+    let company_lower = company.to_lowercase();
+
+    // First check user directory
+    if let Some(user_dir) = get_user_connectors_dir() {
+        let js_path = user_dir.join(&company_lower).join(format!("{}.js", filename));
+        log::info!("Looking for connector script in user dir: {:?}", js_path);
+
+        if js_path.exists() {
+            match fs::read_to_string(&js_path) {
+                Ok(content) => {
+                    log::info!("Loaded connector script from user dir: {:?}", js_path);
+                    return Some(content);
+                }
+                Err(e) => {
+                    log::error!("Failed to read connector script {:?}: {}", js_path, e);
+                }
+            }
+        }
+    }
+
+    // Fall back to bundled directory
     let connectors_dir = get_connectors_dir(app);
+    let js_path = connectors_dir.join(&company_lower).join(format!("{}.js", filename));
+    let ts_path = connectors_dir.join(&company_lower).join(format!("{}.ts", filename));
 
-    // Try to load the .js file first, then .ts
-    let js_path = connectors_dir.join(company.to_lowercase()).join(format!("{}.js", filename));
-    let ts_path = connectors_dir.join(company.to_lowercase()).join(format!("{}.ts", filename));
-
-    log::info!("Looking for connector script at: {:?}", js_path);
+    log::info!("Looking for connector script in bundled dir: {:?}", js_path);
 
     if js_path.exists() {
         match fs::read_to_string(&js_path) {
             Ok(content) => {
-                log::info!("Loaded connector script: {:?}", js_path);
+                log::info!("Loaded connector script from bundled dir: {:?}", js_path);
                 return Some(content);
             }
             Err(e) => {

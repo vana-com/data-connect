@@ -119,10 +119,7 @@ function ConnectorUpdateItem({ update, onDownload, isDownloading }: ConnectorUpd
 
       {/* Download button */}
       <button
-        onClick={() => {
-          console.log('[ConnectorUpdates] Button clicked, update.id:', update.id);
-          onDownload(update.id);
-        }}
+        onClick={() => onDownload(update.id)}
         disabled={isDownloading}
         style={{
           display: 'flex',

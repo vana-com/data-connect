@@ -5,66 +5,6 @@ import { setPlatforms, setConnectedPlatforms } from '../state/store';
 import type { RootState } from '../state/store';
 import type { Platform } from '../types';
 
-// Mock platforms for browser-only dev mode
-const MOCK_PLATFORMS: Platform[] = [
-  {
-    id: 'chatgpt-playwright',
-    company: 'OpenAI',
-    name: 'ChatGPT',
-    filename: 'chatgpt-playwright',
-    description: 'Exports your email and memories from ChatGPT using Playwright browser automation.',
-    isUpdated: false,
-    logoURL: 'chatgpt-playwright',
-    needsConnection: true,
-    connectURL: 'https://chatgpt.com/',
-    connectSelector: "nav a[href^='/c/']",
-    exportFrequency: 'daily',
-    vectorize_config: { documents: 'content' },
-    runtime: 'playwright',
-  },
-  {
-    id: 'instagram-playwright',
-    company: 'Meta',
-    name: 'Instagram',
-    filename: 'instagram-playwright',
-    description: 'Exports your Instagram profile and posts using Playwright browser automation.',
-    isUpdated: false,
-    logoURL: 'instagram-playwright',
-    needsConnection: true,
-    connectURL: 'https://www.instagram.com/accounts/login/',
-    connectSelector: "svg[aria-label='Home'], a[href='/direct/inbox/']",
-    exportFrequency: 'daily',
-    vectorize_config: { documents: 'caption' },
-    runtime: 'playwright',
-  },
-  {
-    id: 'linkedin-playwright',
-    company: 'LinkedIn',
-    name: 'LinkedIn',
-    filename: 'linkedin-playwright',
-    description: 'Exports your LinkedIn profile including experience, education, and skills using Playwright browser automation.',
-    isUpdated: false,
-    logoURL: 'linkedin-playwright',
-    needsConnection: true,
-    connectURL: 'https://www.linkedin.com/login',
-    connectSelector: "a[href*='/feed/'], .feed-identity-module, .global-nav__me",
-    exportFrequency: 'weekly',
-    vectorize_config: { documents: 'experience' },
-    runtime: 'playwright',
-  },
-];
-
-// Check if running in browser-only dev mode (no Tauri backend)
-const isDevMode = () => {
-  // Check for Tauri API first - if it exists, we're in Tauri (dev or production)
-  const hasTauri = !!(window as unknown as { __TAURI__?: unknown }).__TAURI__;
-  if (hasTauri) {
-    return false; // We have Tauri, not browser-only dev mode
-  }
-  // No Tauri API - must be browser-only dev mode
-  return true;
-};
-
 export function usePlatforms() {
   const dispatch = useDispatch();
   const platforms = useSelector((state: RootState) => state.app.platforms);
@@ -86,12 +26,6 @@ export function usePlatforms() {
       dispatch(setConnectedPlatforms(connected));
     } catch (error) {
       console.error('Failed to load platforms:', error);
-      // Fallback to mock data in dev mode
-      if (isDevMode()) {
-        console.log('Dev mode: using mock platforms');
-        dispatch(setPlatforms(MOCK_PLATFORMS));
-        dispatch(setConnectedPlatforms({}));
-      }
     }
   }, [dispatch]);
 

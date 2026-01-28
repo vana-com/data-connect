@@ -56,11 +56,13 @@ const MOCK_PLATFORMS: Platform[] = [
 
 // Check if running in browser-only dev mode (no Tauri backend)
 const isDevMode = () => {
-  return (
-    (window.location.hostname === 'localhost' ||
-      window.location.hostname === '127.0.0.1') &&
-    !(window as unknown as { __TAURI__?: unknown }).__TAURI__
-  );
+  // Check for Tauri API first - if it exists, we're in Tauri (dev or production)
+  const hasTauri = !!(window as unknown as { __TAURI__?: unknown }).__TAURI__;
+  if (hasTauri) {
+    return false; // We have Tauri, not browser-only dev mode
+  }
+  // No Tauri API - must be browser-only dev mode
+  return true;
 };
 
 export function usePlatforms() {

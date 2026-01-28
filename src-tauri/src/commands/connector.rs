@@ -421,15 +421,23 @@ async fn start_playwright_run(
     log::info!("Starting Playwright run for {} (platform: {}, company: {}, filename: {})",
         run_id, platform_id, company, filename);
 
-    // Get paths
-    let connectors_dir = get_connectors_dir(&app);
-    log::info!("Connectors dir: {:?}", connectors_dir);
-
-    let connector_path = connectors_dir
-        .join(company.to_lowercase())
-        .join(format!("{}.js", filename));
-
-    log::info!("Looking for connector at: {:?}", connector_path);
+    // Find the connector script (check user dir first, then bundled)
+    let company_lower = company.to_lowercase();
+    let connector_path = if let Some(user_dir) = get_user_connectors_dir() {
+        let user_path = user_dir.join(&company_lower).join(format!("{}.js", filename));
+        if user_path.exists() {
+            log::info!("Found connector in user directory: {:?}", user_path);
+            user_path
+        } else {
+            let bundled_dir = get_connectors_dir(&app);
+            let bundled_path = bundled_dir.join(&company_lower).join(format!("{}.js", filename));
+            log::info!("Looking for connector in bundled directory: {:?}", bundled_path);
+            bundled_path
+        }
+    } else {
+        let connectors_dir = get_connectors_dir(&app);
+        connectors_dir.join(&company_lower).join(format!("{}.js", filename))
+    };
 
     if !connector_path.exists() {
         let err = format!("Connector script not found: {:?}", connector_path);
@@ -443,7 +451,7 @@ async fn start_playwright_run(
         return Err(err);
     }
 
-    log::info!("Connector script found, looking for Playwright runner...");
+    log::info!("Connector script found at: {:?}, looking for Playwright runner...", connector_path);
 
     // Try to use bundled binary first (production), fall back to dev mode
     let mut child = if let Some((binary_path, browsers_path)) = get_bundled_playwright_runner(&app) {
@@ -479,8 +487,9 @@ async fn start_playwright_run(
         }
     } else {
         // Dev mode: use node index.js
+        let connectors_dir = get_connectors_dir(&app);
         let runner_dir = connectors_dir.parent()
-            .map(|p| p.join("playwright-runner"))
+            .and_then(|p| Some(p.join("playwright-runner")))
             .ok_or("Could not find playwright-runner directory")?;
 
         if !runner_dir.exists() {

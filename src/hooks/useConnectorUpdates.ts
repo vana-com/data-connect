@@ -82,8 +82,10 @@ export function useConnectorUpdates() {
         }
 
         console.log('[downloadConnector] About to invoke download_connector Tauri command');
-        await invoke('download_connector', { id });
-        console.log('[downloadConnector] Tauri command completed successfully');
+        console.log('[downloadConnector] __TAURI__ exists:', !!(window as any).__TAURI__);
+
+        const result = await invoke('download_connector', { id });
+        console.log('[downloadConnector] Tauri command completed, result:', result);
         // Remove from updates list after successful download
         dispatch(removeConnectorUpdate(id));
         // Reload platforms to pick up the new connector
@@ -94,6 +96,8 @@ export function useConnectorUpdates() {
           err instanceof Error ? err.message : 'Failed to download connector';
         setError(errorMsg);
         console.error('[downloadConnector] Failed:', err);
+        // Show alert for debugging
+        alert(`Download failed: ${errorMsg}`);
         return false;
       } finally {
         setDownloadingIds((prev) => {

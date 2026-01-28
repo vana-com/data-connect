@@ -68,6 +68,7 @@ export function useConnectorUpdates() {
 
   const downloadConnector = useCallback(
     async (id: string) => {
+      console.log('[downloadConnector] Called with id:', id);
       setError(null);
       setDownloadingIds((prev) => new Set(prev).add(id));
 
@@ -80,7 +81,9 @@ export function useConnectorUpdates() {
           return true;
         }
 
+        console.log('[downloadConnector] About to invoke download_connector Tauri command');
         await invoke('download_connector', { id });
+        console.log('[downloadConnector] Tauri command completed successfully');
         // Remove from updates list after successful download
         dispatch(removeConnectorUpdate(id));
         // Reload platforms to pick up the new connector
@@ -90,7 +93,7 @@ export function useConnectorUpdates() {
         const errorMsg =
           err instanceof Error ? err.message : 'Failed to download connector';
         setError(errorMsg);
-        console.error('Failed to download connector:', err);
+        console.error('[downloadConnector] Failed:', err);
         return false;
       } finally {
         setDownloadingIds((prev) => {

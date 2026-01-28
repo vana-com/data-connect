@@ -1,5 +1,6 @@
 {
   "id": "instagram-playwright",
+  "version": "1.0.0",
   "name": "Instagram",
   "company": "Meta",
   "description": "Exports your Instagram profile and posts using Playwright browser automation.",

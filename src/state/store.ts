@@ -1,6 +1,6 @@
 import { configureStore, createSlice } from '@reduxjs/toolkit';
 import type { PayloadAction } from '@reduxjs/toolkit';
-import type { Run, Platform, AppState, ExportedData, ProgressPhase } from '../types';
+import type { Run, Platform, AppState, ExportedData, ProgressPhase, ConnectorUpdateInfo } from '../types';
 
 const initialState: AppState = {
   route: '/',
@@ -12,6 +12,9 @@ const initialState: AppState = {
   runs: [],
   platforms: [],
   connectedPlatforms: {},
+  connectorUpdates: [],
+  lastUpdateCheck: null,
+  isCheckingUpdates: false,
 };
 
 const appSlice = createSlice({
@@ -167,6 +170,18 @@ const appSlice = createSlice({
       });
       state.isRunLayerVisible = false;
     },
+    setConnectorUpdates(state, action: PayloadAction<ConnectorUpdateInfo[]>) {
+      state.connectorUpdates = action.payload;
+      state.lastUpdateCheck = new Date().toISOString();
+    },
+    setIsCheckingUpdates(state, action: PayloadAction<boolean>) {
+      state.isCheckingUpdates = action.payload;
+    },
+    removeConnectorUpdate(state, action: PayloadAction<string>) {
+      state.connectorUpdates = state.connectorUpdates.filter(
+        (update) => update.id !== action.payload
+      );
+    },
   },
 });
 
@@ -189,6 +204,9 @@ export const {
   updateRunExportData,
   stopRun,
   stopAllRuns,
+  setConnectorUpdates,
+  setIsCheckingUpdates,
+  removeConnectorUpdate,
 } = appSlice.actions;
 
 export const store = configureStore({

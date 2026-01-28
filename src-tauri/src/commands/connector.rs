@@ -428,7 +428,7 @@ async fn start_playwright_run(
     };
 
     // Get handles to stdin/stdout
-    let mut stdin = child.stdin.take().ok_or("Failed to get stdin")?;
+    let stdin = child.stdin.take().ok_or("Failed to get stdin")?;
     let stdout = child.stdout.take().ok_or("Failed to get stdout")?;
     let stderr = child.stderr.take().ok_or("Failed to get stderr")?;
 
@@ -460,7 +460,26 @@ async fn start_playwright_run(
     let company_clone = company.clone();
     let name_clone = name.clone();
 
+    // Build the run command JSON before moving stdin
+    let run_cmd = serde_json::json!({
+        "type": "run",
+        "runId": run_id,
+        "connectorPath": connector_path.to_string_lossy(),
+        "url": connect_url
+    });
+
     std::thread::spawn(move || {
+        // Move stdin into this thread to keep it alive
+        let mut stdin = stdin;
+
+        // Send the run command
+        if let Err(e) = writeln!(stdin, "{}", run_cmd.to_string()) {
+            log::error!("Failed to send run command: {}", e);
+        }
+        // Flush stdin to ensure command is sent immediately
+        let _ = stdin.flush();
+
+        // Now read stdout in the same thread to keep stdin alive
         let reader = BufReader::new(stdout);
         for line in reader.lines().flatten() {
             if let Ok(msg) = serde_json::from_str::<serde_json::Value>(&line) {
@@ -525,17 +544,6 @@ async fn start_playwright_run(
             "timestamp": chrono_timestamp()
         }));
     });
-
-    // Send the run command
-    let run_cmd = serde_json::json!({
-        "type": "run",
-        "runId": run_id,
-        "connectorPath": connector_path.to_string_lossy(),
-        "url": connect_url
-    });
-
-    writeln!(stdin, "{}", run_cmd.to_string())
-        .map_err(|e| format!("Failed to send run command: {}", e))?;
 
     Ok(())
 }

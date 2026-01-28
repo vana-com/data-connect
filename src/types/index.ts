@@ -69,6 +69,9 @@ export interface AppState {
   runs: Run[];
   platforms: Platform[];
   connectedPlatforms: Record<string, boolean>;
+  connectorUpdates: ConnectorUpdateInfo[];
+  lastUpdateCheck: string | null;
+  isCheckingUpdates: boolean;
 }
 
 export interface RootState {
@@ -109,4 +112,15 @@ export interface ExportCompleteEvent {
   run_id: string;
   export_path: string;
   export_size: number;
+}
+
+export interface ConnectorUpdateInfo {
+  id: string;
+  name: string;
+  description: string;
+  company: string;
+  currentVersion: string | null;
+  latestVersion: string;
+  hasUpdate: boolean;
+  isNew: boolean;
 }

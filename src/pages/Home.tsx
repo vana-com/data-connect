@@ -1,14 +1,18 @@
+import { useEffect } from 'react';
 import { usePlatforms } from '../hooks/usePlatforms';
 import { useConnector } from '../hooks/useConnector';
+import { useConnectorUpdates } from '../hooks/useConnectorUpdates';
 import { useSelector } from 'react-redux';
 import { useBrowserStatus } from '../context/BrowserContext';
 import type { Platform, RootState } from '../types';
 import { ArrowRight, Plus, Download, AlertCircle } from 'lucide-react';
+import { ConnectorUpdates } from '../components/ConnectorUpdates';
 
 // Platform icon URLs
 const PLATFORM_ICONS: Record<string, string> = {
   chatgpt: 'https://upload.wikimedia.org/wikipedia/commons/0/04/ChatGPT_logo.svg',
   instagram: 'https://upload.wikimedia.org/wikipedia/commons/a/a5/Instagram_icon.png',
+  linkedin: 'https://upload.wikimedia.org/wikipedia/commons/c/ca/LinkedIn_logo_initials.png',
 };
 
 // Get icon URL for a platform
@@ -16,6 +20,7 @@ const getPlatformIcon = (platformName: string): string | null => {
   const name = platformName.toLowerCase();
   if (name.includes('chatgpt')) return PLATFORM_ICONS.chatgpt;
   if (name.includes('instagram')) return PLATFORM_ICONS.instagram;
+  if (name.includes('linkedin')) return PLATFORM_ICONS.linkedin;
   return null;
 };
 
@@ -47,8 +52,16 @@ const PlatformIcon = ({ platform }: { platform: Platform }) => {
 export function Home() {
   const { platforms, isPlatformConnected } = usePlatforms();
   const { startExport } = useConnector();
+  const { checkForUpdates } = useConnectorUpdates();
   const runs = useSelector((state: RootState) => state.app.runs);
   const browserStatus = useBrowserStatus();
+
+  // Check for connector updates on mount (when browser is ready)
+  useEffect(() => {
+    if (browserStatus.status === 'ready') {
+      checkForUpdates();
+    }
+  }, [browserStatus.status, checkForUpdates]);
 
   const handleExport = async (platform: Platform) => {
     console.log('Starting export for platform:', platform.id, platform.name, 'runtime:', platform.runtime);
@@ -120,6 +133,9 @@ export function Home() {
         >
           Your sources
         </p>
+
+        {/* Connector Updates - show when browser is ready */}
+        {browserStatus.status === 'ready' && <ConnectorUpdates />}
 
         {/* Browser Setup - Checking */}
         {browserStatus.status === 'checking' && (

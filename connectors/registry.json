@@ -1,7 +1,7 @@
 {
   "version": "1.0.0",
-  "lastUpdated": "2026-01-27T00:00:00Z",
-  "baseUrl": "https://raw.githubusercontent.com/vana-com/data-dt-app/main/connectors",
+  "lastUpdated": "2026-01-28T00:00:00Z",
+  "baseUrl": "https://raw.githubusercontent.com/volod-vana/registry/main",
   "connectors": [
     {
       "id": "chatgpt-playwright",

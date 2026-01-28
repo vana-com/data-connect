@@ -6,7 +6,7 @@ use std::path::PathBuf;
 use tauri::{AppHandle, Manager};
 
 const DEFAULT_REGISTRY_URL: &str =
-    "https://gist.githubusercontent.com/volod-vana/05c0a53d61ef7d0fcd37e63567fafa3f/raw/0a7d3706fb8ad482239d9eedf4474861a99bf424/registry.json";
+    "https://raw.githubusercontent.com/volod-vana/registry/main/registry.json";
 
 /// Registry manifest from remote
 #[derive(Debug, Serialize, Deserialize, Clone)]

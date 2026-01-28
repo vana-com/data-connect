@@ -28,3 +28,4 @@ src-tauri/target/
 
 # Devcontainer (local dev environment)
 .devcontainer/
+connectors/.git

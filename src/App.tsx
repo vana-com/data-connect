@@ -1,4 +1,4 @@
-import { BrowserRouter, Routes, Route } from 'react-router-dom';
+import { BrowserRouter, Routes, Route, useLocation } from 'react-router-dom';
 import { Provider } from 'react-redux';
 import { store } from './state/store';
 import { useEvents } from './hooks/useEvents';
@@ -12,6 +12,7 @@ import { Settings } from './pages/Settings';
 import { DataApps } from './pages/DataApps';
 import { GrantFlow } from './pages/GrantFlow';
 import { InlineLogin } from './components/auth/InlineLogin';
+import { BrowserLogin } from './pages/BrowserLogin';
 import { RickRollAppPage } from './pages/RickRollApp';
 import { useDeepLink } from './hooks/useDeepLink';
 
@@ -63,13 +64,28 @@ function AppContent() {
   );
 }
 
+// Router wrapper that handles both app content and standalone browser login
+function AppRouter() {
+  const location = useLocation();
+
+  // Browser login page is standalone (for external browser auth flow)
+  if (location.pathname === '/browser-login') {
+    return <BrowserLogin />;
+  }
+
+  return <AppContent />;
+}
+
 function App() {
   return (
     <Provider store={store}>
       <PrivyProvider>
         <BrowserProvider>
           <BrowserRouter>
-            <AppContent />
+            <Routes>
+              <Route path="/browser-login" element={<BrowserLogin />} />
+              <Route path="/*" element={<AppRouter />} />
+            </Routes>
           </BrowserRouter>
         </BrowserProvider>
       </PrivyProvider>

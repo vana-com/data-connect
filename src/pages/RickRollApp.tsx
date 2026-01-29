@@ -1,8 +1,10 @@
 import { useEffect, useState } from 'react';
+import { useNavigate } from 'react-router';
 import { RickRollApp } from '../apps/rickroll/App';
 import { ExternalLink } from 'lucide-react';
 
 export function RickRollAppPage() {
+  const navigate = useNavigate();
   const [isConnected, setIsConnected] = useState(false);
 
   useEffect(() => {
@@ -23,9 +25,9 @@ export function RickRollAppPage() {
   }, []);
 
   const handleConnect = () => {
-    // Trigger grant flow
+    // Trigger grant flow using React Router navigation
     const sessionId = 'grant-session-' + Date.now();
-    window.location.href = `dataconnect://?sessionId=${sessionId}&appId=rickroll`;
+    navigate('/grant', { state: { sessionId, appId: 'rickroll' } });
   };
 
   if (!isConnected) {

@@ -39,10 +39,18 @@
       "icons/icon.icns",
       "icons/icon.ico"
     ],
-    "resources": [
-      "../connectors",
-      "../playwright-runner/dist"
-    ],
+    "resources": {
+      "../connectors/*.js": "connectors/",
+      "../connectors/*.ts": "connectors/",
+      "../connectors/*.json": "connectors/",
+      "../connectors/chatgpt/**/*": "connectors/chatgpt/",
+      "../connectors/instagram/**/*": "connectors/instagram/",
+      "../connectors/linkedin/**/*": "connectors/linkedin/",
+      "../connectors/meta/**/*": "connectors/meta/",
+      "../connectors/openai/**/*": "connectors/openai/",
+      "../connectors/types/**/*": "connectors/types/",
+      "../playwright-runner/dist/*": "playwright-runner/dist/"
+    },
     "windows": {
       "nsis": {
         "installMode": "currentUser"

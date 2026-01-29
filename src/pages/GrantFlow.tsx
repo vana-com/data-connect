@@ -46,10 +46,35 @@ export function GrantFlow() {
     }
 
     const loadSession = async () => {
+      const sessionId = params.sessionId!;
       try {
-        setFlowState((prev) => ({ ...prev, status: 'loading', sessionId: params.sessionId! }));
-        const session = await getSessionInfo(params.sessionId!);
-        setFlowState((prev) => ({ ...prev, session, sessionId: params.sessionId! }));
+        setFlowState((prev) => ({ ...prev, status: 'loading', sessionId }));
+
+        // Check if this is a local demo app (sessionId starts with 'grant-session-')
+        // For demo apps, use mock session data instead of fetching from relay
+        let session: GrantFlowState['session'];
+        if (sessionId.startsWith('grant-session-') && params.appId) {
+          // Mock session data for local demo apps
+          const demoApps: Record<string, { name: string; icon: string; scopes: string[] }> = {
+            rickroll: {
+              name: 'RickRoll Facts',
+              icon: '🎵',
+              scopes: ['read:chatgpt-conversations'],
+            },
+          };
+          const appInfo = demoApps[params.appId] || { name: params.appId, icon: '🔗', scopes: ['read:data'] };
+          session = {
+            id: sessionId,
+            appId: params.appId,
+            appName: appInfo.name,
+            appIcon: appInfo.icon,
+            scopes: appInfo.scopes,
+            expiresAt: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString(), // 30 days
+          };
+        } else {
+          session = await getSessionInfo(sessionId);
+        }
+        setFlowState((prev) => ({ ...prev, session, sessionId }));
 
         if (authLoading) return;
 
@@ -105,11 +130,14 @@ export function GrantFlow() {
       const typedDataString = JSON.stringify(typedData);
       const mockSignature = `0x${typedDataString}${'0'.repeat(Math.max(0, 130 - typedDataString.length))}`.slice(0, 132);
 
-      await approveSession({
-        sessionId: flowState.sessionId,
-        walletAddress,
-        grantSignature: mockSignature,
-      });
+      // Skip relay call for local demo sessions
+      if (!flowState.sessionId.startsWith('grant-session-')) {
+        await approveSession({
+          sessionId: flowState.sessionId,
+          walletAddress,
+          grantSignature: mockSignature,
+        });
+      }
 
       setFlowState((prev) => ({ ...prev, status: 'success' }));
 

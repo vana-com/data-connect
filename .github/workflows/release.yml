@@ -111,6 +111,9 @@ jobs:
         uses: tauri-apps/tauri-action@v0
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          # Privy authentication
+          VITE_PRIVY_APP_ID: ${{ secrets.VITE_PRIVY_APP_ID }}
+          VITE_PRIVY_CLIENT_ID: ${{ secrets.VITE_PRIVY_CLIENT_ID }}
           # macOS signing
           APPLE_CERTIFICATE: ${{ secrets.APPLE_BUILD_CERTIFICATE_BASE64 }}
           APPLE_CERTIFICATE_PASSWORD: ${{ secrets.APPLE_BUILD_CERTIFICATE_PASSWORD }}

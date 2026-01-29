@@ -11,21 +11,14 @@ export function useAuth() {
 
   const privyEnabled = !!PRIVY_APP_ID;
 
-  // Note: Privy hooks need to be used within components that are wrapped by PrivyProvider
-  // This is a simplified version that works without Privy or gracefully degrades
+  // Set loading to false on mount since auth is handled externally via browser
   useEffect(() => {
-    if (!privyEnabled) {
+    if (auth.isLoading) {
       dispatch(setAuthLoading(false));
-      return;
     }
-
-    // If Privy is configured, we'd initialize it here
-    // For now, mark as not loading since Privy integration is optional
-    dispatch(setAuthLoading(false));
-  }, [dispatch, privyEnabled]);
+  }, [dispatch, auth.isLoading]);
 
   const logout = useCallback(async () => {
-    // Privy logout would be called here if Privy was initialized
     dispatch(clearAuth());
   }, [dispatch]);
 

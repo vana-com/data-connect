@@ -12,6 +12,15 @@ interface MockApp {
 
 const mockApps: MockApp[] = [
   {
+    id: 'rickroll',
+    name: 'RickRoll Facts',
+    description: 'Discover fun facts from your ChatGPT conversations',
+    icon: '🎵',
+    category: 'Demo',
+    status: 'live',
+    dataRequired: ['ChatGPT'],
+  },
+  {
     id: 'vana-trainer',
     name: 'Vana Trainer',
     description: 'Train AI models on your personal data',
@@ -261,7 +270,7 @@ function AppCard({ app }: { app: MockApp }) {
         </div>
       </div>
 
-      {app.status === 'coming-soon' && (
+      {app.status === 'coming-soon' ? (
         <button
           disabled
           style={{
@@ -278,6 +287,31 @@ function AppCard({ app }: { app: MockApp }) {
           }}
         >
           Connect
+        </button>
+      ) : (
+        <button
+          onClick={() => (window.location.href = `/apps/${app.id}`)}
+          style={{
+            width: '100%',
+            marginTop: '16px',
+            padding: '10px',
+            fontSize: '14px',
+            fontWeight: 500,
+            color: 'white',
+            backgroundColor: '#6366f1',
+            border: 'none',
+            borderRadius: '8px',
+            cursor: 'pointer',
+            transition: 'all 0.15s ease',
+          }}
+          onMouseEnter={(e) => {
+            e.currentTarget.style.backgroundColor = '#4f46e5';
+          }}
+          onMouseLeave={(e) => {
+            e.currentTarget.style.backgroundColor = '#6366f1';
+          }}
+        >
+          Open App
         </button>
       )}
     </div>

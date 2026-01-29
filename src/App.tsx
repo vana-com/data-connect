@@ -12,6 +12,7 @@ import { Settings } from './pages/Settings';
 import { DataApps } from './pages/DataApps';
 import { GrantFlow } from './pages/GrantFlow';
 import { InlineLogin } from './components/auth/InlineLogin';
+import { RickRollAppPage } from './pages/RickRollApp';
 import { useDeepLink } from './hooks/useDeepLink';
 
 function AppContent() {
@@ -50,6 +51,7 @@ function AppContent() {
           <Routes>
             <Route path="/" element={<Home />} />
             <Route path="/apps" element={<DataApps />} />
+            <Route path="/apps/rickroll" element={<RickRollAppPage />} />
             <Route path="/runs" element={<Runs />} />
             <Route path="/settings" element={<Settings />} />
             <Route path="/grant" element={<GrantFlow />} />

@@ -1,6 +1,18 @@
 import { configureStore, createSlice } from '@reduxjs/toolkit';
 import type { PayloadAction } from '@reduxjs/toolkit';
-import type { Run, Platform, AppState, ExportedData, ProgressPhase, ConnectorUpdateInfo } from '../types';
+import type { Run, Platform, AppState, ExportedData, ProgressPhase, ConnectorUpdateInfo, AuthState, AuthUser, ConnectedApp, AppConfig } from '../types';
+
+const initialAuthState: AuthState = {
+  isAuthenticated: false,
+  isLoading: true,
+  user: null,
+  walletAddress: null,
+};
+
+const initialAppConfig: AppConfig = {
+  storageProvider: 'local',
+  serverMode: 'cloud',
+};
 
 const initialState: AppState = {
   route: '/',
@@ -15,6 +27,9 @@ const initialState: AppState = {
   connectorUpdates: [],
   lastUpdateCheck: null,
   isCheckingUpdates: false,
+  auth: initialAuthState,
+  connectedApps: [],
+  appConfig: initialAppConfig,
 };
 
 const appSlice = createSlice({
@@ -182,6 +197,33 @@ const appSlice = createSlice({
         (update) => update.id !== action.payload
       );
     },
+    setAuthLoading(state, action: PayloadAction<boolean>) {
+      state.auth.isLoading = action.payload;
+    },
+    setAuthenticated(state, action: PayloadAction<{ user: AuthUser; walletAddress: string | null }>) {
+      state.auth.isAuthenticated = true;
+      state.auth.isLoading = false;
+      state.auth.user = action.payload.user;
+      state.auth.walletAddress = action.payload.walletAddress;
+    },
+    clearAuth(state) {
+      state.auth.isAuthenticated = false;
+      state.auth.isLoading = false;
+      state.auth.user = null;
+      state.auth.walletAddress = null;
+    },
+    setConnectedApps(state, action: PayloadAction<ConnectedApp[]>) {
+      state.connectedApps = action.payload;
+    },
+    addConnectedApp(state, action: PayloadAction<ConnectedApp>) {
+      state.connectedApps.push(action.payload);
+    },
+    removeConnectedApp(state, action: PayloadAction<string>) {
+      state.connectedApps = state.connectedApps.filter(app => app.id !== action.payload);
+    },
+    setAppConfig(state, action: PayloadAction<Partial<AppConfig>>) {
+      state.appConfig = { ...state.appConfig, ...action.payload };
+    },
   },
 });
 
@@ -207,6 +249,13 @@ export const {
   setConnectorUpdates,
   setIsCheckingUpdates,
   removeConnectorUpdate,
+  setAuthLoading,
+  setAuthenticated,
+  clearAuth,
+  setConnectedApps,
+  addConnectedApp,
+  removeConnectedApp,
+  setAppConfig,
 } = appSlice.actions;
 
 export const store = configureStore({

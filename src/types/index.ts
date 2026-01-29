@@ -72,6 +72,9 @@ export interface AppState {
   connectorUpdates: ConnectorUpdateInfo[];
   lastUpdateCheck: string | null;
   isCheckingUpdates: boolean;
+  auth: AuthState;
+  connectedApps: ConnectedApp[];
+  appConfig: AppConfig;
 }
 
 export interface RootState {
@@ -123,4 +126,34 @@ export interface ConnectorUpdateInfo {
   latestVersion: string;
   hasUpdate: boolean;
   isNew: boolean;
+}
+
+export interface AuthState {
+  isAuthenticated: boolean;
+  isLoading: boolean;
+  user: AuthUser | null;
+  walletAddress: string | null;
+}
+
+export interface AuthUser {
+  id: string;
+  email?: string;
+  wallet?: {
+    address: string;
+    walletClientType: string;
+  };
+}
+
+export interface ConnectedApp {
+  id: string;
+  name: string;
+  icon?: string;
+  permissions: string[];
+  connectedAt: string;
+}
+
+export interface AppConfig {
+  storageProvider: 'local' | 'vana' | 'gdrive' | 'dropbox';
+  serverMode: 'cloud' | 'self-hosted';
+  selfHostedUrl?: string;
 }

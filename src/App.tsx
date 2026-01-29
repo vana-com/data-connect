@@ -5,13 +5,19 @@ import { useEvents } from './hooks/useEvents';
 import { useInitialize } from './hooks/useInitialize';
 import { TopNav } from './components/TopNav';
 import { BrowserProvider } from './context/BrowserContext';
+import { PrivyProvider } from './components/providers/PrivyProvider';
 import { Home } from './pages/Home';
 import { Runs } from './pages/Runs';
 import { Settings } from './pages/Settings';
+import { DataApps } from './pages/DataApps';
+import { GrantFlow } from './pages/GrantFlow';
+import { InlineLogin } from './components/auth/InlineLogin';
+import { useDeepLink } from './hooks/useDeepLink';
 
 function AppContent() {
   useEvents();
   useInitialize();
+  useDeepLink();
 
   return (
     <div
@@ -43,8 +49,11 @@ function AppContent() {
         <main style={{ flex: 1, overflow: 'auto' }}>
           <Routes>
             <Route path="/" element={<Home />} />
+            <Route path="/apps" element={<DataApps />} />
             <Route path="/runs" element={<Runs />} />
             <Route path="/settings" element={<Settings />} />
+            <Route path="/grant" element={<GrantFlow />} />
+            <Route path="/login" element={<InlineLogin />} />
           </Routes>
         </main>
       </div>
@@ -55,11 +64,13 @@ function AppContent() {
 function App() {
   return (
     <Provider store={store}>
-      <BrowserProvider>
-        <BrowserRouter>
-          <AppContent />
-        </BrowserRouter>
-      </BrowserProvider>
+      <PrivyProvider>
+        <BrowserProvider>
+          <BrowserRouter>
+            <AppContent />
+          </BrowserRouter>
+        </BrowserProvider>
+      </PrivyProvider>
     </Provider>
   );
 }

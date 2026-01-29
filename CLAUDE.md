@@ -29,3 +29,5 @@ For architecture and protocol details, refer to:
 │  Standalone binary + bundled Chromium   │
 └─────────────────────────────────────────┘
 ```
+
+Delivery Estimates: https://linear.app/vana-team/document/data-portability-v1-delivery-estimates-a00639b10979

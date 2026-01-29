@@ -1,5 +1,5 @@
 import { NavLink } from 'react-router-dom';
-import { Database, FolderOpen, Settings, Activity } from 'lucide-react';
+import { Database, Layers, Grid3x3, Settings, UserCircle } from 'lucide-react';
 
 export function TopNav() {
   const navLinkStyle = (isActive: boolean) => ({
@@ -37,7 +37,7 @@ export function TopNav() {
         }}
       >
         <Database style={{ width: '20px', height: '20px', color: '#6366f1' }} />
-        <span style={{ fontWeight: 600, color: '#1a1a1a', fontSize: '15px' }}>DataBridge</span>
+        <span style={{ fontWeight: 600, color: '#1a1a1a', fontSize: '15px' }}>DATA CONNECT</span>
       </div>
 
       {/* Navigation Icons */}
@@ -50,17 +50,17 @@ export function TopNav() {
       >
         <NavLink
           to="/"
-          title="Data Sources"
+          title="Your Data"
           style={({ isActive }) => navLinkStyle(isActive)}
         >
-          <FolderOpen style={{ width: '20px', height: '20px' }} />
+          <Layers style={{ width: '20px', height: '20px' }} />
         </NavLink>
         <NavLink
-          to="/runs"
-          title="Export History"
+          to="/apps"
+          title="Data Apps"
           style={({ isActive }) => navLinkStyle(isActive)}
         >
-          <Activity style={{ width: '20px', height: '20px' }} />
+          <Grid3x3 style={{ width: '20px', height: '20px' }} />
         </NavLink>
         <NavLink
           to="/settings"
@@ -68,6 +68,13 @@ export function TopNav() {
           style={({ isActive }) => navLinkStyle(isActive)}
         >
           <Settings style={{ width: '20px', height: '20px' }} />
+        </NavLink>
+        <NavLink
+          to="/runs"
+          title="Account"
+          style={({ isActive }) => navLinkStyle(isActive)}
+        >
+          <UserCircle style={{ width: '20px', height: '20px' }} />
         </NavLink>
       </nav>
     </header>

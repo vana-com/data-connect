@@ -3,9 +3,9 @@ mod processors;
 
 use commands::{
     check_browser_available, check_connected_platforms, check_connector_updates, debug_connector_paths,
-    download_browser, download_connector, get_installed_connectors, get_platforms, get_registry_url,
+    download_browser, download_connector, get_app_config, get_installed_connectors, get_platforms, get_registry_url,
     get_run_files, get_user_data_path, handle_download, load_run_export_data, load_runs, open_folder,
-    open_platform_export_folder, start_connector_run, stop_connector_run, test_nodejs,
+    open_platform_export_folder, set_app_config, start_connector_run, stop_connector_run, test_nodejs,
     write_export_data,
 };
 use tauri::{Listener, Manager};
@@ -63,6 +63,8 @@ pub fn run() {
             download_connector,
             get_registry_url,
             get_installed_connectors,
+            get_app_config,
+            set_app_config,
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

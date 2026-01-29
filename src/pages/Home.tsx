@@ -1,12 +1,14 @@
-import { useEffect } from 'react';
+import { useEffect, useState } from 'react';
+import { useSelector } from 'react-redux';
 import { usePlatforms } from '../hooks/usePlatforms';
 import { useConnector } from '../hooks/useConnector';
 import { useConnectorUpdates } from '../hooks/useConnectorUpdates';
-import { useSelector } from 'react-redux';
 import { useBrowserStatus } from '../context/BrowserContext';
 import type { Platform, RootState } from '../types';
-import { ArrowRight, Plus, Download, AlertCircle } from 'lucide-react';
+import { ExternalLink, Database, Download, AlertCircle, Check } from 'lucide-react';
 import { ConnectorUpdates } from '../components/ConnectorUpdates';
+
+type TabKey = 'sources' | 'apps';
 
 // Platform icon URLs
 const PLATFORM_ICONS: Record<string, string> = {
@@ -50,11 +52,13 @@ const PlatformIcon = ({ platform }: { platform: Platform }) => {
 };
 
 export function Home() {
+  const [activeTab, setActiveTab] = useState<TabKey>('sources');
+  const [recentlyCompleted, setRecentlyCompleted] = useState<Set<string>>(new Set());
   const { platforms, isPlatformConnected } = usePlatforms();
   const { startExport } = useConnector();
   const { checkForUpdates } = useConnectorUpdates();
-  const runs = useSelector((state: RootState) => state.app.runs);
   const browserStatus = useBrowserStatus();
+  const runs = useSelector((state: RootState) => state.app.runs);
 
   // Check for connector updates on mount (when browser is ready)
   useEffect(() => {
@@ -63,82 +67,45 @@ export function Home() {
     }
   }, [browserStatus.status, checkForUpdates]);
 
+  // Track recently completed exports to show checkbox
+  useEffect(() => {
+    const completedRunIds = new Set(
+      runs
+        .filter((r) => r.status === 'success')
+        .sort((a, b) => new Date(b.endDate || b.startDate).getTime() - new Date(a.endDate || a.startDate).getTime())
+        .map((r) => r.platformId)
+    );
+    setRecentlyCompleted(completedRunIds);
+  }, [runs]);
+
   const handleExport = async (platform: Platform) => {
     console.log('Starting export for platform:', platform.id, platform.name, 'runtime:', platform.runtime);
     try {
-      const runId = await startExport(platform);
-      console.log('Export started with runId:', runId);
+      await startExport(platform);
+      // No navigation - stay on this page
     } catch (error) {
       console.error('Export failed:', error);
     }
   };
 
-  const getLastExportTime = (platformId: string) => {
-    const platformRuns = runs
-      .filter((r) => r.platformId === platformId && r.status === 'success')
-      .sort((a, b) => new Date(b.endDate || b.startDate).getTime() - new Date(a.endDate || a.startDate).getTime());
+  // Separate connected and available platforms
+  const connectedPlatforms = platforms.filter((p) => isPlatformConnected(p.id) || recentlyCompleted.has(p.id));
+  const availablePlatforms = platforms.filter((p) => !isPlatformConnected(p.id) && !recentlyCompleted.has(p.id));
 
-    if (platformRuns.length === 0) return null;
-
-    const lastRun = platformRuns[0];
-    const date = new Date(lastRun.endDate || lastRun.startDate);
-    const now = new Date();
-    const diffMs = now.getTime() - date.getTime();
-    const diffMins = Math.floor(diffMs / 60000);
-    const diffHours = Math.floor(diffMs / 3600000);
-    const diffDays = Math.floor(diffMs / 86400000);
-
-    if (diffMins < 1) return 'just now';
-    if (diffMins < 60) return `${diffMins}m ago`;
-    if (diffHours < 24) return `${diffHours}h ago`;
-    if (diffDays < 7) return `${diffDays}d ago`;
-    return date.toLocaleDateString();
-  };
-
-  const connectedPlatforms = platforms.filter((p) => isPlatformConnected(p.id));
-  const availablePlatforms = platforms.filter((p) => !isPlatformConnected(p.id));
+  const isRecentlyCompleted = (platformId: string) => recentlyCompleted.has(platformId) && !isPlatformConnected(platformId);
 
   return (
-    <div
-      style={{
-        flex: 1,
-        overflow: 'auto',
-        backgroundColor: '#f5f5f7',
-      }}
-    >
-      <div
-        style={{
-          maxWidth: '560px',
-          margin: '0 auto',
-          padding: '48px 24px',
-        }}
-      >
-        {/* Header */}
-        <h1
-          style={{
-            fontSize: '24px',
-            fontWeight: 600,
-            color: '#1a1a1a',
-            marginBottom: '8px',
-          }}
-        >
-          Personal data
+    <div style={{ flex: 1, overflow: 'auto', backgroundColor: '#f5f5f7' }}>
+      <div style={{ maxWidth: '900px', margin: '0 auto', padding: '48px 24px' }}>
+        <h1 style={{ fontSize: '28px', fontWeight: 600, color: '#1a1a1a', marginBottom: '8px' }}>
+          Your Data
         </h1>
-        <p
-          style={{
-            fontSize: '14px',
-            color: '#6b7280',
-            marginBottom: '24px',
-          }}
-        >
-          Your sources
+        <p style={{ fontSize: '15px', color: '#6b7280', marginBottom: '32px' }}>
+          Manage your connected data sources and applications
         </p>
 
-        {/* Connector Updates - show when browser is ready */}
-        {browserStatus.status === 'ready' && <ConnectorUpdates />}
-
         {/* Browser Setup - Checking */}
-        {browserStatus.status === 'checking' && (
+        {browserStatus.status !== 'ready' && browserStatus.status !== 'error' && (
           <div
             style={{
               backgroundColor: '#ffffff',
@@ -164,102 +131,42 @@ export function Home() {
               <Download style={{ width: '24px', height: '24px', color: 'white' }} />
             </div>
             <h3 style={{ fontSize: '16px', fontWeight: 600, color: '#1a1a1a', marginBottom: '8px' }}>
-              Checking dependencies...
+              {browserStatus.status === 'checking' && 'Checking dependencies...'}
+              {browserStatus.status === 'downloading' && 'Downloading Chromium'}
+              {browserStatus.status === 'needs_browser' && 'Browser Required'}
             </h3>
-            <p style={{ fontSize: '14px', color: '#6b7280' }}>
-              Please wait...
+            <p style={{ fontSize: '14px', color: '#6b7280', marginBottom: '16px' }}>
+              {browserStatus.status === 'checking' && 'Please wait...'}
+              {browserStatus.status === 'downloading' && `One-time setup (~160 MB) - ${Math.round(browserStatus.progress)}%`}
+              {browserStatus.status === 'needs_browser' &&
+                'DataBridge uses a browser to securely export your data. Your credentials stay on your device.'}
             </p>
-          </div>
-        )}
-
-        {/* Browser Setup - Needs Browser (user must choose) */}
-        {browserStatus.status === 'needs_browser' && (
-          <div
-            style={{
-              backgroundColor: '#ffffff',
-              border: '1px solid #e5e7eb',
-              borderRadius: '12px',
-              padding: '32px 24px',
-              marginBottom: '24px',
-            }}
-          >
-            <div
-              style={{
-                width: '48px',
-                height: '48px',
-                margin: '0 auto 16px',
-                borderRadius: '12px',
-                background: 'linear-gradient(135deg, #6366f1, #8b5cf6)',
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-              }}
-            >
-              <Download style={{ width: '24px', height: '24px', color: 'white' }} />
-            </div>
-            <h3 style={{ fontSize: '16px', fontWeight: 600, color: '#1a1a1a', marginBottom: '8px', textAlign: 'center' }}>
-              Browser Required
-            </h3>
-            <p style={{ fontSize: '14px', color: '#6b7280', marginBottom: '20px', textAlign: 'center', lineHeight: '1.5' }}>
-              DataBridge uses a browser to securely export your data from websites.
-              Your credentials stay on your device.
-            </p>
-
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
-              <div
-                style={{
-                  padding: '16px',
-                  backgroundColor: '#f0fdf4',
-                  border: '1px solid #bbf7d0',
-                  borderRadius: '8px',
-                }}
-              >
-                <p style={{ fontSize: '14px', fontWeight: 500, color: '#166534', marginBottom: '4px' }}>
-                  Recommended: Install Google Chrome
-                </p>
-                <p style={{ fontSize: '13px', color: '#15803d', marginBottom: '12px' }}>
-                  If you have Chrome installed, DataBridge will use it automatically.
-                </p>
+            {browserStatus.status === 'needs_browser' && (
+              <div style={{ display: 'flex', gap: '12px', justifyContent: 'center' }}>
                 <button
                   onClick={browserStatus.retry}
                   style={{
-                    padding: '8px 16px',
+                    padding: '10px 20px',
                     backgroundColor: '#22c55e',
                     color: 'white',
                     border: 'none',
-                    borderRadius: '6px',
-                    fontSize: '13px',
+                    borderRadius: '8px',
+                    fontSize: '14px',
                     fontWeight: 500,
                     cursor: 'pointer',
                   }}
                 >
-                  I've installed Chrome - Check again
+                  Check Again
                 </button>
-              </div>
-
-              <div
-                style={{
-                  padding: '16px',
-                  backgroundColor: '#fafafa',
-                  border: '1px solid #e5e7eb',
-                  borderRadius: '8px',
-                }}
-              >
-                <p style={{ fontSize: '14px', fontWeight: 500, color: '#374151', marginBottom: '4px' }}>
-                  Alternative: Download Chromium
-                </p>
-                <p style={{ fontSize: '13px', color: '#6b7280', marginBottom: '12px' }}>
-                  Download the open-source browser (~160 MB, one-time).
-                </p>
                 <button
                   onClick={browserStatus.startDownload}
                   style={{
-                    padding: '8px 16px',
+                    padding: '10px 20px',
                     backgroundColor: '#6366f1',
                     color: 'white',
                     border: 'none',
-                    borderRadius: '6px',
-                    fontSize: '13px',
+                    borderRadius: '8px',
+                    fontSize: '14px',
                     fontWeight: 500,
                     cursor: 'pointer',
                   }}
@@ -267,65 +174,30 @@ export function Home() {
                   Download Chromium
                 </button>
               </div>
-            </div>
-          </div>
-        )}
-
-        {/* Browser Setup - Downloading */}
-        {browserStatus.status === 'downloading' && (
-          <div
-            style={{
-              backgroundColor: '#ffffff',
-              border: '1px solid #e5e7eb',
-              borderRadius: '12px',
-              padding: '32px 24px',
-              textAlign: 'center',
-              marginBottom: '24px',
-            }}
-          >
-            <div
-              style={{
-                width: '48px',
-                height: '48px',
-                margin: '0 auto 16px',
-                borderRadius: '12px',
-                background: 'linear-gradient(135deg, #6366f1, #8b5cf6)',
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-              }}
-            >
-              <Download style={{ width: '24px', height: '24px', color: 'white' }} />
-            </div>
-            <h3 style={{ fontSize: '16px', fontWeight: 600, color: '#1a1a1a', marginBottom: '8px' }}>
-              Downloading Chromium
-            </h3>
-            <p style={{ fontSize: '14px', color: '#6b7280', marginBottom: '16px' }}>
-              One-time setup (~160 MB)
-            </p>
-            <div
-              style={{
-                width: '100%',
-                height: '4px',
-                backgroundColor: '#e5e7eb',
-                borderRadius: '2px',
-                overflow: 'hidden',
-                marginBottom: '8px',
-              }}
-            >
+            )}
+            {browserStatus.status === 'downloading' && (
               <div
                 style={{
-                  width: `${browserStatus.progress}%`,
-                  height: '100%',
-                  background: 'linear-gradient(90deg, #6366f1, #8b5cf6)',
+                  width: '100%',
+                  maxWidth: '300px',
+                  height: '4px',
+                  backgroundColor: '#e5e7eb',
                   borderRadius: '2px',
-                  transition: 'width 0.3s ease',
+                  overflow: 'hidden',
+                  margin: '0 auto',
                 }}
-              />
-            </div>
-            <p style={{ fontSize: '13px', color: '#9ca3af' }}>
-              {Math.round(browserStatus.progress)}%
-            </p>
+              >
+                <div
+                  style={{
+                    width: `${browserStatus.progress}%`,
+                    height: '100%',
+                    background: 'linear-gradient(90deg, #6366f1, #8b5cf6)',
+                    borderRadius: '2px',
+                    transition: 'width 0.3s ease',
+                  }}
+                />
+              </div>
+            )}
           </div>
         )}
 
@@ -369,159 +241,254 @@ export function Home() {
           </div>
         )}
 
-        {/* Connected Sources - only show when browser is ready */}
-        {browserStatus.status === 'ready' && connectedPlatforms.length > 0 && (
-          <div style={{ marginBottom: '32px' }}>
-            {connectedPlatforms.map((platform) => (
-              <button
-                key={platform.id}
-                onClick={() => handleExport(platform)}
-                style={{
-                  width: '100%',
-                  display: 'flex',
-                  alignItems: 'center',
-                  gap: '16px',
-                  padding: '16px',
-                  backgroundColor: '#ffffff',
-                  border: '1px solid #e5e7eb',
-                  borderRadius: '12px',
-                  cursor: 'pointer',
-                  textAlign: 'left',
-                  marginBottom: '12px',
-                  transition: 'all 0.15s ease',
-                }}
-                onMouseEnter={(e) => {
-                  e.currentTarget.style.borderColor = '#d1d5db';
-                  e.currentTarget.style.boxShadow = '0 1px 3px rgba(0,0,0,0.08)';
-                }}
-                onMouseLeave={(e) => {
-                  e.currentTarget.style.borderColor = '#e5e7eb';
-                  e.currentTarget.style.boxShadow = 'none';
-                }}
-              >
+        {/* Connector Updates - show when browser is ready */}
+        {browserStatus.status === 'ready' && <ConnectorUpdates />}
+
+        {/* Tabs */}
+        <div
+          style={{
+            display: 'flex',
+            gap: '4px',
+            marginBottom: '32px',
+            backgroundColor: '#e5e7eb',
+            padding: '4px',
+            borderRadius: '10px',
+            width: 'fit-content',
+          }}
+        >
+          {[
+            { key: 'sources' as TabKey, label: 'Your data' },
+            { key: 'apps' as TabKey, label: 'Connected apps' },
+          ].map((tab) => (
+            <button
+              key={tab.key}
+              onClick={() => setActiveTab(tab.key)}
+              style={{
+                padding: '8px 20px',
+                fontSize: '14px',
+                fontWeight: 500,
+                color: activeTab === tab.key ? '#1a1a1a' : '#6b7280',
+                backgroundColor: activeTab === tab.key ? 'white' : 'transparent',
+                border: 'none',
+                borderRadius: '8px',
+                cursor: 'pointer',
+                transition: 'all 0.15s ease',
+              }}
+              onMouseEnter={(e) => {
+                if (activeTab !== tab.key) {
+                  e.currentTarget.style.backgroundColor = 'rgba(255, 255, 255, 0.5)';
+                }
+              }}
+              onMouseLeave={(e) => {
+                if (activeTab !== tab.key) {
+                  e.currentTarget.style.backgroundColor = 'transparent';
+                }
+              }}
+            >
+              {tab.label}
+            </button>
+          ))}
+        </div>
+
+        {/* Sources Tab */}
+        {activeTab === 'sources' && (
+          <div>
+            {/* Connected Sources - with green checkmark */}
+            {browserStatus.status === 'ready' && connectedPlatforms.length > 0 && (
+              <section style={{ marginBottom: '48px' }}>
+                <h2 style={{ fontSize: '16px', fontWeight: 600, color: '#1a1a1a', marginBottom: '16px' }}>
+                  Connected sources
+                </h2>
                 <div
                   style={{
-                    width: '40px',
-                    height: '40px',
-                    borderRadius: '10px',
-                    backgroundColor: '#ffffff',
-                    border: '1px solid #e5e7eb',
                     display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                    flexShrink: 0,
+                    flexDirection: 'column',
+                    gap: '12px',
                   }}
                 >
-                  <PlatformIcon platform={platform} />
+                  {connectedPlatforms.map((platform) => {
+                    const completed = isRecentlyCompleted(platform.id);
+                    return (
+                      <div
+                        key={platform.id}
+                        style={{
+                          backgroundColor: 'white',
+                          border: completed ? '1px solid #22c55e' : '1px solid #e5e7eb',
+                          borderRadius: '12px',
+                          padding: '16px 20px',
+                          display: 'flex',
+                          alignItems: 'center',
+                          gap: '16px',
+                        }}
+                      >
+                        <div
+                          style={{
+                            width: '40px',
+                            height: '40px',
+                            borderRadius: '10px',
+                            backgroundColor: completed ? '#dcfce7' : '#f3f4f6',
+                            display: 'flex',
+                            alignItems: 'center',
+                            justifyContent: 'center',
+                            flexShrink: 0,
+                          }}
+                        >
+                          <PlatformIcon platform={platform} />
+                        </div>
+                        <div style={{ flex: 1, minWidth: 0 }}>
+                          <div style={{ fontWeight: 600, color: '#1a1a1a', fontSize: '15px', marginBottom: '2px' }}>
+                            {platform.name}
+                          </div>
+                          <div style={{ fontSize: '13px', color: '#22c55e', display: 'flex', alignItems: 'center', gap: '4px' }}>
+                            <span style={{ width: '6px', height: '6px', borderRadius: '50%', backgroundColor: '#22c55e' }} />
+                            Connected
+                          </div>
+                        </div>
+                        {completed && (
+                          <div
+                            style={{
+                              width: '24px',
+                              height: '24px',
+                              borderRadius: '50%',
+                              backgroundColor: '#22c55e',
+                              display: 'flex',
+                              alignItems: 'center',
+                              justifyContent: 'center',
+                              flexShrink: 0,
+                            }}
+                          >
+                            <Check style={{ width: '14px', height: '14px', color: 'white', strokeWidth: 3 }} />
+                          </div>
+                        )}
+                      </div>
+                    );
+                  })}
                 </div>
-                <div style={{ flex: 1, minWidth: 0 }}>
-                  <div style={{ fontWeight: 500, color: '#1a1a1a', fontSize: '15px' }}>
-                    {platform.name}
-                  </div>
+              </section>
+            )}
+
+            {/* Available Sources */}
+            <section>
+              <h2 style={{ fontSize: '16px', fontWeight: 600, color: '#1a1a1a', marginBottom: '16px' }}>
+                Connect your data sources
+              </h2>
+              {browserStatus.status === 'ready' && availablePlatforms.length > 0 ? (
+                <div
+                  style={{
+                    display: 'flex',
+                    flexDirection: 'column',
+                    gap: '12px',
+                  }}
+                >
+                  {availablePlatforms.map((platform) => (
+                    <button
+                      key={platform.id}
+                      onClick={() => handleExport(platform)}
+                      style={{
+                        backgroundColor: 'white',
+                        border: '1px solid #e5e7eb',
+                        borderRadius: '12px',
+                        padding: '16px 20px',
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: '16px',
+                        cursor: 'pointer',
+                        transition: 'all 0.15s ease',
+                        textAlign: 'left',
+                        width: '100%',
+                      }}
+                      onMouseEnter={(e) => {
+                        e.currentTarget.style.borderColor = '#6366f1';
+                        e.currentTarget.style.boxShadow = '0 2px 8px rgba(99, 102, 241, 0.1)';
+                      }}
+                      onMouseLeave={(e) => {
+                        e.currentTarget.style.borderColor = '#e5e7eb';
+                        e.currentTarget.style.boxShadow = 'none';
+                      }}
+                    >
+                      <div
+                        style={{
+                          width: '40px',
+                          height: '40px',
+                          borderRadius: '10px',
+                          backgroundColor: '#f3f4f6',
+                          display: 'flex',
+                          alignItems: 'center',
+                          justifyContent: 'center',
+                          flexShrink: 0,
+                        }}
+                      >
+                        <PlatformIcon platform={platform} />
+                      </div>
+                      <div style={{ flex: 1, minWidth: 0 }}>
+                        <div style={{ fontWeight: 600, color: '#1a1a1a', fontSize: '15px', marginBottom: '2px' }}>
+                          Connect {platform.name}
+                        </div>
+                        <div style={{ fontSize: '13px', color: '#6b7280' }}>{platform.description}</div>
+                      </div>
+                    </button>
+                  ))}
                 </div>
-                <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-                  <span style={{ fontSize: '13px', color: '#9ca3af' }}>
-                    {getLastExportTime(platform.id) || 'Not synced'}
-                  </span>
-                  <ArrowRight style={{ width: '20px', height: '20px', color: '#9ca3af' }} />
+              ) : (
+                <div
+                  style={{
+                    backgroundColor: 'white',
+                    border: '1px solid #e5e7eb',
+                    borderRadius: '12px',
+                    padding: '48px',
+                    textAlign: 'center',
+                  }}
+                >
+                  <Database style={{ width: '48px', height: '48px', color: '#9ca3af', margin: '0 auto 16px' }} />
+                  <p style={{ color: '#6b7280', marginBottom: '0' }}>
+                    {browserStatus.status !== 'ready' ? 'Complete browser setup to view connectors' : 'No available data sources'}
+                  </p>
                 </div>
-              </button>
-            ))}
+              )}
+            </section>
           </div>
         )}
 
-        {/* Add source section */}
-        {browserStatus.status === 'ready' && (availablePlatforms.length > 0 || connectedPlatforms.length === 0) && (
-          <>
-            <p
-              style={{
-                fontSize: '14px',
-                color: '#6b7280',
-                marginBottom: '16px',
-              }}
-            >
-              {connectedPlatforms.length > 0 ? 'Add another (more coming soon)' : 'Connect a source'}
-            </p>
-
-            {availablePlatforms.map((platform) => (
-              <button
-                key={platform.id}
-                onClick={() => handleExport(platform)}
-                style={{
-                  width: '100%',
-                  display: 'flex',
-                  alignItems: 'center',
-                  gap: '16px',
-                  padding: '16px',
-                  backgroundColor: '#ffffff',
-                  border: '1px solid #e5e7eb',
-                  borderRadius: '12px',
-                  cursor: 'pointer',
-                  textAlign: 'left',
-                  marginBottom: '12px',
-                  transition: 'all 0.15s ease',
-                }}
-                onMouseEnter={(e) => {
-                  e.currentTarget.style.borderColor = '#d1d5db';
-                  e.currentTarget.style.boxShadow = '0 1px 3px rgba(0,0,0,0.08)';
-                }}
-                onMouseLeave={(e) => {
-                  e.currentTarget.style.borderColor = '#e5e7eb';
-                  e.currentTarget.style.boxShadow = 'none';
-                }}
-              >
-                <div
-                  style={{
-                    width: '40px',
-                    height: '40px',
-                    borderRadius: '10px',
-                    backgroundColor: '#ffffff',
-                    border: '1px solid #e5e7eb',
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                    flexShrink: 0,
-                  }}
-                >
-                  <PlatformIcon platform={platform} />
-                </div>
-                <div style={{ flex: 1, minWidth: 0 }}>
-                  <div style={{ fontWeight: 500, color: '#1a1a1a', fontSize: '15px' }}>
-                    Connect {platform.name}
-                  </div>
-                </div>
-                <ArrowRight style={{ width: '20px', height: '20px', color: '#9ca3af' }} />
-              </button>
-            ))}
-          </>
-        )}
-
-        {/* Empty state */}
-        {browserStatus.status === 'ready' && platforms.length === 0 && (
-          <div
-            style={{
-              textAlign: 'center',
-              padding: '64px 0',
-            }}
-          >
+        {/* Connected Apps Tab */}
+        {activeTab === 'apps' && (
+          <div>
             <div
               style={{
-                width: '64px',
-                height: '64px',
-                margin: '0 auto 16px',
-                borderRadius: '16px',
-                backgroundColor: '#f3f4f6',
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
+                backgroundColor: 'white',
+                border: '1px solid #e5e7eb',
+                borderRadius: '12px',
+                padding: '48px',
+                textAlign: 'center',
               }}
             >
-              <Plus style={{ width: '32px', height: '32px', color: '#9ca3af' }} />
+              <Database style={{ width: '48px', height: '48px', color: '#9ca3af', margin: '0 auto 16px' }} />
+              <h3 style={{ fontSize: '18px', fontWeight: 600, color: '#1a1a1a', marginBottom: '8px' }}>
+                No connected apps yet
+              </h3>
+              <p style={{ fontSize: '14px', color: '#6b7280', marginBottom: '24px' }}>
+                Apps that you authorize to access your data will appear here
+              </p>
+              <a
+                href="https://docs.vana.org"
+                target="_blank"
+                rel="noopener noreferrer"
+                style={{
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                  gap: '8px',
+                  padding: '10px 16px',
+                  fontSize: '14px',
+                  color: '#6366f1',
+                  backgroundColor: 'transparent',
+                  border: '1px solid #e5e7eb',
+                  borderRadius: '8px',
+                  textDecoration: 'none',
+                }}
+              >
+                Learn more
+                <ExternalLink style={{ width: '16px', height: '16px' }} />
+              </a>
             </div>
-            <h3 style={{ fontSize: '18px', fontWeight: 500, color: '#1a1a1a', marginBottom: '8px' }}>
-              No connectors available
-            </h3>
-            <p style={{ color: '#6b7280' }}>Add connectors to start exporting your data.</p>
           </div>
         )}
       </div>

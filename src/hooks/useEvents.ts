@@ -111,6 +111,11 @@ export function useEvents() {
           const itemsExported = summary?.count
             ?? exportData.totalConversations
             ?? exportData.conversations?.length
+            ?? (exportData as any).posts?.length
+            ?? (exportData as any).memories?.length
+            ?? (exportData as any).experience?.length
+            ?? (exportData as any).education?.length
+            ?? (exportData as any).skills?.length
             ?? 0;
           const itemLabel = summary?.label || 'items';
 
@@ -198,6 +203,11 @@ export function useEvents() {
       const itemsExported = summary?.count
         ?? exportData.totalConversations
         ?? exportData.conversations?.length
+        ?? (exportData as any).posts?.length
+        ?? (exportData as any).memories?.length
+        ?? (exportData as any).experience?.length
+        ?? (exportData as any).education?.length
+        ?? (exportData as any).skills?.length
         ?? 0;
       const itemLabel = summary?.label || 'items';
 

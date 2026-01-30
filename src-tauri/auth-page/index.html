@@ -506,7 +506,7 @@
             Google
           </button>
 
-          <button id="apple-btn" class="oauth-btn" disabled style="opacity: 0.5; cursor: not-allowed;">
+          <button id="apple-btn" class="oauth-btn">
             <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor">
               <path d="M17.05 20.28c-.98.95-2.05.88-3.08.4-1.09-.5-2.08-.52-3.23 0-1.44.62-2.2.44-3.06-.4C3.79 16.17 4.36 9.63 8.7 9.36c1.28.07 2.17.72 2.92.72.75 0 2.15-.89 3.63-.76 1.24.05 2.36.5 3.03 1.53-2.78 1.68-2.12 5.38.77 6.41-.6 1.58-1.38 3.14-2.99 3.02h-.01zM12.05 9.3c-.16-2.08 1.54-3.87 3.53-4.05.27 2.29-2.05 4.01-3.53 4.05z"/>
             </svg>
@@ -541,6 +541,22 @@
             console.error('Google login error:', e);
             showError(e.message || 'Failed to sign in with Google');
             document.getElementById('google-btn').disabled = false;
+          }
+        });
+
+        // Apple login
+        document.getElementById('apple-btn').addEventListener('click', async () => {
+          try {
+            document.getElementById('apple-btn').disabled = true;
+            try { await privy.auth.logout(); } catch (_) {}
+            const redirectURI = window.location.origin + window.location.pathname;
+            const result = await privy.auth.oauth.generateURL('apple', redirectURI);
+            const url = typeof result === 'string' ? result : result.url || result;
+            window.location.href = url;
+          } catch (e) {
+            console.error('Apple login error:', e);
+            showError(e.message || 'Failed to sign in with Apple');
+            document.getElementById('apple-btn').disabled = false;
           }
         });
 

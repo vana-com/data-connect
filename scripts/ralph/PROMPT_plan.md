@@ -12,6 +12,8 @@ assume not implemented). Prefer existing patterns/utilities and UI components.
 0e. If any requirement/sequence is ambiguous, consult
 `__FEATURE_ROOT__/refs/*` (do NOT blindly "study refs"; only pull what you need).
 
+0f. Study repo root `AGENTS.md` for global rules and architecture context.
+
 1. PLANNING MODE ONLY: compare `__FEATURE_ROOT__/specs/*` against existing repo
    code. Create/update `__FEATURE_ROOT__/IMPLEMENTATION_PLAN.md` as a prioritized
    checklist of tasks that remain to ship the feature. For each task, derive

@@ -10,6 +10,8 @@ contracts.
 0c. Before making changes, search relevant repo code (do not assume not
 implemented). Prefer existing patterns/utilities and UI components.
 
+0d. Study repo root `AGENTS.md` for global rules and architecture context.
+
 1. BUILD MODE (ONE ROW PER RUN):
 
 - Choose **exactly one** plan row from `__FEATURE_ROOT__/IMPLEMENTATION_PLAN.md`

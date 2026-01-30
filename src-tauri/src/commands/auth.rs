@@ -126,8 +126,41 @@ pub async fn start_browser_auth(app: AppHandle, privy_app_id: String, privy_clie
                             let response = "HTTP/1.1 200 OK\r\nContent-Type: application/json\r\nAccess-Control-Allow-Origin: *\r\nAccess-Control-Allow-Methods: POST, OPTIONS\r\nAccess-Control-Allow-Headers: Content-Type\r\n\r\n{\"ok\":true}";
                             let _ = stream.write_all(response.as_bytes());
 
-                            // Close server after successful auth
-                            log::info!("Auth complete, closing callback server");
+                            log::info!("Auth complete, waiting for close-tab request");
+                        }
+                        "GET" if path == "/close-tab" => {
+                            // Browser tab navigates here after showing success.
+                            // Serve a page with the success message, then close the tab
+                            // from the native side via Cmd+W (macOS).
+                            let close_html = r##"<!DOCTYPE html>
+<html><head><title>Signed in</title><style>
+body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; background: #f5f5f7; display: flex; align-items: center; justify-content: center; min-height: 100vh; margin: 0; }
+.c { text-align: center; background: white; border-radius: 16px; padding: 40px; box-shadow: 0 4px 24px rgba(0,0,0,0.06); max-width: 400px; }
+.i { width: 64px; height: 64px; background: #dcfce7; border-radius: 50%; display: flex; align-items: center; justify-content: center; margin: 0 auto 20px; }
+h2 { font-size: 22px; color: #1a1a1a; margin-bottom: 12px; }
+p { font-size: 14px; color: #6b7280; }
+</style></head><body><div class="c">
+<div class="i"><svg width="32" height="32" fill="none" viewBox="0 0 24 24" stroke="#22c55e"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/></svg></div>
+<h2>You're signed in!</h2>
+<p>Closing this tab...</p>
+</div></body></html>"##;
+                            let response = format!(
+                                "HTTP/1.1 200 OK\r\nContent-Type: text/html; charset=utf-8\r\nContent-Length: {}\r\n\r\n{}",
+                                close_html.len(),
+                                close_html
+                            );
+                            let _ = stream.write_all(response.as_bytes());
+
+                            #[cfg(target_os = "macos")]
+                            {
+                                std::thread::sleep(std::time::Duration::from_millis(800));
+                                let _ = std::process::Command::new("osascript")
+                                    .arg("-e")
+                                    .arg(r#"tell application "System Events" to keystroke "w" using command down"#)
+                                    .output();
+                            }
+
+                            log::info!("Close-tab done, shutting down auth server");
                             break;
                         }
                         "OPTIONS" => {

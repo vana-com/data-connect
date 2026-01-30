@@ -313,10 +313,14 @@
 
       if (!skipInit) {
         try {
+          console.log('[AUTH] Calling privy.initialize()...');
           await privy.initialize();
+          console.log('[AUTH] privy.initialize() succeeded');
         } catch (initErr) {
-          console.log('Privy init (expected on first visit):', initErr.message);
+          console.log('[AUTH] privy.initialize() error (may be expected):', initErr.message);
         }
+      } else {
+        console.log('[AUTH] Skipping privy.initialize() (OAuth callback)');
       }
 
       // Set up embedded wallet iframe proxy (required for wallet operations)
@@ -346,7 +350,7 @@
       return privy;
     }
 
-    async function handleAuthenticatedUser(privy, user) {
+    async function handleAuthenticatedUser(privy, user, session) {
       showLoading('Setting up your wallet...');
 
       let embeddedWallet = (user.linked_accounts || user.linkedAccounts)?.find(
@@ -367,8 +371,10 @@
         }
       }
 
-      let authToken = null;
-      try { authToken = await privy.getAccessToken(); } catch (_) {}
+      let authToken = session?.accessToken || session?.access_token || null;
+      if (!authToken) {
+        try { authToken = await privy.getAccessToken(); } catch (_) {}
+      }
 
       await sendAuthResult({
         success: true,
@@ -383,7 +389,9 @@
       });
 
       showSuccess();
-      setTimeout(() => window.close(), 1500);
+      // Try to close the tab; browsers block this for non-JS-opened tabs,
+      // so the user may need to close it manually
+      setTimeout(() => { try { window.close(); } catch (_) {} }, 1500);
     }
 
     async function init() {
@@ -398,18 +406,24 @@
           localStorage.clear();
         }
 
-        // Skip initialize() on OAuth callback — go straight to loginWithCode
+        // Skip initialize() on OAuth callback — localStorage has partial state
+        // from generateURL() that causes "Missing refresh token" if initialized
         const privy = await createPrivyClient(!!oauthCode);
 
         if (oauthCode && oauthState) {
           showLoading('Completing sign-in...');
+          console.log('[AUTH] OAuth callback detected, code:', oauthCode.substring(0, 8) + '...');
+          console.log('[AUTH] localStorage keys:', Object.keys(localStorage));
           try {
+            console.log('[AUTH] Calling loginWithCode...');
             const session = await privy.auth.oauth.loginWithCode(oauthCode, oauthState);
+            console.log('[AUTH] loginWithCode succeeded, session keys:', Object.keys(session || {}));
             const user = session.user;
-            await handleAuthenticatedUser(privy, user);
+            await handleAuthenticatedUser(privy, user, session);
             return;
           } catch (e) {
-            console.error('OAuth callback error:', e);
+            console.error('[AUTH] OAuth callback error:', e);
+            console.error('[AUTH] Error stack:', e.stack);
             showError(e.message || 'Failed to complete Google sign-in');
           }
         }
@@ -460,6 +474,8 @@
         document.getElementById('google-btn').addEventListener('click', async () => {
           try {
             document.getElementById('google-btn').disabled = true;
+            // Clear any stale session to avoid "Missing refresh token"
+            try { await privy.auth.logout(); } catch (_) {}
             const redirectURI = window.location.origin + window.location.pathname;
             const result = await privy.auth.oauth.generateURL('google', redirectURI);
             const url = typeof result === 'string' ? result : result.url || result;
@@ -508,7 +524,7 @@
             document.getElementById('verify-btn').textContent = 'Verifying...';
             const session = await privy.auth.email.loginWithCode(currentEmail, code);
             const user = session.user;
-            await handleAuthenticatedUser(privy, user);
+            await handleAuthenticatedUser(privy, user, session);
           } catch (e) {
             console.error('Verify code error:', e);
             showError(e.message || 'Invalid code');

@@ -361,17 +361,16 @@
 
       if (!skipInit) {
         try {
-          console.log('[AUTH] Calling privy.initialize()...');
           await privy.initialize();
-          console.log('[AUTH] privy.initialize() succeeded');
         } catch (initErr) {
-          console.log('[AUTH] privy.initialize() error (may be expected):', initErr.message);
+          console.log('Privy init (may be expected):', initErr.message);
         }
-      } else {
-        console.log('[AUTH] Skipping privy.initialize() (OAuth callback)');
       }
 
-      // Set up embedded wallet iframe proxy (required for wallet operations)
+      return privy;
+    }
+
+    async function setupWalletIframe(privy) {
       try {
         const iframeUrl = privy.embeddedWallet.getURL();
         const iframe = document.createElement('iframe');
@@ -394,8 +393,6 @@
       } catch (e) {
         console.warn('Embedded wallet iframe setup failed:', e);
       }
-
-      return privy;
     }
 
     async function handleAuthenticatedUser(privy, user, session) {
@@ -409,6 +406,7 @@
       // Create embedded wallet if user doesn't have one yet
       if (!walletAddress) {
         try {
+          await setupWalletIframe(privy);
           const result = await privy.embeddedWallet.create({});
           embeddedWallet = (result.user.linked_accounts || result.user.linkedAccounts)?.find(
             a => a.type === 'wallet' && (a.walletClientType === 'privy' || a.wallet_client_type === 'privy')

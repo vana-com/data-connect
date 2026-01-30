@@ -91,7 +91,7 @@ This doc captures the research findings on React usage, data storage, and data c
   Vercel rule: `rendering-content-visibility`
 
 - **Cross‑window sync not handled**  
-  Connected apps list is read once; no `storage` or `BroadcastChannel` handling.  
+  Connected apps list is read once; no `storage` or `BroadcastChannel` handling. [Originally scoped, later cancelled; kept here as a breadcrumb.]  
   Files: `src/pages/Settings.tsx`, `src/lib/storage.ts`
 
 - **Async cleanup race (listen + unlisten)**  

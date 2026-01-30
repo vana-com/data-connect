@@ -43,6 +43,7 @@ Key flows:
 
 ### Always‑on rules
 - Commit only; never push unless asked.
+- Commit is file-explicit only: stage specific paths, never `git add .`, `-A`, `-u`, or `git commit -a`. Ask if files are unclear.
 - Prefer retrieval‑led reasoning for project‑specific knowledge.
 - Don’t overwrite comments; don’t change styles/classes unless asked.
 

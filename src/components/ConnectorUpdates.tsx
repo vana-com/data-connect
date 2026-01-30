@@ -1,6 +1,5 @@
 import { useCallback } from 'react';
 import { useConnectorUpdates } from '../hooks/useConnectorUpdates';
-import { usePlatforms } from '../hooks/usePlatforms';
 import { Download, RefreshCw, Sparkles, ArrowUpCircle, Loader2, AlertCircle } from 'lucide-react';
 import type { ConnectorUpdateInfo } from '../types';
 import { PlatformIcon } from '../lib/platformIcons';
@@ -128,7 +127,11 @@ function ConnectorUpdateItem({ update, onDownload, isDownloading }: ConnectorUpd
   );
 }
 
-export function ConnectorUpdates() {
+interface ConnectorUpdatesProps {
+  onReloadPlatforms?: () => void | Promise<void>;
+}
+
+export function ConnectorUpdates({ onReloadPlatforms }: ConnectorUpdatesProps) {
   const {
     updates,
     isCheckingUpdates,
@@ -137,15 +140,14 @@ export function ConnectorUpdates() {
     downloadConnector,
     isDownloading,
   } = useConnectorUpdates();
-  const { loadPlatforms } = usePlatforms();
 
   // Wrap downloadConnector to reload platforms after successful download
   const handleDownload = useCallback(async (id: string) => {
     const success = await downloadConnector(id);
-    if (success) {
-      await loadPlatforms();
+    if (success && onReloadPlatforms) {
+      await onReloadPlatforms();
     }
-  }, [downloadConnector, loadPlatforms]);
+  }, [downloadConnector, onReloadPlatforms]);
 
   if (updates.length === 0 && !isCheckingUpdates && !error) {
     return null;

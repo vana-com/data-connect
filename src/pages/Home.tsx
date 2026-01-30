@@ -27,7 +27,7 @@ function computeRecentlyCompleted(runs: Run[]): Set<string> {
 
 export function Home() {
   const [activeTab, setActiveTab] = useState<TabKey>('sources');
-  const { platforms, isPlatformConnected } = usePlatforms();
+  const { platforms, isPlatformConnected, loadPlatforms } = usePlatforms();
   const { startExport } = useConnector();
   const { checkForUpdates } = useConnectorUpdates();
   const browserStatus = useBrowserStatus();
@@ -79,7 +79,9 @@ export function Home() {
         <BrowserSetupSection browserStatus={browserStatus} />
 
         {/* Connector Updates - show when browser is ready */}
-        {browserStatus.status === 'ready' && <ConnectorUpdates />}
+        {browserStatus.status === 'ready' && (
+          <ConnectorUpdates onReloadPlatforms={loadPlatforms} />
+        )}
 
         {/* Tabs */}
         <div

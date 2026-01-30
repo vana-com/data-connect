@@ -10,7 +10,7 @@
 | R4 | Memoize YourData page filtering | `useMemo` wraps `connectedSources`, `availableSources` in YourData.tsx | `npm run typecheck && npm run build` | `src/pages/YourData.tsx` | ✅ DONE | Both filters memoized with deps: `platforms`, `connectedPlatforms` |
 | R5 | Replace window.location.href with React Router navigate in DataApps | No `window.location.href` for internal routes in DataApps.tsx; uses `useNavigate()` instead | `npm run typecheck && npm run build` | `src/pages/DataApps.tsx` | ✅ DONE | AppCard component now uses useNavigate() for `/apps/${app.id}` navigation |
 | R6 | Fix BrowserContext interval cleanup | `clearInterval(progressInterval)` called in cleanup function; no interval leak on unmount | `npm run typecheck && npm run build` | `src/context/BrowserContext.tsx` | ✅ DONE | Added useRef to track interval ID; cleanup function in useEffect clears on unmount |
-| R7 | Remove unused handler callbacks from useConnector | `handleConnectorLog`, `handleConnectorStatus`, `handleExportComplete` removed from useConnector.ts (they're duplicated in useEvents.ts and never called) | `npm run typecheck && npm run build` | `src/hooks/useConnector.ts` | ⬜ TODO | |
+| R7 | Remove unused handler callbacks from useConnector | `handleConnectorLog`, `handleConnectorStatus`, `handleExportComplete` removed from useConnector.ts (they're duplicated in useEvents.ts and never called) | `npm run typecheck && npm run build` | `src/hooks/useConnector.ts` | ✅ DONE | Removed 3 handlers and 3 unused imports (updateExportStatus, updateRunLogs, updateRunConnected); only startExport and stopExport are used by consumers |
 
 ## Phase 2: Component Splitting (after Phase 1)
 

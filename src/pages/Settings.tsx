@@ -1,17 +1,16 @@
-import { useEffect, useState, useCallback, useSyncExternalStore } from 'react';
-import { invoke } from '@tauri-apps/api/core';
 import { getVersion } from '@tauri-apps/api/app';
+import { invoke } from '@tauri-apps/api/core';
 import {
   Database,
   Info,
-  Shield,
   Monitor,
+  Shield,
 } from 'lucide-react';
+import { useCallback, useEffect, useState, useSyncExternalStore } from 'react';
 import { useNavigate } from 'react-router';
 import { useAuth } from '../hooks/useAuth';
-import type { ConnectedApp } from '../types';
 import { getAllConnectedApps, removeConnectedApp, subscribeConnectedApps } from '../lib/storage';
-import { SettingsAccount, SettingsApps, SettingsStorage, SettingsAbout } from './settings-sections';
+import { SettingsAbout, SettingsAccount, SettingsApps, SettingsStorage } from './settings-sections';
 
 interface NodeJsTestResult {
   nodejs: string;

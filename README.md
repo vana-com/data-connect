@@ -58,6 +58,10 @@ npm install
 npm run tauri dev
 ```
 
+### Agent config files
+
+This repo keeps both `AGENTS.md` and `CLAUDE.md`: Claude Code auto‑loads `CLAUDE.md` but not `AGENTS.md`, and Cursor does the opposite. Keep them aligned.
+
 ### Agent skills sync
 
 Skills are stored in `.agents/skills` (source of truth). Cursor reads them via per-skill symlinks in `.cursor/skills`. The sync script rebuilds those symlinks so any manually created skills show up in Cursor.

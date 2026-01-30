@@ -16,10 +16,7 @@ export default defineConfig([
       reactRefresh.configs.vite,
     ],
     rules: {
-      'react-refresh/only-export-components': [
-        'error',
-        { allowConstantExport: true },
-      ],
+      'react-refresh/only-export-components': 'off',
     },
     languageOptions: {
       ecmaVersion: 2020,

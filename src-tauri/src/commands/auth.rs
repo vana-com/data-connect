@@ -3,7 +3,7 @@ use std::io::{BufRead, BufReader, Read, Write};
 use std::net::TcpListener;
 use std::sync::mpsc;
 use std::thread;
-use tauri::{AppHandle, Emitter};
+use tauri::{AppHandle, Emitter, Manager};
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
 pub struct AuthResult {
@@ -113,6 +113,11 @@ pub async fn start_browser_auth(app: AppHandle, privy_app_id: String, privy_clie
 
                                         // Emit event to frontend
                                         let _ = app_handle.emit("auth-complete", auth_result);
+
+                                        // Focus the app window
+                                        if let Some(window) = app_handle.get_webview_window("main") {
+                                            let _ = window.set_focus();
+                                        }
                                     }
                                 }
                             }

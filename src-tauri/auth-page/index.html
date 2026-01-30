@@ -376,7 +376,7 @@
       });
 
       showSuccess();
-      // Don't auto-close — let user see the result
+      setTimeout(() => window.close(), 1500);
     }
 
     async function init() {

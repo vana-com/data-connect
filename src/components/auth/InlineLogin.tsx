@@ -31,6 +31,8 @@ export function InlineLogin() {
 
   // Listen for auth completion
   useEffect(() => {
+    let isActive = true;
+
     listen<AuthResult>('auth-complete', (event) => {
       const result = event.payload;
 
@@ -51,12 +53,18 @@ export function InlineLogin() {
         setAuthStarted(false);
       }
     }).then((fn) => {
+      if (!isActive) {
+        fn();
+        return;
+      }
       unlistenRef.current = fn;
     });
 
     // Synchronous cleanup using ref
     return () => {
+      isActive = false;
       unlistenRef.current?.();
+      unlistenRef.current = null;
     };
   }, [dispatch, navigate]);
 

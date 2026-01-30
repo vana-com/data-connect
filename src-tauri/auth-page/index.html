@@ -299,7 +299,7 @@
       }
     }
 
-    async function createPrivyClient() {
+    async function createPrivyClient(skipInit = false) {
       const module = await import('https://esm.sh/@privy-io/js-sdk-core@0.58.5');
       const PrivyClient = module.default;
       const { LocalStorage } = module;
@@ -311,10 +311,12 @@
       if (PRIVY_CLIENT_ID) config.clientId = PRIVY_CLIENT_ID;
       const privy = new PrivyClient(config);
 
-      try {
-        await privy.initialize();
-      } catch (initErr) {
-        console.log('Privy init (expected on first visit):', initErr.message);
+      if (!skipInit) {
+        try {
+          await privy.initialize();
+        } catch (initErr) {
+          console.log('Privy init (expected on first visit):', initErr.message);
+        }
       }
 
       // Set up embedded wallet iframe proxy (required for wallet operations)
@@ -370,7 +372,12 @@
 
       await sendAuthResult({
         success: true,
-        user: { id: user.id, email: user.email?.address || null },
+        user: {
+          id: user.id,
+          email: user.email?.address
+            || (user.linked_accounts || user.linkedAccounts)?.find(a => a.type === 'google_oauth')?.email
+            || null,
+        },
         walletAddress,
         authToken,
       });
@@ -381,12 +388,18 @@
 
     async function init() {
       try {
-        const privy = await createPrivyClient();
-
-        // Handle OAuth callback (returning from Google redirect)
+        // Check if this is an OAuth callback (returning from Google redirect)
         const queryParams = new URLSearchParams(window.location.search);
         const oauthCode = queryParams.get('privy_oauth_code');
         const oauthState = queryParams.get('privy_oauth_state');
+
+        // Clear previous session on fresh visits (not OAuth callbacks)
+        if (!oauthCode) {
+          localStorage.clear();
+        }
+
+        // Skip initialize() on OAuth callback — go straight to loginWithCode
+        const privy = await createPrivyClient(!!oauthCode);
 
         if (oauthCode && oauthState) {
           showLoading('Completing sign-in...');

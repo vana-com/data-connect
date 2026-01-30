@@ -25,7 +25,7 @@
 
 ### P1.2 - Storage O(n) Scan + Mutation During Iteration
 **File:** `src/lib/storage.ts`
-**Status:** ❌ Not implemented
+**Status:** ✅ Completed
 **Issues:**
 - `getAllConnectedApps()` scans ALL localStorage keys (line 75)
 - Mutates storage during iteration (lines 106-107) — keys are snapshotted, but still messy
@@ -36,6 +36,8 @@
 - Separate migration into explicit function (not during iteration)
 - Add Zod schema validation for `ConnectedApp` type
 - Update `setConnectedApp`/`removeConnectedApp` to maintain index
+- Migration function `migrateConnectedAppsStorage()` called once in useInitialize.ts
+- getAllConnectedApps() now O(k) where k = number of connected apps, not O(n) over all localStorage
 
 ---
 
@@ -146,7 +148,7 @@ const recentlyCompleted = useMemo(() => {
 
 ### P3.1 - Add Zod Schema for ConnectedApp
 **File:** `src/lib/storage.ts`
-**Status:** ❌ Not implemented
+**Status:** ✅ Completed (as part of P1.2)
 **Action:** Create and apply Zod schema:
 ```typescript
 const ConnectedAppSchema = z.object({
@@ -157,6 +159,7 @@ const ConnectedAppSchema = z.object({
   connectedAt: z.string(),
 });
 ```
+- Schema added and used in getConnectedApp(), setConnectedApp(), and migration
 
 ### P3.2 - Add Validation for Export Data
 **File:** `src/pages/Runs.tsx`
@@ -215,10 +218,10 @@ These are expected for the current demo state of the app.
 
 ## Acceptance Criteria (from spec)
 
-- [ ] Rickroll data is deterministic per session/render
-- [ ] Connected apps storage avoids full key scans
-- [ ] Deep-link JSON parsing is guarded with try/catch and validates scopes
-- [ ] BrowserSetup cleanup is robust on component unmount
-- [ ] `recentlyCompleted` is memoized via `useMemo`, not stored in state
+- [x] Rickroll data is deterministic per session/render
+- [x] Connected apps storage avoids full key scans
+- [x] Deep-link JSON parsing is guarded with try/catch and validates scopes
+- [x] BrowserSetup cleanup is robust on component unmount
+- [x] `recentlyCompleted` is memoized via `useMemo`, not stored in state
 - [ ] Platform and Settings fetches are parallelized where independent
-- [ ] Deep link accepts valid scopes and ignores invalid scopes without blocking navigation
+- [x] Deep link accepts valid scopes and ignores invalid scopes without blocking navigation

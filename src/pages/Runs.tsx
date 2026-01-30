@@ -68,11 +68,16 @@ function RunItem({ run, onStop }: { run: Run; onStop: (id: string) => void }) {
               return { id: '', title: '', url: '', scrapedAt: new Date().toISOString() };
             }
             const conv = c as Record<string, unknown>;
+            const scrapedAt = typeof conv.timestamp === 'string'
+              ? conv.timestamp
+              : typeof conv.timestamp === 'number'
+                ? new Date(conv.timestamp).toISOString()
+                : new Date().toISOString();
             return {
               id: typeof conv.id === 'string' ? conv.id : '',
               title: typeof conv.title === 'string' ? conv.title : (typeof conv.name === 'string' ? conv.name : ''),
               url: typeof conv.url === 'string' ? conv.url : '',
-              scrapedAt: typeof conv.timestamp === 'string' ? conv.timestamp : new Date().toISOString(),
+              scrapedAt,
             };
           }),
           totalConversations: typeof innerData.totalConversations === 'number' ? innerData.totalConversations : undefined,

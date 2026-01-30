@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { useNavigate } from 'react-router';
 import { useDispatch } from 'react-redux';
 import { invoke } from '@tauri-apps/api/core';
@@ -26,9 +26,12 @@ export function InlineLogin() {
   const [error, setError] = useState<string | null>(null);
   const [authStarted, setAuthStarted] = useState(false);
 
+  // Store unlisten function in ref for synchronous cleanup
+  const unlistenRef = useRef<(() => void) | null>(null);
+
   // Listen for auth completion
   useEffect(() => {
-    const unlisten = listen<AuthResult>('auth-complete', (event) => {
+    listen<AuthResult>('auth-complete', (event) => {
       const result = event.payload;
 
       if (result.success && result.user) {
@@ -47,10 +50,13 @@ export function InlineLogin() {
         setIsLoading(false);
         setAuthStarted(false);
       }
+    }).then((fn) => {
+      unlistenRef.current = fn;
     });
 
+    // Synchronous cleanup using ref
     return () => {
-      unlisten.then((fn) => fn());
+      unlistenRef.current?.();
     };
   }, [dispatch, navigate]);
 

@@ -9,9 +9,9 @@ Spec: `scripts/ralph/features/react-refactor-two/specs/react-refactor-two.md`
 | Acceptance Criteria | Status | Priority |
 |---------------------|--------|----------|
 | Shared platform icon helper | DONE | P1 |
-| `useEvents` HMR/duplicate guard | NOT DONE | P1 |
-| InlineLogin sync-safe cleanup | NOT DONE | P1 |
-| `useConnectorUpdates` decoupling + memoization | NOT DONE | P1 |
+| `useEvents` HMR/duplicate guard | DONE | P1 |
+| InlineLogin sync-safe cleanup | DONE | P1 |
+| `useConnectorUpdates` decoupling + memoization | DONE | P1 |
 | `GrantFlow` session fetch decoupled from auth | NOT DONE | P2 |
 | Home/GrantFlow split into subcomponents | NOT DONE | P3 |
 | Home, DataApps, RickRollApp lazy loaded | NOT DONE | P3 |
@@ -46,9 +46,9 @@ Spec: `scripts/ralph/features/react-refactor-two/specs/react-refactor-two.md`
 ### 1.2 useEvents HMR/Duplicate Listener Guard (Module-Level)
 **File:** `src/hooks/useEvents.ts`
 
-- [ ] Add module-level `listenersRegistered` flag (top of file)
-- [ ] Guard listener registration with module-level check (blocks StrictMode/HMR double-mount)
-- [ ] Reset module flag on cleanup (allows re-registration after true unmount)
+- [x] Add module-level `listenersRegistered` flag (top of file)
+- [x] Guard listener registration with module-level check (blocks StrictMode/HMR double-mount)
+- [x] Reset module flag on cleanup (allows re-registration after true unmount)
 - [ ] Pattern:
   ```typescript
   useEffect(() => {
@@ -69,8 +69,8 @@ Spec: `scripts/ralph/features/react-refactor-two/specs/react-refactor-two.md`
 ### 1.3 InlineLogin Synchronous-Safe Listener Cleanup
 **File:** `src/components/auth/InlineLogin.tsx`
 
-- [ ] Store unlisten promise result in a ref
-- [ ] Call unlisten synchronously from ref in cleanup
+- [x] Store unlisten promise result in a ref
+- [x] Call unlisten synchronously from ref in cleanup
 - [ ] Pattern:
   ```typescript
   const unlistenRef = useRef<(() => void) | null>(null);
@@ -94,13 +94,13 @@ Spec: `scripts/ralph/features/react-refactor-two/specs/react-refactor-two.md`
 **File:** `src/hooks/useConnectorUpdates.ts`
 
 #### 1.4a Decouple from usePlatforms auto-load
-- [ ] Remove `usePlatforms` import and `loadPlatforms` usage from hook
-- [ ] Update `downloadConnector` to NOT call `loadPlatforms` internally
-- [ ] Move platform reload to caller after successful download
-- [ ] Preferred: `ConnectorUpdates` invokes `loadPlatforms()` after `downloadConnector(id)` resolves true
+- [x] Remove `usePlatforms` import and `loadPlatforms` usage from hook
+- [x] Update `downloadConnector` to NOT call `loadPlatforms` internally
+- [x] Move platform reload to caller after successful download
+- [x] Preferred: `ConnectorUpdates` invokes `loadPlatforms()` after `downloadConnector(id)` resolves true
 
 #### 1.4b Memoize update counts
-- [ ] Wrap count calculations in `useMemo`:
+- [x] Wrap count calculations in `useMemo`:
   ```typescript
   const { updateCount, newConnectorCount, updateableCount } = useMemo(() => ({
     updateCount: updates.length,
@@ -108,7 +108,7 @@ Spec: `scripts/ralph/features/react-refactor-two/specs/react-refactor-two.md`
     updateableCount: updates.filter((u) => u.hasUpdate).length,
   }), [updates]);
   ```
-- [ ] Keep `hasUpdates` inline (simple boolean, no benefit from memo)
+- [x] Keep `hasUpdates` inline (simple boolean, no benefit from memo)
 
 **Evidence:**
 - Hook imports `usePlatforms` which auto-loads on mount

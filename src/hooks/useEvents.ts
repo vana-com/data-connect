@@ -18,6 +18,9 @@ import type {
 } from '../types';
 import { normalizeExportData } from '../lib/exportData';
 
+// Module-level guard to prevent duplicate listener registration during StrictMode/HMR
+let listenersRegistered = false;
+
 // Extended connector status event that can handle both string and object status
 interface ConnectorStatusEventPayload {
   runId: string;
@@ -45,6 +48,10 @@ export function useEvents() {
   const dispatch = useDispatch();
 
   useEffect(() => {
+    // Guard against duplicate registration (StrictMode double-mount, HMR)
+    if (listenersRegistered) return;
+    listenersRegistered = true;
+
     const unlisteners: (() => void)[] = [];
 
     // Listen for connector log events
@@ -241,6 +248,7 @@ export function useEvents() {
 
     // Cleanup listeners on unmount
     return () => {
+      listenersRegistered = false;
       unlisteners.forEach((unlisten) => unlisten());
     };
   }, [dispatch]);

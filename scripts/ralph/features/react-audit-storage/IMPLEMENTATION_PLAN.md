@@ -99,23 +99,25 @@ const recentlyCompleted = useMemo(() => {
 
 ### P2.2 - usePlatforms Async Waterfall
 **File:** `src/hooks/usePlatforms.ts`
-**Status:** ❌ Not implemented
+**Status:** ✅ N/A - Sequential is correct
 **Issue:** `get_platforms` and `check_connected_platforms` called sequentially (lines 17-26)
 
-**Fix:**
-- If platform IDs can be cached/known, parallelize with `Promise.all()`
-- Otherwise, document the dependency and keep sequential
+**Analysis:**
+- `check_connected_platforms` requires `platformIds` from `get_platforms` result
+- This is a genuine data dependency - cannot be parallelized
+- Sequential execution is the correct pattern here
 
 ---
 
 ### P2.3 - Settings.tsx Error Handling
 **File:** `src/pages/Settings.tsx`
-**Status:** ⚠️ Partial (calls are parallel but pattern is verbose)
+**Status:** ✅ Completed
 **Issue:** Missing `.catch()` handlers on promise chains (lines 42-47)
 
 **Fix:**
-- Add error handling to initial data fetch
-- Consider using `Promise.all()` for cleaner pattern
+- Added `.catch()` handlers with console.error for both `get_user_data_path` and `getVersion`
+- Calls were already parallel (both fired without await), just needed error handling
+- Consistent with error handling pattern used elsewhere in the file
 
 ---
 
@@ -225,5 +227,5 @@ These are expected for the current demo state of the app.
 - [x] Deep-link JSON parsing is guarded with try/catch and validates scopes
 - [x] BrowserSetup cleanup is robust on component unmount
 - [x] `recentlyCompleted` is memoized via `useMemo`, not stored in state
-- [ ] Platform and Settings fetches are parallelized where independent
+- [x] Platform and Settings fetches are parallelized where independent
 - [x] Deep link accepts valid scopes and ignores invalid scopes without blocking navigation

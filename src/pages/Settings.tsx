@@ -39,12 +39,13 @@ export function Settings() {
   const [connectedApps, setConnectedApps] = useState<ConnectedApp[]>([]);
 
   useEffect(() => {
-    invoke<string>('get_user_data_path').then((path) => {
-      setDataPath(path);
-    });
-    getVersion().then((version) => {
-      setAppVersion(version);
-    });
+    invoke<string>('get_user_data_path')
+      .then((path) => setDataPath(path))
+      .catch((error) => console.error('Failed to get user data path:', error));
+
+    getVersion()
+      .then((version) => setAppVersion(version))
+      .catch((error) => console.error('Failed to get app version:', error));
 
     // Load connected apps from localStorage
     setConnectedApps(getAllConnectedApps());

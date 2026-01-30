@@ -19,6 +19,18 @@ const INDEX_KEY = `${STORAGE_VERSION}_connected_apps_index`;
  */
 const LEGACY_CONNECTED_APP_PREFIX = 'connected_app_';
 
+const connectedAppListeners = new Set<() => void>();
+let connectedAppsSnapshotVersion = 0;
+let connectedAppsCacheVersion = -1;
+let connectedAppsCache: ConnectedApp[] = [];
+
+function notifyConnectedAppsChange(): void {
+  connectedAppsSnapshotVersion += 1;
+  for (const listener of connectedAppListeners) {
+    listener();
+  }
+}
+
 /**
  * Zod schema for runtime validation of ConnectedApp.
  * Validates data read from localStorage to prevent corrupt data issues.
@@ -113,6 +125,7 @@ export function migrateConnectedAppsStorage(): void {
 
   // Update index with all discovered IDs
   setIndex([...migratedIds]);
+  notifyConnectedAppsChange();
 }
 
 /**
@@ -156,6 +169,8 @@ export function setConnectedApp(app: ConnectedApp): void {
   if (!index.includes(app.id)) {
     setIndex([...index, app.id]);
   }
+
+  notifyConnectedAppsChange();
 }
 
 /**
@@ -171,6 +186,8 @@ export function removeConnectedApp(appId: string): void {
   const index = getIndex();
   const newIndex = index.filter((id) => id !== appId);
   setIndex(newIndex);
+
+  notifyConnectedAppsChange();
 }
 
 /**
@@ -178,6 +195,10 @@ export function removeConnectedApp(appId: string): void {
  * Uses the index for O(1) lookup instead of scanning all keys.
  */
 export function getAllConnectedApps(): ConnectedApp[] {
+  if (connectedAppsCacheVersion === connectedAppsSnapshotVersion) {
+    return connectedAppsCache;
+  }
+
   const index = getIndex();
   const apps: ConnectedApp[] = [];
 
@@ -188,7 +209,20 @@ export function getAllConnectedApps(): ConnectedApp[] {
     }
   }
 
+  connectedAppsCache = apps;
+  connectedAppsCacheVersion = connectedAppsSnapshotVersion;
   return apps;
+}
+
+/**
+ * Subscribe to connected apps changes.
+ */
+export function subscribeConnectedApps(callback: () => void): () => void {
+  connectedAppListeners.add(callback);
+
+  return () => {
+    connectedAppListeners.delete(callback);
+  };
 }
 
 /**

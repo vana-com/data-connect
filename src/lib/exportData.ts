@@ -41,9 +41,10 @@ export function normalizeExportData(data: ExportedData): NormalizedExportSummary
 
   // 1. Check for standard exportSummary protocol
   if (exportData.exportSummary) {
+    const { count, label } = exportData.exportSummary;
     return {
-      itemsExported: exportData.exportSummary.count,
-      itemLabel: exportData.exportSummary.label,
+      itemsExported: Number.isFinite(count) ? count : 0,
+      itemLabel: label || 'items',
     };
   }
 

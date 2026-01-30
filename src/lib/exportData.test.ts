@@ -20,6 +20,16 @@ describe('normalizeExportData', () => {
     expect(result).toEqual({ itemsExported: 42, itemLabel: 'photos' });
   });
 
+  it('guards exportSummary count/label fallbacks', () => {
+    const data = {
+      ...baseExportData,
+      exportSummary: { count: Number.NaN, label: '' },
+    };
+
+    const result = normalizeExportData(data as ExportedData);
+    expect(result).toEqual({ itemsExported: 0, itemLabel: 'items' });
+  });
+
   it('uses totalConversations when exportSummary is absent', () => {
     const data = {
       ...baseExportData,

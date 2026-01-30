@@ -49,7 +49,7 @@ describe('setConnectedApp', () => {
     const unsubscribe = storage.subscribeConnectedApps(listener);
     const originalSetItem = Storage.prototype.setItem;
 
-    vi.spyOn(Storage.prototype, 'setItem').mockImplementation(function (key, value) {
+    vi.spyOn(Storage.prototype, 'setItem').mockImplementation(function (this: Storage, key, value) {
       if (key === appKey(baseApp.id)) {
         throw new Error('boom');
       }
@@ -71,7 +71,7 @@ describe('setConnectedApp', () => {
     const unsubscribe = storage.subscribeConnectedApps(listener);
     const originalSetItem = Storage.prototype.setItem;
 
-    vi.spyOn(Storage.prototype, 'setItem').mockImplementation(function (key, value) {
+    vi.spyOn(Storage.prototype, 'setItem').mockImplementation(function (this: Storage, key, value) {
       if (key === indexKey) {
         throw new Error('boom');
       }
@@ -135,7 +135,7 @@ describe('migrateConnectedAppsStorage', () => {
     localStorage.setItem(appKey('existing'), JSON.stringify(existingApp));
 
     const originalSetItem = Storage.prototype.setItem;
-    vi.spyOn(Storage.prototype, 'setItem').mockImplementation(function (key, value) {
+    vi.spyOn(Storage.prototype, 'setItem').mockImplementation(function (this: Storage, key, value) {
       if (key === appKey('legacy-2')) {
         throw new Error('boom');
       }

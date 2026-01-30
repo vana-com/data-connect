@@ -7,6 +7,7 @@ import { useBrowserStatus } from '../context/BrowserContext';
 import type { Platform, RootState, Run } from '../types';
 import { ExternalLink, Database, Download, AlertCircle, Check } from 'lucide-react';
 import { ConnectorUpdates } from '../components/ConnectorUpdates';
+import { PlatformIcon } from '../lib/platformIcons';
 
 type TabKey = 'sources' | 'apps';
 
@@ -19,47 +20,6 @@ function computeRecentlyCompleted(runs: Run[]): Set<string> {
       .map((r) => r.platformId)
   );
 }
-
-// Platform icon URLs
-const PLATFORM_ICONS: Record<string, string> = {
-  chatgpt: 'https://upload.wikimedia.org/wikipedia/commons/0/04/ChatGPT_logo.svg',
-  instagram: 'https://upload.wikimedia.org/wikipedia/commons/a/a5/Instagram_icon.png',
-  linkedin: 'https://upload.wikimedia.org/wikipedia/commons/c/ca/LinkedIn_logo_initials.png',
-};
-
-// Get icon URL for a platform
-const getPlatformIcon = (platformName: string): string | null => {
-  const name = platformName.toLowerCase();
-  if (name.includes('chatgpt')) return PLATFORM_ICONS.chatgpt;
-  if (name.includes('instagram')) return PLATFORM_ICONS.instagram;
-  if (name.includes('linkedin')) return PLATFORM_ICONS.linkedin;
-  return null;
-};
-
-// Platform icon component
-const PlatformIcon = ({ platform }: { platform: Platform }) => {
-  const iconUrl = getPlatformIcon(platform.name);
-
-  if (iconUrl) {
-    return (
-      <img
-        src={iconUrl}
-        alt={platform.name}
-        style={{
-          width: '24px',
-          height: '24px',
-          objectFit: 'contain',
-        }}
-      />
-    );
-  }
-
-  return (
-    <span style={{ fontSize: '18px', fontWeight: 600, color: '#6b7280' }}>
-      {platform.name.charAt(0)}
-    </span>
-  );
-};
 
 export function Home() {
   const [activeTab, setActiveTab] = useState<TabKey>('sources');
@@ -340,7 +300,7 @@ export function Home() {
                             flexShrink: 0,
                           }}
                         >
-                          <PlatformIcon platform={platform} />
+                          <PlatformIcon name={platform.name} />
                         </div>
                         <div style={{ flex: 1, minWidth: 0 }}>
                           <div style={{ fontWeight: 600, color: '#1a1a1a', fontSize: '15px', marginBottom: '2px' }}>
@@ -425,7 +385,7 @@ export function Home() {
                           flexShrink: 0,
                         }}
                       >
-                        <PlatformIcon platform={platform} />
+                        <PlatformIcon name={platform.name} />
                       </div>
                       <div style={{ flex: 1, minWidth: 0 }}>
                         <div style={{ fontWeight: 600, color: '#1a1a1a', fontSize: '15px', marginBottom: '2px' }}>

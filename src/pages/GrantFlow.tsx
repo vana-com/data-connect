@@ -4,6 +4,7 @@ import { CheckCircle, XCircle, AlertCircle, Loader } from 'lucide-react';
 import { useAuth } from '../hooks/useAuth';
 import { approveSession, getSessionInfo, SessionRelayError } from '../services/sessionRelay';
 import { prepareGrantMessage } from '../services/grantSigning';
+import { setConnectedApp } from '../lib/storage';
 import type { ConnectedApp } from '../types';
 
 interface GrantFlowState {
@@ -150,23 +151,8 @@ export function GrantFlow() {
         connectedAt: new Date().toISOString(),
       };
 
-      // Store in state (would use Redux in production)
-      localStorage.setItem(`connected_app_${flowState.session.appId}`, JSON.stringify(newApp));
-
-      // Also update the connected_apps array
-      try {
-        const existingAppsStr = localStorage.getItem('connected_apps');
-        const existingApps = existingAppsStr ? JSON.parse(existingAppsStr) : [];
-        const appIndex = existingApps.findIndex((app: ConnectedApp) => app.id === newApp.id);
-        if (appIndex >= 0) {
-          existingApps[appIndex] = newApp;
-        } else {
-          existingApps.push(newApp);
-        }
-        localStorage.setItem('connected_apps', JSON.stringify(existingApps));
-      } catch (e) {
-        console.error('Error updating connected_apps array:', e);
-      }
+      // Store connected app using centralized storage
+      setConnectedApp(newApp);
     } catch (error) {
       setFlowState({
         sessionId: flowState.sessionId,

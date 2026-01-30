@@ -10,6 +10,7 @@ import {
 import { useNavigate } from 'react-router';
 import { useAuth } from '../hooks/useAuth';
 import type { ConnectedApp } from '../types';
+import { getAllConnectedApps, removeConnectedApp } from '../lib/storage';
 import { SettingsAccount, SettingsApps, SettingsStorage, SettingsAbout } from './settings-sections';
 
 interface NodeJsTestResult {
@@ -46,19 +47,7 @@ export function Settings() {
     });
 
     // Load connected apps from localStorage
-    const apps: ConnectedApp[] = [];
-    for (let i = 0; i < localStorage.length; i++) {
-      const key = localStorage.key(i);
-      if (key?.startsWith('connected_app_')) {
-        try {
-          const app = JSON.parse(localStorage.getItem(key) || '');
-          apps.push(app);
-        } catch {
-          // Skip invalid entries
-        }
-      }
-    }
-    setConnectedApps(apps);
+    setConnectedApps(getAllConnectedApps());
   }, []);
 
   const openDataFolder = useCallback(async () => {
@@ -109,7 +98,7 @@ export function Settings() {
 
   const handleRevokeApp = useCallback(
     (appId: string) => {
-      localStorage.removeItem(`connected_app_${appId}`);
+      removeConnectedApp(appId);
       setConnectedApps((prev) => prev.filter((app) => app.id !== appId));
     },
     []

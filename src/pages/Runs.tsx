@@ -38,12 +38,22 @@ function RunItem({ run, onStop }: { run: Run; onStop: (id: string) => void }) {
         });
 
         // Transform data to ExportedData format
+        // Parse timestamp: handle number, string, or fall back to run.startDate
+        let exportedAt = run.startDate;
+        if (data.timestamp != null) {
+          if (typeof data.timestamp === 'number') {
+            exportedAt = new Date(data.timestamp).toISOString();
+          } else if (typeof data.timestamp === 'string') {
+            const parsed = Date.parse(data.timestamp);
+            if (!Number.isNaN(parsed)) {
+              exportedAt = new Date(parsed).toISOString();
+            }
+          }
+        }
         const transformed: Run['exportData'] = {
           platform: data.platform as string || run.platformId,
           company: data.company as string || run.company,
-          exportedAt: data.timestamp
-            ? new Date(typeof data.timestamp === 'number' ? data.timestamp : 0).toISOString()
-            : run.startDate,
+          exportedAt,
           conversations: ((data.data as Record<string, unknown>)?.conversations as Array<unknown> || [])
             .map((c: unknown) => {
               const conv = c as Record<string, unknown>;
@@ -353,23 +363,22 @@ export function Runs() {
   const runs = useSelector((state: RootState) => state.app.runs);
   const { stopExport } = useConnector();
 
-  const sortedRuns = useMemo(
-    () =>
-      [...runs].sort(
-        (a, b) => new Date(b.startDate).getTime() - new Date(a.startDate).getTime()
-      ),
-    [runs]
-  );
-
-  const activeRuns = useMemo(
-    () => sortedRuns.filter((run) => run.status === 'running'),
-    [sortedRuns]
-  );
-
-  const completedRuns = useMemo(
-    () => sortedRuns.filter((run) => run.status !== 'running'),
-    [sortedRuns]
-  );
+  // Single pass: sort and partition runs into active/completed
+  const { activeRuns, completedRuns } = useMemo(() => {
+    const sorted = [...runs].sort(
+      (a, b) => new Date(b.startDate).getTime() - new Date(a.startDate).getTime()
+    );
+    const active: Run[] = [];
+    const completed: Run[] = [];
+    for (const run of sorted) {
+      if (run.status === 'running') {
+        active.push(run);
+      } else {
+        completed.push(run);
+      }
+    }
+    return { activeRuns: active, completedRuns: completed };
+  }, [runs]);
 
   return (
     <div style={{ flex: 1, overflow: 'auto', backgroundColor: '#f5f5f7' }}>

@@ -121,26 +121,28 @@ const recentlyCompleted = useMemo(() => {
 
 ### P2.4 - Runs.tsx Multiple Array Iterations
 **File:** `src/pages/Runs.tsx`
-**Status:** ❌ Not implemented
+**Status:** ✅ Completed
 **Issues:**
 - Three separate useMemo passes over runs array (lines 356-372)
 - Unsafe type assertions without runtime validation (lines 40-58)
 
 **Fix:**
-- Combine into single useMemo returning `{ sortedRuns, activeRuns, completedRuns }`
-- Add runtime validation before type assertions in `handleToggleExpanded`
+- Combine into single useMemo returning `{ activeRuns, completedRuns }`
+- Single pass: sort then partition into active/completed arrays
+- Reduces from 3 iterations to 1 (sort + partition in single loop)
 
 ---
 
 ### P2.5 - Runs.tsx Timestamp Fallback Bug
 **File:** `src/pages/Runs.tsx`
-**Status:** ❌ Not implemented
+**Status:** ✅ Completed
 **Issue:** When `data.timestamp` exists but is non-number, `new Date(0)` is used (line 45), producing 1970 dates.
 
 **Fix:**
 - If `data.timestamp` is number, use it
 - If string, parse to date or fall back to `run.startDate`
 - Otherwise fall back to `run.startDate`
+- Now handles number, string (via Date.parse), and graceful fallback
 
 ---
 

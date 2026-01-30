@@ -128,7 +128,7 @@ export function BrowserLogin() {
     try {
       await sendCode({ email });
       setIsCodeSent(true);
-    } catch (err) {
+    } catch {
       // Error handled by onError callback
     }
   }, [email, sendCode]);
@@ -137,7 +137,7 @@ export function BrowserLogin() {
     setError(null);
     try {
       await loginWithCode({ code });
-    } catch (err) {
+    } catch {
       // Error handled by onError callback
     }
   }, [code, loginWithCode]);

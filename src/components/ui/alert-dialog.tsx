@@ -33,7 +33,17 @@ function AlertDialogOverlay({
   return (
     <AlertDialogPrimitive.Overlay
       data-slot="alert-dialog-overlay"
-      className={cn("data-open:animate-in data-closed:animate-out data-closed:fade-out-0 data-open:fade-in-0 bg-black/10 duration-100 supports-backdrop-filter:backdrop-blur-xs fixed inset-0 z-50", className)}
+      className={cn(
+        // layout
+        "fixed inset-0 z-50",
+        // background
+        "bg-black/10 supports-backdrop-filter:backdrop-blur-xs",
+        // animation
+        "data-open:animate-in data-closed:animate-out data-open:fade-in-0 data-closed:fade-out-0",
+        // transitions
+        "duration-100",
+        className
+      )}
       {...props}
     />
   )
@@ -53,7 +63,26 @@ function AlertDialogContent({
         data-slot="alert-dialog-content"
         data-size={size}
         className={cn(
-          "data-open:animate-in data-closed:animate-out data-closed:fade-out-0 data-open:fade-in-0 data-closed:zoom-out-95 data-open:zoom-in-95 bg-background ring-foreground/10 gap-4 rounded-none p-4 ring-1 duration-100 data-[size=default]:max-w-xs data-[size=sm]:max-w-xs data-[size=default]:sm:max-w-sm group/alert-dialog-content fixed top-1/2 left-1/2 z-50 grid w-full -translate-x-1/2 -translate-y-1/2 outline-none",
+          // layout
+          "fixed left-1/2 top-1/2 z-50 grid w-full -translate-x-1/2 -translate-y-1/2",
+          // spacing
+          "gap-4 p-4",
+          // shape
+          "rounded-none",
+          // background
+          "bg-background",
+          // borders
+          "ring-1 ring-foreground/10",
+          // focus
+          "outline-none",
+          // animation
+          "data-open:animate-in data-closed:animate-out data-open:fade-in-0 data-closed:fade-out-0 data-open:zoom-in-95 data-closed:zoom-out-95",
+          // transitions
+          "duration-100",
+          // states
+          "data-[size=default]:max-w-xs data-[size=sm]:max-w-xs data-[size=default]:sm:max-w-sm",
+          // group
+          "group/alert-dialog-content",
           className
         )}
         {...props}
@@ -69,7 +98,21 @@ function AlertDialogHeader({
   return (
     <div
       data-slot="alert-dialog-header"
-      className={cn("grid grid-rows-[auto_1fr] place-items-center gap-1.5 text-center has-data-[slot=alert-dialog-media]:grid-rows-[auto_auto_1fr] has-data-[slot=alert-dialog-media]:gap-x-4 sm:group-data-[size=default]/alert-dialog-content:place-items-start sm:group-data-[size=default]/alert-dialog-content:text-left sm:group-data-[size=default]/alert-dialog-content:has-data-[slot=alert-dialog-media]:grid-rows-[auto_1fr]", className)}
+      className={cn(
+        // layout
+        "grid place-items-center",
+        // grid
+        "grid-rows-[auto_1fr]",
+        // spacing
+        "gap-1.5",
+        // typography
+        "text-center",
+        // states
+        "has-data-[slot=alert-dialog-media]:grid-rows-[auto_auto_1fr] has-data-[slot=alert-dialog-media]:gap-x-4",
+        // responsive
+        "sm:group-data-[size=default]/alert-dialog-content:place-items-start sm:group-data-[size=default]/alert-dialog-content:text-left sm:group-data-[size=default]/alert-dialog-content:has-data-[slot=alert-dialog-media]:grid-rows-[auto_1fr]",
+        className
+      )}
       {...props}
     />
   )
@@ -83,7 +126,14 @@ function AlertDialogFooter({
     <div
       data-slot="alert-dialog-footer"
       className={cn(
-        "flex flex-col-reverse gap-2 group-data-[size=sm]/alert-dialog-content:grid group-data-[size=sm]/alert-dialog-content:grid-cols-2 sm:flex-row sm:justify-end",
+        // layout
+        "flex flex-col-reverse",
+        // spacing
+        "gap-2",
+        // states
+        "group-data-[size=sm]/alert-dialog-content:grid group-data-[size=sm]/alert-dialog-content:grid-cols-2",
+        // responsive
+        "sm:flex-row sm:justify-end",
         className
       )}
       {...props}
@@ -98,7 +148,21 @@ function AlertDialogMedia({
   return (
     <div
       data-slot="alert-dialog-media"
-      className={cn("bg-muted mb-2 inline-flex size-10 items-center justify-center rounded-none sm:group-data-[size=default]/alert-dialog-content:row-span-2 *:[svg:not([class*='size-'])]:size-6", className)}
+      className={cn(
+        // layout
+        "inline-flex items-center justify-center",
+        // size
+        "size-10 mb-2",
+        // shape
+        "rounded-none",
+        // background
+        "bg-muted",
+        // states
+        "sm:group-data-[size=default]/alert-dialog-content:row-span-2",
+        // svg
+        "*:[svg:not([class*='size-'])]:size-6",
+        className
+      )}
       {...props}
     />
   )
@@ -124,7 +188,15 @@ function AlertDialogDescription({
   return (
     <AlertDialogPrimitive.Description
       data-slot="alert-dialog-description"
-      className={cn("text-muted-foreground *:[a]:hover:text-foreground text-xs/relaxed text-balance md:text-pretty *:[a]:underline *:[a]:underline-offset-3", className)}
+      className={cn(
+        // typography
+        "text-xs/relaxed text-balance md:text-pretty",
+        // color
+        "text-muted-foreground",
+        // links
+        "*:[a]:underline *:[a]:underline-offset-3 *:[a]:hover:text-foreground",
+        className
+      )}
       {...props}
     />
   )

@@ -143,6 +143,9 @@ contracts. PROGRESS = learnings. PLAN = what next.**
 - **Reference docs** live in `refs/` on purpose. Don’t add `refs/*` to the
   default “study” step unless you need them for a specific task.
 - If the plan becomes stale, re-run **planning mode** to regenerate/clean it.
+- On macOS, for long unattended runs, wrap the loop with `caffeinate` (e.g.
+  `caffeinate -i -- ./scripts/ralph/loop.sh`) instead of baking it into the
+  script.
 
 ### Cursor Agent: known issues (why we default to Claude Code)
 

@@ -1,9 +1,4 @@
-# Spike: OAuth/Auth Callback Architecture for DataBridge
-
-**Date:** 2026-01-29
-**Context:** [Slack thread] Maciej flagged OAuth callback architecture as HIGH risk. Kahtaf asked whether Privy can redirect to custom protocols like `vana://` to avoid needing a hosted UI.
-
----
+# OAuth/Auth Callback Architecture for DataBridge
 
 ## The Problem
 

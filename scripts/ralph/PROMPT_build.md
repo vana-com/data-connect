@@ -6,7 +6,8 @@ tags unless explicitly asked.
 learn the application specifications.
 0b. Study `__FEATURE_ROOT__/IMPLEMENTATION_PLAN.md`.
 0c. For reference, the application source code is in `src/*`.
-0d. Study repo root `AGENTS.md` for global rules and architecture context.
+0d. Study `scripts/ralph/AGENTS.md` for loopback/backpressure commands.
+0e. Study repo root `AGENTS.md` for global rules and architecture context.
 
 1. Your task is to implement functionality per the specifications using
 parallel subagents. Follow `__FEATURE_ROOT__/IMPLEMENTATION_PLAN.md` and choose

@@ -5,7 +5,8 @@ the plan so far.
 0c. Study `src/lib/*` with up to 250 parallel Sonnet subagents to understand
 shared utilities & components.
 0d. For reference, the application source code is in `src/*`.
-0e. Study repo root `AGENTS.md` for global rules and architecture context.
+0e. Study `scripts/ralph/AGENTS.md` for loopback/backpressure commands.
+0f. Study repo root `AGENTS.md` for global rules and architecture context.
 
 1. Study `__FEATURE_ROOT__/IMPLEMENTATION_PLAN.md` (if present; it may be
 incorrect) and use up to 500 Sonnet subagents to study existing source code in

@@ -11,7 +11,6 @@ Create a new Ralph feature pack from a source document with minimal scaffolding:
 
 - `specs/<slug>.md` derived from the source doc
 - `IMPLEMENTATION_PLAN.md` as an empty stub (planning mode fills it)
-- `PROGRESS.md` as a blank template
 
 ## Inputs
 
@@ -36,7 +35,6 @@ Target root: `scripts/ralph/features/<slug>/`
 ```
 scripts/ralph/features/<slug>/
   IMPLEMENTATION_PLAN.md
-  PROGRESS.md
   specs/
     <slug>.md
 ```
@@ -72,28 +70,9 @@ Keep it concise; no extra commentary.
 
 Create an **empty file** (no template). Planning mode generates the plan.
 
-### `PROGRESS.md`
-
-Use this blank template:
-
-```
-# Progress
-
-## Codebase Patterns (curated)
-
-- 
-
-## Session Log (append-only)
-
-### YYYY-MM-DD
-
-- 
-```
-
 ## Execution checklist
 
 1. Create the directory structure.
 2. Create `specs/<slug>.md` from the source doc.
 3. Create empty `IMPLEMENTATION_PLAN.md`.
-4. Create `PROGRESS.md` template.
-5. Do **not** run the loop unless the user explicitly asks.
+4. Do **not** run the loop unless the user explicitly asks.

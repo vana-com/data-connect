@@ -14,7 +14,6 @@ Extra text is literally context tax: verbose inputs degrade determinism!
 
 - **`specs/`**: stable contracts (“what”)
 - **`IMPLEMENTATION_PLAN.md`**: disposable scheduler (“what next”)
-- **`PROGRESS.md`**: persistent memory (“what we learned / patterns”, per feature)
 - **`AGENTS.md`**: minimal backpressure + guardrails (“how to validate”, shared)
 - **`PROMPT_plan.md` / `PROMPT_build.md`**: prompts fed to the agent runner
 - **`refs/`**: large reference docs (not loaded by default)
@@ -28,7 +27,6 @@ Our prompts intentionally load only:
 
 - `__FEATURE_ROOT__/specs/*`
 - `__FEATURE_ROOT__/IMPLEMENTATION_PLAN.md`
-- `__FEATURE_ROOT__/PROGRESS.md` (especially **Codebase Patterns**)
 - `scripts/ralph/AGENTS.md` (shared)
 - plus relevant repo code when needed
 
@@ -102,19 +100,6 @@ To run a different feature pack, pass its root directory:
 ./scripts/ralph/loop.sh path/to/feature 1
 ```
 
-### Using `PROGRESS.md` (rules)
-
-`__FEATURE_ROOT__/PROGRESS.md` is **memory**, not a task list.
-
-- **Update always (cheap)**: append a short entry to **Session Log** after each
-  iteration/commit explaining what changed and why (2–6 bullets).
-- **Update sometimes (curated)**: keep **Codebase Patterns** short and
-  high-signal. If you add a new pattern, ensure it’s stable and broadly reusable
-  (not “this one task did X”).
-- **Do not** copy the implementation plan into PROGRESS. If something is work to
-  do, it belongs in `IMPLEMENTATION_PLAN.md` as a plan row.
-- **Backpressure**: keep validation commands in `AGENTS.md` only.
-
 ### When to update `AGENTS.md` vs `PROMPT_*.md`
 
 Keep the system close to Ralph: prompts stay stable; operations
@@ -135,7 +120,7 @@ backpressure gets wired in per-project.
   - you want to change what files are always loaded each iteration
 
 Rule of thumb: **AGENTS = commands + tiny signage. PROMPTs = process + scope +
-contracts. PROGRESS = learnings. PLAN = what next.**
+contracts. PLAN = what next.**
 
 ### Notes / gotchas
 

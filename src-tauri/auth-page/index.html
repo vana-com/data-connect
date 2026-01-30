@@ -1,0 +1,484 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Sign in to Data Connect</title>
+  <style>
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, sans-serif;
+      background-color: #f5f5f7;
+      min-height: 100vh;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 24px;
+    }
+
+    .container {
+      width: 100%;
+      max-width: 400px;
+      background: white;
+      border-radius: 16px;
+      padding: 40px;
+      box-shadow: 0 4px 24px rgba(0, 0, 0, 0.06);
+    }
+
+    .header {
+      text-align: center;
+      margin-bottom: 32px;
+    }
+
+    .header h1 {
+      font-size: 24px;
+      font-weight: 600;
+      color: #1a1a1a;
+      margin-bottom: 8px;
+    }
+
+    .header p {
+      font-size: 14px;
+      color: #6b7280;
+    }
+
+    .error {
+      padding: 12px;
+      background-color: #fef2f2;
+      border: 1px solid #fecaca;
+      border-radius: 8px;
+      margin-bottom: 16px;
+      font-size: 14px;
+      color: #dc2626;
+      display: none;
+    }
+
+    .btn {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 12px;
+      width: 100%;
+      padding: 12px 16px;
+      font-size: 15px;
+      font-weight: 500;
+      border-radius: 10px;
+      cursor: pointer;
+      transition: all 0.15s ease;
+      border: none;
+    }
+
+    .btn-google {
+      color: #1a1a1a;
+      background-color: white;
+      border: 1px solid #e5e7eb;
+      margin-bottom: 12px;
+    }
+
+    .btn-google:hover:not(:disabled) {
+      background-color: #f9fafb;
+      border-color: #d1d5db;
+    }
+
+    .btn-google:disabled {
+      opacity: 0.6;
+      cursor: not-allowed;
+    }
+
+    .divider {
+      display: flex;
+      align-items: center;
+      gap: 16px;
+      margin: 24px 0;
+    }
+
+    .divider-line {
+      flex: 1;
+      height: 1px;
+      background-color: #e5e7eb;
+    }
+
+    .divider span {
+      font-size: 13px;
+      color: #9ca3af;
+    }
+
+    .form-group {
+      margin-bottom: 16px;
+    }
+
+    .form-group label {
+      display: block;
+      font-size: 13px;
+      font-weight: 500;
+      color: #374151;
+      margin-bottom: 6px;
+    }
+
+    .form-group input {
+      width: 100%;
+      padding: 10px 12px;
+      font-size: 14px;
+      color: #1a1a1a;
+      background-color: white;
+      border: 1px solid #e5e7eb;
+      border-radius: 8px;
+      outline: none;
+    }
+
+    .form-group input:focus {
+      border-color: #6366f1;
+      box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.1);
+    }
+
+    .btn-primary {
+      color: white;
+      background-color: #6366f1;
+    }
+
+    .btn-primary:hover:not(:disabled) {
+      background-color: #4f46e5;
+    }
+
+    .btn-primary:disabled {
+      background-color: #9ca3af;
+      cursor: not-allowed;
+    }
+
+    .loading {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      padding: 48px;
+    }
+
+    .spinner {
+      width: 32px;
+      height: 32px;
+      border: 3px solid #e5e7eb;
+      border-top-color: #6366f1;
+      border-radius: 50%;
+      animation: spin 1s linear infinite;
+    }
+
+    @keyframes spin {
+      to { transform: rotate(360deg); }
+    }
+
+    .loading p {
+      margin-top: 16px;
+      color: #6b7280;
+      font-size: 14px;
+    }
+
+    .success {
+      text-align: center;
+      padding: 24px;
+    }
+
+    .success-icon {
+      width: 64px;
+      height: 64px;
+      background-color: #dcfce7;
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      margin: 0 auto 20px;
+    }
+
+    .success-icon svg {
+      width: 32px;
+      height: 32px;
+      color: #22c55e;
+    }
+
+    .success h2 {
+      font-size: 22px;
+      font-weight: 600;
+      color: #1a1a1a;
+      margin-bottom: 12px;
+    }
+
+    .success p {
+      font-size: 14px;
+      color: #6b7280;
+    }
+
+    .hidden {
+      display: none !important;
+    }
+
+    #privy-container {
+      min-height: 200px;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <!-- Loading State -->
+    <div id="loading" class="loading">
+      <div class="spinner"></div>
+      <p id="loading-text">Initializing...</p>
+    </div>
+
+    <!-- Login Form -->
+    <div id="login-form" class="hidden">
+      <div class="header">
+        <h1>Welcome to Data Connect</h1>
+        <p>Sign in to continue</p>
+      </div>
+
+      <div id="error" class="error"></div>
+
+      <!-- Privy will mount here -->
+      <div id="privy-container"></div>
+    </div>
+
+    <!-- Success State -->
+    <div id="success" class="hidden">
+      <div class="success">
+        <div class="success-icon">
+          <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/>
+          </svg>
+        </div>
+        <h2>You're signed in!</h2>
+        <p>You can close this window and return to the app.</p>
+      </div>
+    </div>
+  </div>
+
+  <script type="module">
+    const PRIVY_APP_ID = '{{PRIVY_APP_ID}}';
+    const PRIVY_CLIENT_ID = '{{PRIVY_CLIENT_ID}}';
+
+    function showLoading(message = 'Loading...') {
+      document.getElementById('loading').classList.remove('hidden');
+      document.getElementById('loading-text').textContent = message;
+      document.getElementById('login-form').classList.add('hidden');
+      document.getElementById('success').classList.add('hidden');
+    }
+
+    function showLoginForm() {
+      document.getElementById('loading').classList.add('hidden');
+      document.getElementById('login-form').classList.remove('hidden');
+      document.getElementById('success').classList.add('hidden');
+    }
+
+    function showSuccess() {
+      document.getElementById('loading').classList.add('hidden');
+      document.getElementById('login-form').classList.add('hidden');
+      document.getElementById('success').classList.remove('hidden');
+    }
+
+    function showError(message) {
+      const errorEl = document.getElementById('error');
+      errorEl.textContent = message;
+      errorEl.style.display = 'block';
+    }
+
+    async function sendAuthResult(result) {
+      console.log('Sending auth result:', JSON.stringify(result));
+      try {
+        const resp = await fetch('/auth-callback', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(result),
+        });
+        console.log('Auth callback response:', resp.status);
+      } catch (e) {
+        console.error('Failed to send auth result:', e);
+        document.getElementById('loading-text').textContent = 'Error: ' + e.message;
+      }
+    }
+
+    async function createPrivyClient() {
+      const module = await import('https://esm.sh/@privy-io/js-sdk-core@0.58.5');
+      const PrivyClient = module.default;
+      console.log('Privy SDK exports:', Object.keys(module));
+
+      // Find a working storage class from the SDK
+      const StorageClass = module.LocalStorage || module.BrowserStorage || module.InMemoryCache;
+      console.log('Using storage:', StorageClass?.name);
+
+      const config = {
+        appId: PRIVY_APP_ID,
+        storage: StorageClass ? new StorageClass() : undefined,
+      };
+      if (PRIVY_CLIENT_ID) config.clientId = PRIVY_CLIENT_ID;
+      const privy = new PrivyClient(config);
+
+      try {
+        await privy.initialize();
+      } catch (initErr) {
+        console.log('Privy init (expected on first visit):', initErr.message);
+      }
+
+      return privy;
+    }
+
+    async function handleAuthenticatedUser(privy, user) {
+      showLoading('Completing sign-in...');
+
+      const embeddedWallet = user.linkedAccounts?.find(
+        a => a.type === 'wallet' && a.walletClientType === 'privy'
+      );
+      const walletAddress = embeddedWallet?.address || null;
+
+      let authToken = null;
+      try { authToken = await privy.getAccessToken(); } catch (_) {}
+
+      await sendAuthResult({
+        success: true,
+        user: { id: user.id, email: user.email?.address || null },
+        walletAddress,
+        authToken,
+      });
+
+      showSuccess();
+      // Don't auto-close — let user see the result
+    }
+
+    async function init() {
+      try {
+        const privy = await createPrivyClient();
+
+        // Handle OAuth callback (returning from Google redirect)
+        const queryParams = new URLSearchParams(window.location.search);
+        const oauthCode = queryParams.get('privy_oauth_code');
+        const oauthState = queryParams.get('privy_oauth_state');
+
+        if (oauthCode && oauthState) {
+          showLoading('Completing sign-in...');
+          try {
+            const session = await privy.auth.oauth.loginWithCode(oauthCode, oauthState);
+            const user = session.user;
+            await handleAuthenticatedUser(privy, user);
+            return;
+          } catch (e) {
+            console.error('OAuth callback error:', e);
+            showError(e.message || 'Failed to complete Google sign-in');
+          }
+        }
+
+        // Only check existing session if returning from OAuth redirect
+        // (otherwise we'd skip the login form with a stale session)
+
+        // Show login form
+        showLoginForm();
+
+        const container = document.getElementById('privy-container');
+        container.innerHTML = `
+          <button id="google-btn" class="btn btn-google">
+            <svg width="20" height="20" viewBox="0 0 24 24">
+              <path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"/>
+              <path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"/>
+              <path fill="#FBBC05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z"/>
+              <path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z"/>
+            </svg>
+            Continue with Google
+          </button>
+          <div class="divider">
+            <div class="divider-line"></div>
+            <span>or</span>
+            <div class="divider-line"></div>
+          </div>
+          <div class="form-group">
+            <label for="email">Email</label>
+            <input type="email" id="email" placeholder="you@example.com" />
+          </div>
+          <button id="email-btn" class="btn btn-primary">
+            Send sign-in code
+          </button>
+          <div id="code-section" class="hidden" style="margin-top: 16px;">
+            <div class="form-group">
+              <label for="code">Enter verification code</label>
+              <input type="text" id="code" placeholder="Enter code" maxlength="6" style="text-align: center; letter-spacing: 4px;" />
+            </div>
+            <button id="verify-btn" class="btn btn-primary">
+              Verify code
+            </button>
+          </div>
+        `;
+
+        let currentEmail = '';
+
+        // Google login — generates OAuth URL and redirects
+        document.getElementById('google-btn').addEventListener('click', async () => {
+          try {
+            document.getElementById('google-btn').disabled = true;
+            const redirectURI = window.location.origin + window.location.pathname;
+            const result = await privy.auth.oauth.generateURL('google', redirectURI);
+            const url = typeof result === 'string' ? result : result.url || result;
+            window.location.href = url;
+          } catch (e) {
+            console.error('Google login error:', e);
+            showError(e.message || 'Failed to sign in with Google');
+            document.getElementById('google-btn').disabled = false;
+          }
+        });
+
+        // Email - send code
+        document.getElementById('email-btn').addEventListener('click', async () => {
+          const email = document.getElementById('email').value.trim();
+          if (!email) {
+            showError('Please enter your email');
+            return;
+          }
+
+          try {
+            document.getElementById('email-btn').disabled = true;
+            document.getElementById('email-btn').textContent = 'Sending...';
+            currentEmail = email;
+            await privy.auth.email.sendCode(email);
+            document.getElementById('code-section').classList.remove('hidden');
+            document.getElementById('email-btn').classList.add('hidden');
+          } catch (e) {
+            console.error('Send code error:', e);
+            showError(e.message || 'Failed to send code');
+          } finally {
+            document.getElementById('email-btn').disabled = false;
+            document.getElementById('email-btn').textContent = 'Send sign-in code';
+          }
+        });
+
+        // Email - verify code
+        document.getElementById('verify-btn').addEventListener('click', async () => {
+          const code = document.getElementById('code').value.trim();
+          if (!code) {
+            showError('Please enter the verification code');
+            return;
+          }
+
+          try {
+            document.getElementById('verify-btn').disabled = true;
+            document.getElementById('verify-btn').textContent = 'Verifying...';
+            const session = await privy.auth.email.loginWithCode(currentEmail, code);
+            const user = session.user;
+            await handleAuthenticatedUser(privy, user);
+          } catch (e) {
+            console.error('Verify code error:', e);
+            showError(e.message || 'Invalid code');
+            document.getElementById('verify-btn').disabled = false;
+            document.getElementById('verify-btn').textContent = 'Verify code';
+          }
+        });
+
+      } catch (error) {
+        console.error('Privy initialization error:', error);
+        showLoginForm();
+        showError('Failed to initialize authentication: ' + error.message);
+      }
+    }
+
+    init();
+  </script>
+</body>
+</html>

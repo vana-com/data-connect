@@ -1,10 +1,16 @@
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { useNavigate, useLocation } from 'react-router';
+import { invoke } from '@tauri-apps/api/core';
+import { listen } from '@tauri-apps/api/event';
 import { CheckCircle, XCircle, AlertCircle, Loader } from 'lucide-react';
+import { useDispatch } from 'react-redux';
 import { useAuth } from '../hooks/useAuth';
+import { setAuthenticated } from '../state/store';
 import { approveSession, getSessionInfo, SessionRelayError } from '../services/sessionRelay';
 import { prepareGrantMessage } from '../services/grantSigning';
 import type { ConnectedApp } from '../types';
+
+const PRIVY_APP_ID = import.meta.env.VITE_PRIVY_APP_ID;
 
 interface GrantFlowState {
   sessionId: string;
@@ -25,12 +31,14 @@ type GrantStep = 1 | 2 | 3;
 export function GrantFlow() {
   const navigate = useNavigate();
   const location = useLocation();
+  const dispatch = useDispatch();
   const { isAuthenticated, isLoading: authLoading, walletAddress } = useAuth();
   const [flowState, setFlowState] = useState<GrantFlowState>({
     sessionId: '',
     status: 'loading',
   });
   const [currentStep, setCurrentStep] = useState<GrantStep>(1);
+  const authTriggered = useRef(false);
   const [isApproving, setIsApproving] = useState(false);
 
   const params = location.state as { sessionId?: string; appId?: string; scopes?: string[] } | null;
@@ -78,7 +86,7 @@ export function GrantFlow() {
 
         if (authLoading) return;
 
-        if (!isAuthenticated || !walletAddress) {
+        if (!isAuthenticated) {
           setFlowState((prev) => ({ ...prev, status: 'auth-required' }));
           setCurrentStep(1);
         } else {
@@ -98,13 +106,41 @@ export function GrantFlow() {
   }, [params, isAuthenticated, walletAddress, authLoading]);
 
   useEffect(() => {
-    if (!authLoading && isAuthenticated && walletAddress && flowState.sessionId) {
+    if (!authLoading && isAuthenticated && flowState.sessionId) {
       if (flowState.status === 'auth-required') {
         setFlowState((prev) => ({ ...prev, status: 'consent' }));
         setCurrentStep(2);
       }
     }
   }, [authLoading, isAuthenticated, walletAddress, flowState.sessionId, flowState.status]);
+
+  // Auto-start browser auth when auth is required
+  useEffect(() => {
+    if (flowState.status !== 'auth-required' || authTriggered.current || !PRIVY_APP_ID) return;
+    authTriggered.current = true;
+    invoke('start_browser_auth', { privyAppId: PRIVY_APP_ID, privyClientId: import.meta.env.VITE_PRIVY_CLIENT_ID || undefined }).catch((err) => {
+      console.error('Failed to start browser auth:', err);
+    });
+  }, [flowState.status]);
+
+  // Listen for auth completion from browser
+  useEffect(() => {
+    const unlisten = listen<{ success: boolean; user?: { id: string; email: string | null }; walletAddress?: string; error?: string }>(
+      'auth-complete',
+      (event) => {
+        const result = event.payload;
+        if (result.success && result.user) {
+          dispatch(
+            setAuthenticated({
+              user: { id: result.user.id, email: result.user.email },
+              walletAddress: result.walletAddress || null,
+            })
+          );
+        }
+      }
+    );
+    return () => { unlisten.then((fn) => fn()); };
+  }, [dispatch]);
 
   const handleApprove = useCallback(async () => {
     if (!flowState.session || !walletAddress) return;
@@ -208,7 +244,7 @@ export function GrantFlow() {
     );
   }
 
-  // Auth required state
+  // Auth required state — browser auth is auto-started, show waiting UI
   if (flowState.status === 'auth-required') {
     return (
       <div
@@ -229,76 +265,31 @@ export function GrantFlow() {
             borderRadius: '16px',
             padding: '40px',
             boxShadow: '0 4px 24px rgba(0, 0, 0, 0.06)',
+            textAlign: 'center',
           }}
         >
-          <div style={{ textAlign: 'center', marginBottom: '32px' }}>
-            <div
-              style={{
-                width: '64px',
-                height: '64px',
-                borderRadius: '16px',
-                backgroundColor: '#fef3c7',
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                margin: '0 auto 20px',
-              }}
-            >
-              <AlertCircle style={{ width: '32px', height: '32px', color: '#f59e0b' }} />
-            </div>
-            <h1 style={{ fontSize: '22px', fontWeight: 600, color: '#1a1a1a', marginBottom: '12px' }}>
-              Authentication Required
-            </h1>
-            <p style={{ fontSize: '15px', color: '#6b7280', lineHeight: '1.5' }}>
-              To grant data access to <strong>{flowState.session?.appName || 'this app'}</strong>, you need
-              to sign in to Data Connect first.
-            </p>
-          </div>
-
-          <button
-            onClick={handleLogin}
-            style={{
-              width: '100%',
-              padding: '14px',
-              fontSize: '15px',
-              fontWeight: 500,
-              color: 'white',
-              backgroundColor: '#6366f1',
-              border: 'none',
-              borderRadius: '10px',
-              cursor: 'pointer',
-              transition: 'all 0.15s ease',
-            }}
-            onMouseEnter={(e) => {
-              e.currentTarget.style.backgroundColor = '#4f46e5';
-            }}
-            onMouseLeave={(e) => {
-              e.currentTarget.style.backgroundColor = '#6366f1';
-            }}
-          >
-            Sign In to Continue
-          </button>
+          <Loader
+            style={{ width: '48px', height: '48px', color: '#6366f1', margin: '0 auto 20px', animation: 'spin 1s linear infinite' }}
+          />
+          <h1 style={{ fontSize: '22px', fontWeight: 600, color: '#1a1a1a', marginBottom: '12px' }}>
+            Sign in to continue
+          </h1>
+          <p style={{ fontSize: '15px', color: '#6b7280', lineHeight: '1.5', marginBottom: '24px' }}>
+            A sign-in page has opened in your browser.
+            Complete the sign-in to grant <strong>{flowState.session?.appName || 'this app'}</strong> access to your data.
+          </p>
 
           <button
             onClick={handleDecline}
             style={{
-              width: '100%',
-              marginTop: '12px',
-              padding: '14px',
-              fontSize: '15px',
+              padding: '10px 20px',
+              fontSize: '14px',
               fontWeight: 500,
               color: '#6b7280',
               backgroundColor: 'transparent',
-              border: 'none',
-              borderRadius: '10px',
+              border: '1px solid #e5e7eb',
+              borderRadius: '8px',
               cursor: 'pointer',
-              transition: 'all 0.15s ease',
-            }}
-            onMouseEnter={(e) => {
-              e.currentTarget.style.color = '#1a1a1a';
-            }}
-            onMouseLeave={(e) => {
-              e.currentTarget.style.color = '#6b7280';
             }}
           >
             Cancel

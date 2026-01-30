@@ -427,7 +427,9 @@
         user: {
           id: user.id,
           email: user.email?.address
+            || (user.linked_accounts || user.linkedAccounts)?.find(a => a.type === 'email')?.address
             || (user.linked_accounts || user.linkedAccounts)?.find(a => a.type === 'google_oauth')?.email
+            || (user.linked_accounts || user.linkedAccounts)?.find(a => a.type === 'apple_oauth')?.email
             || null,
         },
         walletAddress,

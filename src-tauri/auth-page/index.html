@@ -452,9 +452,9 @@
           localStorage.clear();
         }
 
-        // Skip initialize() on OAuth callback — localStorage has partial state
-        // from generateURL() that causes "Missing refresh token" if initialized
-        const privy = await createPrivyClient(!!oauthCode);
+        // Skip initialize() — on fresh visits we just cleared localStorage (nothing to restore),
+        // and on OAuth callbacks the partial state causes "Missing refresh token"
+        const privy = await createPrivyClient(true);
 
         if (oauthCode && oauthState) {
           showLoading('Completing sign-in...');

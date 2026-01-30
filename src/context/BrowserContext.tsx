@@ -1,4 +1,4 @@
-import { createContext, useContext, useState, useEffect, useCallback, type ReactNode } from 'react';
+import { createContext, useContext, useState, useEffect, useCallback, useRef, type ReactNode } from 'react';
 import { invoke } from '@tauri-apps/api/core';
 
 interface BrowserStatus {
@@ -33,14 +33,29 @@ export function BrowserProvider({ children }: BrowserProviderProps) {
   const [status, setStatus] = useState<'checking' | 'needs_browser' | 'downloading' | 'ready' | 'error'>('checking');
   const [progress, setProgress] = useState(0);
   const [error, setError] = useState<string | null>(null);
+  const progressIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
+
+  // Cleanup interval on unmount to prevent memory leaks
+  useEffect(() => {
+    return () => {
+      if (progressIntervalRef.current) {
+        clearInterval(progressIntervalRef.current);
+      }
+    };
+  }, []);
 
   const downloadBrowser = useCallback(async () => {
     console.log('Starting browser download...');
     setStatus('downloading');
     setProgress(0);
 
+    // Clear any existing interval before starting a new one
+    if (progressIntervalRef.current) {
+      clearInterval(progressIntervalRef.current);
+    }
+
     // Simulate progress while downloading
-    const progressInterval = setInterval(() => {
+    progressIntervalRef.current = setInterval(() => {
       setProgress((p) => {
         if (p >= 90) return p;
         return p + Math.random() * 3;
@@ -49,12 +64,18 @@ export function BrowserProvider({ children }: BrowserProviderProps) {
 
     try {
       await invoke('download_browser');
-      clearInterval(progressInterval);
+      if (progressIntervalRef.current) {
+        clearInterval(progressIntervalRef.current);
+        progressIntervalRef.current = null;
+      }
       setProgress(100);
       setTimeout(() => setStatus('ready'), 500);
     } catch (err) {
       console.error('Download error:', err);
-      clearInterval(progressInterval);
+      if (progressIntervalRef.current) {
+        clearInterval(progressIntervalRef.current);
+        progressIntervalRef.current = null;
+      }
       setError(`Failed to download browser: ${err}`);
       setStatus('error');
     }

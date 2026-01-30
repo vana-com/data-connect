@@ -1,10 +1,14 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo, useRef } from 'react';
 import type { ChatGPTExport } from './types';
 
 export function useRickRollData() {
   const [data, setData] = useState<ChatGPTExport | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  // Seed random conversation index once per session (not per render)
+  const randomSeedRef = useRef<number>(Math.random());
+  // Capture export load time once (for stable "days ago" calculation)
+  const loadTimeRef = useRef<number | null>(null);
 
   useEffect(() => {
     const loadData = async () => {
@@ -22,6 +26,8 @@ export function useRickRollData() {
           // Parse the first file
           const exportData = JSON.parse(files[0].content) as ChatGPTExport;
           setData(exportData);
+          // Capture load time for stable "days ago" computation
+          loadTimeRef.current = Date.now();
         } else {
           setError('No ChatGPT export data found. Please export your ChatGPT data first.');
         }
@@ -36,7 +42,8 @@ export function useRickRollData() {
     loadData();
   }, []);
 
-  const getFunFacts = () => {
+  // Memoize fun facts computation to avoid recalculating on every render
+  const funFacts = useMemo(() => {
     if (!data || !data.conversations) {
       return [];
     }
@@ -44,11 +51,11 @@ export function useRickRollData() {
     const facts: string[] = [];
     const conversations = data.conversations || [];
 
-    // Total messages
+    // Total messages (computed once per data change)
     let totalMessages = 0;
-    conversations.forEach((conv) => {
+    for (const conv of conversations) {
       totalMessages += conv.messages.length;
-    });
+    }
     if (totalMessages > 0) {
       facts.push(`You've sent ${totalMessages.toLocaleString()} messages to ChatGPT.`);
     }
@@ -61,19 +68,20 @@ export function useRickRollData() {
 
     // Longest conversation
     let maxLength = 0;
-    conversations.forEach((conv) => {
+    for (const conv of conversations) {
       if (conv.messages.length > maxLength) {
         maxLength = conv.messages.length;
       }
-    });
+    }
 
     if (maxLength > 10) {
       facts.push(`Your longest thread has ${maxLength} messages. That's a lot of chatting!`);
     }
 
-    // Random message snippet (first message from a random conversation)
+    // Random message snippet (seeded once per session via ref)
     if (conversations.length > 0) {
-      const randomConv = conversations[Math.floor(Math.random() * conversations.length)];
+      const randomIndex = Math.floor(randomSeedRef.current * conversations.length);
+      const randomConv = conversations[randomIndex];
       if (randomConv.messages.length > 0) {
         const msg = randomConv.messages[0];
         const snippet = msg.content.slice(0, 100);
@@ -81,33 +89,38 @@ export function useRickRollData() {
       }
     }
 
-    // Time-based facts
-    if (data.exportDate) {
+    // Time-based facts (using load time for stability)
+    if (data.exportDate && loadTimeRef.current !== null) {
       const exportDate = new Date(data.exportDate);
-      const daysSince = Math.floor((Date.now() - exportDate.getTime()) / (1000 * 60 * 60 * 24));
+      const daysSince = Math.floor((loadTimeRef.current - exportDate.getTime()) / (1000 * 60 * 60 * 24));
       facts.push(`You exported this data ${daysSince === 0 ? 'today' : `${daysSince} days ago`}.`);
     }
 
-    // Word count estimate
+    // Word count estimate (computed once per data change)
     let totalWords = 0;
-    conversations.forEach((conv) => {
-      conv.messages.forEach((msg) => {
+    for (const conv of conversations) {
+      for (const msg of conv.messages) {
         totalWords += msg.content.split(/\s+/).length;
-      });
-    });
+      }
+    }
     if (totalWords > 1000) {
       facts.push(`You've written approximately ${(totalWords / 1000).toFixed(1)}k words to ChatGPT.`);
     }
 
     return facts;
-  };
+  }, [data]);
+
+  const hasData = useMemo(
+    () => !!data && !!data.conversations && data.conversations.length > 0,
+    [data]
+  );
 
   return {
     data,
     loading,
     error,
-    funFacts: getFunFacts(),
-    hasData: !!data && !!data.conversations && data.conversations.length > 0,
+    funFacts,
+    hasData,
   };
 }
 

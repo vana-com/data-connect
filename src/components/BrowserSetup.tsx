@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import { invoke } from '@tauri-apps/api/core';
 import { listen } from '@tauri-apps/api/event';
 
@@ -17,11 +17,72 @@ export function BrowserSetup({ children }: BrowserSetupProps) {
   const [progress, setProgress] = useState(0);
   const [error, setError] = useState<string | null>(null);
 
+  // Refs to track cleanup on unmount
+  const mountedRef = useRef(true);
+  const progressIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  const readyTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const unlistenRef = useRef<(() => void) | null>(null);
+
+  // Cleanup function to clear all async resources
+  const cleanup = useCallback(() => {
+    if (progressIntervalRef.current) {
+      clearInterval(progressIntervalRef.current);
+      progressIntervalRef.current = null;
+    }
+    if (readyTimeoutRef.current) {
+      clearTimeout(readyTimeoutRef.current);
+      readyTimeoutRef.current = null;
+    }
+    if (unlistenRef.current) {
+      unlistenRef.current();
+      unlistenRef.current = null;
+    }
+  }, []);
+
+  const downloadBrowser = useCallback(async () => {
+    console.log('Starting browser download...');
+
+    // Simulate progress while downloading
+    progressIntervalRef.current = setInterval(() => {
+      if (!mountedRef.current) return;
+      setProgress((p) => {
+        if (p >= 90) return p;
+        return p + Math.random() * 5;
+      });
+    }, 500);
+
+    // Listen for progress events
+    const unlisten = await listen('browser-download-progress', (event) => {
+      console.log('Download progress:', event.payload);
+    });
+    unlistenRef.current = unlisten;
+
+    try {
+      await invoke('download_browser');
+      cleanup();
+      if (!mountedRef.current) return;
+      setProgress(100);
+      readyTimeoutRef.current = setTimeout(() => {
+        if (mountedRef.current) {
+          setStatus('ready');
+        }
+      }, 500);
+    } catch (err) {
+      console.error('Download error:', err);
+      cleanup();
+      if (!mountedRef.current) return;
+      setError(`Failed to download browser: ${err}`);
+      setStatus('error');
+    }
+  }, [cleanup]);
+
   const checkBrowser = useCallback(async () => {
     try {
       console.log('Checking browser availability...');
       const result = await invoke<BrowserStatus>('check_browser_available');
       console.log('Browser check result:', result);
+
+      if (!mountedRef.current) return;
 
       if (result.available) {
         console.log('Browser available, proceeding to app');
@@ -34,46 +95,22 @@ export function BrowserSetup({ children }: BrowserSetupProps) {
       }
     } catch (err) {
       console.error('Failed to check browser:', err);
+      if (!mountedRef.current) return;
       // If check fails, try to download browser
       setStatus('downloading');
       await downloadBrowser();
     }
-  }, []);
-
-  const downloadBrowser = async () => {
-    console.log('Starting browser download...');
-
-    // Simulate progress while downloading
-    const progressInterval = setInterval(() => {
-      setProgress((p) => {
-        if (p >= 90) return p;
-        return p + Math.random() * 5;
-      });
-    }, 500);
-
-    // Listen for progress events
-    const unlisten = await listen('browser-download-progress', (event) => {
-      console.log('Download progress:', event.payload);
-    });
-
-    try {
-      await invoke('download_browser');
-      clearInterval(progressInterval);
-      unlisten();
-      setProgress(100);
-      setTimeout(() => setStatus('ready'), 500);
-    } catch (err) {
-      console.error('Download error:', err);
-      clearInterval(progressInterval);
-      unlisten();
-      setError(`Failed to download browser: ${err}`);
-      setStatus('error');
-    }
-  };
+  }, [downloadBrowser]);
 
   useEffect(() => {
+    mountedRef.current = true;
     checkBrowser();
-  }, [checkBrowser]);
+
+    return () => {
+      mountedRef.current = false;
+      cleanup();
+    };
+  }, [checkBrowser, cleanup]);
 
   if (status === 'ready') {
     return <>{children}</>;

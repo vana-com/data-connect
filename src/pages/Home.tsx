@@ -4,11 +4,21 @@ import { usePlatforms } from '../hooks/usePlatforms';
 import { useConnector } from '../hooks/useConnector';
 import { useConnectorUpdates } from '../hooks/useConnectorUpdates';
 import { useBrowserStatus } from '../context/BrowserContext';
-import type { Platform, RootState } from '../types';
+import type { Platform, RootState, Run } from '../types';
 import { ExternalLink, Database, Download, AlertCircle, Check } from 'lucide-react';
 import { ConnectorUpdates } from '../components/ConnectorUpdates';
 
 type TabKey = 'sources' | 'apps';
+
+/** Compute recently completed platform IDs from runs (memoized, no effect needed) */
+function computeRecentlyCompleted(runs: Run[]): Set<string> {
+  return new Set(
+    runs
+      .filter((r) => r.status === 'success')
+      .sort((a, b) => new Date(b.endDate || b.startDate).getTime() - new Date(a.endDate || a.startDate).getTime())
+      .map((r) => r.platformId)
+  );
+}
 
 // Platform icon URLs
 const PLATFORM_ICONS: Record<string, string> = {
@@ -53,12 +63,14 @@ const PlatformIcon = ({ platform }: { platform: Platform }) => {
 
 export function Home() {
   const [activeTab, setActiveTab] = useState<TabKey>('sources');
-  const [recentlyCompleted, setRecentlyCompleted] = useState<Set<string>>(new Set());
   const { platforms, isPlatformConnected } = usePlatforms();
   const { startExport } = useConnector();
   const { checkForUpdates } = useConnectorUpdates();
   const browserStatus = useBrowserStatus();
   const runs = useSelector((state: RootState) => state.app.runs);
+
+  // Derived state: recently completed platform IDs (memoized, not effect-stored)
+  const recentlyCompleted = useMemo(() => computeRecentlyCompleted(runs), [runs]);
 
   // Check for connector updates on mount (when browser is ready)
   useEffect(() => {
@@ -66,17 +78,6 @@ export function Home() {
       checkForUpdates();
     }
   }, [browserStatus.status, checkForUpdates]);
-
-  // Track recently completed exports to show checkbox
-  useEffect(() => {
-    const completedRunIds = new Set(
-      runs
-        .filter((r) => r.status === 'success')
-        .sort((a, b) => new Date(b.endDate || b.startDate).getTime() - new Date(a.endDate || a.startDate).getTime())
-        .map((r) => r.platformId)
-    );
-    setRecentlyCompleted(completedRunIds);
-  }, [runs]);
 
   const handleExport = async (platform: Platform) => {
     console.log('Starting export for platform:', platform.id, platform.name, 'runtime:', platform.runtime);

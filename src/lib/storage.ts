@@ -72,10 +72,12 @@ export function removeConnectedApp(appId: string): void {
 export function getAllConnectedApps(): ConnectedApp[] {
   const apps: ConnectedApp[] = [];
   const seenIds = new Set<string>();
+  const storageKeys = Object.keys(localStorage);
 
-  for (let i = 0; i < localStorage.length; i++) {
-    const key = localStorage.key(i);
-    if (!key) continue;
+  for (const key of storageKeys) {
+    if (!key) {
+      continue;
+    }
 
     // Check versioned keys
     if (key.startsWith(CONNECTED_APP_PREFIX)) {

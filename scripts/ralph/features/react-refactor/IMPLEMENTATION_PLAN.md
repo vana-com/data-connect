@@ -16,7 +16,7 @@
 
 | ID | Task | Done when | Backpressure | File(s) | Status | Notes |
 |----|------|-----------|--------------|---------|--------|-------|
-| R8 | Split Settings into section components | Settings.tsx imports and renders `<SettingsAccount>`, `<SettingsApps>`, `<SettingsStorage>`, `<SettingsAbout>`; each section in own file under `src/pages/settings/` | `npm run typecheck && npm run build` | `src/pages/Settings.tsx`, `src/pages/settings/*.tsx` | ⬜ TODO | |
+| R8 | Split Settings into section components | Settings.tsx imports and renders `<SettingsAccount>`, `<SettingsApps>`, `<SettingsStorage>`, `<SettingsAbout>`; each section in own file under `src/pages/settings-sections/` | `npm run typecheck && npm run build` | `src/pages/Settings.tsx`, `src/pages/settings-sections/*.tsx` | ✅ DONE | Folder named `settings-sections` to avoid case-sensitivity conflict with Settings.tsx; reduced from 957 to 233 lines; all logic and handlers remain in parent |
 | R9 | Centralize localStorage access with versioned keys | `src/lib/storage.ts` exports typed get/set for `connected_app_*` keys; Settings.tsx and GrantFlow.tsx use it; version prefix in key names | `npm run typecheck && npm run build` | `src/lib/storage.ts`, `src/pages/Settings.tsx`, `src/pages/GrantFlow.tsx` | ⬜ TODO | |
 | R10 | Add route lazy loading for largest pages | Settings, GrantFlow, Runs wrapped with `React.lazy()` in App.tsx; Suspense boundary with fallback | `npm run typecheck && npm run build` | `src/App.tsx` | ⬜ TODO | |
 

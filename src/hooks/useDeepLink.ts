@@ -27,6 +27,12 @@ function parseScopes(scopesParam: string | null): string[] | undefined {
     if (isValidScopes(parsed)) {
       return parsed;
     }
+    if (typeof parsed === 'string') {
+      const commaSplit = parsed.split(',').map((s) => s.trim()).filter(Boolean);
+      if (commaSplit.length > 0) {
+        return commaSplit;
+      }
+    }
     console.warn('Deep link scopes JSON parsed but not a string array, ignoring');
   } catch {
     // JSON parse failed, try comma-delimited fallback

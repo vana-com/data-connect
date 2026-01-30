@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { useSelector } from 'react-redux';
 import { usePlatforms } from '../hooks/usePlatforms';
 import { useConnector } from '../hooks/useConnector';
@@ -88,9 +88,15 @@ export function Home() {
     }
   };
 
-  // Separate connected and available platforms
-  const connectedPlatforms = platforms.filter((p) => isPlatformConnected(p.id) || recentlyCompleted.has(p.id));
-  const availablePlatforms = platforms.filter((p) => !isPlatformConnected(p.id) && !recentlyCompleted.has(p.id));
+  // Separate connected and available platforms (memoized to avoid re-filtering on every render)
+  const connectedPlatforms = useMemo(
+    () => platforms.filter((p) => isPlatformConnected(p.id) || recentlyCompleted.has(p.id)),
+    [platforms, isPlatformConnected, recentlyCompleted]
+  );
+  const availablePlatforms = useMemo(
+    () => platforms.filter((p) => !isPlatformConnected(p.id) && !recentlyCompleted.has(p.id)),
+    [platforms, isPlatformConnected, recentlyCompleted]
+  );
 
   const isRecentlyCompleted = (platformId: string) => recentlyCompleted.has(platformId) && !isPlatformConnected(platformId);
 

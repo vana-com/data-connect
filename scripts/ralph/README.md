@@ -30,7 +30,6 @@ Our prompts intentionally load only:
 - `__FEATURE_ROOT__/IMPLEMENTATION_PLAN.md`
 - `__FEATURE_ROOT__/PROGRESS.md` (especially **Codebase Patterns**)
 - `scripts/ralph/AGENTS.md` (shared)
-- `__FEATURE_ROOT__/DOCS_INDEX.md` (if present)
 - plus relevant repo code when needed
 
 ### One-time setup per terminal (repo-local)

@@ -50,21 +50,32 @@ function RunItem({ run, onStop }: { run: Run; onStop: (id: string) => void }) {
             }
           }
         }
+        // Safely extract nested data with validation
+        const innerData = typeof data.data === 'object' && data.data !== null
+          ? data.data as Record<string, unknown>
+          : {};
+        const rawConversations = Array.isArray(innerData.conversations)
+          ? innerData.conversations
+          : [];
+
         const transformed: Run['exportData'] = {
-          platform: data.platform as string || run.platformId,
-          company: data.company as string || run.company,
+          platform: typeof data.platform === 'string' ? data.platform : run.platformId,
+          company: typeof data.company === 'string' ? data.company : run.company,
           exportedAt,
-          conversations: ((data.data as Record<string, unknown>)?.conversations as Array<unknown> || [])
-            .map((c: unknown) => {
-              const conv = c as Record<string, unknown>;
-              return {
-                id: (conv.id as string) || '',
-                title: (conv.title as string) || (conv.name as string) || '',
-                url: (conv.url as string) || '',
-                scrapedAt: (conv.timestamp as string) || new Date().toISOString(),
-              };
-            }),
-          totalConversations: (data.data as Record<string, unknown>)?.totalConversations as number | undefined,
+          conversations: rawConversations.map((c: unknown) => {
+            // Validate each conversation is an object
+            if (typeof c !== 'object' || c === null) {
+              return { id: '', title: '', url: '', scrapedAt: new Date().toISOString() };
+            }
+            const conv = c as Record<string, unknown>;
+            return {
+              id: typeof conv.id === 'string' ? conv.id : '',
+              title: typeof conv.title === 'string' ? conv.title : (typeof conv.name === 'string' ? conv.name : ''),
+              url: typeof conv.url === 'string' ? conv.url : '',
+              scrapedAt: typeof conv.timestamp === 'string' ? conv.timestamp : new Date().toISOString(),
+            };
+          }),
+          totalConversations: typeof innerData.totalConversations === 'number' ? innerData.totalConversations : undefined,
         };
 
         setExportData(transformed);

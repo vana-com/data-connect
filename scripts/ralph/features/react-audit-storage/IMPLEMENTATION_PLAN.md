@@ -167,13 +167,20 @@ const ConnectedAppSchema = z.object({
 
 ### P3.2 - Add Validation for Export Data
 **File:** `src/pages/Runs.tsx`
-**Status:** ❌ Not implemented
+**Status:** ✅ Completed
 **Action:** Validate `data.data` structure before transforming in `handleToggleExpanded`
+- Added typeof checks for all fields before accessing (platform, company, timestamp)
+- Validate `data.data` is object before accessing inner properties
+- Validate `conversations` is array before mapping
+- Each conversation validated as object before accessing properties
+- All fields use type-checked fallbacks instead of unsafe type assertions
 
 ### P3.3 - Add Validation for Deep Link Scopes
 **File:** `src/hooks/useDeepLink.ts`
-**Status:** ❌ Not implemented
+**Status:** ✅ Completed (as part of P1.4)
 **Action:** Type guard to validate scopes is `string[]`
+- `isValidScopes()` type guard validates Array.isArray + every item is string
+- `parseScopes()` uses the type guard and falls back to comma-delimited parsing
 
 ---
 

@@ -58,6 +58,21 @@ npm install
 npm run tauri dev
 ```
 
+### Agent skills sync
+
+Skills are stored in `.agents/skills` (source of truth). Cursor reads them via per-skill symlinks in `.cursor/skills`. The sync script rebuilds those symlinks so any manually created skills show up in Cursor.
+
+```bash
+# One-off sync (default is .cursor/skills)
+npm run skills:sync
+
+# Sync to Claude instead
+npm run skills:sync -- --target=claude
+
+# Auto-sync on changes
+npm run skills:watch
+```
+
 ### Building for production
 
 ```bash

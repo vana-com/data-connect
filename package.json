@@ -14,7 +14,10 @@
     "tauri": "tauri",
     "tauri:dev": "node scripts/ensure-playwright-runner.js && tauri dev",
     "tauri:build": "tauri build",
-    "build:prod": "node scripts/build-prod.js"
+    "build:prod": "node scripts/build-prod.js",
+    "skills:sync": "node scripts/sync-skills.js",
+    "skills:watch": "node scripts/watch-skills.js",
+    "postinstall": "node scripts/sync-skills.js"
   },
   "dependencies": {
     "@base-ui/react": "^1.1.0",

@@ -1,4 +1,4 @@
-import { createContext, useContext, useState, useEffect, useCallback, useRef, type ReactNode } from 'react';
+import { createContext, useState, useEffect, useCallback, useRef, useContext, type ReactNode } from 'react';
 import { invoke } from '@tauri-apps/api/core';
 
 interface BrowserStatus {
@@ -7,7 +7,7 @@ interface BrowserStatus {
   needs_download: boolean;
 }
 
-interface BrowserContextType {
+export interface BrowserContextType {
   status: 'checking' | 'needs_browser' | 'downloading' | 'ready' | 'error';
   progress: number;
   error: string | null;
@@ -15,15 +15,7 @@ interface BrowserContextType {
   startDownload: () => void;
 }
 
-const BrowserContext = createContext<BrowserContextType | null>(null);
-
-export function useBrowserStatus() {
-  const context = useContext(BrowserContext);
-  if (!context) {
-    throw new Error('useBrowserStatus must be used within BrowserProvider');
-  }
-  return context;
-}
+export const BrowserContext = createContext<BrowserContextType | null>(null);
 
 interface BrowserProviderProps {
   children: ReactNode;
@@ -81,12 +73,51 @@ export function BrowserProvider({ children }: BrowserProviderProps) {
     }
   }, []);
 
-  const checkBrowser = useCallback(async () => {
-    setStatus('checking');
+  // Initial browser check on mount - state updates happen after async boundary
+  useEffect(() => {
+    let cancelled = false;
+
+    const checkBrowser = async () => {
+      try {
+        console.log('Checking browser availability...');
+        const result = await invoke<BrowserStatus>('check_browser_available');
+        if (cancelled) return;
+        console.log('Browser check result:', result);
+
+        if (result.available) {
+          console.log('Browser available');
+          setStatus('ready');
+        } else {
+          console.log('No browser found, waiting for user action');
+          setStatus('needs_browser');
+        }
+      } catch (err) {
+        if (cancelled) return;
+        console.error('Failed to check browser:', err);
+        // If running on localhost without Tauri backend, assume Chrome is available (dev mode)
+        if (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1') {
+          console.log('Dev mode detected, assuming browser is available');
+          setStatus('ready');
+        } else {
+          setStatus('needs_browser');
+        }
+      }
+    };
+
+    checkBrowser();
+
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  const retry = useCallback(async () => {
     setError(null);
+    setProgress(0);
+    setStatus('checking');
 
     try {
-      console.log('Checking browser availability...');
+      console.log('Retrying browser check...');
       const result = await invoke<BrowserStatus>('check_browser_available');
       console.log('Browser check result:', result);
 
@@ -94,13 +125,11 @@ export function BrowserProvider({ children }: BrowserProviderProps) {
         console.log('Browser available');
         setStatus('ready');
       } else {
-        // Don't auto-download - show explanation and let user decide
         console.log('No browser found, waiting for user action');
         setStatus('needs_browser');
       }
     } catch (err) {
       console.error('Failed to check browser:', err);
-      // If running on localhost without Tauri backend, assume Chrome is available (dev mode)
       if (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1') {
         console.log('Dev mode detected, assuming browser is available');
         setStatus('ready');
@@ -109,16 +138,6 @@ export function BrowserProvider({ children }: BrowserProviderProps) {
       }
     }
   }, []);
-
-  useEffect(() => {
-    checkBrowser();
-  }, [checkBrowser]);
-
-  const retry = useCallback(() => {
-    setError(null);
-    setProgress(0);
-    checkBrowser();
-  }, [checkBrowser]);
 
   const startDownload = useCallback(() => {
     downloadBrowser();
@@ -129,4 +148,12 @@ export function BrowserProvider({ children }: BrowserProviderProps) {
       {children}
     </BrowserContext.Provider>
   );
+}
+
+export function useBrowserStatus() {
+  const context = useContext(BrowserContext);
+  if (!context) {
+    throw new Error('useBrowserStatus must be used within BrowserProvider');
+  }
+  return context;
 }

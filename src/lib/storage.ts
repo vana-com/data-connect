@@ -155,8 +155,9 @@ export function migrateConnectedAppsStorage(): void {
   }
 
   // Update index with all discovered IDs
-  setIndex([...migratedIds]);
-  notifyConnectedAppsChange();
+  if (setIndex([...migratedIds])) {
+    notifyConnectedAppsChange();
+  }
 }
 
 /**
@@ -203,7 +204,11 @@ export function setConnectedApp(app: ConnectedApp): void {
   // Update index
   const index = getIndex();
   if (!index.includes(app.id)) {
-    setIndex([...index, app.id]);
+    const indexWriteSucceeded = setIndex([...index, app.id]);
+    if (!indexWriteSucceeded) {
+      localStorage.removeItem(key);
+      return;
+    }
   }
 
   notifyConnectedAppsChange();

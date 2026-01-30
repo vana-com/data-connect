@@ -65,6 +65,28 @@ describe('setConnectedApp', () => {
     expect(readIndex()).toBeNull();
   });
 
+  it('rolls back app write when index update fails', () => {
+    const warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {});
+    const listener = vi.fn();
+    const unsubscribe = storage.subscribeConnectedApps(listener);
+    const originalSetItem = Storage.prototype.setItem;
+
+    vi.spyOn(Storage.prototype, 'setItem').mockImplementation(function (key, value) {
+      if (key === indexKey) {
+        throw new Error('boom');
+      }
+      return originalSetItem.call(this, key, value);
+    });
+
+    storage.setConnectedApp(baseApp);
+    unsubscribe();
+
+    expect(warnSpy).toHaveBeenCalled();
+    expect(listener).not.toHaveBeenCalled();
+    expect(localStorage.getItem(appKey(baseApp.id))).toBeNull();
+    expect(readIndex()).toBeNull();
+  });
+
   it('stores app, updates index, and notifies listeners on success', () => {
     const listener = vi.fn();
     const unsubscribe = storage.subscribeConnectedApps(listener);

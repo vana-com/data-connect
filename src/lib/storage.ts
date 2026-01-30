@@ -2,6 +2,16 @@
  * Centralized localStorage access for connected apps.
  * Uses versioned key names and an index to avoid O(n) scans.
  *
+ * Storage strategy: per-key + index
+ * - Each connected app is stored as a separate key (v1_connected_app_<id>)
+ * - An index key (v1_connected_apps_index) lists all app IDs
+ * - This approach was chosen over single-blob storage (v2) for:
+ *   1. Better quota resilience (partial writes possible)
+ *   2. Simpler conflict resolution (no merge needed)
+ *   3. O(1) single-app lookups
+ *
+ * All writes are hardened against quota/blocked failures (fail soft, log).
+ *
  * Storage structure:
  * - v1_connected_apps_index: string[] (array of app IDs)
  * - v1_connected_app_<id>: ConnectedApp (individual app data)
@@ -28,6 +38,21 @@ function notifyConnectedAppsChange(): void {
   connectedAppsSnapshotVersion += 1;
   for (const listener of connectedAppListeners) {
     listener();
+  }
+}
+
+/**
+ * Safe localStorage write that handles quota/blocked failures.
+ * Returns true if write succeeded, false otherwise.
+ */
+function safeSetItem(key: string, value: string): boolean {
+  try {
+    localStorage.setItem(key, value);
+    return true;
+  } catch (error) {
+    // QuotaExceededError or SecurityError (blocked storage)
+    console.warn(`storage: failed to write ${key}`, error);
+    return false;
   }
 }
 
@@ -65,15 +90,17 @@ function getIndex(): string[] {
 
 /**
  * Set the index of app IDs in localStorage.
+ * Returns true if write succeeded, false otherwise.
  */
-function setIndex(ids: string[]): void {
-  localStorage.setItem(INDEX_KEY, JSON.stringify(ids));
+function setIndex(ids: string[]): boolean {
+  return safeSetItem(INDEX_KEY, JSON.stringify(ids));
 }
 
 /**
  * Migrate legacy keys to versioned keys and build the index.
  * This should be called once during app initialization.
  * Safe to call multiple times (idempotent).
+ * Fails soft on quota/blocked storage (logs warning, skips failed items).
  */
 export function migrateConnectedAppsStorage(): void {
   const existingIndex = getIndex();
@@ -102,10 +129,14 @@ export function migrateConnectedAppsStorage(): void {
         const versionedKey = `${CONNECTED_APP_PREFIX}${app.id}`;
         // Only migrate if versioned key doesn't exist
         if (!localStorage.getItem(versionedKey)) {
-          localStorage.setItem(versionedKey, value);
+          const writeSucceeded = safeSetItem(versionedKey, value);
+          if (!writeSucceeded) {
+            // Skip this item but continue migration for others
+            continue;
+          }
         }
         migratedIds.add(app.id);
-        // Remove legacy key after migration attempt
+        // Remove legacy key after successful migration
         localStorage.removeItem(legacyKey);
       } else {
         console.warn('migrateConnectedAppsStorage: invalid legacy connected app, keeping key', legacyKey);
@@ -152,6 +183,7 @@ export function getConnectedApp(appId: string): ConnectedApp | null {
 /**
  * Set (create or update) a connected app.
  * Maintains the index for O(1) lookups.
+ * Fails soft on quota/blocked storage (logs warning, no-ops).
  */
 export function setConnectedApp(app: ConnectedApp): void {
   // Validate before storing
@@ -162,7 +194,11 @@ export function setConnectedApp(app: ConnectedApp): void {
   }
 
   const key = `${CONNECTED_APP_PREFIX}${app.id}`;
-  localStorage.setItem(key, JSON.stringify(app));
+  const writeSucceeded = safeSetItem(key, JSON.stringify(app));
+  if (!writeSucceeded) {
+    // Skip index update and notification if write failed
+    return;
+  }
 
   // Update index
   const index = getIndex();

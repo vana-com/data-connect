@@ -13,8 +13,9 @@ Spec: `scripts/ralph/features/react-refactor-two/specs/react-refactor-two.md`
 | InlineLogin sync-safe cleanup | DONE | P1 |
 | `useConnectorUpdates` decoupling + memoization | DONE | P1 |
 | `GrantFlow` session fetch decoupled from auth | DONE | P2 |
-| Home/GrantFlow split into subcomponents | NOT DONE | P3 |
-| Home, DataApps, RickRollApp lazy loaded | NOT DONE | P3 |
+| Home split into subcomponents | DONE | P3 |
+| GrantFlow split into subcomponents | NOT DONE | P3 |
+| Home, DataApps, RickRollApp lazy loaded | DONE | P3 |
 
 ---
 
@@ -152,13 +153,16 @@ Spec: `scripts/ralph/features/react-refactor-two/specs/react-refactor-two.md`
 ### 3.1 Split Home into Subcomponents
 **File:** `src/pages/Home.tsx` (504 lines)
 
-- [ ] Create `src/pages/home-sections/` directory
-- [ ] Extract `BrowserSetupSection` (browser check/download UI)
-- [ ] Extract `PlatformSourcesList` (connected sources display)
-- [ ] Extract `AvailableSourcesList` (available sources grid)
-- [ ] Keep `Home.tsx` as container orchestrating sections
+- [x] Create `src/pages/home-sections/` directory
+- [x] Extract `BrowserSetupSection` (browser check/download UI)
+- [x] Extract `ConnectedSourcesList` (connected sources display)
+- [x] Extract `AvailableSourcesList` (available sources grid)
+- [x] Keep `Home.tsx` as container orchestrating sections
 
-**Evidence:** Home.tsx is 504 lines; Settings.tsx (237 lines) demonstrates proper section splitting pattern
+**Evidence:** Home.tsx reduced from 504 lines to ~195 lines (orchestrating container). Created `src/pages/home-sections/` directory with:
+- `BrowserSetupSection.tsx` - Browser check/download UI
+- `ConnectedSourcesList.tsx` - Connected sources display
+- `AvailableSourcesList.tsx` - Available sources grid
 
 ---
 
@@ -181,7 +185,7 @@ Spec: `scripts/ralph/features/react-refactor-two/specs/react-refactor-two.md`
 ### 3.3 Lazy Load Home, DataApps, RickRollApp
 **File:** `src/App.tsx`
 
-- [ ] Convert eager imports to lazy:
+- [x] Convert eager imports to lazy:
   ```typescript
   // Before
   import { Home } from './pages/Home';
@@ -193,9 +197,9 @@ Spec: `scripts/ralph/features/react-refactor-two/specs/react-refactor-two.md`
   const DataApps = lazy(() => import('./pages/DataApps').then((m) => ({ default: m.DataApps })));
   const RickRollAppPage = lazy(() => import('./pages/RickRollApp').then((m) => ({ default: m.RickRollAppPage })));
   ```
-- [ ] Suspense boundary already in place (line 59)
+- [x] Suspense boundary already in place (line 59)
 
-**Evidence:** Runs, Settings, GrantFlow lazy loaded; Home, DataApps, RickRollApp still eager (reduces initial bundle)
+**Evidence:** Home, DataApps, and RickRollAppPage converted to lazy imports in App.tsx. Suspense boundary already in place.
 
 ---
 

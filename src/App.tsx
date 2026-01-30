@@ -7,14 +7,16 @@ import { useInitialize } from './hooks/useInitialize';
 import { TopNav } from './components/TopNav';
 import { BrowserProvider } from './context/BrowserContext';
 import { PrivyProvider } from './components/providers/PrivyProvider';
-import { Home } from './pages/Home';
-import { DataApps } from './pages/DataApps';
 import { InlineLogin } from './components/auth/InlineLogin';
 import { BrowserLogin } from './pages/BrowserLogin';
-import { RickRollAppPage } from './pages/RickRollApp';
 import { useDeepLink } from './hooks/useDeepLink';
 
 // Lazy-loaded pages for reduced initial bundle size
+const Home = lazy(() => import('./pages/Home').then((m) => ({ default: m.Home })));
+const DataApps = lazy(() => import('./pages/DataApps').then((m) => ({ default: m.DataApps })));
+const RickRollAppPage = lazy(() =>
+  import('./pages/RickRollApp').then((m) => ({ default: m.RickRollAppPage }))
+);
 const Runs = lazy(() => import('./pages/Runs').then((m) => ({ default: m.Runs })));
 const Settings = lazy(() =>
   import('./pages/Settings').then((m) => ({ default: m.Settings }))

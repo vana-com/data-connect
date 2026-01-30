@@ -93,12 +93,13 @@ export function migrateConnectedAppsStorage(): void {
           localStorage.setItem(versionedKey, value);
         }
         migratedIds.add(app.id);
+        // Remove legacy key after migration attempt
+        localStorage.removeItem(legacyKey);
+      } else {
+        console.warn('migrateConnectedAppsStorage: invalid legacy connected app, keeping key', legacyKey);
       }
-      // Remove legacy key after migration attempt
-      localStorage.removeItem(legacyKey);
-    } catch {
-      // Remove corrupt legacy keys
-      localStorage.removeItem(legacyKey);
+    } catch (error) {
+      console.warn('migrateConnectedAppsStorage: failed to parse legacy connected app, keeping key', legacyKey, error);
     }
   }
 

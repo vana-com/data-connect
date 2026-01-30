@@ -12,7 +12,7 @@ Spec: `scripts/ralph/features/react-refactor-two/specs/react-refactor-two.md`
 | `useEvents` HMR/duplicate guard | DONE | P1 |
 | InlineLogin sync-safe cleanup | DONE | P1 |
 | `useConnectorUpdates` decoupling + memoization | DONE | P1 |
-| `GrantFlow` session fetch decoupled from auth | NOT DONE | P2 |
+| `GrantFlow` session fetch decoupled from auth | DONE | P2 |
 | Home/GrantFlow split into subcomponents | NOT DONE | P3 |
 | Home, DataApps, RickRollApp lazy loaded | NOT DONE | P3 |
 
@@ -121,9 +121,9 @@ Spec: `scripts/ralph/features/react-refactor-two/specs/react-refactor-two.md`
 ### 2.1 GrantFlow Session Fetch Decoupled from Auth State
 **File:** `src/pages/GrantFlow.tsx`
 
-- [ ] Split session loading effect from auth-gating effect
-- [ ] Session effect depends only on `params` (route parameter)
-- [ ] Auth-gating effect handles transition from auth-required → consent
+- [x] Split session loading effect from auth-gating effect
+- [x] Session effect depends only on `params` (route parameter)
+- [x] Auth-gating effect handles transition from auth-required → consent
 - [ ] Pattern:
   ```typescript
   // Effect 1: Load session (run once per sessionId)

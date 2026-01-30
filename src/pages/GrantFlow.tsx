@@ -36,6 +36,7 @@ export function GrantFlow() {
 
   const params = location.state as { sessionId?: string; appId?: string; scopes?: string[] } | null;
 
+  // Effect 1: Load session (runs only when sessionId/appId changes, NOT on auth state changes)
   useEffect(() => {
     if (!params?.sessionId) {
       setFlowState({
@@ -75,17 +76,8 @@ export function GrantFlow() {
         } else {
           session = await getSessionInfo(sessionId);
         }
+        // Only set session data - auth gating handled by separate effect
         setFlowState((prev) => ({ ...prev, session, sessionId }));
-
-        if (authLoading) return;
-
-        if (!isAuthenticated || !walletAddress) {
-          setFlowState((prev) => ({ ...prev, status: 'auth-required' }));
-          setCurrentStep(1);
-        } else {
-          setFlowState((prev) => ({ ...prev, status: 'consent' }));
-          setCurrentStep(2);
-        }
       } catch (error) {
         setFlowState({
           sessionId: params.sessionId!,
@@ -96,16 +88,21 @@ export function GrantFlow() {
     };
 
     loadSession();
-  }, [params, isAuthenticated, walletAddress, authLoading]);
+  }, [params?.sessionId, params?.appId]);
 
+  // Effect 2: Gate on auth state (separate from session fetch)
   useEffect(() => {
-    if (!authLoading && isAuthenticated && walletAddress && flowState.sessionId) {
-      if (flowState.status === 'auth-required') {
-        setFlowState((prev) => ({ ...prev, status: 'consent' }));
-        setCurrentStep(2);
-      }
+    // Wait for auth check and session load
+    if (authLoading || !flowState.session) return;
+
+    if (!isAuthenticated || !walletAddress) {
+      setFlowState((prev) => ({ ...prev, status: 'auth-required' }));
+      setCurrentStep(1);
+    } else if (flowState.status === 'auth-required' || flowState.status === 'loading') {
+      setFlowState((prev) => ({ ...prev, status: 'consent' }));
+      setCurrentStep(2);
     }
-  }, [authLoading, isAuthenticated, walletAddress, flowState.sessionId, flowState.status]);
+  }, [isAuthenticated, walletAddress, authLoading, flowState.session, flowState.status]);
 
   const handleApprove = useCallback(async () => {
     if (!flowState.session || !walletAddress) return;

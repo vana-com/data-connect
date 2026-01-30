@@ -169,7 +169,7 @@ The `@privy-io/js-sdk-core` package has a different API from the React SDK:
 
 ### Known Issues / Next Steps
 
-1. **Embedded wallet creation fails** with vanilla JS SDK — `embeddedWallet.create()` throws "Cannot destructure property 'password' of 'undefined'". This is a React SDK-only feature. Need an alternative approach for wallet creation (server-side API, or separate ethers.js wallet).
+1. **Embedded wallet creation** is supported in the vanilla JS SDK via `privy.embeddedWallet.create({})` (note: requires empty object `{}` as argument — omitting it causes "Cannot destructure property 'password' of 'undefined'"). Per [Privy core JS docs](https://docs.privy.io/recipes/core-js), the returned `result.user` contains the wallet in `linkedAccounts`.
 2. **`generateURL` returns an object**, not a string — need to extract `.url` property.
 3. **Privy dashboard must allow `http://localhost:3083`** as an allowed origin for OAuth redirects.
 4. **Option B (deep link)** remains the better production approach — eliminates firewall/port concerns entirely.

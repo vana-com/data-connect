@@ -302,15 +302,11 @@
     async function createPrivyClient() {
       const module = await import('https://esm.sh/@privy-io/js-sdk-core@0.58.5');
       const PrivyClient = module.default;
-      console.log('Privy SDK exports:', Object.keys(module));
-
-      // Find a working storage class from the SDK
-      const StorageClass = module.LocalStorage || module.BrowserStorage || module.InMemoryCache;
-      console.log('Using storage:', StorageClass?.name);
+      const { LocalStorage } = module;
 
       const config = {
         appId: PRIVY_APP_ID,
-        storage: StorageClass ? new StorageClass() : undefined,
+        storage: new LocalStorage(),
       };
       if (PRIVY_CLIENT_ID) config.clientId = PRIVY_CLIENT_ID;
       const privy = new PrivyClient(config);
@@ -321,16 +317,53 @@
         console.log('Privy init (expected on first visit):', initErr.message);
       }
 
+      // Set up embedded wallet iframe proxy (required for wallet operations)
+      try {
+        const iframeUrl = privy.embeddedWallet.getURL();
+        const iframe = document.createElement('iframe');
+        iframe.src = iframeUrl;
+        iframe.style.display = 'none';
+        document.body.appendChild(iframe);
+
+        await new Promise((resolve) => {
+          iframe.addEventListener('load', () => {
+            privy.setMessagePoster(iframe.contentWindow);
+            window.addEventListener('message', (e) => {
+              if (e.source === iframe.contentWindow) {
+                try { privy.embeddedWallet.onMessage(e.data); } catch (_) {}
+              }
+            });
+            setTimeout(resolve, 1000);
+          });
+          setTimeout(resolve, 5000);
+        });
+      } catch (e) {
+        console.warn('Embedded wallet iframe setup failed:', e);
+      }
+
       return privy;
     }
 
     async function handleAuthenticatedUser(privy, user) {
-      showLoading('Completing sign-in...');
+      showLoading('Setting up your wallet...');
 
-      const embeddedWallet = user.linkedAccounts?.find(
-        a => a.type === 'wallet' && a.walletClientType === 'privy'
+      let embeddedWallet = (user.linked_accounts || user.linkedAccounts)?.find(
+        a => a.type === 'wallet' && (a.walletClientType === 'privy' || a.wallet_client_type === 'privy')
       );
-      const walletAddress = embeddedWallet?.address || null;
+      let walletAddress = embeddedWallet?.address || null;
+
+      // Create embedded wallet if user doesn't have one yet
+      if (!walletAddress) {
+        try {
+          const result = await privy.embeddedWallet.create({});
+          embeddedWallet = (result.user.linked_accounts || result.user.linkedAccounts)?.find(
+            a => a.type === 'wallet' && (a.walletClientType === 'privy' || a.wallet_client_type === 'privy')
+          );
+          walletAddress = embeddedWallet?.address || null;
+        } catch (e) {
+          console.error('Failed to create embedded wallet:', e);
+        }
+      }
 
       let authToken = null;
       try { authToken = await privy.getAccessToken(); } catch (_) {}

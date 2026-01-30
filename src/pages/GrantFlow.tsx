@@ -215,8 +215,8 @@ export function GrantFlow() {
   }, [flowState.session, flowState.sessionId, walletAddress]);
 
   const handleDecline = useCallback(() => {
-    navigate('/data');
-  }, [navigate]);
+    navigate(flowState.session?.appId ? `/apps/${flowState.session.appId}` : '/data');
+  }, [navigate, flowState.session]);
 
   const handleLogin = useCallback(() => {
     navigate('/login');
@@ -329,7 +329,7 @@ export function GrantFlow() {
           </h1>
           <p style={{ fontSize: '15px', color: '#6b7280', marginBottom: '24px' }}>{flowState.error}</p>
           <button
-            onClick={() => navigate('/data')}
+            onClick={() => navigate(flowState.session?.appId ? `/apps/${flowState.session.appId}` : '/data')}
             style={{
               padding: '12px 24px',
               fontSize: '15px',
@@ -391,7 +391,7 @@ export function GrantFlow() {
             You can manage this connection in Settings anytime.
           </p>
           <button
-            onClick={() => navigate('/data')}
+            onClick={() => navigate(flowState.session?.appId ? `/apps/${flowState.session.appId}` : '/data')}
             style={{
               padding: '12px 24px',
               fontSize: '15px',

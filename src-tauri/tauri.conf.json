@@ -40,9 +40,7 @@
       "icons/icon.ico"
     ],
     "resources": {
-      "../connectors/*.js": "connectors/",
-      "../connectors/*.ts": "connectors/",
-      "../connectors/*.json": "connectors/",
+      "../connectors/registry.json": "connectors/registry.json",
       "../connectors/chatgpt/**/*": "connectors/chatgpt/",
       "../connectors/instagram/**/*": "connectors/instagram/",
       "../connectors/linkedin/**/*": "connectors/linkedin/",

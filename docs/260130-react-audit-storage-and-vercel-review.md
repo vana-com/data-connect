@@ -34,7 +34,7 @@ This doc captures the research findings on React usage, data storage, and data c
 
 - **Single versioned blob**: `connected_apps_v2` with `{ version, apps: Record<id, ConnectedApp> }`.
 - **Explicit migrations + runtime validation** (Zod or io‑ts).
-- **React store wrapper** (useSyncExternalStore / Zustand / Redux slice) to avoid ad‑hoc reads.
+- **React store wrapper** (`useSyncExternalStore` for external subscriptions). **Critical**: useState + useEffect subscription is an antipattern—causes extra renders, breaks under concurrent rendering. See `docs/260130-react-external-store-subscriptions.md`.
 - **If per‑key storage is required**: maintain an index key `connected_app_ids_v1` to avoid scanning.
 
 ## Findings: high‑impact

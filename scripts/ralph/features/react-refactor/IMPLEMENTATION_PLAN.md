@@ -5,7 +5,7 @@
 | ID | Task | Done when | Backpressure | File(s) | Status | Notes |
 |----|------|-----------|--------------|---------|--------|-------|
 | R1 | Extract export data normalization to single-source utility | `normalizeExportData()` function exists in `src/lib/exportData.ts`, all 3 extraction sites in useEvents.ts use it, no `as any` casts for field access | `npm run typecheck && npm run build` | `src/lib/exportData.ts`, `src/hooks/useEvents.ts` | ✅ DONE | Created typed utility with 10 unit tests; 2 extraction sites in useEvents.ts now use it |
-| R2 | Memoize runs sorting/filtering | `useMemo` wraps `sortedRuns`, `activeRuns`, `completedRuns` in Runs.tsx; deps array includes only `runs` | `npm run typecheck && npm run build` | `src/pages/Runs.tsx` | ⬜ TODO | |
+| R2 | Memoize runs sorting/filtering | `useMemo` wraps `sortedRuns`, `activeRuns`, `completedRuns` in Runs.tsx; deps array includes only `runs` | `npm run typecheck && npm run build` | `src/pages/Runs.tsx` | ✅ DONE | sortedRuns depends on `runs`, activeRuns and completedRuns depend on `sortedRuns` |
 | R3 | Memoize Home page platform filtering | `useMemo` wraps `connectedPlatforms`, `availablePlatforms` in Home.tsx | `npm run typecheck && npm run build` | `src/pages/Home.tsx` | ⬜ TODO | |
 | R4 | Memoize YourData page filtering | `useMemo` wraps `connectedSources`, `availableSources` in YourData.tsx | `npm run typecheck && npm run build` | `src/pages/YourData.tsx` | ⬜ TODO | |
 | R5 | Replace window.location.href with React Router navigate in DataApps | No `window.location.href` for internal routes in DataApps.tsx; uses `useNavigate()` instead | `npm run typecheck && npm run build` | `src/pages/DataApps.tsx` | ⬜ TODO | |

@@ -12,7 +12,7 @@ import {
   ChevronDown,
   ChevronUp,
 } from 'lucide-react';
-import { useState } from 'react';
+import { useMemo, useState } from 'react';
 import { invoke } from '@tauri-apps/api/core';
 
 // ChatGPT SVG Icon
@@ -353,12 +353,23 @@ export function Runs() {
   const runs = useSelector((state: RootState) => state.app.runs);
   const { stopExport } = useConnector();
 
-  const sortedRuns = [...runs].sort((a, b) => {
-    return new Date(b.startDate).getTime() - new Date(a.startDate).getTime();
-  });
+  const sortedRuns = useMemo(
+    () =>
+      [...runs].sort(
+        (a, b) => new Date(b.startDate).getTime() - new Date(a.startDate).getTime()
+      ),
+    [runs]
+  );
 
-  const activeRuns = sortedRuns.filter((run) => run.status === 'running');
-  const completedRuns = sortedRuns.filter((run) => run.status !== 'running');
+  const activeRuns = useMemo(
+    () => sortedRuns.filter((run) => run.status === 'running'),
+    [sortedRuns]
+  );
+
+  const completedRuns = useMemo(
+    () => sortedRuns.filter((run) => run.status !== 'running'),
+    [sortedRuns]
+  );
 
   return (
     <div style={{ flex: 1, overflow: 'auto', backgroundColor: '#f5f5f7' }}>

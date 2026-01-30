@@ -1,4 +1,4 @@
-import { useEffect, useState, useCallback } from 'react';
+import { useEffect, useState, useCallback, useSyncExternalStore } from 'react';
 import { invoke } from '@tauri-apps/api/core';
 import { getVersion } from '@tauri-apps/api/app';
 import {
@@ -10,7 +10,7 @@ import {
 import { useNavigate } from 'react-router';
 import { useAuth } from '../hooks/useAuth';
 import type { ConnectedApp } from '../types';
-import { getAllConnectedApps, removeConnectedApp } from '../lib/storage';
+import { getAllConnectedApps, removeConnectedApp, subscribeConnectedApps } from '../lib/storage';
 import { SettingsAccount, SettingsApps, SettingsStorage, SettingsAbout } from './settings-sections';
 
 interface NodeJsTestResult {
@@ -36,7 +36,8 @@ export function Settings() {
   const [nodeTestError, setNodeTestError] = useState<string | null>(null);
   const [pathsDebug, setPathsDebug] = useState<Record<string, unknown> | null>(null);
   const [browserStatus, setBrowserStatus] = useState<{ available: boolean; browser_type: string } | null>(null);
-  const [connectedApps, setConnectedApps] = useState<ConnectedApp[]>([]);
+  // External store subscription for connected apps
+  const connectedApps = useSyncExternalStore(subscribeConnectedApps, getAllConnectedApps);
 
   useEffect(() => {
     invoke<string>('get_user_data_path')
@@ -46,9 +47,6 @@ export function Settings() {
     getVersion()
       .then((version) => setAppVersion(version))
       .catch((error) => console.error('Failed to get app version:', error));
-
-    // Load connected apps from localStorage
-    setConnectedApps(getAllConnectedApps());
   }, []);
 
   const openDataFolder = useCallback(async () => {
@@ -82,6 +80,31 @@ export function Settings() {
     }
   }, []);
 
+  // Check browser status on mount
+  useEffect(() => {
+    let cancelled = false;
+
+    const checkBrowser = async () => {
+      try {
+        const result = await invoke<{ available: boolean; browser_type: string; needs_download: boolean }>(
+          'check_browser_available'
+        );
+        if (!cancelled) {
+          setBrowserStatus(result);
+        }
+      } catch (error) {
+        console.error('Browser check error:', error);
+      }
+    };
+
+    checkBrowser();
+
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  // Callback for manual browser status refresh (used by SettingsAbout)
   const checkBrowserStatus = useCallback(async () => {
     try {
       const result = await invoke<{ available: boolean; browser_type: string; needs_download: boolean }>(
@@ -93,17 +116,10 @@ export function Settings() {
     }
   }, []);
 
-  useEffect(() => {
-    checkBrowserStatus();
-  }, [checkBrowserStatus]);
-
-  const handleRevokeApp = useCallback(
-    (appId: string) => {
-      removeConnectedApp(appId);
-      setConnectedApps((prev) => prev.filter((app) => app.id !== appId));
-    },
-    []
-  );
+  const handleRevokeApp = useCallback((appId: string) => {
+    // removeConnectedApp triggers subscribeConnectedApps, which updates useSyncExternalStore
+    removeConnectedApp(appId);
+  }, []);
 
   const handleLogout = useCallback(async () => {
     await logout();

@@ -1085,10 +1085,21 @@ pub async fn check_connected_platforms(
         .map_err(|e| format!("Failed to get app data dir: {}", e))?
         .join("exported_data");
 
+    // Build a map from platform ID to company name so we can check both paths
+    let all_platforms = get_platforms(app).await.unwrap_or_default();
+    let id_to_company: HashMap<String, String> = all_platforms
+        .into_iter()
+        .map(|p| (p.id.clone(), p.company))
+        .collect();
+
     for id in platform_ids {
-        // Check if the platform directory exists
-        let platform_path = data_dir.join(&id);
-        connected.insert(id, platform_path.exists());
+        // Check by platform ID directory or company name directory
+        let exists = data_dir.join(&id).exists()
+            || id_to_company
+                .get(&id)
+                .map(|company| data_dir.join(company).exists())
+                .unwrap_or(false);
+        connected.insert(id, exists);
     }
 
     Ok(connected)

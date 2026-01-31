@@ -19,8 +19,19 @@ export function useRickRollData() {
         const files = await invoke<FileWithContent[]>('get_run_files', { exportPath: chatGptPath });
 
         if (files && files.length > 0) {
-          // Parse the first file
-          const exportData = JSON.parse(files[0].content) as ChatGPTExport;
+          // Sort by name descending to get the latest export file
+          const sorted = [...files].sort((a, b) => b.name.localeCompare(a.name));
+          const raw = JSON.parse(sorted[0].content);
+
+          // The connector wraps data as { content: { data: { ... } } }
+          const innerData = raw?.content?.data || raw;
+
+          const exportData: ChatGPTExport = {
+            memories: innerData.memories || [],
+            conversations: innerData.conversations || [],
+            totalConversations: innerData.totalConversations || innerData.conversations?.length || 0,
+            exportDate: innerData.timestamp || raw?.timestamp,
+          };
           setData(exportData);
         } else {
           setError('No ChatGPT export data found. Please export your ChatGPT data first.');
@@ -37,77 +48,67 @@ export function useRickRollData() {
   }, []);
 
   const getFunFacts = () => {
-    if (!data || !data.conversations) {
+    if (!data) {
       return [];
     }
 
     const facts: string[] = [];
+    const memories = data.memories || [];
     const conversations = data.conversations || [];
 
-    // Total messages
-    let totalMessages = 0;
-    conversations.forEach((conv) => {
-      totalMessages += conv.messages.length;
-    });
-    if (totalMessages > 0) {
-      facts.push(`You've sent ${totalMessages.toLocaleString()} messages to ChatGPT.`);
+    // Memory count
+    if (memories.length > 0) {
+      facts.push(`ChatGPT has ${memories.length.toLocaleString()} ${memories.length === 1 ? 'memory' : 'memories'} about you.`);
     }
 
-    // Conversation count
-    const convCount = data.totalConversations || conversations.length;
-    if (convCount > 0) {
-      facts.push(`You have ${convCount.toLocaleString()} conversation${convCount > 1 ? 's' : ''} in your export.`);
+    // Random memory snippet
+    if (memories.length > 0) {
+      const randomMemory = memories[Math.floor(Math.random() * memories.length)];
+      const snippet = randomMemory.content.slice(0, 100);
+      facts.push(`One thing ChatGPT remembers: "${snippet}${randomMemory.content.length > 100 ? '...' : ''}"`);
     }
 
-    // Longest conversation
-    let maxLength = 0;
-    conversations.forEach((conv) => {
-      if (conv.messages.length > maxLength) {
-        maxLength = conv.messages.length;
-      }
-    });
-
-    if (maxLength > 10) {
-      facts.push(`Your longest thread has ${maxLength} messages. That's a lot of chatting!`);
-    }
-
-    // Random message snippet (first message from a random conversation)
+    // Conversation stats
     if (conversations.length > 0) {
-      const randomConv = conversations[Math.floor(Math.random() * conversations.length)];
-      if (randomConv.messages.length > 0) {
-        const msg = randomConv.messages[0];
-        const snippet = msg.content.slice(0, 100);
-        facts.push(`A sample message: "${snippet}${msg.content.length > 100 ? '...' : ''}"`);
+      let totalMessages = 0;
+      conversations.forEach((conv) => {
+        totalMessages += conv.messages.length;
+      });
+      if (totalMessages > 0) {
+        facts.push(`You've exchanged ${totalMessages.toLocaleString()} messages across ${conversations.length} conversations.`);
+      }
+
+      // Longest conversation
+      let maxLength = 0;
+      conversations.forEach((conv) => {
+        if (conv.messages.length > maxLength) {
+          maxLength = conv.messages.length;
+        }
+      });
+      if (maxLength > 10) {
+        facts.push(`Your longest thread has ${maxLength} messages.`);
       }
     }
 
-    // Time-based facts
+    // Export date
     if (data.exportDate) {
       const exportDate = new Date(data.exportDate);
       const daysSince = Math.floor((Date.now() - exportDate.getTime()) / (1000 * 60 * 60 * 24));
       facts.push(`You exported this data ${daysSince === 0 ? 'today' : `${daysSince} days ago`}.`);
     }
 
-    // Word count estimate
-    let totalWords = 0;
-    conversations.forEach((conv) => {
-      conv.messages.forEach((msg) => {
-        totalWords += msg.content.split(/\s+/).length;
-      });
-    });
-    if (totalWords > 1000) {
-      facts.push(`You've written approximately ${(totalWords / 1000).toFixed(1)}k words to ChatGPT.`);
-    }
-
     return facts;
   };
+
+  const hasMemories = !!data?.memories && data.memories.length > 0;
+  const hasConversations = !!data?.conversations && data.conversations.length > 0;
 
   return {
     data,
     loading,
     error,
     funFacts: getFunFacts(),
-    hasData: !!data && !!data.conversations && data.conversations.length > 0,
+    hasData: hasMemories || hasConversations,
   };
 }
 

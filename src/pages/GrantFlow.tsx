@@ -132,7 +132,7 @@ export function GrantFlow() {
         if (result.success && result.user) {
           dispatch(
             setAuthenticated({
-              user: { id: result.user.id, email: result.user.email },
+              user: { id: result.user.id, email: result.user.email || undefined },
               walletAddress: result.walletAddress || null,
             })
           );
@@ -218,9 +218,6 @@ export function GrantFlow() {
     navigate(flowState.session?.appId ? `/apps/${flowState.session.appId}` : '/data');
   }, [navigate, flowState.session]);
 
-  const handleLogin = useCallback(() => {
-    navigate('/login');
-  }, [navigate]);
 
   // Loading state
   if (flowState.status === 'loading' || authLoading) {

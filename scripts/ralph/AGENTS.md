@@ -7,6 +7,7 @@ fast loopback/backpressure.
 
 - **Typecheck**: `npx tsc -b`
 - **Build**: `npm run build`
+- **Lint**: `npm run lint`
 - **Test**: `npm run test` (when tests exist for the task)
 
 ### Preferred CLI tools (small quality-of-life)

@@ -1,21 +1,8 @@
+import { useCallback } from 'react';
 import { useConnectorUpdates } from '../hooks/useConnectorUpdates';
 import { Download, RefreshCw, Sparkles, ArrowUpCircle, Loader2, AlertCircle } from 'lucide-react';
 import type { ConnectorUpdateInfo } from '../types';
-
-// Platform icon URLs
-const PLATFORM_ICONS: Record<string, string> = {
-  chatgpt: 'https://upload.wikimedia.org/wikipedia/commons/0/04/ChatGPT_logo.svg',
-  instagram: 'https://upload.wikimedia.org/wikipedia/commons/a/a5/Instagram_icon.png',
-  linkedin: 'https://upload.wikimedia.org/wikipedia/commons/c/ca/LinkedIn_logo_initials.png',
-};
-
-const getPlatformIcon = (name: string): string | null => {
-  const normalized = name.toLowerCase();
-  if (normalized.includes('chatgpt')) return PLATFORM_ICONS.chatgpt;
-  if (normalized.includes('instagram')) return PLATFORM_ICONS.instagram;
-  if (normalized.includes('linkedin')) return PLATFORM_ICONS.linkedin;
-  return null;
-};
+import { PlatformIcon } from '../lib/platformIcons';
 
 interface ConnectorUpdateItemProps {
   update: ConnectorUpdateInfo;
@@ -24,8 +11,6 @@ interface ConnectorUpdateItemProps {
 }
 
 function ConnectorUpdateItem({ update, onDownload, isDownloading }: ConnectorUpdateItemProps) {
-  const iconUrl = getPlatformIcon(update.name);
-
   return (
     <div
       style={{
@@ -53,17 +38,7 @@ function ConnectorUpdateItem({ update, onDownload, isDownloading }: ConnectorUpd
           flexShrink: 0,
         }}
       >
-        {iconUrl ? (
-          <img
-            src={iconUrl}
-            alt={update.name}
-            style={{ width: '20px', height: '20px', objectFit: 'contain' }}
-          />
-        ) : (
-          <span style={{ fontSize: '14px', fontWeight: 600, color: '#6b7280' }}>
-            {update.name.charAt(0)}
-          </span>
-        )}
+        <PlatformIcon name={update.name} size={20} />
       </div>
 
       {/* Info */}
@@ -152,7 +127,11 @@ function ConnectorUpdateItem({ update, onDownload, isDownloading }: ConnectorUpd
   );
 }
 
-export function ConnectorUpdates() {
+interface ConnectorUpdatesProps {
+  onReloadPlatforms?: () => void | Promise<void>;
+}
+
+export function ConnectorUpdates({ onReloadPlatforms }: ConnectorUpdatesProps) {
   const {
     updates,
     isCheckingUpdates,
@@ -161,6 +140,14 @@ export function ConnectorUpdates() {
     downloadConnector,
     isDownloading,
   } = useConnectorUpdates();
+
+  // Wrap downloadConnector to reload platforms after successful download
+  const handleDownload = useCallback(async (id: string) => {
+    const success = await downloadConnector(id);
+    if (success && onReloadPlatforms) {
+      await onReloadPlatforms();
+    }
+  }, [downloadConnector, onReloadPlatforms]);
 
   if (updates.length === 0 && !isCheckingUpdates && !error) {
     return null;
@@ -244,7 +231,7 @@ export function ConnectorUpdates() {
         <ConnectorUpdateItem
           key={update.id}
           update={update}
-          onDownload={downloadConnector}
+          onDownload={handleDownload}
           isDownloading={isDownloading(update.id)}
         />
       ))}

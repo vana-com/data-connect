@@ -12,7 +12,7 @@ import {
   ChevronDown,
   ChevronUp,
 } from 'lucide-react';
-import { useState } from 'react';
+import { useMemo, useState } from 'react';
 import { invoke } from '@tauri-apps/api/core';
 
 // ChatGPT SVG Icon
@@ -38,23 +38,49 @@ function RunItem({ run, onStop }: { run: Run; onStop: (id: string) => void }) {
         });
 
         // Transform data to ExportedData format
+        // Parse timestamp: handle number, string, or fall back to run.startDate
+        let exportedAt = run.startDate;
+        if (data.timestamp != null) {
+          if (typeof data.timestamp === 'number') {
+            exportedAt = new Date(data.timestamp).toISOString();
+          } else if (typeof data.timestamp === 'string') {
+            const parsed = Date.parse(data.timestamp);
+            if (!Number.isNaN(parsed)) {
+              exportedAt = new Date(parsed).toISOString();
+            }
+          }
+        }
+        // Safely extract nested data with validation
+        const innerData = typeof data.data === 'object' && data.data !== null
+          ? data.data as Record<string, unknown>
+          : {};
+        const rawConversations = Array.isArray(innerData.conversations)
+          ? innerData.conversations
+          : [];
+
         const transformed: Run['exportData'] = {
-          platform: data.platform as string || run.platformId,
-          company: data.company as string || run.company,
-          exportedAt: data.timestamp
-            ? new Date(typeof data.timestamp === 'number' ? data.timestamp : 0).toISOString()
-            : run.startDate,
-          conversations: ((data.data as Record<string, unknown>)?.conversations as Array<unknown> || [])
-            .map((c: unknown) => {
-              const conv = c as Record<string, unknown>;
-              return {
-                id: (conv.id as string) || '',
-                title: (conv.title as string) || (conv.name as string) || '',
-                url: (conv.url as string) || '',
-                scrapedAt: (conv.timestamp as string) || new Date().toISOString(),
-              };
-            }),
-          totalConversations: (data.data as Record<string, unknown>)?.totalConversations as number | undefined,
+          platform: typeof data.platform === 'string' ? data.platform : run.platformId,
+          company: typeof data.company === 'string' ? data.company : run.company,
+          exportedAt,
+          conversations: rawConversations.map((c: unknown) => {
+            // Validate each conversation is an object
+            if (typeof c !== 'object' || c === null) {
+              return { id: '', title: '', url: '', scrapedAt: new Date().toISOString() };
+            }
+            const conv = c as Record<string, unknown>;
+            const scrapedAt = typeof conv.timestamp === 'string'
+              ? conv.timestamp
+              : typeof conv.timestamp === 'number'
+                ? new Date(conv.timestamp).toISOString()
+                : new Date().toISOString();
+            return {
+              id: typeof conv.id === 'string' ? conv.id : '',
+              title: typeof conv.title === 'string' ? conv.title : (typeof conv.name === 'string' ? conv.name : ''),
+              url: typeof conv.url === 'string' ? conv.url : '',
+              scrapedAt,
+            };
+          }),
+          totalConversations: typeof innerData.totalConversations === 'number' ? innerData.totalConversations : undefined,
         };
 
         setExportData(transformed);
@@ -353,12 +379,22 @@ export function Runs() {
   const runs = useSelector((state: RootState) => state.app.runs);
   const { stopExport } = useConnector();
 
-  const sortedRuns = [...runs].sort((a, b) => {
-    return new Date(b.startDate).getTime() - new Date(a.startDate).getTime();
-  });
-
-  const activeRuns = sortedRuns.filter((run) => run.status === 'running');
-  const completedRuns = sortedRuns.filter((run) => run.status !== 'running');
+  // Single pass: sort and partition runs into active/completed
+  const { activeRuns, completedRuns } = useMemo(() => {
+    const sorted = [...runs].sort(
+      (a, b) => new Date(b.startDate).getTime() - new Date(a.startDate).getTime()
+    );
+    const active: Run[] = [];
+    const completed: Run[] = [];
+    for (const run of sorted) {
+      if (run.status === 'running') {
+        active.push(run);
+      } else {
+        completed.push(run);
+      }
+    }
+    return { activeRuns: active, completedRuns: completed };
+  }, [runs]);
 
   return (
     <div style={{ flex: 1, overflow: 'auto', backgroundColor: '#f5f5f7' }}>

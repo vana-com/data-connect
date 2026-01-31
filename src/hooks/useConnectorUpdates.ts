@@ -1,4 +1,4 @@
-import { useCallback, useState } from 'react';
+import { useCallback, useMemo, useState } from 'react';
 import { invoke } from '@tauri-apps/api/core';
 import { useDispatch, useSelector } from 'react-redux';
 import {
@@ -8,7 +8,6 @@ import {
 } from '../state/store';
 import type { RootState } from '../state/store';
 import type { ConnectorUpdateInfo } from '../types';
-import { usePlatforms } from './usePlatforms';
 
 export function useConnectorUpdates() {
   const dispatch = useDispatch();
@@ -21,7 +20,6 @@ export function useConnectorUpdates() {
   );
   const [downloadingIds, setDownloadingIds] = useState<Set<string>>(new Set());
   const [error, setError] = useState<string | null>(null);
-  const { loadPlatforms } = usePlatforms();
 
   const checkForUpdates = useCallback(
     async (force = false) => {
@@ -57,8 +55,7 @@ export function useConnectorUpdates() {
         await invoke('download_connector', { id });
         // Remove from updates list after successful download
         dispatch(removeConnectorUpdate(id));
-        // Reload platforms to pick up the new connector
-        await loadPlatforms();
+        // Note: Caller is responsible for reloading platforms after successful download
         return true;
       } catch (err) {
         const errorMsg =
@@ -74,7 +71,7 @@ export function useConnectorUpdates() {
         });
       }
     },
-    [dispatch, loadPlatforms]
+    [dispatch]
   );
 
   const isDownloading = useCallback(
@@ -83,9 +80,13 @@ export function useConnectorUpdates() {
   );
 
   const hasUpdates = updates.length > 0;
-  const updateCount = updates.length;
-  const newConnectorCount = updates.filter((u) => u.isNew).length;
-  const updateableCount = updates.filter((u) => u.hasUpdate).length;
+
+  // Memoize count calculations to avoid recomputing on every render
+  const { updateCount, newConnectorCount, updateableCount } = useMemo(() => ({
+    updateCount: updates.length,
+    newConnectorCount: updates.filter((u) => u.isNew).length,
+    updateableCount: updates.filter((u) => u.hasUpdate).length,
+  }), [updates]);
 
   return {
     updates,

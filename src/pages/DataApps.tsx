@@ -1,4 +1,5 @@
 import { ExternalLink, Lock, Clock } from 'lucide-react';
+import { useNavigate } from 'react-router';
 
 interface MockApp {
   id: string;
@@ -180,6 +181,8 @@ export function DataApps() {
 }
 
 function AppCard({ app }: { app: MockApp }) {
+  const navigate = useNavigate();
+
   return (
     <div
       style={{
@@ -290,7 +293,7 @@ function AppCard({ app }: { app: MockApp }) {
         </button>
       ) : (
         <button
-          onClick={() => (window.location.href = `/apps/${app.id}`)}
+          onClick={() => navigate(`/apps/${app.id}`)}
           style={{
             width: '100%',
             marginTop: '16px',

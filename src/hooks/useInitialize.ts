@@ -4,6 +4,7 @@ import { useDispatch, useSelector } from 'react-redux';
 import { setRuns } from '../state/store';
 import type { RootState } from '../state/store';
 import type { Run } from '../types';
+import { migrateConnectedAppsStorage } from '../lib/storage';
 
 interface SavedRun {
   id: string;
@@ -28,6 +29,9 @@ export function useInitialize() {
     // Only run once on mount
     if (initialized.current) return;
     initialized.current = true;
+
+    // Migrate localStorage structure (runs once, before any storage access)
+    migrateConnectedAppsStorage();
 
     // Load saved runs from disk on startup
     const loadSavedRuns = async () => {

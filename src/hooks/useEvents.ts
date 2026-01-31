@@ -16,6 +16,10 @@ import type {
   ExportedData,
   ProgressPhase,
 } from '../types';
+import { normalizeExportData } from '../lib/exportData';
+
+// Module-level guard to prevent duplicate listener registration during StrictMode/HMR
+let listenersRegistered = false;
 
 // Extended connector status event that can handle both string and object status
 interface ConnectorStatusEventPayload {
@@ -44,6 +48,10 @@ export function useEvents() {
   const dispatch = useDispatch();
 
   useEffect(() => {
+    // Guard against duplicate registration (StrictMode double-mount, HMR)
+    if (listenersRegistered) return;
+    listenersRegistered = true;
+
     const unlisteners: (() => void)[] = [];
 
     // Listen for connector log events
@@ -106,18 +114,7 @@ export function useEvents() {
           console.log('[Connector Status] Export complete with data:', exportData);
 
           // Update the UI with export data
-          // Use exportSummary if available, fallback to legacy fields
-          const summary = (exportData as unknown as Record<string, unknown>).exportSummary as { count: number; label: string } | undefined;
-          const itemsExported = summary?.count
-            ?? exportData.totalConversations
-            ?? exportData.conversations?.length
-            ?? (exportData as any).posts?.length
-            ?? (exportData as any).memories?.length
-            ?? (exportData as any).experience?.length
-            ?? (exportData as any).education?.length
-            ?? (exportData as any).skills?.length
-            ?? 0;
-          const itemLabel = summary?.label || 'items';
+          const { itemsExported, itemLabel } = normalizeExportData(exportData);
 
           dispatch(
             updateRunExportData({
@@ -197,19 +194,9 @@ export function useEvents() {
         })
       );
 
-      // Extract exportSummary for UI display
+      // Extract export summary for UI display
       const exportData = data as ExportedData;
-      const summary = (exportData as unknown as Record<string, unknown>).exportSummary as { count: number; label: string } | undefined;
-      const itemsExported = summary?.count
-        ?? exportData.totalConversations
-        ?? exportData.conversations?.length
-        ?? (exportData as any).posts?.length
-        ?? (exportData as any).memories?.length
-        ?? (exportData as any).experience?.length
-        ?? (exportData as any).education?.length
-        ?? (exportData as any).skills?.length
-        ?? 0;
-      const itemLabel = summary?.label || 'items';
+      const { itemsExported, itemLabel } = normalizeExportData(exportData);
 
       // Update the UI with export data
       dispatch(
@@ -261,6 +248,7 @@ export function useEvents() {
 
     // Cleanup listeners on unmount
     return () => {
+      listenersRegistered = false;
       unlisteners.forEach((unlisten) => unlisten());
     };
   }, [dispatch]);

@@ -1,3 +1,4 @@
+import { lazy, Suspense } from 'react';
 import { BrowserRouter, Routes, Route, useLocation } from 'react-router-dom';
 import { Provider } from 'react-redux';
 import { store } from './state/store';
@@ -6,15 +7,23 @@ import { useInitialize } from './hooks/useInitialize';
 import { TopNav } from './components/TopNav';
 import { BrowserProvider } from './context/BrowserContext';
 import { PrivyProvider } from './components/providers/PrivyProvider';
-import { Home } from './pages/Home';
-import { Runs } from './pages/Runs';
-import { Settings } from './pages/Settings';
-import { DataApps } from './pages/DataApps';
-import { GrantFlow } from './pages/GrantFlow';
 import { InlineLogin } from './components/auth/InlineLogin';
 import { BrowserLogin } from './pages/BrowserLogin';
-import { RickRollAppPage } from './pages/RickRollApp';
 import { useDeepLink } from './hooks/useDeepLink';
+
+// Lazy-loaded pages for reduced initial bundle size
+const Home = lazy(() => import('./pages/Home').then((m) => ({ default: m.Home })));
+const DataApps = lazy(() => import('./pages/DataApps').then((m) => ({ default: m.DataApps })));
+const RickRollAppPage = lazy(() =>
+  import('./pages/RickRollApp').then((m) => ({ default: m.RickRollAppPage }))
+);
+const Runs = lazy(() => import('./pages/Runs').then((m) => ({ default: m.Runs })));
+const Settings = lazy(() =>
+  import('./pages/Settings').then((m) => ({ default: m.Settings }))
+);
+const GrantFlow = lazy(() =>
+  import('./pages/GrantFlow').then((m) => ({ default: m.GrantFlow }))
+);
 
 function AppContent() {
   useEvents();
@@ -49,15 +58,17 @@ function AppContent() {
       >
         <TopNav />
         <main style={{ flex: 1, overflow: 'auto' }}>
-          <Routes>
-            <Route path="/" element={<Home />} />
-            <Route path="/apps" element={<DataApps />} />
-            <Route path="/apps/rickroll" element={<RickRollAppPage />} />
-            <Route path="/runs" element={<Runs />} />
-            <Route path="/settings" element={<Settings />} />
-            <Route path="/grant" element={<GrantFlow />} />
-            <Route path="/login" element={<InlineLogin />} />
-          </Routes>
+          <Suspense fallback={<div style={{ padding: '2rem' }}>Loading...</div>}>
+            <Routes>
+              <Route path="/" element={<Home />} />
+              <Route path="/apps" element={<DataApps />} />
+              <Route path="/apps/rickroll" element={<RickRollAppPage />} />
+              <Route path="/runs" element={<Runs />} />
+              <Route path="/settings" element={<Settings />} />
+              <Route path="/grant" element={<GrantFlow />} />
+              <Route path="/login" element={<InlineLogin />} />
+            </Routes>
+          </Suspense>
         </main>
       </div>
     </div>

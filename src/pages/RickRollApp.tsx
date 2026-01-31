@@ -1,28 +1,14 @@
-import { useEffect, useState } from 'react';
+import { useSyncExternalStore } from 'react';
 import { useNavigate } from 'react-router';
 import { RickRollApp } from '../apps/rickroll/App';
 import { ExternalLink } from 'lucide-react';
+import { isAppConnected, subscribeConnectedApps } from '../lib/storage';
+
+const getIsRickrollConnected = () => isAppConnected('rickroll');
 
 export function RickRollAppPage() {
   const navigate = useNavigate();
-  const [isConnected, setIsConnected] = useState(false);
-
-  useEffect(() => {
-    // Check if this app is authorized
-    const checkAuth = async () => {
-      try {
-        // Check localStorage for connected app by individual key
-        const storedApp = localStorage.getItem('connected_app_rickroll');
-        if (storedApp) {
-          setIsConnected(true);
-        }
-      } catch (error) {
-        console.error('Error checking auth:', error);
-      }
-    };
-
-    checkAuth();
-  }, []);
+  const isConnected = useSyncExternalStore(subscribeConnectedApps, getIsRickrollConnected);
 
   const handleConnect = () => {
     // Trigger grant flow using React Router navigation

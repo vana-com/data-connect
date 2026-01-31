@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useMemo, useState } from 'react';
 import { useSelector } from 'react-redux';
 import { useNavigate } from 'react-router';
 import { Database, ExternalLink, Plus } from 'lucide-react';
@@ -30,9 +30,15 @@ export function YourData() {
   const { platforms } = usePlatforms();
   const connectedPlatforms = useSelector((state: RootState) => state.app.connectedPlatforms);
 
-  // Determine connection status from state, not platform property
-  const connectedSources = platforms.filter((p) => connectedPlatforms[p.id]);
-  const availableSources = platforms.filter((p) => !connectedPlatforms[p.id]);
+  // Determine connection status from state, not platform property (memoized to avoid re-filtering on every render)
+  const connectedSources = useMemo(
+    () => platforms.filter((p) => connectedPlatforms[p.id]),
+    [platforms, connectedPlatforms]
+  );
+  const availableSources = useMemo(
+    () => platforms.filter((p) => !connectedPlatforms[p.id]),
+    [platforms, connectedPlatforms]
+  );
 
   const handleConnectSource = (platformId: string) => {
     navigate(`/?platform=${platformId}`);

@@ -1,14 +1,7 @@
 import { useCallback } from 'react';
 import { invoke } from '@tauri-apps/api/core';
 import { useDispatch, useSelector } from 'react-redux';
-import {
-  startRun,
-  updateRunStatus,
-  updateExportStatus,
-  updateRunLogs,
-  updateRunConnected,
-  stopRun,
-} from '../state/store';
+import { startRun, updateRunStatus, stopRun } from '../state/store';
 import type { RootState } from '../state/store';
 import type { Platform, Run } from '../types';
 
@@ -77,47 +70,6 @@ export function useConnector() {
     [dispatch]
   );
 
-  const handleConnectorLog = useCallback(
-    (runId: string, message: string) => {
-      dispatch(updateRunLogs({ runId, logs: message }));
-    },
-    [dispatch]
-  );
-
-  const handleConnectorStatus = useCallback(
-    (runId: string, status: string) => {
-      if (status === 'CONNECT_WEBSITE') {
-        dispatch(updateRunConnected({ runId, isConnected: false }));
-      } else if (status === 'DOWNLOADING') {
-        dispatch(updateRunStatus({ runId, status: 'running' }));
-      } else if (status === 'COMPLETE') {
-        dispatch(
-          updateRunStatus({
-            runId,
-            status: 'success',
-            endDate: new Date().toISOString(),
-          })
-        );
-      } else if (status === 'ERROR') {
-        dispatch(
-          updateRunStatus({
-            runId,
-            status: 'error',
-            endDate: new Date().toISOString(),
-          })
-        );
-      }
-    },
-    [dispatch]
-  );
-
-  const handleExportComplete = useCallback(
-    (runId: string, exportPath: string, exportSize: number) => {
-      dispatch(updateExportStatus({ runId, exportPath, exportSize }));
-    },
-    [dispatch]
-  );
-
   const getRunById = useCallback(
     (runId: string) => {
       return runs.find((r) => r.id === runId);
@@ -129,9 +81,6 @@ export function useConnector() {
     runs,
     startExport,
     stopExport,
-    handleConnectorLog,
-    handleConnectorStatus,
-    handleExportComplete,
     getRunById,
   };
 }

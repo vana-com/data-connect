@@ -18,19 +18,19 @@ jobs:
         include:
           - platform: macos-latest
             target: aarch64-apple-darwin
-            pkg_target: node20-macos-arm64
+            pkg_target: node22-macos-arm64
             binary_name: playwright-runner
           - platform: macos-latest
             target: x86_64-apple-darwin
-            pkg_target: node20-macos-x64
+            pkg_target: node22-macos-x64
             binary_name: playwright-runner
           - platform: ubuntu-22.04
             target: x86_64-unknown-linux-gnu
-            pkg_target: node20-linux-x64
+            pkg_target: node22-linux-x64
             binary_name: playwright-runner
           - platform: windows-latest
             target: x86_64-pc-windows-msvc
-            pkg_target: node20-win-x64
+            pkg_target: node22-win-x64
             binary_name: playwright-runner.exe
 
     runs-on: ${{ matrix.platform }}
@@ -42,7 +42,7 @@ jobs:
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
-          node-version: '20'
+          node-version: '22'
           cache: 'npm'
 
       - name: Setup Rust

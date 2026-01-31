@@ -40,14 +40,7 @@
       "icons/icon.ico"
     ],
     "resources": {
-      "../connectors/*.ts": "connectors/",
-      "../connectors/*.json": "connectors/",
-      "../connectors/chatgpt/**/*": "connectors/chatgpt/",
-      "../connectors/instagram/**/*": "connectors/instagram/",
-      "../connectors/linkedin/**/*": "connectors/linkedin/",
-      "../connectors/meta/**/*": "connectors/meta/",
-      "../connectors/openai/**/*": "connectors/openai/",
-      "../connectors/types/**/*": "connectors/types/",
+      "../connectors/**/*": "./",
       "../playwright-runner/dist/*": "playwright-runner/dist/"
     },
     "windows": {

@@ -40,7 +40,7 @@
       "icons/icon.ico"
     ],
     "resources": {
-      "../connectors/**/*": "./",
+      "../connectors/**/*": "connectors/",
       "../playwright-runner/dist/*": "playwright-runner/dist/"
     },
     "windows": {

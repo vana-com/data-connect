@@ -1,7 +1,7 @@
 {
   "$schema": "../node_modules/@tauri-apps/cli/config.schema.json",
   "productName": "DataBridge",
-  "version": "0.1.9",
+  "version": "0.3.0",
   "identifier": "dev.databridge",
   "build": {
     "frontendDist": "../dist",
@@ -40,13 +40,7 @@
       "icons/icon.ico"
     ],
     "resources": {
-      "../connectors/registry.json": "connectors/registry.json",
-      "../connectors/chatgpt/**/*": "connectors/chatgpt/",
-      "../connectors/instagram/**/*": "connectors/instagram/",
-      "../connectors/linkedin/**/*": "connectors/linkedin/",
-      "../connectors/meta/**/*": "connectors/meta/",
-      "../connectors/openai/**/*": "connectors/openai/",
-      "../connectors/types/**/*": "connectors/types/",
+      "../connectors/**/*": "connectors/",
       "../playwright-runner/dist/*": "playwright-runner/dist/"
     },
     "windows": {

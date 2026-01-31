@@ -18,7 +18,7 @@
     "build:prod": "node scripts/build-prod.js",
     "skills:sync": "node scripts/sync-skills.js",
     "skills:watch": "node scripts/watch-skills.js",
-    "postinstall": "node scripts/sync-skills.js"
+    "postinstall": "node scripts/fetch-connectors.js && node scripts/sync-skills.js"
   },
   "dependencies": {
     "@base-ui/react": "^1.1.0",

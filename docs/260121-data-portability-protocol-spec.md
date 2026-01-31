@@ -2,9 +2,9 @@
 
 ## **Table of Contents**
 
- 1. [Introduction](<#1-introduction>)
- 2. [Terminology](<#2-terminology>)
- 3. [Protocol Model](<#3-protocol-model>)
+1. [Introduction](<#1-introduction>)
+2. [Terminology](<#2-terminology>)
+3. [Protocol Model](<#3-protocol-model>)
 4. [Protocol Components](<#4-protocol-components>)
     * [4.1.6 Personal Server Implementation Targets](<#416-personal-server-implementation-targets>)
     * [4.1.7 Data Sync Component](<#417-data-sync-component>)
@@ -13,12 +13,12 @@
     * [4.1.10 MCP Server Integration](<#4110-mcp-server-integration>)
     * [4.1.11 Internet Accessibility (Tunneling)](<#4111-internet-accessibility-tunneling>)
     * [4.5 Session Relay Service](<#45-session-relay-service>)
- 5. [Data Formats](<#5-data-formats>)
- 6. [Protocol Operations](<#6-protocol-operations>)
+5. [Data Formats](<#5-data-formats>)
+6. [Protocol Operations](<#6-protocol-operations>)
     * [6.6 Builder React Package (@vana/connect)](<#66-builder-react-package-vana-connect>)
- 7. [Security Considerations](<#7-security-considerations>)
- 8. [Error Handling](<#8-error-handling>)
- 9. [Extensibility](<#9-extensibility>)
+7. [Security Considerations](<#7-security-considerations>)
+8. [Error Handling](<#8-error-handling>)
+9. [Extensibility](<#9-extensibility>)
 10. [Appendix A: Alignment Analysis](<#appendix-a-alignment-analysis>)
 11. [Appendix B: Complete Flow Scenarios](<#appendix-b-complete-flow-scenarios>)
 12. [Appendix C: SMTP Analogy Mapping](<#appendix-c-smtp-analogy-mapping>)
@@ -73,7 +73,7 @@ This specification does NOT cover:
 
 **Data Portability Client** : Software that enables users to interact with the protocol. Analogous to an email client. The Vana Desktop App is the reference implementation. NOT a protocol participant (not registered on-chain). It may bundle a Personal Server; in that case the Personal Server (not the client) is the protocol participant and must be registered on-chain.
 
-**Personal Server** : A protocol-recognized environment integrated with user storage which responds to access requests and offers to certain compute operations on user data. Registered on-chain. 
+**Personal Server** : A protocol-recognized environment integrated with user storage which responds to access requests and offers to certain compute operations on user data. Registered on-chain.
 
 **Builder** : A third-party application that requests access to user data. Registered on-chain (via Desktop App + Gateway relayer) with a public key and an app URL used to resolve app metadata.
 
@@ -304,24 +304,24 @@ GET /health
 **POST /data/{scope} (plaintext ingest):**
 
 * Personal Server MUST:
-  1. Look up the `schemaId` for the given scope via Gateway (`GET /v1/schemas?scope={scope}`).
-  2. Reject with `400 Bad Request` if no schema is registered for the scope.
-  3. Validate the request body against the schema definition.
-  4. Reject with `400 Bad Request` if validation fails.
-  5. Generate `collectedAt` timestamp (current UTC time).
-  6. Construct the full Data File envelope:
-     ```json
-     {
-       "$schema": "<schema URL from registry>",
-       "version": "1.0",
-       "scope": "{scope}",
-       "collectedAt": "<generated timestamp>",
-       "data": <request body>
-     }
-     ```
-  7. Store locally in `~/.vana/data/{scope}/{collectedAt}.json`.
-  8. Return `201 Created` immediately with the response below.
-  9. Async (background): encrypt the Data File, upload to the configured storage backend (if any), and register the file record in `DataRegistry` via DP RPC.
+    1. Look up the `schemaId` for the given scope via Gateway (`GET /v1/schemas?scope={scope}`).
+    2. Reject with `400 Bad Request` if no schema is registered for the scope.
+    3. Validate the request body against the schema definition.
+    4. Reject with `400 Bad Request` if validation fails.
+    5. Generate `collectedAt` timestamp (current UTC time).
+    6. Construct the full Data File envelope:
+       ```json
+       {
+         "$schema": "<schema URL from registry>",
+         "version": "1.0",
+         "scope": "{scope}",
+         "collectedAt": "<generated timestamp>",
+         "data": <request body>
+       }
+       ```
+    7. Store locally in `~/.vana/data/{scope}/{collectedAt}.json`.
+    8. Return `201 Created` immediately with the response below.
+    9. Async (background): encrypt the Data File, upload to the configured storage backend (if any), and register the file record in `DataRegistry` via DP RPC.
 
 **POST /data/{scope} Response:**
 
@@ -947,7 +947,7 @@ GET    /v1/nonces?user={address}&operation={operation}
 
 `grantId` refers to the on-chain `permissionId` from `DataPortabilityPermissions`.
 
-`serverAddress` and `builderAddress` are used as their idempotent IDs. `grantId` and `fileId` are computed deterministically from their input parameters. Those IDs are consistent between the off-chain gateway and the on-chain smart contracts, so that they can be used to query both on-chain and off-chain with the Gateway. 
+`serverAddress` and `builderAddress` are used as their idempotent IDs. `grantId` and `fileId` are computed deterministically from their input parameters. Those IDs are consistent between the off-chain gateway and the on-chain smart contracts, so that they can be used to query both on-chain and off-chain with the Gateway.
 
 #### **4.2.5 Gateway Request and Response Format**
 
@@ -1372,9 +1372,9 @@ The Session Relay is a standalone service that coordinates "Connect Data" betwee
 
 * `POST /v1/session/init` MUST include `Authorization: Web3Signed <base64url(json)>.<signature>`
 * The Web3Signed payload uses the same format as **4.1.9.1**, with:
-  * `aud` = Session Relay origin
-  * `uri` = `/v1/session/init`
-  * `bodyHash` = SHA-256 of the request body
+    * `aud` = Session Relay origin
+    * `uri` = `/v1/session/init`
+    * `bodyHash` = SHA-256 of the request body
 * `app_user_id` is optional and used only for builder correlation when the grant is returned
 * Session Relay verifies the signature against `granteeAddress`
 
@@ -1822,14 +1822,14 @@ The builder-facing React package provides the default "Connect data" UX and abst
 2. Enter `appUrl` (canonical app origin)
 3. Desktop App generates (or imports) a Builder wallet and keypair
 4. Desktop App displays:
-   * Builder address (granteeAddress)
-   * Builder public key
-   * Builder private key (download/store securely)
+    * Builder address (granteeAddress)
+    * Builder public key
+    * Builder private key (download/store securely)
 5. Desktop App submits `registerGrantee` via Gateway relayer
 6. Builder config:
-   * Set `VANA_APP_PRIVATE_KEY` in server env (used to sign `Authorization: Web3Signed ...`)
-   * Use `granteeAddress` in `@vana/connect` init
-   * Publish manifest at `appUrl` with valid `vana` block
+    * Set `VANA_APP_PRIVATE_KEY` in server env (used to sign `Authorization: Web3Signed ...`)
+    * Use `granteeAddress` in `@vana/connect` init
+    * Publish manifest at `appUrl` with valid `vana` block
 
 **Responsibilities**
 
@@ -1879,11 +1879,11 @@ The builder-facing React package provides the default "Connect data" UX and abst
 
 * Personal Server MUST verify grant validity before serving data.
 * Grant verification MUST check:
-  * Signature is valid
-  * Grant is not revoked
-  * Grant has not expired
-  * Requested scope is within granted scopes
-  * `Authorization` signer matches the on-chain grantee for the grant
+    * Signature is valid
+    * Grant is not revoked
+    * Grant has not expired
+    * Requested scope is within granted scopes
+    * `Authorization` signer matches the on-chain grantee for the grant
 
 ### **7.4 Transport Security**
 

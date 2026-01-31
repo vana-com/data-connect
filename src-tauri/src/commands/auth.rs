@@ -3,7 +3,7 @@ use std::io::{BufRead, BufReader, Read, Write};
 use std::net::TcpListener;
 use std::sync::mpsc;
 use std::thread;
-use tauri::{AppHandle, Emitter};
+use tauri::{AppHandle, Emitter, Manager};
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
 pub struct AuthResult {
@@ -24,12 +24,13 @@ pub struct AuthUser {
 
 /// Start the external browser auth flow
 #[tauri::command]
-pub async fn start_browser_auth(app: AppHandle, privy_app_id: String) -> Result<(), String> {
+pub async fn start_browser_auth(app: AppHandle, privy_app_id: String, privy_client_id: Option<String>) -> Result<(), String> {
     log::info!("Starting browser auth flow with Privy app ID: {}", privy_app_id);
 
     // Find an available port for the callback server
-    let listener = TcpListener::bind("127.0.0.1:0")
-        .map_err(|e| format!("Failed to bind to port: {}", e))?;
+    let listener = TcpListener::bind("127.0.0.1:3083")
+        .or_else(|_| TcpListener::bind("127.0.0.1:5173"))
+        .map_err(|e| format!("Failed to bind to port 3083 or 5173: {}", e))?;
     let callback_port = listener.local_addr()
         .map_err(|e| format!("Failed to get local address: {}", e))?
         .port();
@@ -40,10 +41,17 @@ pub async fn start_browser_auth(app: AppHandle, privy_app_id: String) -> Result<
     let (tx, _rx) = mpsc::channel::<AuthResult>();
 
     let app_handle = app.clone();
+    let privy_app_id_clone = privy_app_id.clone();
+    let privy_client_id_clone = privy_client_id.unwrap_or_default();
 
     // Spawn callback server thread
     thread::spawn(move || {
         log::info!("Auth callback server thread started");
+
+        // Load the bundled auth page HTML and inject the Privy IDs
+        let auth_html = include_str!("../../auth-page/index.html")
+            .replace("{{PRIVY_APP_ID}}", &privy_app_id_clone)
+            .replace("{{PRIVY_CLIENT_ID}}", &privy_client_id_clone);
 
         for stream in listener.incoming() {
             match stream {
@@ -66,8 +74,17 @@ pub async fn start_browser_auth(app: AppHandle, privy_app_id: String) -> Result<
                     let method = parts[0];
                     let path = parts[1];
 
-                    match (method, path) {
-                        ("POST", "/auth-callback") | ("POST", "/") => {
+                    match method {
+                        "GET" if path == "/" || path.starts_with("/?") => {
+                            // Serve the bundled auth page
+                            let response = format!(
+                                "HTTP/1.1 200 OK\r\nContent-Type: text/html; charset=utf-8\r\nContent-Length: {}\r\n\r\n{}",
+                                auth_html.len(),
+                                auth_html
+                            );
+                            let _ = stream.write_all(response.as_bytes());
+                        }
+                        "POST" if path == "/auth-callback" || path == "/" => {
                             // Read headers to get content length
                             let mut content_length: usize = 0;
                             let mut line = String::new();
@@ -96,6 +113,11 @@ pub async fn start_browser_auth(app: AppHandle, privy_app_id: String) -> Result<
 
                                         // Emit event to frontend
                                         let _ = app_handle.emit("auth-complete", auth_result);
+
+                                        // Focus the app window
+                                        if let Some(window) = app_handle.get_webview_window("main") {
+                                            let _ = window.set_focus();
+                                        }
                                     }
                                 }
                             }
@@ -104,11 +126,44 @@ pub async fn start_browser_auth(app: AppHandle, privy_app_id: String) -> Result<
                             let response = "HTTP/1.1 200 OK\r\nContent-Type: application/json\r\nAccess-Control-Allow-Origin: *\r\nAccess-Control-Allow-Methods: POST, OPTIONS\r\nAccess-Control-Allow-Headers: Content-Type\r\n\r\n{\"ok\":true}";
                             let _ = stream.write_all(response.as_bytes());
 
-                            // Close server after successful auth
-                            log::info!("Auth complete, closing callback server");
+                            log::info!("Auth complete, waiting for close-tab request");
+                        }
+                        "GET" if path == "/close-tab" => {
+                            // Browser tab navigates here after showing success.
+                            // Serve a page with the success message, then close the tab
+                            // from the native side via Cmd+W (macOS).
+                            let close_html = r##"<!DOCTYPE html>
+<html><head><title>Signed in</title><style>
+body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; background: #f5f5f7; display: flex; align-items: center; justify-content: center; min-height: 100vh; margin: 0; }
+.c { text-align: center; background: white; border-radius: 16px; padding: 40px; box-shadow: 0 4px 24px rgba(0,0,0,0.06); max-width: 400px; }
+.i { width: 64px; height: 64px; background: #dcfce7; border-radius: 50%; display: flex; align-items: center; justify-content: center; margin: 0 auto 20px; }
+h2 { font-size: 22px; color: #1a1a1a; margin-bottom: 12px; }
+p { font-size: 14px; color: #6b7280; }
+</style></head><body><div class="c">
+<div class="i"><svg width="32" height="32" fill="none" viewBox="0 0 24 24" stroke="#22c55e"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/></svg></div>
+<h2>You're signed in!</h2>
+<p>Closing this tab...</p>
+</div></body></html>"##;
+                            let response = format!(
+                                "HTTP/1.1 200 OK\r\nContent-Type: text/html; charset=utf-8\r\nContent-Length: {}\r\n\r\n{}",
+                                close_html.len(),
+                                close_html
+                            );
+                            let _ = stream.write_all(response.as_bytes());
+
+                            #[cfg(target_os = "macos")]
+                            {
+                                std::thread::sleep(std::time::Duration::from_millis(800));
+                                let _ = std::process::Command::new("osascript")
+                                    .arg("-e")
+                                    .arg(r#"tell application "System Events" to keystroke "w" using command down"#)
+                                    .output();
+                            }
+
+                            log::info!("Close-tab done, shutting down auth server");
                             break;
                         }
-                        ("OPTIONS", _) => {
+                        "OPTIONS" => {
                             // Handle CORS preflight
                             let response = "HTTP/1.1 200 OK\r\nAccess-Control-Allow-Origin: *\r\nAccess-Control-Allow-Methods: POST, OPTIONS\r\nAccess-Control-Allow-Headers: Content-Type\r\n\r\n";
                             let _ = stream.write_all(response.as_bytes());
@@ -128,9 +183,8 @@ pub async fn start_browser_auth(app: AppHandle, privy_app_id: String) -> Result<
         log::info!("Auth callback server thread ended");
     });
 
-    // Open browser to the React app's browser login page with callback port
-    // The React app is served by Vite dev server on port 5173
-    let auth_url = format!("http://localhost:5173/browser-login?callbackPort={}", callback_port);
+    // Open browser to the self-contained auth page served by our localhost server
+    let auth_url = format!("http://localhost:{}", callback_port);
     log::info!("Opening browser to: {}", auth_url);
 
     #[cfg(target_os = "macos")]

@@ -79,7 +79,7 @@ export function InlineLogin() {
     setAuthStarted(true);
 
     try {
-      await invoke('start_browser_auth', { privyAppId: PRIVY_APP_ID });
+      await invoke('start_browser_auth', { privyAppId: PRIVY_APP_ID, privyClientId: import.meta.env.VITE_PRIVY_CLIENT_ID || undefined });
     } catch (err) {
       console.error('Failed to start browser auth:', err);
       setError(err instanceof Error ? err.message : 'Failed to open browser for authentication.');

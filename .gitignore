@@ -17,6 +17,10 @@ dist-ssr
 !.vscode/extensions.json
 .idea
 .cursor/
+
+# Agent configs (keep local)
+.agents/
+.claude/
 .DS_Store
 *.suo
 *.ntvs*

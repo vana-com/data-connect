@@ -8,6 +8,7 @@ import { useAuth } from '../hooks/useAuth';
 import { setAuthenticated } from '../state/store';
 import { approveSession, getSessionInfo, SessionRelayError } from '../services/sessionRelay';
 import { prepareGrantMessage } from '../services/grantSigning';
+import { setConnectedApp } from '../lib/storage';
 import type { ConnectedApp } from '../types';
 
 const PRIVY_APP_ID = import.meta.env.VITE_PRIVY_APP_ID;
@@ -186,23 +187,8 @@ export function GrantFlow() {
         connectedAt: new Date().toISOString(),
       };
 
-      // Store in state (would use Redux in production)
-      localStorage.setItem(`connected_app_${flowState.session.appId}`, JSON.stringify(newApp));
-
-      // Also update the connected_apps array
-      try {
-        const existingAppsStr = localStorage.getItem('connected_apps');
-        const existingApps = existingAppsStr ? JSON.parse(existingAppsStr) : [];
-        const appIndex = existingApps.findIndex((app: ConnectedApp) => app.id === newApp.id);
-        if (appIndex >= 0) {
-          existingApps[appIndex] = newApp;
-        } else {
-          existingApps.push(newApp);
-        }
-        localStorage.setItem('connected_apps', JSON.stringify(existingApps));
-      } catch (e) {
-        console.error('Error updating connected_apps array:', e);
-      }
+      // Store in versioned storage
+      setConnectedApp(newApp);
     } catch (error) {
       setFlowState({
         sessionId: flowState.sessionId,

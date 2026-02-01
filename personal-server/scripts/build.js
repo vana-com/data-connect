@@ -116,8 +116,8 @@ async function build() {
   // Clean up intermediate bundle
   rmSync(bundlePath, { force: true });
 
-  // Copy better-sqlite3 native addon alongside the binary
-  // pkg cannot bundle native .node addons; they must be on the real filesystem
+  // Copy better-sqlite3 native addon alongside the binary.
+  // pkg cannot bundle native addons; they must be on the real filesystem.
   const sqliteModule = join(ROOT, 'node_modules', 'better-sqlite3');
   if (existsSync(sqliteModule)) {
     const destModule = join(DIST, 'node_modules', 'better-sqlite3');

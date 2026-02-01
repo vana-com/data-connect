@@ -23,24 +23,24 @@ fn get_bundled_personal_server(app: &AppHandle) -> Option<PathBuf> {
     #[cfg(target_os = "linux")]
     let binary_name = "personal-server";
 
-    // Try binaries/ path first (CI builds)
-    let binary_path = resource_dir.join("binaries").join(binary_name);
-    if binary_path.exists() {
-        log::info!("Found bundled personal server at {:?}", binary_path);
-        return Some(binary_path);
+    // Check all possible locations
+    let candidates = [
+        // Production: resources are copied into personal-server/dist/
+        resource_dir.join("personal-server").join("dist").join(binary_name),
+        // CI builds
+        resource_dir.join("binaries").join(binary_name),
+        // Local builds (tauri dev with _up_ prefix)
+        resource_dir.join("_up_").join("personal-server").join("dist").join(binary_name),
+    ];
+
+    for candidate in &candidates {
+        if candidate.exists() {
+            log::info!("Found bundled personal server at {:?}", candidate);
+            return Some(candidate.clone());
+        }
     }
 
-    // Try _up_/personal-server/dist path (local builds)
-    let up_path = resource_dir
-        .join("_up_")
-        .join("personal-server")
-        .join("dist")
-        .join(binary_name);
-    if up_path.exists() {
-        log::info!("Found bundled personal server at {:?}", up_path);
-        return Some(up_path);
-    }
-
+    log::warn!("Personal server binary not found. Checked: {:?}", candidates);
     None
 }
 

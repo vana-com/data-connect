@@ -9,9 +9,10 @@
  */
 
 import { execSync } from 'child_process';
-import { existsSync } from 'fs';
+import { existsSync, cpSync, readdirSync } from 'fs';
 import { join, dirname } from 'path';
 import { fileURLToPath } from 'url';
+import { platform } from 'os';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const ROOT = join(__dirname, '..');
@@ -58,13 +59,63 @@ async function build() {
     throw new Error('personal-server build failed - dist directory not found');
   }
 
-  // 5. Build frontend
+  // 5. Move personal-server native addons out of dist/ temporarily.
+  // Tauri's resource glob can't handle directories, so we move node_modules/
+  // out before the build and copy it into the bundle after.
+  const psDistNodeModules = join(PERSONAL_SERVER, 'dist', 'node_modules');
+  const psTempNodeModules = join(PERSONAL_SERVER, '_node_modules_tmp');
+  if (existsSync(psDistNodeModules)) {
+    log('Temporarily moving personal-server native addons out of dist/...');
+    cpSync(psDistNodeModules, psTempNodeModules, { recursive: true });
+    execSync(`rm -rf "${psDistNodeModules}"`);
+  }
+
+  // 6. Build frontend
   log('Building frontend...');
   exec('npm run build');
 
-  // 6. Build Tauri app
+  // 7. Build Tauri app
   log('Building Tauri app...');
   exec('npm run tauri build');
+
+  // 8. Restore node_modules in dist/
+  if (existsSync(psTempNodeModules)) {
+    cpSync(psTempNodeModules, psDistNodeModules, { recursive: true });
+    execSync(`rm -rf "${psTempNodeModules}"`);
+  }
+
+  // 7. Copy personal-server native addons into the app bundle.
+  // Tauri's resource glob flattens subdirectories, so we copy node_modules/
+  // into the bundle manually after the build.
+  log('Copying personal-server native addons into bundle...');
+  const PLATFORM = platform();
+  const bundleBase = join(ROOT, 'src-tauri', 'target', 'release', 'bundle');
+  let resourceDirs = [];
+
+  if (PLATFORM === 'darwin') {
+    // Find the .app bundle(s)
+    const macosBundle = join(bundleBase, 'macos');
+    if (existsSync(macosBundle)) {
+      for (const entry of readdirSync(macosBundle)) {
+        if (entry.endsWith('.app')) {
+          resourceDirs.push(join(macosBundle, entry, 'Contents', 'Resources'));
+        }
+      }
+    }
+  } else if (PLATFORM === 'win32') {
+    resourceDirs.push(join(bundleBase, 'nsis'));
+  } else {
+    resourceDirs.push(join(bundleBase, 'appimage'));
+  }
+
+  const srcNodeModules = join(PERSONAL_SERVER, 'dist', 'node_modules');
+  for (const resDir of resourceDirs) {
+    const destNodeModules = join(resDir, 'personal-server', 'dist', 'node_modules');
+    if (existsSync(srcNodeModules) && existsSync(resDir)) {
+      log(`  Copying to ${destNodeModules}`);
+      cpSync(srcNodeModules, destNodeModules, { recursive: true });
+    }
+  }
 
   log('Build complete! Check src-tauri/target/release/bundle for the output.');
 }

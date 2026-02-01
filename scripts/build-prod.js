@@ -76,12 +76,14 @@ async function build() {
 
   // 7. Build Tauri app
   log('Building Tauri app...');
-  exec('npm run tauri build');
-
-  // 8. Restore node_modules in dist/
-  if (existsSync(psTempNodeModules)) {
-    cpSync(psTempNodeModules, psDistNodeModules, { recursive: true });
-    execSync(`rm -rf "${psTempNodeModules}"`);
+  try {
+    exec('npm run tauri build');
+  } finally {
+    // 8. Always restore node_modules in dist/ even if build fails
+    if (existsSync(psTempNodeModules)) {
+      cpSync(psTempNodeModules, psDistNodeModules, { recursive: true });
+      execSync(`rm -rf "${psTempNodeModules}"`);
+    }
   }
 
   // 7. Copy personal-server native addons into the app bundle.

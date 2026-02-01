@@ -17,8 +17,8 @@ async function main() {
   const gatewayUrl = process.env.GATEWAY_URL || undefined;
 
   try {
-    const { loadConfig } = await import('./node_modules/@personal-server/core/dist/config/index.js');
-    const { createServer } = await import('./node_modules/@personal-server/server/dist/bootstrap.js');
+    const { loadConfig } = await import('./node_modules/personal-server-ts/packages/core/dist/config/index.js');
+    const { createServer } = await import('./node_modules/personal-server-ts/packages/server/dist/bootstrap.js');
     const { serve } = await import('./node_modules/@hono/node-server/dist/index.js');
 
     const configPath = configDir ? join(configDir, 'server.json') : undefined;

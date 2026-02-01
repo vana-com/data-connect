@@ -7,7 +7,8 @@
   "scripts": {
     "start": "node index.js",
     "start:cjs": "node index.cjs",
-    "build": "node scripts/build.js"
+    "build": "node scripts/build.js",
+    "postinstall": "cd node_modules/personal-server-ts && npm install && npm run build"
   },
   "pkg": {
     "assets": [
@@ -26,9 +27,7 @@
     "outputPath": "dist"
   },
   "dependencies": {
-    "@opendatalabs/personal-server-ts": "file:../read-only-for-reference/personal-server-ts/packages/cli",
-    "@personal-server/core": "file:../read-only-for-reference/personal-server-ts/packages/core",
-    "@personal-server/server": "file:../read-only-for-reference/personal-server-ts/packages/server",
+    "personal-server-ts": "github:vana-com/personal-server-ts#main",
     "better-sqlite3": "^12.6.2"
   },
   "devDependencies": {

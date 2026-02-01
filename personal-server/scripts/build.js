@@ -50,17 +50,28 @@ function getOutputName() {
  */
 function dereferenceSymlinks() {
   const nodeModules = join(ROOT, 'node_modules');
-  const scopes = ['@personal-server', '@opendatalabs'];
 
+  // Check top-level entries (e.g. personal-server-ts)
+  const topLevel = ['personal-server-ts'];
+  for (const name of topLevel) {
+    const entryPath = join(nodeModules, name);
+    if (existsSync(entryPath) && lstatSync(entryPath).isSymbolicLink()) {
+      const realPath = resolve(dirname(entryPath), readlinkSync(entryPath));
+      log(`Dereferencing symlink: ${name} -> ${realPath}`);
+      rmSync(entryPath, { recursive: true });
+      cpSync(realPath, entryPath, { recursive: true });
+    }
+  }
+
+  // Check scoped entries (e.g. @personal-server/*)
+  const scopes = ['@personal-server', '@opendatalabs'];
   for (const scope of scopes) {
     const scopeDir = join(nodeModules, scope);
     if (!existsSync(scopeDir)) continue;
 
     for (const entry of readdirSync(scopeDir)) {
       const entryPath = join(scopeDir, entry);
-      const stat = lstatSync(entryPath);
-
-      if (stat.isSymbolicLink()) {
+      if (lstatSync(entryPath).isSymbolicLink()) {
         const realPath = resolve(dirname(entryPath), readlinkSync(entryPath));
         log(`Dereferencing symlink: ${entry} -> ${realPath}`);
         rmSync(entryPath, { recursive: true });

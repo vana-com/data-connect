@@ -12,9 +12,8 @@
  */
 
 import { join } from 'node:path';
-import { loadConfig } from '@personal-server/core/config';
-// Direct file import — the package exports map only exposes "." (index.js)
-import { createServer } from './node_modules/@personal-server/server/dist/bootstrap.js';
+import { loadConfig } from './node_modules/personal-server-ts/packages/core/dist/config/index.js';
+import { createServer } from './node_modules/personal-server-ts/packages/server/dist/bootstrap.js';
 import { serve } from '@hono/node-server';
 
 function send(msg) {

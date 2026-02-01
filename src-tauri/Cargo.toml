@@ -34,3 +34,6 @@ chrono = { version = "0.4", features = ["serde"] }
 sha2 = "0.10"
 semver = "1.0"
 dirs = "5.0"
+
+[target.'cfg(unix)'.dependencies]
+libc = "0.2"

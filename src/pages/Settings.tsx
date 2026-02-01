@@ -9,6 +9,7 @@ import {
 import { useCallback, useEffect, useState, useSyncExternalStore } from 'react';
 import { useNavigate } from 'react-router';
 import { useAuth } from '../hooks/useAuth';
+import { usePersonalServer } from '../hooks/usePersonalServer';
 import { getAllConnectedApps, removeConnectedApp, subscribeConnectedApps } from '../lib/storage';
 import { SettingsAbout, SettingsAccount, SettingsApps, SettingsStorage } from './settings-sections';
 
@@ -27,6 +28,7 @@ type SettingsSection = 'account' | 'apps' | 'storage' | 'about';
 export function Settings() {
   const navigate = useNavigate();
   const { user, logout, isAuthenticated } = useAuth();
+  const personalServer = usePersonalServer();
   const [activeSection, setActiveSection] = useState<SettingsSection>('account');
   const [dataPath, setDataPath] = useState<string>('');
   const [appVersion, setAppVersion] = useState<string>('');
@@ -199,6 +201,7 @@ export function Settings() {
                 user={user}
                 isAuthenticated={isAuthenticated}
                 onLogout={handleLogout}
+                onSignIn={() => navigate('/login')}
               />
             )}
 
@@ -224,9 +227,16 @@ export function Settings() {
                 nodeTestError={nodeTestError}
                 browserStatus={browserStatus}
                 pathsDebug={pathsDebug}
+                personalServer={{
+                  status: personalServer.status,
+                  port: personalServer.port,
+                  error: personalServer.error,
+                }}
                 onTestNodeJs={testNodeJs}
                 onCheckBrowserStatus={checkBrowserStatus}
                 onDebugPaths={debugPaths}
+                onRestartPersonalServer={() => personalServer.startServer()}
+                onStopPersonalServer={personalServer.stopServer}
               />
             )}
           </div>

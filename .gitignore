@@ -21,6 +21,10 @@ dist-ssr
 # Agent configs (keep local)
 .agents/
 .claude/
+
+# Local-only
+.env
+read-only-for-reference/
 .DS_Store
 *.suo
 *.ntvs*

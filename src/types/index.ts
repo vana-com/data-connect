@@ -133,6 +133,7 @@ export interface AuthState {
   isLoading: boolean;
   user: AuthUser | null;
   walletAddress: string | null;
+  masterKeySignature: string | null;
 }
 
 export interface AuthUser {

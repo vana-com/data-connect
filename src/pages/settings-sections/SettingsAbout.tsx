@@ -22,6 +22,12 @@ interface BrowserStatus {
   browser_type: string;
 }
 
+interface PersonalServerInfo {
+  status: 'stopped' | 'starting' | 'running' | 'error';
+  port: number | null;
+  error: string | null;
+}
+
 interface SettingsAboutProps {
   appVersion: string;
   nodeTestStatus: 'idle' | 'testing' | 'success' | 'error';
@@ -29,9 +35,12 @@ interface SettingsAboutProps {
   nodeTestError: string | null;
   browserStatus: BrowserStatus | null;
   pathsDebug: Record<string, unknown> | null;
+  personalServer: PersonalServerInfo;
   onTestNodeJs: () => void;
   onCheckBrowserStatus: () => void;
   onDebugPaths: () => void;
+  onRestartPersonalServer: () => void;
+  onStopPersonalServer: () => void;
 }
 
 const cardStyle: React.CSSProperties = {
@@ -55,9 +64,12 @@ export function SettingsAbout({
   nodeTestError,
   browserStatus,
   pathsDebug,
+  personalServer,
   onTestNodeJs,
   onCheckBrowserStatus,
   onDebugPaths,
+  onRestartPersonalServer,
+  onStopPersonalServer,
 }: SettingsAboutProps) {
   return (
     <div>
@@ -211,6 +223,136 @@ export function SettingsAbout({
                   <span style={{ color: '#1a1a1a' }}>{nodeTestResult.uptime}</span>
                 </div>
               </div>
+            </div>
+          )}
+          {/* Personal Server */}
+          <div style={{ ...rowStyle, borderTop: '1px solid #f3f4f6', gap: '16px' }}>
+            <div
+              style={{
+                width: '40px',
+                height: '40px',
+                borderRadius: '10px',
+                backgroundColor:
+                  personalServer.status === 'running'
+                    ? '#dcfce7'
+                    : personalServer.status === 'error'
+                      ? '#fee2e2'
+                      : personalServer.status === 'starting'
+                        ? '#fef3c7'
+                        : '#f3f4f6',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                flexShrink: 0,
+              }}
+            >
+              {personalServer.status === 'starting' ? (
+                <Loader
+                  style={{
+                    width: '20px',
+                    height: '20px',
+                    color: '#f59e0b',
+                    animation: 'spin 1s linear infinite',
+                  }}
+                />
+              ) : personalServer.status === 'running' ? (
+                <CheckCircle style={{ width: '20px', height: '20px', color: '#22c55e' }} />
+              ) : personalServer.status === 'error' ? (
+                <XCircle style={{ width: '20px', height: '20px', color: '#ef4444' }} />
+              ) : (
+                <Play style={{ width: '20px', height: '20px', color: '#6b7280' }} />
+              )}
+            </div>
+            <div style={{ flex: 1, minWidth: 0 }}>
+              <div style={{ fontWeight: 500, color: '#1a1a1a', fontSize: '15px' }}>
+                Personal Server
+              </div>
+              <div style={{ fontSize: '13px', color: '#6b7280' }}>
+                {personalServer.status === 'stopped' && 'Not running'}
+                {personalServer.status === 'starting' && 'Starting...'}
+                {personalServer.status === 'running' &&
+                  `Running on port ${personalServer.port}`}
+                {personalServer.status === 'error' &&
+                  (personalServer.error || 'Failed to start')}
+              </div>
+            </div>
+            {personalServer.status === 'running' ? (
+              <button
+                onClick={onStopPersonalServer}
+                style={{
+                  padding: '8px 12px',
+                  fontSize: '13px',
+                  color: '#ef4444',
+                  backgroundColor: 'transparent',
+                  border: '1px solid #fecaca',
+                  borderRadius: '8px',
+                  cursor: 'pointer',
+                  transition: 'all 0.15s ease',
+                }}
+                onMouseEnter={(e) => {
+                  e.currentTarget.style.backgroundColor = '#fef2f2';
+                }}
+                onMouseLeave={(e) => {
+                  e.currentTarget.style.backgroundColor = 'transparent';
+                }}
+              >
+                Stop
+              </button>
+            ) : personalServer.status !== 'starting' ? (
+              <button
+                onClick={onRestartPersonalServer}
+                style={{
+                  padding: '8px 12px',
+                  fontSize: '13px',
+                  color: '#4b5563',
+                  backgroundColor: 'transparent',
+                  border: '1px solid #e5e7eb',
+                  borderRadius: '8px',
+                  cursor: 'pointer',
+                  transition: 'all 0.15s ease',
+                }}
+                onMouseEnter={(e) => {
+                  e.currentTarget.style.backgroundColor = '#f9fafb';
+                }}
+                onMouseLeave={(e) => {
+                  e.currentTarget.style.backgroundColor = 'transparent';
+                }}
+              >
+                Start
+              </button>
+            ) : null}
+          </div>
+          {/* Personal Server health link */}
+          {personalServer.status === 'running' && personalServer.port && (
+            <div
+              style={{
+                padding: '8px 16px 12px',
+                borderTop: '1px solid #f3f4f6',
+                marginLeft: '56px',
+              }}
+            >
+              <a
+                href={`http://localhost:${personalServer.port}/status`}
+                target="_blank"
+                rel="noopener noreferrer"
+                style={{
+                  fontSize: '13px',
+                  color: '#3b82f6',
+                  textDecoration: 'none',
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '4px',
+                }}
+                onMouseEnter={(e) => {
+                  e.currentTarget.style.textDecoration = 'underline';
+                }}
+                onMouseLeave={(e) => {
+                  e.currentTarget.style.textDecoration = 'none';
+                }}
+              >
+                Health check
+                <ExternalLink style={{ width: '12px', height: '12px' }} />
+              </a>
             </div>
           )}
           {/* Browser Status */}

@@ -422,6 +422,25 @@
         try { authToken = await privy.getAccessToken(); } catch (_) {}
       }
 
+      // Sign master key message for personal server key derivation
+      let masterKeySignature = null;
+      if (walletAddress) {
+        try {
+          showLoading('Signing master key...');
+          await setupWalletIframe(privy);
+          const provider = await privy.embeddedWallet.getProvider();
+          // personal_sign expects hex-encoded message
+          const msgHex = '0x' + Array.from(new TextEncoder().encode('vana-master-key-v1')).map(b => b.toString(16).padStart(2, '0')).join('');
+          masterKeySignature = await provider.request({
+            method: 'personal_sign',
+            params: [msgHex, walletAddress],
+          });
+          console.log('[AUTH] Master key signed:', masterKeySignature?.substring(0, 20) + '...');
+        } catch (e) {
+          console.warn('[AUTH] Master key signing failed (non-fatal):', e.message || e);
+        }
+      }
+
       await sendAuthResult({
         success: true,
         user: {
@@ -434,6 +453,7 @@
         },
         walletAddress,
         authToken,
+        masterKeySignature,
       });
 
       showSuccess();

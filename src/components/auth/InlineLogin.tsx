@@ -16,6 +16,7 @@ interface AuthResult {
   };
   walletAddress?: string;
   authToken?: string;
+  masterKeySignature?: string;
   error?: string;
 }
 
@@ -44,6 +45,7 @@ export function InlineLogin() {
               email: result.user.email,
             },
             walletAddress: result.walletAddress || null,
+            masterKeySignature: result.masterKeySignature || null,
           })
         );
         navigate(-1); // Go back to grant flow
@@ -87,6 +89,14 @@ export function InlineLogin() {
       setAuthStarted(false);
     }
   }, []);
+
+  // Auto-start browser auth on mount
+  const autoStarted = useRef(false);
+  useEffect(() => {
+    if (autoStarted.current || !PRIVY_APP_ID) return;
+    autoStarted.current = true;
+    handleBrowserAuth();
+  }, [handleBrowserAuth]);
 
   const handleDemoLogin = useCallback(() => {
     // Create a demo wallet address for testing when Privy is not configured

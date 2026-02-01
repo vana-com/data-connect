@@ -126,7 +126,7 @@ export function GrantFlow() {
 
   // Listen for auth completion from browser
   useEffect(() => {
-    const unlisten = listen<{ success: boolean; user?: { id: string; email: string | null }; walletAddress?: string; error?: string }>(
+    const unlisten = listen<{ success: boolean; user?: { id: string; email: string | null }; walletAddress?: string; masterKeySignature?: string; error?: string }>(
       'auth-complete',
       (event) => {
         const result = event.payload;
@@ -135,6 +135,7 @@ export function GrantFlow() {
             setAuthenticated({
               user: { id: result.user.id, email: result.user.email || undefined },
               walletAddress: result.walletAddress || null,
+              masterKeySignature: result.masterKeySignature || null,
             })
           );
         }

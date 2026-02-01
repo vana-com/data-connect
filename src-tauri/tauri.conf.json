@@ -41,7 +41,8 @@
     ],
     "resources": {
       "../connectors/**/*": "connectors/",
-      "../playwright-runner/dist/*": "playwright-runner/dist/"
+      "../playwright-runner/dist/*": "playwright-runner/dist/",
+      "../personal-server/dist/*": "personal-server/dist/"
     },
     "windows": {
       "nsis": {

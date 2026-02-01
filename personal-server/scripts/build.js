@@ -116,15 +116,18 @@ async function build() {
   // Clean up intermediate bundle
   rmSync(bundlePath, { force: true });
 
-  // Copy better-sqlite3 native addon alongside the binary.
+  // Copy better-sqlite3 and its runtime dependencies alongside the binary.
   // pkg cannot bundle native addons; they must be on the real filesystem.
-  const sqliteModule = join(ROOT, 'node_modules', 'better-sqlite3');
-  if (existsSync(sqliteModule)) {
-    const destModule = join(DIST, 'node_modules', 'better-sqlite3');
-    log('Copying better-sqlite3 native addon...');
-    cpSync(sqliteModule, destModule, { recursive: true });
-  } else {
-    log('WARNING: better-sqlite3 not found in node_modules');
+  const nativeModules = ['better-sqlite3', 'bindings', 'file-uri-to-path'];
+  for (const mod of nativeModules) {
+    const src = join(ROOT, 'node_modules', mod);
+    if (existsSync(src)) {
+      const dest = join(DIST, 'node_modules', mod);
+      log(`Copying ${mod}...`);
+      cpSync(src, dest, { recursive: true });
+    } else {
+      log(`WARNING: ${mod} not found in node_modules`);
+    }
   }
 
   log('Build complete!');

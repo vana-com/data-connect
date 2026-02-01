@@ -3,11 +3,11 @@ mod processors;
 
 use commands::{
     cancel_browser_auth, check_browser_available, check_connected_platforms, check_connector_updates,
-    debug_connector_paths, download_browser, download_connector, get_app_config, get_installed_connectors,
-    get_personal_server_status, get_platforms, get_registry_url, get_run_files, get_user_data_path,
-    handle_download, load_run_export_data, load_runs, open_folder, open_platform_export_folder, set_app_config,
-    start_browser_auth, start_personal_server, stop_connector_run, stop_personal_server, start_connector_run,
-    test_nodejs, write_export_data,
+    cleanup_personal_server, debug_connector_paths, download_browser, download_connector, get_app_config,
+    get_installed_connectors, get_personal_server_status, get_platforms, get_registry_url, get_run_files,
+    get_user_data_path, handle_download, load_run_export_data, load_runs, open_folder,
+    open_platform_export_folder, set_app_config, start_browser_auth, start_personal_server,
+    stop_connector_run, stop_personal_server, start_connector_run, test_nodejs, write_export_data,
 };
 use tauri::{Listener, Manager};
 
@@ -72,6 +72,11 @@ pub fn run() {
             stop_personal_server,
             get_personal_server_status,
         ])
-        .run(tauri::generate_context!())
-        .expect("error while running tauri application");
+        .build(tauri::generate_context!())
+        .expect("error while building tauri application")
+        .run(|_app, event| {
+            if let tauri::RunEvent::Exit = event {
+                cleanup_personal_server();
+            }
+        });
 }

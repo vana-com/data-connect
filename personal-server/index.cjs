@@ -15,6 +15,7 @@ async function main() {
   const port = parseInt(process.env.PORT || '8080', 10);
   const configDir = process.env.CONFIG_DIR || undefined;
   const gatewayUrl = process.env.GATEWAY_URL || undefined;
+  const ownerAddress = process.env.OWNER_ADDRESS || undefined;
 
   try {
     const { loadConfig } = await import('./node_modules/personal-server-ts/packages/core/dist/config/index.js');
@@ -31,8 +32,18 @@ async function main() {
     if (gatewayUrl) {
       config.gatewayUrl = gatewayUrl;
     }
+    if (ownerAddress) {
+      config.server.address = ownerAddress;
+    }
 
     const { app, devToken } = await createServer(config, { configDir });
+
+    // Custom status endpoint exposing owner
+    app.get('/status', (c) => c.json({
+      status: 'healthy',
+      owner: config.server.address || null,
+      port,
+    }));
 
     const server = serve({ fetch: app.fetch, port }, (info) => {
       send({ type: 'ready', port: info.port });

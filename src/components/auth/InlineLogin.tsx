@@ -90,6 +90,14 @@ export function InlineLogin() {
     }
   }, []);
 
+  // Auto-start browser auth on mount
+  const autoStarted = useRef(false);
+  useEffect(() => {
+    if (autoStarted.current || !PRIVY_APP_ID) return;
+    autoStarted.current = true;
+    handleBrowserAuth();
+  }, [handleBrowserAuth]);
+
   const handleDemoLogin = useCallback(() => {
     // Create a demo wallet address for testing when Privy is not configured
     const demoWalletAddress = '0xDemo' + Math.random().toString(16).slice(2, 10) + '...Demo';

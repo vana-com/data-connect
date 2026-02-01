@@ -5,6 +5,7 @@ use tauri::{AppHandle, Emitter, Manager};
 
 static PERSONAL_SERVER_PROCESS: Mutex<Option<std::process::Child>> = Mutex::new(None);
 static PERSONAL_SERVER_PORT: Mutex<Option<u16>> = Mutex::new(None);
+static PERSONAL_SERVER_STARTING: Mutex<bool> = Mutex::new(false);
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
 pub struct PersonalServerStatus {
@@ -51,12 +52,22 @@ pub async fn start_personal_server(
     port: Option<u16>,
     master_key_signature: Option<String>,
     gateway_url: Option<String>,
+    owner_address: Option<String>,
 ) -> Result<PersonalServerStatus, String> {
     use std::io::{BufRead, BufReader};
     use std::process::{Command, Stdio};
 
-    // Check if already running
+    // Prevent concurrent spawns
     {
+        let mut starting = PERSONAL_SERVER_STARTING.lock().map_err(|e| e.to_string())?;
+        if *starting {
+            log::info!("Personal server is already being started, skipping");
+            let port_guard = PERSONAL_SERVER_PORT.lock().map_err(|e| e.to_string())?;
+            return Ok(PersonalServerStatus {
+                running: true,
+                port: *port_guard,
+            });
+        }
         let guard = PERSONAL_SERVER_PROCESS.lock().map_err(|e| e.to_string())?;
         if guard.is_some() {
             let port_guard = PERSONAL_SERVER_PORT.lock().map_err(|e| e.to_string())?;
@@ -65,9 +76,40 @@ pub async fn start_personal_server(
                 port: *port_guard,
             });
         }
+        *starting = true;
     }
 
-    let port = port.unwrap_or(8080);
+    // Helper to clear starting flag on error
+    let clear_starting = || {
+        if let Ok(mut s) = PERSONAL_SERVER_STARTING.lock() {
+            *s = false;
+        }
+    };
+
+    let port = if let Some(p) = port {
+        p
+    } else {
+        // Find a free port, preferring 8080
+        let preferred = [8080u16, 8081, 8082, 8083, 8084, 8085];
+        let mut found = None;
+        for p in preferred {
+            if std::net::TcpListener::bind(("127.0.0.1", p)).is_ok() {
+                found = Some(p);
+                break;
+            }
+        }
+        match found {
+            Some(p) => p,
+            None => {
+                // Bind to port 0 to get any free port
+                let listener = std::net::TcpListener::bind("127.0.0.1:0")
+                    .map_err(|e| { clear_starting(); format!("No free port available: {}", e) })?;
+                listener.local_addr()
+                    .map_err(|e| { clear_starting(); format!("Failed to get port: {}", e) })?
+                    .port()
+            }
+        }
+    };
     log::info!("Starting personal server on port {}", port);
 
     // Build env vars
@@ -80,6 +122,9 @@ pub async fn start_personal_server(
     }
     if let Some(ref url) = gateway_url {
         env_vars.push(("GATEWAY_URL", url.clone()));
+    }
+    if let Some(ref addr) = owner_address {
+        env_vars.push(("OWNER_ADDRESS", addr.clone()));
     }
 
     // Get config dir (~/.vana)
@@ -119,7 +164,7 @@ pub async fn start_personal_server(
         }
 
         cmd.spawn()
-            .map_err(|e| format!("Failed to spawn personal server: {}", e))?
+            .map_err(|e| { clear_starting(); format!("Failed to spawn personal server: {}", e) })?
     } else {
         // Dev mode: find personal-server directory relative to project root
         let runner_dir = if let Ok(manifest_dir) = std::env::var("CARGO_MANIFEST_DIR") {
@@ -136,6 +181,7 @@ pub async fn start_personal_server(
         };
 
         if !runner_dir.exists() {
+            clear_starting();
             return Err(format!(
                 "Personal server not found: {:?}. Run 'npm install' in personal-server directory.",
                 runner_dir
@@ -163,7 +209,7 @@ pub async fn start_personal_server(
             }
 
             cmd.spawn()
-                .map_err(|e| format!("Failed to spawn personal server (dev binary): {}", e))?
+                .map_err(|e| { clear_starting(); format!("Failed to spawn personal server (dev binary): {}", e) })?
         } else {
             // Fallback: node index.js (requires npm install)
             log::info!("No dev binary found, using node index.js at {:?}", runner_dir);
@@ -179,12 +225,12 @@ pub async fn start_personal_server(
             }
 
             cmd.spawn()
-                .map_err(|e| format!("Failed to spawn personal server (dev): {}", e))?
+                .map_err(|e| { clear_starting(); format!("Failed to spawn personal server (dev): {}", e) })?
         }
     };
 
-    let stdout = child.stdout.take().ok_or("Failed to get stdout")?;
-    let stderr = child.stderr.take().ok_or("Failed to get stderr")?;
+    let stdout = child.stdout.take().ok_or_else(|| { clear_starting(); "Failed to get stdout".to_string() })?;
+    let stderr = child.stderr.take().ok_or_else(|| { clear_starting(); "Failed to get stderr".to_string() })?;
 
     // Store process
     {
@@ -196,6 +242,11 @@ pub async fn start_personal_server(
     {
         let mut guard = PERSONAL_SERVER_PORT.lock().map_err(|e| e.to_string())?;
         *guard = Some(port);
+    }
+    // Clear starting flag
+    {
+        let mut starting = PERSONAL_SERVER_STARTING.lock().map_err(|e| e.to_string())?;
+        *starting = false;
     }
 
     // Read stdout in background thread
@@ -271,6 +322,11 @@ pub async fn start_personal_server(
 /// Stop the personal server
 #[tauri::command]
 pub async fn stop_personal_server() -> Result<(), String> {
+    // Reset starting flag in case a start is pending
+    if let Ok(mut s) = PERSONAL_SERVER_STARTING.lock() {
+        *s = false;
+    }
+
     let mut guard = PERSONAL_SERVER_PROCESS
         .lock()
         .map_err(|e| e.to_string())?;
@@ -282,27 +338,44 @@ pub async fn stop_personal_server() -> Result<(), String> {
         #[cfg(unix)]
         {
             unsafe {
-                // SIGTERM = 15
                 libc::kill(child.id() as libc::pid_t, libc::SIGTERM);
             }
-            // Wait briefly for graceful shutdown
-            std::thread::sleep(std::time::Duration::from_millis(2000));
+        }
+
+        // Wait for process to exit (up to 5s)
+        for _ in 0..50 {
+            match child.try_wait() {
+                Ok(Some(_)) => {
+                    log::info!("Personal server exited gracefully");
+                    break;
+                }
+                _ => {
+                    std::thread::sleep(std::time::Duration::from_millis(100));
+                }
+            }
         }
 
         // Force kill if still running
-        match child.try_wait() {
-            Ok(Some(_)) => {
-                log::info!("Personal server exited gracefully");
-            }
-            _ => {
-                let _ = child.kill();
-                log::info!("Personal server force-killed");
-            }
+        if child.try_wait().map(|s| s.is_none()).unwrap_or(true) {
+            let _ = child.kill();
+            let _ = child.wait();
+            log::info!("Personal server force-killed");
         }
     }
 
     let mut port_guard = PERSONAL_SERVER_PORT.lock().map_err(|e| e.to_string())?;
+    let old_port = *port_guard;
     *port_guard = None;
+
+    // Wait for port to be released (up to 3s)
+    if let Some(port) = old_port {
+        for _ in 0..30 {
+            if std::net::TcpListener::bind(("0.0.0.0", port)).is_ok() {
+                break;
+            }
+            std::thread::sleep(std::time::Duration::from_millis(100));
+        }
+    }
 
     Ok(())
 }
@@ -341,4 +414,28 @@ pub fn get_personal_server_status() -> Result<PersonalServerStatus, String> {
         running: false,
         port: None,
     })
+}
+
+/// Kill the personal server process on app exit (sync, best-effort)
+pub fn cleanup_personal_server() {
+    if let Ok(mut guard) = PERSONAL_SERVER_PROCESS.lock() {
+        if let Some(mut child) = guard.take() {
+            log::info!("Cleaning up personal server on app exit...");
+            #[cfg(unix)]
+            unsafe {
+                libc::kill(child.id() as libc::pid_t, libc::SIGTERM);
+            }
+            // Brief wait then force kill
+            for _ in 0..10 {
+                if let Ok(Some(_)) = child.try_wait() {
+                    log::info!("Personal server exited on cleanup");
+                    return;
+                }
+                std::thread::sleep(std::time::Duration::from_millis(100));
+            }
+            let _ = child.kill();
+            let _ = child.wait();
+            log::info!("Personal server force-killed on cleanup");
+        }
+    }
 }

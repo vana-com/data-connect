@@ -429,13 +429,15 @@
           showLoading('Signing master key...');
           await setupWalletIframe(privy);
           const provider = await privy.embeddedWallet.getProvider();
+          // personal_sign expects hex-encoded message
+          const msgHex = '0x' + Array.from(new TextEncoder().encode('vana-master-key-v1')).map(b => b.toString(16).padStart(2, '0')).join('');
           masterKeySignature = await provider.request({
             method: 'personal_sign',
-            params: ['vana-master-key-v1', walletAddress],
+            params: [msgHex, walletAddress],
           });
-          console.log('[AUTH] Master key signed');
+          console.log('[AUTH] Master key signed:', masterKeySignature?.substring(0, 20) + '...');
         } catch (e) {
-          console.warn('[AUTH] Master key signing failed (non-fatal):', e);
+          console.warn('[AUTH] Master key signing failed (non-fatal):', e.message || e);
         }
       }
 

@@ -201,6 +201,7 @@ export function Settings() {
                 user={user}
                 isAuthenticated={isAuthenticated}
                 onLogout={handleLogout}
+                onSignIn={() => navigate('/login')}
               />
             )}
 

@@ -322,6 +322,39 @@ export function SettingsAbout({
               </button>
             ) : null}
           </div>
+          {/* Personal Server health link */}
+          {personalServer.status === 'running' && personalServer.port && (
+            <div
+              style={{
+                padding: '8px 16px 12px',
+                borderTop: '1px solid #f3f4f6',
+                marginLeft: '56px',
+              }}
+            >
+              <a
+                href={`http://localhost:${personalServer.port}/status`}
+                target="_blank"
+                rel="noopener noreferrer"
+                style={{
+                  fontSize: '13px',
+                  color: '#3b82f6',
+                  textDecoration: 'none',
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '4px',
+                }}
+                onMouseEnter={(e) => {
+                  e.currentTarget.style.textDecoration = 'underline';
+                }}
+                onMouseLeave={(e) => {
+                  e.currentTarget.style.textDecoration = 'none';
+                }}
+              >
+                Health check
+                <ExternalLink style={{ width: '12px', height: '12px' }} />
+              </a>
+            </div>
+          )}
           {/* Browser Status */}
           <div style={{ ...rowStyle, borderTop: '1px solid #f3f4f6', gap: '16px' }}>
             <div

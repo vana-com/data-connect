@@ -1,10 +1,11 @@
-import { Database, Monitor, Shield, LogOut } from 'lucide-react';
+import { Database, Monitor, Shield, LogOut, LogIn } from 'lucide-react';
 import type { AuthUser } from '../../types';
 
 interface SettingsAccountProps {
   user: AuthUser | null;
   isAuthenticated: boolean;
   onLogout: () => void;
+  onSignIn: () => void;
 }
 
 const cardStyle: React.CSSProperties = {
@@ -21,7 +22,7 @@ const rowStyle: React.CSSProperties = {
   padding: '16px',
 };
 
-export function SettingsAccount({ user, isAuthenticated, onLogout }: SettingsAccountProps) {
+export function SettingsAccount({ user, isAuthenticated, onLogout, onSignIn }: SettingsAccountProps) {
   return (
     <div>
       {/* Local-only banner */}
@@ -115,6 +116,34 @@ export function SettingsAccount({ user, isAuthenticated, onLogout }: SettingsAcc
                 {user?.email || 'Not signed in'}
               </div>
             </div>
+            {!isAuthenticated && (
+              <button
+                onClick={onSignIn}
+                style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '6px',
+                  padding: '8px 12px',
+                  fontSize: '13px',
+                  fontWeight: 500,
+                  color: '#3b82f6',
+                  backgroundColor: 'transparent',
+                  border: '1px solid #bfdbfe',
+                  borderRadius: '8px',
+                  cursor: 'pointer',
+                  transition: 'all 0.15s ease',
+                }}
+                onMouseEnter={(e) => {
+                  e.currentTarget.style.backgroundColor = '#eff6ff';
+                }}
+                onMouseLeave={(e) => {
+                  e.currentTarget.style.backgroundColor = 'transparent';
+                }}
+              >
+                <LogIn style={{ width: '14px', height: '14px' }} />
+                Sign in
+              </button>
+            )}
           </div>
           {isAuthenticated && (
             <div style={{ ...rowStyle, borderTop: '1px solid #f3f4f6', paddingTop: '16px' }}>

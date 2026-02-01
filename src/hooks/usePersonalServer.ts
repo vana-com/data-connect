@@ -10,25 +10,28 @@ interface PersonalServerStatus {
 }
 
 export function usePersonalServer() {
-  const { isAuthenticated, masterKeySignature } = useSelector(
+  const { walletAddress } = useSelector(
     (state: RootState) => state.app.auth
   );
   const [status, setStatus] = useState<'stopped' | 'starting' | 'running' | 'error'>('stopped');
   const [port, setPort] = useState<number | null>(null);
   const [error, setError] = useState<string | null>(null);
-  const started = useRef(false);
+  const running = useRef(false);
 
-  const startServer = useCallback(async (signature?: string | null) => {
-    if (started.current) return;
-    started.current = true;
+  const startServer = useCallback(async (wallet?: string | null) => {
+    if (running.current) return;
+    running.current = true;
     setStatus('starting');
     setError(null);
 
     try {
+      const owner = wallet ?? walletAddress ?? null;
+      console.log('[PersonalServer] Starting with wallet:', owner ?? 'none');
       const result = await invoke<PersonalServerStatus>('start_personal_server', {
-        port: 8080,
-        masterKeySignature: signature ?? null,
+        port: null,
+        masterKeySignature: null,
         gatewayUrl: null,
+        ownerAddress: owner,
       });
 
       if (result.running) {
@@ -37,18 +40,18 @@ export function usePersonalServer() {
       }
     } catch (err) {
       console.error('[PersonalServer] Failed to start:', err);
+      running.current = false;
       setStatus('error');
       setError(err instanceof Error ? err.message : String(err));
-      started.current = false;
     }
-  }, []);
+  }, [walletAddress]);
 
   const stopServer = useCallback(async () => {
     try {
       await invoke('stop_personal_server');
+      running.current = false;
       setStatus('stopped');
       setPort(null);
-      started.current = false;
     } catch (err) {
       console.error('[PersonalServer] Failed to stop:', err);
     }
@@ -79,20 +82,12 @@ export function usePersonalServer() {
     };
   }, []);
 
-  // Auto-start on mount (server runs without login; master key is optional)
+  // Start only after user is logged in (walletAddress available)
   useEffect(() => {
-    if (!started.current) {
-      startServer(masterKeySignature);
-    }
-  }, [startServer, masterKeySignature]);
-
-  // Restart with master key when user logs in (if server was already running without it)
-  useEffect(() => {
-    if (isAuthenticated && masterKeySignature && started.current && status === 'running') {
-      // Restart to inject the master key signature
-      stopServer().then(() => startServer(masterKeySignature));
-    }
-  }, [isAuthenticated, masterKeySignature, status, startServer, stopServer]);
+    if (!walletAddress) return;
+    if (running.current) return;
+    startServer(walletAddress);
+  }, [walletAddress, startServer]);
 
   return { status, port, error, startServer, stopServer };
 }

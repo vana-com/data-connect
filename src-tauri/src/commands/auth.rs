@@ -13,6 +13,8 @@ pub struct AuthResult {
     pub wallet_address: Option<String>,
     #[serde(rename = "authToken")]
     pub auth_token: Option<String>,
+    #[serde(rename = "masterKeySignature")]
+    pub master_key_signature: Option<String>,
     pub error: Option<String>,
 }
 

@@ -16,6 +16,7 @@ import { fileURLToPath } from 'url';
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const ROOT = join(__dirname, '..');
 const PLAYWRIGHT_RUNNER = join(ROOT, 'playwright-runner');
+const PERSONAL_SERVER = join(ROOT, 'personal-server');
 
 function log(msg) {
   console.log(`\n🔨 ${msg}`);
@@ -43,11 +44,25 @@ async function build() {
     throw new Error('playwright-runner build failed - dist directory not found');
   }
 
-  // 3. Build frontend
+  // 3. Install personal-server dependencies
+  log('Installing personal-server dependencies...');
+  exec('npm install', { cwd: PERSONAL_SERVER });
+
+  // 4. Build personal-server binary
+  log('Building personal-server binary...');
+  exec('npm run build', { cwd: PERSONAL_SERVER });
+
+  // Verify the build output exists
+  const personalServerDist = join(PERSONAL_SERVER, 'dist');
+  if (!existsSync(personalServerDist)) {
+    throw new Error('personal-server build failed - dist directory not found');
+  }
+
+  // 5. Build frontend
   log('Building frontend...');
   exec('npm run build');
 
-  // 4. Build Tauri app
+  // 6. Build Tauri app
   log('Building Tauri app...');
   exec('npm run tauri build');
 

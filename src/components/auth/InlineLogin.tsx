@@ -16,6 +16,7 @@ interface AuthResult {
   };
   walletAddress?: string;
   authToken?: string;
+  masterKeySignature?: string;
   error?: string;
 }
 
@@ -44,6 +45,7 @@ export function InlineLogin() {
               email: result.user.email,
             },
             walletAddress: result.walletAddress || null,
+            masterKeySignature: result.masterKeySignature || null,
           })
         );
         navigate(-1); // Go back to grant flow

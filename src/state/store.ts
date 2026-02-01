@@ -7,6 +7,7 @@ const initialAuthState: AuthState = {
   isLoading: true,
   user: null,
   walletAddress: null,
+  masterKeySignature: null,
 };
 
 const initialAppConfig: AppConfig = {
@@ -200,17 +201,19 @@ const appSlice = createSlice({
     setAuthLoading(state, action: PayloadAction<boolean>) {
       state.auth.isLoading = action.payload;
     },
-    setAuthenticated(state, action: PayloadAction<{ user: AuthUser; walletAddress: string | null }>) {
+    setAuthenticated(state, action: PayloadAction<{ user: AuthUser; walletAddress: string | null; masterKeySignature?: string | null }>) {
       state.auth.isAuthenticated = true;
       state.auth.isLoading = false;
       state.auth.user = action.payload.user;
       state.auth.walletAddress = action.payload.walletAddress;
+      state.auth.masterKeySignature = action.payload.masterKeySignature ?? null;
     },
     clearAuth(state) {
       state.auth.isAuthenticated = false;
       state.auth.isLoading = false;
       state.auth.user = null;
       state.auth.walletAddress = null;
+      state.auth.masterKeySignature = null;
     },
     setConnectedApps(state, action: PayloadAction<ConnectedApp[]>) {
       state.connectedApps = action.payload;

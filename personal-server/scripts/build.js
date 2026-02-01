@@ -1,0 +1,136 @@
+/**
+ * Build script for personal-server
+ *
+ * 1. Uses esbuild to bundle all dependencies into a single CJS file
+ * 2. Uses @yao-pkg/pkg to create a standalone binary with Node.js
+ */
+
+import { execSync } from 'child_process';
+import { existsSync, mkdirSync, rmSync, readdirSync, statSync, lstatSync, readlinkSync, cpSync } from 'fs';
+import { join, dirname, resolve } from 'path';
+import { fileURLToPath } from 'url';
+import { platform, arch } from 'os';
+
+const __dirname = dirname(fileURLToPath(import.meta.url));
+const ROOT = join(__dirname, '..');
+const DIST = join(ROOT, 'dist');
+
+const PLATFORM = platform();
+const ARCH = arch();
+
+function log(msg) {
+  console.log(`[build] ${msg}`);
+}
+
+function exec(cmd, opts = {}) {
+  log(`Running: ${cmd}`);
+  execSync(cmd, { stdio: 'inherit', cwd: ROOT, ...opts });
+}
+
+function getPkgTarget() {
+  const nodeVersion = 'node20';
+  if (PLATFORM === 'darwin') {
+    return ARCH === 'arm64'
+      ? `${nodeVersion}-macos-arm64`
+      : `${nodeVersion}-macos-x64`;
+  } else if (PLATFORM === 'win32') {
+    return `${nodeVersion}-win-x64`;
+  }
+  return `${nodeVersion}-linux-x64`;
+}
+
+function getOutputName() {
+  const base = 'personal-server';
+  return PLATFORM === 'win32' ? `${base}.exe` : base;
+}
+
+/**
+ * Replace symlinks in node_modules with actual copies.
+ * Required so esbuild and pkg can resolve file: dependencies.
+ */
+function dereferenceSymlinks() {
+  const nodeModules = join(ROOT, 'node_modules');
+  const scopes = ['@personal-server', '@opendatalabs'];
+
+  for (const scope of scopes) {
+    const scopeDir = join(nodeModules, scope);
+    if (!existsSync(scopeDir)) continue;
+
+    for (const entry of readdirSync(scopeDir)) {
+      const entryPath = join(scopeDir, entry);
+      const stat = lstatSync(entryPath);
+
+      if (stat.isSymbolicLink()) {
+        const realPath = resolve(dirname(entryPath), readlinkSync(entryPath));
+        log(`Dereferencing symlink: ${entry} -> ${realPath}`);
+        rmSync(entryPath, { recursive: true });
+        cpSync(realPath, entryPath, { recursive: true });
+      }
+    }
+  }
+}
+
+async function build() {
+  log('Starting personal-server build...');
+
+  if (existsSync(DIST)) {
+    rmSync(DIST, { recursive: true });
+  }
+  mkdirSync(DIST, { recursive: true });
+
+  // Dereference symlinks so esbuild can resolve all imports
+  dereferenceSymlinks();
+
+  // Step 1: Bundle with esbuild into a single CJS file
+  const bundlePath = join(DIST, 'bundle.cjs');
+  log('Bundling with esbuild...');
+  // Patch require resolution so native addons load from beside the executable
+  const nativeBanner = [
+    'var _M=require("module"),_P=require("path"),_R=_M._resolveFilename;',
+    '_M._resolveFilename=function(r,p,m,o){',
+    'if(r==="better-sqlite3"){try{return _R.call(this,r,Object.assign({},p,',
+    '{paths:[_P.join(_P.dirname(process.execPath),"node_modules")]}),m,o);}catch(e){}}',
+    'return _R.call(this,r,p,m,o);};',
+  ].join('');
+  exec(`npx esbuild index.js --bundle --platform=node --format=cjs --outfile="${bundlePath}" --external:better-sqlite3 --banner:js='${nativeBanner}'`);
+
+  // Step 2: Package with pkg
+  const target = getPkgTarget();
+  const outputName = getOutputName();
+  const outputPath = join(DIST, outputName);
+
+  log(`Building binary for target: ${target}`);
+  exec(`npx pkg "${bundlePath}" -t ${target} -o "${outputPath}" --no-bytecode --public-packages '*' --public --options no-warnings`);
+
+  // Clean up intermediate bundle
+  rmSync(bundlePath, { force: true });
+
+  // Copy better-sqlite3 native addon alongside the binary
+  // pkg cannot bundle native .node addons; they must be on the real filesystem
+  const sqliteModule = join(ROOT, 'node_modules', 'better-sqlite3');
+  if (existsSync(sqliteModule)) {
+    const destModule = join(DIST, 'node_modules', 'better-sqlite3');
+    log('Copying better-sqlite3 native addon...');
+    cpSync(sqliteModule, destModule, { recursive: true });
+  } else {
+    log('WARNING: better-sqlite3 not found in node_modules');
+  }
+
+  log('Build complete!');
+  log(`Output: ${DIST}`);
+
+  const files = readdirSync(DIST);
+  log('Contents:');
+  for (const file of files) {
+    const stat = statSync(join(DIST, file));
+    const size = stat.isDirectory()
+      ? 'dir'
+      : `${(stat.size / 1024 / 1024).toFixed(1)}MB`;
+    log(`  ${file} (${size})`);
+  }
+}
+
+build().catch(err => {
+  console.error('Build failed:', err);
+  process.exit(1);
+});

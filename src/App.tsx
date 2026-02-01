@@ -10,6 +10,7 @@ import { PrivyProvider } from './components/providers/PrivyProvider';
 import { InlineLogin } from './components/auth/InlineLogin';
 import { BrowserLogin } from './pages/BrowserLogin';
 import { useDeepLink } from './hooks/useDeepLink';
+import { usePersonalServer } from './hooks/usePersonalServer';
 
 // Lazy-loaded pages for reduced initial bundle size
 const Home = lazy(() => import('./pages/Home').then((m) => ({ default: m.Home })));
@@ -29,6 +30,7 @@ function AppContent() {
   useEvents();
   useInitialize();
   useDeepLink();
+  usePersonalServer();
 
   return (
     <div

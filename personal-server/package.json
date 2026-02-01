@@ -1,0 +1,38 @@
+{
+  "name": "databridge-personal-server",
+  "version": "1.0.0",
+  "description": "Personal Server wrapper for DataBridge",
+  "main": "index.cjs",
+  "type": "module",
+  "scripts": {
+    "start": "node index.js",
+    "start:cjs": "node index.cjs",
+    "build": "node scripts/build.js"
+  },
+  "pkg": {
+    "assets": [
+      "node_modules/@personal-server/*/dist/**/*",
+      "node_modules/@personal-server/*/package.json",
+      "node_modules/@hono/node-server/dist/**/*",
+      "node_modules/@hono/node-server/package.json",
+      "node_modules/hono/**/*"
+    ],
+    "targets": [
+      "node20-macos-arm64",
+      "node20-macos-x64",
+      "node20-win-x64",
+      "node20-linux-x64"
+    ],
+    "outputPath": "dist"
+  },
+  "dependencies": {
+    "@opendatalabs/personal-server-ts": "file:../read-only-for-reference/personal-server-ts/packages/cli",
+    "@personal-server/core": "file:../read-only-for-reference/personal-server-ts/packages/core",
+    "@personal-server/server": "file:../read-only-for-reference/personal-server-ts/packages/server",
+    "better-sqlite3": "^12.6.2"
+  },
+  "devDependencies": {
+    "@yao-pkg/pkg": "^5.12.0",
+    "esbuild": "^0.27.2"
+  }
+}

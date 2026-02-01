@@ -34,10 +34,11 @@ export function usePersonalServer() {
         ownerAddress: owner,
       });
 
-      if (result.running) {
+      if (result.running && result.port) {
         setStatus('running');
-        setPort(result.port ?? null);
+        setPort(result.port);
       }
+      // If port is null (e.g. duplicate call), the personal-server-ready event will update it
     } catch (err) {
       console.error('[PersonalServer] Failed to start:', err);
       running.current = false;

@@ -9,8 +9,12 @@ description: Sort Tailwind classes for legibility. Use when a JSX element or cva
 **Only group/sort when there are 5+ Tailwind class names.** For 1-4 classes,
 leave them as-is on a single line without grouping or comments.
 
-**Only add group labels when there are more than 3 groups.** For 1-3 groups,
-keep grouped lines unlabeled.
+**Group labels are allowed when they materially improve readability.**
+As a rule of thumb:
+
+- 1 group: no labels.
+- 2-3 groups: labels are allowed if they clarify intent.
+- 4+ groups: labels are recommended.
 
 To make styles legible, please sort the classes on a JSX element or within a
 `cva` definition by using `cn` as shown below.

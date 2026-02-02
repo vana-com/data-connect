@@ -16,10 +16,9 @@ dist-ssr
 .vscode/*
 !.vscode/extensions.json
 .idea
-.cursor/
 
 # Agent configs (keep local)
-.agents/
+.cursor/
 .claude/
 
 # Local-only

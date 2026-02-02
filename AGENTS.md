@@ -25,6 +25,7 @@ For architecture and protocol details, refer to:
 ```
 
 Key flows:
+
 - Auth: Privy (optional) + browser login flow; `InlineLogin` listens for `auth-complete`.
 - Exports: UI starts connector run → Rust → Playwright; Tauri events update Redux; exports persisted via `write_export_data`.
 - Startup: `useInitialize` loads prior runs from disk.
@@ -33,21 +34,22 @@ Key flows:
 - Storage: export files in user data dir; connected apps tracked in `localStorage`.
 
 ## Doc index (preferred for knowledge)
-[Doc Index] | root: ./docs
-| 260121-data-portability-protocol-spec.md
-| 260130-react-refactor-plan.md
-| browser-packaging-options.md
-| ui-references/README.md
+
+[Doc Index]|root: ./docs
+|IMPORTANT: Prefer retrieval-led reasoning over pre-training-led reasoning
+|docs:{260121-data-portability-protocol-spec.md,260130-react-audit-storage-and-vercel-review-feedback.md,260130-react-audit-storage-and-vercel-review.md,260130-react-external-store-subscriptions.md,260130-react-refactor-implementation-gap.md,260130-react-refactor-plan.md,260130-react-refresh-constant-exports.md,260130-testing-setup-notes.md,260202-agents-md-best-practices.md,260202-ui-implementation-typography.md,browser-packaging-options.md,privy-js-sdk-documentation.md,spike-privy-auth-architecture.md}
 
 ## Agent guidance
 
 ### Always‑on rules
+
 - Commit only; never push unless asked.
 - Commit is file-explicit only: stage specific paths, never `git add .`, `-A`, `-u`, or `git commit -a`. Ask if files are unclear.
 - Prefer retrieval‑led reasoning for project‑specific knowledge.
 - Don’t overwrite comments; don’t change styles/classes unless asked.
 
 ### Skills (JIT only)
+
 Use skills only when the task matches; explore the code first.
 
 - React code: explore project, then invoke vercel‑react‑best‑practices.

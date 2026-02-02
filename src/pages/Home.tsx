@@ -1,197 +1,216 @@
-import { useEffect, useMemo, useState } from 'react';
-import { useSelector } from 'react-redux';
-import { usePlatforms } from '../hooks/usePlatforms';
-import { useConnector } from '../hooks/useConnector';
-import { useConnectorUpdates } from '../hooks/useConnectorUpdates';
-import { useBrowserStatus } from '../context/BrowserContext';
-import type { Platform, RootState, Run } from '../types';
-import { ExternalLink, Database } from 'lucide-react';
-import { ConnectorUpdates } from '../components/ConnectorUpdates';
+import { useEffect, useMemo, useState } from "react"
+import { useNavigate } from "react-router-dom"
+import { useSelector } from "react-redux"
+import { usePlatforms } from "../hooks/usePlatforms"
+import { useConnector } from "../hooks/useConnector"
+import { useConnectorUpdates } from "../hooks/useConnectorUpdates"
+import { useBrowserStatus } from "../context/BrowserContext"
+import type { ConnectedApp, Platform, RootState } from "../types"
+import { SlidingTabs } from "@/components/elements/sliding-tabs"
+import { Tabs, TabsContent } from "@/components/ui/tabs"
+import { ConnectorUpdates } from "../components/connector-updates"
 import {
   BrowserSetupSection,
+  ConnectedAppsList,
   ConnectedSourcesList,
   AvailableSourcesList,
-} from './home-sections';
+} from "@/components/home"
 
-type TabKey = 'sources' | 'apps';
-
-/** Compute recently completed platform IDs from runs (memoized, no effect needed) */
-function computeRecentlyCompleted(runs: Run[]): Set<string> {
-  return new Set(
-    runs
-      .filter((r) => r.status === 'success')
-      .sort((a, b) => new Date(b.endDate || b.startDate).getTime() - new Date(a.endDate || a.startDate).getTime())
-      .map((r) => r.platformId)
-  );
-}
+const USE_TEST_DATA = true
 
 export function Home() {
-  const [activeTab, setActiveTab] = useState<TabKey>('sources');
-  const { platforms, isPlatformConnected, loadPlatforms } = usePlatforms();
-  const { startExport } = useConnector();
-  const { checkForUpdates } = useConnectorUpdates();
-  const browserStatus = useBrowserStatus();
-  const runs = useSelector((state: RootState) => state.app.runs);
+  const navigate = useNavigate()
+  const { platforms, isPlatformConnected, loadPlatforms } = usePlatforms()
+  const { startExport } = useConnector()
+  const { checkForUpdates } = useConnectorUpdates()
+  const browserStatus = useBrowserStatus()
+  const runs = useSelector((state: RootState) => state.app.runs)
+  const connectedApps = useSelector((state: RootState) => state.app.connectedApps)
+  const [activeTab, setActiveTab] = useState("sources")
+
+  const tabs = [
+    { value: "sources", label: "Your data" },
+    { value: "apps", label: "Connected apps" },
+  ]
+
+  const displayPlatforms =
+    platforms.length > 0 ? platforms : USE_TEST_DATA ? testPlatforms : []
+  const displayConnectedApps =
+    connectedApps.length > 0 ? connectedApps : USE_TEST_DATA ? testConnectedApps : []
 
   // Derived state: recently completed platform IDs (memoized, not effect-stored)
-  const recentlyCompleted = useMemo(() => computeRecentlyCompleted(runs), [runs]);
-
   // Check for connector updates on mount (when browser is ready)
   useEffect(() => {
-    if (browserStatus.status === 'ready') {
-      checkForUpdates();
+    if (browserStatus.status === "ready") {
+      checkForUpdates()
     }
-  }, [browserStatus.status, checkForUpdates]);
+  }, [browserStatus.status, checkForUpdates])
 
   const handleExport = async (platform: Platform) => {
-    console.log('Starting export for platform:', platform.id, platform.name, 'runtime:', platform.runtime);
+    console.log(
+      "Starting export for platform:",
+      platform.id,
+      platform.name,
+      "runtime:",
+      platform.runtime
+    )
     try {
-      await startExport(platform);
+      await startExport(platform)
       // No navigation - stay on this page
     } catch (error) {
-      console.error('Export failed:', error);
+      console.error("Export failed:", error)
     }
-  };
+  }
 
-  // Separate connected and available platforms (memoized to avoid re-filtering on every render)
-  const connectedPlatforms = useMemo(
-    () => platforms.filter((p) => isPlatformConnected(p.id) || recentlyCompleted.has(p.id)),
-    [platforms, isPlatformConnected, recentlyCompleted]
-  );
-  const availablePlatforms = useMemo(
-    () => platforms.filter((p) => !isPlatformConnected(p.id) && !recentlyCompleted.has(p.id)),
-    [platforms, isPlatformConnected, recentlyCompleted]
-  );
+  // Separate available platforms (memoized to avoid re-filtering on every render)
+  const connectedPlatformsList = useMemo(() => {
+    if (USE_TEST_DATA && platforms.length === 0) {
+      return testConnectedPlatforms
+    }
+    return displayPlatforms.filter(p => isPlatformConnected(p.id))
+  }, [displayPlatforms, isPlatformConnected, platforms.length])
 
-  const isRecentlyCompleted = (platformId: string) => recentlyCompleted.has(platformId) && !isPlatformConnected(platformId);
+  const availablePlatforms = useMemo(() => {
+    if (USE_TEST_DATA && platforms.length === 0) {
+      const connectedIds = new Set(testConnectedPlatforms.map(p => p.id))
+      return testPlatforms.filter(p => !connectedIds.has(p.id))
+    }
+    return displayPlatforms.filter(p => !isPlatformConnected(p.id))
+  }, [displayPlatforms, isPlatformConnected, platforms.length])
 
   return (
-    <div style={{ flex: 1, overflow: 'auto', backgroundColor: '#f5f5f7' }}>
-      <div style={{ maxWidth: '900px', margin: '0 auto', padding: '48px 24px' }}>
-        <h1 style={{ fontSize: '28px', fontWeight: 600, color: '#1a1a1a', marginBottom: '8px' }}>
-          Your Data
-        </h1>
-        <p style={{ fontSize: '15px', color: '#6b7280', marginBottom: '32px' }}>
-          Manage your connected data sources and applications
-        </p>
-
+    <div className="flex-1 overflow-auto bg-muted">
+      <div className="container py-w16">
         {/* Browser Setup */}
         <BrowserSetupSection browserStatus={browserStatus} />
 
         {/* Connector Updates - show when browser is ready */}
-        {browserStatus.status === 'ready' && (
+        {browserStatus.status === "ready" && (
           <ConnectorUpdates onReloadPlatforms={loadPlatforms} />
         )}
 
         {/* Tabs */}
-        <div
-          style={{
-            display: 'flex',
-            gap: '4px',
-            marginBottom: '32px',
-            backgroundColor: '#e5e7eb',
-            padding: '4px',
-            borderRadius: '10px',
-            width: 'fit-content',
-          }}
-        >
-          {[
-            { key: 'sources' as TabKey, label: 'Your data' },
-            { key: 'apps' as TabKey, label: 'Connected apps' },
-          ].map((tab) => (
-            <button
-              key={tab.key}
-              onClick={() => setActiveTab(tab.key)}
-              style={{
-                padding: '8px 20px',
-                fontSize: '14px',
-                fontWeight: 500,
-                color: activeTab === tab.key ? '#1a1a1a' : '#6b7280',
-                backgroundColor: activeTab === tab.key ? 'white' : 'transparent',
-                border: 'none',
-                borderRadius: '8px',
-                cursor: 'pointer',
-                transition: 'all 0.15s ease',
-              }}
-              onMouseEnter={(e) => {
-                if (activeTab !== tab.key) {
-                  e.currentTarget.style.backgroundColor = 'rgba(255, 255, 255, 0.5)';
-                }
-              }}
-              onMouseLeave={(e) => {
-                if (activeTab !== tab.key) {
-                  e.currentTarget.style.backgroundColor = 'transparent';
-                }
-              }}
-            >
-              {tab.label}
-            </button>
-          ))}
-        </div>
-
-        {/* Sources Tab */}
-        {activeTab === 'sources' && (
-          <div>
-            {/* Connected Sources */}
-            {browserStatus.status === 'ready' && (
-              <ConnectedSourcesList
-                platforms={connectedPlatforms}
-                isRecentlyCompleted={isRecentlyCompleted}
-              />
-            )}
-
-            {/* Available Sources */}
-            <AvailableSourcesList
-              platforms={availablePlatforms}
-              browserReady={browserStatus.status === 'ready'}
-              onExport={handleExport}
+        {browserStatus.status === "ready" && (
+          <Tabs value={activeTab} onValueChange={setActiveTab}>
+            <SlidingTabs
+              className="mb-w12"
+              tabs={tabs}
+              value={activeTab}
+              onValueChange={setActiveTab}
             />
-          </div>
-        )}
 
-        {/* Connected Apps Tab */}
-        {activeTab === 'apps' && (
-          <div>
-            <div
-              style={{
-                backgroundColor: 'white',
-                border: '1px solid #e5e7eb',
-                borderRadius: '12px',
-                padding: '48px',
-                textAlign: 'center',
-              }}
-            >
-              <Database style={{ width: '48px', height: '48px', color: '#9ca3af', margin: '0 auto 16px' }} />
-              <h3 style={{ fontSize: '18px', fontWeight: 600, color: '#1a1a1a', marginBottom: '8px' }}>
-                No connected apps yet
-              </h3>
-              <p style={{ fontSize: '14px', color: '#6b7280', marginBottom: '24px' }}>
-                Apps that you authorize to access your data will appear here
-              </p>
-              <a
-                href="https://docs.vana.org"
-                target="_blank"
-                rel="noopener noreferrer"
-                style={{
-                  display: 'inline-flex',
-                  alignItems: 'center',
-                  gap: '8px',
-                  padding: '10px 16px',
-                  fontSize: '14px',
-                  color: '#6366f1',
-                  backgroundColor: 'transparent',
-                  border: '1px solid #e5e7eb',
-                  borderRadius: '8px',
-                  textDecoration: 'none',
-                }}
-              >
-                Learn more
-                <ExternalLink style={{ width: '16px', height: '16px' }} />
-              </a>
-            </div>
-          </div>
+            {/* Sources Tab */}
+            <TabsContent value="sources" className="space-y-w12">
+              <ConnectedSourcesList
+                platforms={connectedPlatformsList}
+                runs={runs}
+                onOpenRuns={() => navigate("/runs")}
+              />
+              <AvailableSourcesList
+                platforms={availablePlatforms}
+                browserReady={browserStatus.status === "ready"}
+                onExport={handleExport}
+              />
+            </TabsContent>
+
+            {/* Connected Apps Tab */}
+            <TabsContent value="apps">
+              <ConnectedAppsList apps={displayConnectedApps} />
+            </TabsContent>
+          </Tabs>
         )}
       </div>
     </div>
-  );
+  )
 }
+
+const testPlatforms: Platform[] = [
+  {
+    id: "instagram",
+    company: "Meta",
+    name: "Instagram",
+    filename: "instagram",
+    description: "Instagram data export",
+    isUpdated: false,
+    logoURL: "",
+    needsConnection: true,
+    connectURL: null,
+    connectSelector: null,
+    exportFrequency: null,
+    vectorize_config: null,
+    runtime: null,
+  },
+  {
+    id: "linkedin",
+    company: "LinkedIn",
+    name: "LinkedIn",
+    filename: "linkedin",
+    description: "LinkedIn data export",
+    isUpdated: false,
+    logoURL: "",
+    needsConnection: false,
+    connectURL: null,
+    connectSelector: null,
+    exportFrequency: null,
+    vectorize_config: null,
+    runtime: null,
+  },
+  {
+    id: "spotify",
+    company: "Spotify",
+    name: "Spotify",
+    filename: "spotify",
+    description: "Spotify data export",
+    isUpdated: false,
+    logoURL: "",
+    needsConnection: false,
+    connectURL: null,
+    connectSelector: null,
+    exportFrequency: null,
+    vectorize_config: null,
+    runtime: null,
+  },
+  {
+    id: "chatgpt",
+    company: "OpenAI",
+    name: "ChatGPT",
+    filename: "chatgpt",
+    description: "ChatGPT data export",
+    isUpdated: false,
+    logoURL: "",
+    needsConnection: false,
+    connectURL: null,
+    connectSelector: null,
+    exportFrequency: null,
+    vectorize_config: null,
+    runtime: null,
+  },
+]
+
+const testConnectedPlatforms: Platform[] = [
+  {
+    id: "chatgpt",
+    company: "OpenAI",
+    name: "ChatGPT",
+    filename: "chatgpt",
+    description: "ChatGPT data export",
+    isUpdated: false,
+    logoURL: "",
+    needsConnection: true,
+    connectURL: null,
+    connectSelector: null,
+    exportFrequency: null,
+    vectorize_config: null,
+    runtime: null,
+  },
+]
+
+const testConnectedApps: ConnectedApp[] = [
+  {
+    id: "rickroll",
+    name: "RickRoll",
+    icon: "R",
+    permissions: ["Data exports"],
+    connectedAt: "2026-01-16T12:00:00.000Z",
+  },
+]

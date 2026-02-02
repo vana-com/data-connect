@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { normalizeExportData } from './exportData';
+import { normalizeExportData } from './export-data';
 import type { ExportedData } from '../types';
 
 describe('normalizeExportData', () => {

@@ -1,66 +1,47 @@
-import { lazy, Suspense } from 'react';
-import { BrowserRouter, Routes, Route, useLocation } from 'react-router-dom';
-import { Provider } from 'react-redux';
-import { store } from './state/store';
-import { useEvents } from './hooks/useEvents';
-import { useInitialize } from './hooks/useInitialize';
-import { TopNav } from './components/TopNav';
-import { BrowserProvider } from './context/BrowserContext';
-import { PrivyProvider } from './components/providers/PrivyProvider';
-import { InlineLogin } from './components/auth/InlineLogin';
-import { BrowserLogin } from './pages/BrowserLogin';
-import { useDeepLink } from './hooks/useDeepLink';
-import { usePersonalServer } from './hooks/usePersonalServer';
+import { lazy, Suspense } from "react"
+import { BrowserRouter, Routes, Route, useLocation } from "react-router-dom"
+import { Provider } from "react-redux"
+import { store } from "./state/store"
+import { useEvents } from "./hooks/useEvents"
+import { useInitialize } from "./hooks/useInitialize"
+import { TopNav } from "./components/top-nav"
+import { BrowserProvider } from "./context/BrowserContext"
+import { PrivyProvider } from "./components/providers/PrivyProvider"
+import { InlineLogin } from "./components/auth/InlineLogin"
+import { BrowserLogin } from "./pages/BrowserLogin"
+import { useDeepLink } from "./hooks/useDeepLink"
+import { usePersonalServer } from "./hooks/usePersonalServer"
 
 // Lazy-loaded pages for reduced initial bundle size
-const Home = lazy(() => import('./pages/Home').then((m) => ({ default: m.Home })));
-const DataApps = lazy(() => import('./pages/DataApps').then((m) => ({ default: m.DataApps })));
+const Home = lazy(() => import("./pages/Home").then(m => ({ default: m.Home })))
+const DataApps = lazy(() =>
+  import("./pages/DataApps").then(m => ({ default: m.DataApps }))
+)
 const RickRollAppPage = lazy(() =>
-  import('./pages/RickRollApp').then((m) => ({ default: m.RickRollAppPage }))
-);
-const Runs = lazy(() => import('./pages/Runs').then((m) => ({ default: m.Runs })));
+  import("./pages/RickRollApp").then(m => ({ default: m.RickRollAppPage }))
+)
+const Runs = lazy(() => import("./pages/Runs").then(m => ({ default: m.Runs })))
 const Settings = lazy(() =>
-  import('./pages/Settings').then((m) => ({ default: m.Settings }))
-);
+  import("./pages/Settings").then(m => ({ default: m.Settings }))
+)
 const GrantFlow = lazy(() =>
-  import('./pages/GrantFlow').then((m) => ({ default: m.GrantFlow }))
-);
+  import("./pages/GrantFlow").then(m => ({ default: m.GrantFlow }))
+)
 
 function AppContent() {
-  useEvents();
-  useInitialize();
-  useDeepLink();
-  usePersonalServer();
+  useEvents()
+  useInitialize()
+  useDeepLink()
+  usePersonalServer()
 
   return (
-    <div
-      style={{
-        display: 'flex',
-        height: '100vh',
-        backgroundColor: '#f5f5f7',
-      }}
-    >
-      {/* Accent strip */}
-      <div
-        style={{
-          width: '4px',
-          background: 'linear-gradient(to bottom, #6366f1, #8b5cf6)',
-          flexShrink: 0,
-        }}
-      />
-
+    <div className="flex h-screen">
+      {/* Tauri app shell layout: fixed header, scrollable main */}
       {/* Main content */}
-      <div
-        style={{
-          flex: 1,
-          display: 'flex',
-          flexDirection: 'column',
-          overflow: 'hidden',
-        }}
-      >
+      <div className="flex flex-1 flex-col overflow-hidden">
         <TopNav />
-        <main style={{ flex: 1, overflow: 'auto' }}>
-          <Suspense fallback={<div style={{ padding: '2rem' }}>Loading...</div>}>
+        <main className="flex-1 overflow-auto">
+          <Suspense fallback={<div className="p-8">Loading...</div>}>
             <Routes>
               <Route path="/" element={<Home />} />
               <Route path="/apps" element={<DataApps />} />
@@ -74,19 +55,19 @@ function AppContent() {
         </main>
       </div>
     </div>
-  );
+  )
 }
 
 // Router wrapper that handles both app content and standalone browser login
 function AppRouter() {
-  const location = useLocation();
+  const location = useLocation()
 
   // Browser login page is standalone (for external browser auth flow)
-  if (location.pathname === '/browser-login') {
-    return <BrowserLogin />;
+  if (location.pathname === "/browser-login") {
+    return <BrowserLogin />
   }
 
-  return <AppContent />;
+  return <AppContent />
 }
 
 function App() {
@@ -103,7 +84,7 @@ function App() {
         </BrowserProvider>
       </PrivyProvider>
     </Provider>
-  );
+  )
 }
 
-export default App;
+export default App

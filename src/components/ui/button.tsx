@@ -1,105 +1,183 @@
+import { Slot as SlotPrimitive } from "@radix-ui/react-slot"
+import { cn } from "@/lib/classes"
+import { type VariantProps, cva } from "class-variance-authority"
+import { ChevronDown, type LucideIcon } from "lucide-react"
 import * as React from "react"
-import { cva, type VariantProps } from "class-variance-authority"
-import { Slot } from "radix-ui"
-
-import { cn } from "@/lib/utils"
+import { fieldHeight, stateFocus, stateInvalid } from "../typography/field"
 
 const buttonVariants = cva(
   [
     // layout
     "inline-flex items-center justify-center shrink-0",
-    // shape
-    "rounded-none border border-transparent bg-clip-padding",
+    "rounded-button",
+    // interactions
+    "group cursor-pointer select-none",
     // typography
-    "text-xs font-medium whitespace-nowrap select-none",
-    // focus
-    "outline-none focus-visible:border-ring focus-visible:ring-1 focus-visible:ring-ring/50",
-    // aria-invalid
-    "aria-invalid:border-destructive aria-invalid:ring-1 aria-invalid:ring-destructive/20 dark:aria-invalid:border-destructive/50 dark:aria-invalid:ring-destructive/40",
+    "font-medium",
+    "whitespace-nowrap",
     // disabled
     "disabled:pointer-events-none disabled:opacity-50",
+    // aria & focus states
+    stateInvalid,
+    stateFocus,
     // svg
-    "[&_svg]:pointer-events-none [&_svg]:shrink-0 [&_svg:not([class*='size-'])]:size-4",
+    "[&_svg]:pointer-events-none [&_svg]:shrink-0",
+    "[&_svg:not([class*='size-'])]:size-em",
+    "[&_svg]:translate-y-[-0.025em]",
     // transitions
     "transition-all",
-    // group
-    "group/button",
   ],
   {
     variants: {
       variant: {
-        default: "bg-primary text-primary-foreground [a]:hover:bg-primary/80",
+        primary:
+          "bg-primary text-primary-foreground hover:bg-primary/90 data-[state=open]:bg-primary/90",
+        accent:
+          "bg-accent text-background hover:bg-accent/90 data-[state=open]:bg-accent/90",
+        default: "bg-foreground text-background hover:bg-foreground",
         outline: [
-          "border-border bg-background",
-          "hover:bg-muted hover:text-foreground",
-          "dark:bg-input/30 dark:border-input dark:hover:bg-input/50",
-          "aria-expanded:bg-muted aria-expanded:text-foreground",
+          // shadow-xs
+          "border border-ring/50 bg-background",
+          // "hover:bg-muted "
+          "hover:border-ring active:border-ring",
+          "active:ring-ring/50 active:ring-[3px] data-[state=open]:border-ring data-[state=open]:ring-ring/50 data-[state=open]:ring-[3px]",
+          // ARIA-driven persistent selection
+          "aria-pressed:border-ring aria-pressed:ring-ring/50 aria-pressed:ring-[3px]",
+          "aria-selected:border-ring aria-selected:ring-ring/50 aria-selected:ring-[3px]",
         ],
-        secondary: [
-          "bg-secondary text-secondary-foreground",
-          "hover:bg-secondary/80",
-          "aria-expanded:bg-secondary aria-expanded:text-secondary-foreground",
-        ],
-        ghost: [
-          "hover:bg-muted hover:text-foreground",
-          "dark:hover:bg-muted/50",
-          "aria-expanded:bg-muted aria-expanded:text-foreground",
-        ],
-        destructive: [
-          "bg-destructive/10 text-destructive",
-          "hover:bg-destructive/20",
-          "focus-visible:border-destructive/40 focus-visible:ring-destructive/20",
-          "dark:bg-destructive/20 dark:focus-visible:ring-destructive/40 dark:hover:bg-destructive/30",
-        ],
-        link: "text-primary underline-offset-4 hover:underline",
+        ghost: "hover:bg-muted hover:text-foreground",
+        secondary: "bg-secondary text-secondary-foreground hover:bg-secondary/80",
+        destructive:
+          "bg-destructive text-destructive-foreground hover:bg-destructive/90 focus-visible:ring-destructive/20 dark:focus-visible:ring-destructive/40 dark:bg-destructive/60",
+        link: "text-foreground underline-offset-4 hover:underline",
       },
       size: {
-        default: "h-8 gap-1.5 px-2.5 has-data-[icon=inline-end]:pr-2 has-data-[icon=inline-start]:pl-2",
+        pill: [fieldHeight.xs, "rounded-full px-1.5 py-0.5 gap-1", "text-fine"],
         xs: [
-          "h-6 gap-1 rounded-none px-2 text-xs",
-          "has-data-[icon=inline-end]:pr-1.5 has-data-[icon=inline-start]:pl-1.5",
-          "[&_svg:not([class*='size-'])]:size-3",
+          fieldHeight.xs,
+          "rounded-button gap-1 px-2 has-[>svg]:px-2",
+          "[&_svg:not([class*='size-'])]:size-[0.9em]!",
+          "text-fine",
         ],
         sm: [
-          "h-7 gap-1 rounded-none px-2.5",
-          "has-data-[icon=inline-end]:pr-1.5 has-data-[icon=inline-start]:pl-1.5",
-          "[&_svg:not([class*='size-'])]:size-3.5",
+          fieldHeight.sm,
+          "rounded-button gap-1.5 px-2.5 has-[>svg]:px-2.5",
+          "text-small",
         ],
-        lg: "h-9 gap-1.5 px-2.5 has-data-[icon=inline-end]:pr-3 has-data-[icon=inline-start]:pl-3",
-        icon: "size-8",
-        "icon-xs": "size-6 rounded-none [&_svg:not([class*='size-'])]:size-3",
-        "icon-sm": "size-7 rounded-none",
-        "icon-lg": "size-9",
+        icon: [
+          // same height as fieldHeight.default,
+          "size-button shrink-0 [&_svg:not([class*=size-])]:size-5.5",
+        ],
+        default: [
+          fieldHeight.default,
+          "rounded-button px-4 has-[>svg]:px-3 gap-1.5",
+          "text-button",
+        ],
+        lg: [
+          fieldHeight.lg,
+          "rounded-button px-6 has-[>svg]:px-4 gap-1.5",
+          "text-button",
+        ],
+        xl: [
+          fieldHeight.xl,
+          "rounded-full px-6 has-[>svg]:px-4 gap-1.75",
+          "[&_svg:not([class*='size-'])]:size-[0.9lh]", // test lh :)
+          // "[&_svg:not([class*='size-'])]:size-[1.25em]",
+          "text-button font-normal",
+        ],
+      },
+      fullWidth: {
+        true: "w-full",
       },
     },
+    compoundVariants: [
+      {
+        size: ["pill", "xs", "sm"],
+        className: "[&_svg]:translate-y-[-0.05em]",
+      },
+    ],
     defaultVariants: {
       variant: "default",
       size: "default",
+      // mode: "default",
+      // shape: "default",
+      // appearance: "default",
     },
   }
 )
 
+/**
+ * States (short + explicit):
+ * - active (:active): pointer is down. Transient press feedback only.
+ * - pressed (aria-pressed): toggle control is ON. Persistent. Use for toggles.
+ * - selected (aria-selected): this item is chosen in a group/list. Persistent.
+ * - legacy selected: `selected` prop sets data-state="open" (kept for compat).
+ * - focus-visible: ring via stateFocus.
+ *
+ * Use:
+ * <Button variant="outline" aria-pressed>…</Button>
+ * <Button variant="outline" aria-selected>…</Button>
+ */
 function Button({
   className,
-  variant = "default",
-  size = "default",
+  selected,
+  variant,
+  size,
+  fullWidth,
+  PrefixIcon,
+  SuffixIcon,
   asChild = false,
   ...props
 }: React.ComponentProps<"button"> &
   VariantProps<typeof buttonVariants> & {
+    selected?: boolean
     asChild?: boolean
+    PrefixIcon?: React.ReactNode
+    SuffixIcon?: React.ReactNode
   }) {
-  const Comp = asChild ? Slot.Root : "button"
-
+  const Comp = asChild ? SlotPrimitive : "button"
   return (
     <Comp
       data-slot="button"
-      data-variant={variant}
-      data-size={size}
-      className={cn(buttonVariants({ variant, size, className }))}
+      className={cn(
+        buttonVariants({
+          variant,
+          size,
+          fullWidth,
+          className,
+        }),
+        asChild && props.disabled && "pointer-events-none opacity-50"
+      )}
+      {...(selected && {
+        "data-state": "open",
+        "aria-pressed": true,
+        "aria-selected": true,
+      })}
+      {...props}
+    >
+      {PrefixIcon}
+      {props.children}
+      {SuffixIcon}
+    </Comp>
+  )
+}
+
+interface ButtonArrowProps extends React.SVGProps<SVGSVGElement> {
+  icon?: LucideIcon // Allows passing any Lucide icon
+}
+
+function ButtonArrow({
+  icon: Icon = ChevronDown,
+  className,
+  ...props
+}: ButtonArrowProps) {
+  return (
+    <Icon
+      data-slot="button-arrow"
+      className={cn("ms-auto -me-1", className)}
       {...props}
     />
   )
 }
 
-export { Button, buttonVariants }
+export { Button, ButtonArrow, buttonVariants }

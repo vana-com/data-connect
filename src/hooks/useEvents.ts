@@ -16,7 +16,7 @@ import type {
   ExportedData,
   ProgressPhase,
 } from '../types';
-import { normalizeExportData } from '../lib/exportData';
+import { normalizeExportData } from '../lib/export-data';
 
 // Module-level guard to prevent duplicate listener registration during StrictMode/HMR
 let listenersRegistered = false;

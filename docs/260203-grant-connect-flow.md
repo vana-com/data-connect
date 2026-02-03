@@ -33,6 +33,11 @@ flowchart TD
 - Deep links: normalize to canonical `/grant` URL params, then route with `replace`.
 - App registry: defines available apps, default app, and scopes for demo usage.
 
+## Current implementation status
+
+- `src/pages/grant/*` covers consent/auth/success states only (steps 2-4).
+- The step-1 Connect CTA screen from the linear design is not implemented yet.
+
 ## Canonical inputs
 
 Grant flow inputs are canonical in the URL:
@@ -57,6 +62,6 @@ skip relay calls. If `appId` is missing, the default app is used.
 
 - URL parsing/building: `src/lib/grant-params.ts`
 - Deep links: `src/hooks/useDeepLink.ts`
-- Grant flow state machine: `src/pages/grant-flow/use-grant-flow.ts`
-- Grant flow UI: `src/pages/grant-flow/*`
+- Grant flow state machine: `src/pages/grant/use-grant-flow.ts`
+- Grant flow UI: `src/pages/grant/*`
 - App registry + default: `src/apps/registry.ts`

@@ -23,9 +23,7 @@ export function GrantProgressSteps({ currentStep }: GrantProgressStepsProps) {
           </div>
           {step < 3 && (
             <div
-              className={
-                currentStep > step ? "h-0.5 w-6 bg-accent" : "h-0.5 w-6 bg-border"
-              }
+              className={currentStep > step ? "h-0.5 w-6 bg-accent" : "h-0.5 w-6 bg-border"}
             />
           )}
         </div>

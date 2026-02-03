@@ -5,11 +5,9 @@ import { useSelector } from "react-redux"
 import { usePlatforms } from "@/hooks/usePlatforms"
 import { useConnector } from "@/hooks/useConnector"
 import { useConnectorUpdates } from "@/hooks/useConnectorUpdates"
-import { useBrowserStatus } from "@/context/BrowserContext"
 import type { Platform, RootState } from "@/types"
 import { SlidingTabs } from "@/components/elements/sliding-tabs"
 import { Tabs, TabsContent } from "@/components/ui/tabs"
-import { BrowserSetupSection } from "@/pages/home/components/BrowserSetupSection"
 import { ConnectedAppsList } from "@/pages/home/components/connected-apps-list"
 import { ConnectedSourcesList } from "@/pages/home/components/connected-sources-list"
 import { AvailableSourcesList } from "@/pages/home/components/available-sources-list"
@@ -26,7 +24,6 @@ export function Home() {
   const { platforms, isPlatformConnected, loadPlatforms } = usePlatforms()
   const { startExport } = useConnector()
   const { checkForUpdates } = useConnectorUpdates()
-  const browserStatus = useBrowserStatus()
   const runs = useSelector((state: RootState) => state.app.runs)
   const connectedApps = useSelector((state: RootState) => state.app.connectedApps)
   const [activeTab, setActiveTab] = useState("sources")
@@ -43,22 +40,14 @@ export function Home() {
     connectedApps.length > 0 ? connectedApps : USE_TEST_DATA ? testConnectedApps : []
 
   // Derived state: recently completed platform IDs (memoized, not effect-stored)
-  // Check for connector updates on mount (when browser is ready)
   useEffect(() => {
-    if (browserStatus.status === "ready") {
-      checkForUpdates()
-    }
-  }, [browserStatus.status, checkForUpdates])
+    checkForUpdates()
+  }, [checkForUpdates])
 
   useEffect(() => {
-    if (browserStatus.status !== "ready") {
-      setEnableTabMotion(false)
-      return
-    }
-
     const frame = requestAnimationFrame(() => setEnableTabMotion(true))
     return () => cancelAnimationFrame(frame)
-  }, [browserStatus.status])
+  }, [])
 
   const handleExport = async (platform: Platform) => {
     console.log(
@@ -94,46 +83,35 @@ export function Home() {
   return (
     <div className="flex-1 overflow-auto bg-muted">
       <div className="container py-w16">
-        {/* Browser Setup */}
-        <BrowserSetupSection browserStatus={browserStatus} />
-
         {/* Connector Updates - show when browser is ready */}
-        {browserStatus.status === "ready" && (
-          <ConnectorUpdates onReloadPlatforms={loadPlatforms} />
-        )}
+        <ConnectorUpdates onReloadPlatforms={loadPlatforms} />
 
         {/* Tabs */}
-        {browserStatus.status === "ready" && (
-          <Tabs value={activeTab} onValueChange={setActiveTab}>
-            <MotionConfig reducedMotion={enableTabMotion ? "never" : "always"}>
-              <SlidingTabs
-                className="mb-w12"
-                tabs={tabs}
-                value={activeTab}
-                onValueChange={setActiveTab}
-              />
-            </MotionConfig>
+        <Tabs value={activeTab} onValueChange={setActiveTab}>
+          <MotionConfig reducedMotion={enableTabMotion ? "never" : "always"}>
+            <SlidingTabs
+              className="mb-w12"
+              tabs={tabs}
+              value={activeTab}
+              onValueChange={setActiveTab}
+            />
+          </MotionConfig>
 
-            {/* Sources Tab */}
-            <TabsContent value="sources" className="space-y-w12">
-              <ConnectedSourcesList
-                platforms={connectedPlatformsList}
-                runs={runs}
-                onOpenRuns={() => navigate("/runs")}
-              />
-              <AvailableSourcesList
-                platforms={availablePlatforms}
-                browserReady={browserStatus.status === "ready"}
-                onExport={handleExport}
-              />
-            </TabsContent>
+          {/* Sources Tab */}
+          <TabsContent value="sources" className="space-y-w12">
+            <ConnectedSourcesList
+              platforms={connectedPlatformsList}
+              runs={runs}
+              onOpenRuns={() => navigate("/runs")}
+            />
+            <AvailableSourcesList platforms={availablePlatforms} onExport={handleExport} />
+          </TabsContent>
 
-            {/* Connected Apps Tab */}
-            <TabsContent value="apps">
-              <ConnectedAppsList apps={displayConnectedApps} />
-            </TabsContent>
-          </Tabs>
-        )}
+          {/* Connected Apps Tab */}
+          <TabsContent value="apps">
+            <ConnectedAppsList apps={displayConnectedApps} />
+          </TabsContent>
+        </Tabs>
       </div>
     </div>
   )

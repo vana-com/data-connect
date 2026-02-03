@@ -5,7 +5,6 @@ import { store } from "./state/store"
 import { useEvents } from "./hooks/useEvents"
 import { useInitialize } from "./hooks/useInitialize"
 import { TopNav } from "./components/top-nav"
-import { BrowserProvider } from "./context/BrowserContext"
 import { PrivyProvider } from "./components/providers/PrivyProvider"
 import { InlineLogin } from "./components/auth/InlineLogin"
 import { BrowserLogin } from "./pages/BrowserLogin"
@@ -22,9 +21,7 @@ const Runs = lazy(() => import("./pages/runs").then(m => ({ default: m.Runs })))
 const Settings = lazy(() =>
   import("./pages/settings").then(m => ({ default: m.Settings }))
 )
-const GrantFlow = lazy(() =>
-  import("./pages/grant-flow").then(m => ({ default: m.GrantFlow }))
-)
+const Grant = lazy(() => import("./pages/grant").then(m => ({ default: m.Grant })))
 
 function AppContent() {
   useEvents()
@@ -45,7 +42,7 @@ function AppContent() {
               <Route path="/apps/:appId" element={<AppPage />} />
               <Route path="/runs" element={<Runs />} />
               <Route path="/settings" element={<Settings />} />
-              <Route path="/grant" element={<GrantFlow />} />
+              <Route path="/grant" element={<Grant />} />
               <Route path="/login" element={<InlineLogin />} />
             </Routes>
           </Suspense>
@@ -71,14 +68,12 @@ function App() {
   return (
     <Provider store={store}>
       <PrivyProvider>
-        <BrowserProvider>
-          <BrowserRouter>
-            <Routes>
-              <Route path="/browser-login" element={<BrowserLogin />} />
-              <Route path="/*" element={<AppRouter />} />
-            </Routes>
-          </BrowserRouter>
-        </BrowserProvider>
+        <BrowserRouter>
+          <Routes>
+            <Route path="/browser-login" element={<BrowserLogin />} />
+            <Route path="/*" element={<AppRouter />} />
+          </Routes>
+        </BrowserRouter>
       </PrivyProvider>
     </Provider>
   )

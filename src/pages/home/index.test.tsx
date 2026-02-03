@@ -3,12 +3,7 @@ import { render, waitFor, cleanup } from "@testing-library/react"
 import { createMemoryRouter, RouterProvider } from "react-router-dom"
 import { Home } from "./index"
 
-const mockUseBrowserStatus = vi.fn()
 const mockCheckForUpdates = vi.fn()
-
-vi.mock("@/context/BrowserContext", () => ({
-  useBrowserStatus: () => mockUseBrowserStatus(),
-}))
 
 vi.mock("@/hooks/usePlatforms", () => ({
   usePlatforms: () => ({
@@ -64,22 +59,13 @@ function renderHome() {
 describe("Home", () => {
   beforeEach(() => {
     mockCheckForUpdates.mockClear()
-    mockUseBrowserStatus.mockReset()
   })
 
   afterEach(() => {
     cleanup()
   })
 
-  it("shows sources tab content when browser is ready", async () => {
-    mockUseBrowserStatus.mockReturnValue({
-      status: "ready",
-      progress: 0,
-      error: null,
-      retry: vi.fn(),
-      startDownload: vi.fn(),
-    })
-
+  it("shows sources tab content and checks for updates", async () => {
     const { getByText } = renderHome()
 
     expect(getByText("Connect sources (more coming soon)")).toBeTruthy()
@@ -87,20 +73,5 @@ describe("Home", () => {
     await waitFor(() => {
       expect(mockCheckForUpdates).toHaveBeenCalled()
     })
-  })
-
-  it("hides tabs when browser is not ready", () => {
-    mockUseBrowserStatus.mockReturnValue({
-      status: "checking",
-      progress: 0,
-      error: null,
-      retry: vi.fn(),
-      startDownload: vi.fn(),
-    })
-
-    const { getByText, queryByText } = renderHome()
-
-    expect(getByText("Checking dependencies...")).toBeTruthy()
-    expect(queryByText("Connect sources (more coming soon)")).toBeNull()
   })
 })

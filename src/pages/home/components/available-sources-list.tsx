@@ -1,4 +1,3 @@
-import { Database as DatabaseIcon } from "lucide-react"
 import { Text } from "@/components/typography/text"
 import { ConnectSourceCard } from "@/components/connect-source-card"
 import { PlatformChatGPTIcon } from "@/components/icons/platform-chatgpt"
@@ -9,13 +8,11 @@ import type { Platform } from "@/types"
 
 interface AvailableSourcesListProps {
   platforms: Platform[]
-  browserReady: boolean
   onExport: (platform: Platform) => void
 }
 
 export function AvailableSourcesList({
   platforms,
-  browserReady,
   onExport,
 }: AvailableSourcesListProps) {
   const instagramPlatform = platforms.find(
@@ -24,7 +21,7 @@ export function AvailableSourcesList({
       platform.name.toLowerCase().includes("instagram") ||
       platform.company.toLowerCase().includes("instagram")
   )
-  const isInstagramAvailable = Boolean(instagramPlatform) && browserReady
+  const isInstagramAvailable = Boolean(instagramPlatform)
 
   const chatgptPlatform = platforms.find(
     platform =>
@@ -33,25 +30,7 @@ export function AvailableSourcesList({
       platform.name.toLowerCase().includes("chatgpt") ||
       platform.company.toLowerCase().includes("openai")
   )
-  const isChatGPTAvailable = Boolean(chatgptPlatform) && browserReady
-
-  // Empty state when browser not ready
-  if (!browserReady) {
-    return (
-      <section className="space-y-4">
-        <Text as="h2" intent="body">
-          Connect your data sources
-        </Text>
-        <ConnectSourceCard
-          label="No sources"
-          Icon={DatabaseIcon}
-          state="comingSoon"
-          showArrow={false}
-          className="bg-background/40"
-        />
-      </section>
-    )
-  }
+  const isChatGPTAvailable = Boolean(chatgptPlatform)
 
   return (
     <section className="space-y-4">

@@ -28,6 +28,7 @@ tracked and owned separately.
 ## Next (Frontend)
 
 - Build Connect Flow UI to match design
+- Implement step-1 Connect CTA screen (grant flow currently starts at consent)
 - Reuse grant components where possible (auth-required, consent, success)
 - Ensure external Passport sign-in flow is preserved
 - UI polish + accessibility pass

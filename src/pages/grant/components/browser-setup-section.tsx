@@ -1,8 +1,8 @@
 import { Download, AlertCircle } from "lucide-react"
-import type { BrowserContextType } from "@/context/BrowserContext"
+import type { BrowserSetupState } from "../use-browser-status"
 
 interface BrowserSetupSectionProps {
-  browserStatus: BrowserContextType
+  browserStatus: BrowserSetupState
 }
 
 export function BrowserSetupSection({ browserStatus }: BrowserSetupSectionProps) {

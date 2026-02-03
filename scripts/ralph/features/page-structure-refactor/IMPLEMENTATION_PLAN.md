@@ -189,6 +189,17 @@ Reference implementation: `src/pages/settings/` demonstrates the target pattern.
 
 ---
 
+## Validation Commands
+
+```bash
+npx tsc -b          # Typecheck
+npm run build       # Build
+npm run lint        # Lint
+npm run test        # Test (if applicable)
+```
+
+---
+
 ## Completed
 
 _(Move completed items here)_

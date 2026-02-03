@@ -72,11 +72,10 @@ export function Home() {
 
   const availablePlatforms = useMemo(() => {
     if (USE_TEST_DATA && platforms.length === 0) {
-      const connectedIds = new Set(testConnectedPlatforms.map(p => p.id))
-      return testPlatforms.filter(p => !connectedIds.has(p.id))
+      return testPlatforms
     }
-    return displayPlatforms.filter(p => !isPlatformConnected(p.id))
-  }, [displayPlatforms, isPlatformConnected, platforms.length])
+    return displayPlatforms
+  }, [displayPlatforms, platforms.length])
 
   return (
     <div className="flex-1 overflow-auto bg-muted">
@@ -171,7 +170,7 @@ const testPlatforms: Platform[] = [
     runtime: null,
   },
   {
-    id: "chatgpt",
+    id: "chatgpt-playwright",
     company: "OpenAI",
     name: "ChatGPT",
     filename: "chatgpt",
@@ -179,17 +178,17 @@ const testPlatforms: Platform[] = [
     isUpdated: false,
     logoURL: "",
     needsConnection: false,
-    connectURL: null,
-    connectSelector: null,
-    exportFrequency: null,
-    vectorize_config: null,
-    runtime: null,
+    connectURL: "https://chatgpt.com/",
+    connectSelector: "nav a[href^='/c/']",
+    exportFrequency: "daily",
+    vectorize_config: { documents: "content" },
+    runtime: "playwright",
   },
 ]
 
 const testConnectedPlatforms: Platform[] = [
   {
-    id: "chatgpt",
+    id: "chatgpt-playwright",
     company: "OpenAI",
     name: "ChatGPT",
     filename: "chatgpt",
@@ -197,11 +196,11 @@ const testConnectedPlatforms: Platform[] = [
     isUpdated: false,
     logoURL: "",
     needsConnection: true,
-    connectURL: null,
-    connectSelector: null,
-    exportFrequency: null,
-    vectorize_config: null,
-    runtime: null,
+    connectURL: "https://chatgpt.com/",
+    connectSelector: "nav a[href^='/c/']",
+    exportFrequency: "daily",
+    vectorize_config: { documents: "content" },
+    runtime: "playwright",
   },
 ]
 

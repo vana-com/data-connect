@@ -17,6 +17,7 @@ import type {
   ProgressPhase,
 } from '../types';
 import { normalizeExportData } from '../lib/export-data';
+import { getScopeForPlatform, ingestData } from '../services/personalServerIngest';
 
 // Module-level guard to prevent duplicate listener registration during StrictMode/HMR
 let listenersRegistered = false;
@@ -231,6 +232,23 @@ export function useEvents() {
       }).catch((err) => {
         console.error('[Export Save Error]', err);
       });
+
+      // Auto-upload to personal server if running
+      const scope = getScopeForPlatform(platformId);
+      if (scope) {
+        invoke<{ running: boolean; port?: number }>('get_personal_server_status')
+          .then((status) => {
+            if (status.running && status.port) {
+              return ingestData(status.port, scope, data as object);
+            }
+          })
+          .then(() => {
+            console.log('[Personal Server Ingest] Success for scope:', scope);
+          })
+          .catch((err) => {
+            console.warn('[Personal Server Ingest] Failed (non-blocking):', err);
+          });
+      }
     }).then((unlisten) => unlisteners.push(unlisten));
 
     // Listen for export complete events from Rust backend (legacy format)

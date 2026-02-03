@@ -17,9 +17,7 @@ const Home = lazy(() => import("./pages/Home").then(m => ({ default: m.Home })))
 const DataApps = lazy(() =>
   import("./pages/DataApps").then(m => ({ default: m.DataApps }))
 )
-const RickRollAppPage = lazy(() =>
-  import("./pages/RickRollApp").then(m => ({ default: m.RickRollAppPage }))
-)
+const AppPage = lazy(() => import("./pages/app-page").then(m => ({ default: m.AppPage })))
 const Runs = lazy(() => import("./pages/Runs").then(m => ({ default: m.Runs })))
 const Settings = lazy(() =>
   import("./pages/Settings").then(m => ({ default: m.Settings }))
@@ -45,7 +43,7 @@ function AppContent() {
             <Routes>
               <Route path="/" element={<Home />} />
               <Route path="/apps" element={<DataApps />} />
-              <Route path="/apps/rickroll" element={<RickRollAppPage />} />
+              <Route path="/apps/:appId" element={<AppPage />} />
               <Route path="/runs" element={<Runs />} />
               <Route path="/settings" element={<Settings />} />
               <Route path="/grant" element={<GrantFlow />} />

@@ -9,7 +9,7 @@ const comingSoonApps = mockApps.filter(app => app.status === "coming-soon")
 
 export function DataApps() {
   return (
-    <div className="container py-w16">
+    <div className="container max-w-wide-width py-w16">
       <div className="space-y-w12">
         <div className="space-y-2">
           <Text as="h1" intent="title">
@@ -22,9 +22,6 @@ export function DataApps() {
 
         {liveApps.length > 0 && (
           <section className="space-y-5">
-            <Text as="h2" intent="heading">
-              Available Now
-            </Text>
             <div className="grid gap-5 md:grid-cols-2 xl:grid-cols-3">
               {liveApps.map(app => (
                 <AppCard key={app.id} app={app} />

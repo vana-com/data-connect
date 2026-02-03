@@ -82,7 +82,7 @@ export function AppCard({ app }: { app: MockApp }) {
       ) : (
         <Button
           type="button"
-          variant="accent"
+          variant="default"
           fullWidth
           className="mt-4"
           onClick={() => navigate(`/apps/${app.id}`)}

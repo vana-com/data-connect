@@ -16,29 +16,27 @@ export function YourData() {
   } = useYourDataPage()
 
   return (
-    <div className="flex-1 overflow-auto bg-muted">
-      <div className="container py-w16">
-        <div className="space-y-w12">
-          <YourDataHeader />
+    <div className="container py-w16">
+      <div className="space-y-w12">
+        <YourDataHeader />
 
-          <YourDataTabs activeTab={activeTab} onTabChange={setActiveTab} />
+        <YourDataTabs activeTab={activeTab} onTabChange={setActiveTab} />
 
-          {activeTab === "sources" && (
-            <div className="space-y-w12">
-              <ConnectedSourcesSection
-                connectedSources={connectedSources}
-                onViewRuns={handleViewRuns}
-              />
-              <AvailableSourcesSection
-                availableSources={availableSources}
-                hasConnectedSources={connectedSources.length > 0}
-                onConnect={handleConnectSource}
-              />
-            </div>
-          )}
+        {activeTab === "sources" && (
+          <div className="space-y-w12">
+            <ConnectedSourcesSection
+              connectedSources={connectedSources}
+              onViewRuns={handleViewRuns}
+            />
+            <AvailableSourcesSection
+              availableSources={availableSources}
+              hasConnectedSources={connectedSources.length > 0}
+              onConnect={handleConnectSource}
+            />
+          </div>
+        )}
 
-          {activeTab === "apps" && <ConnectedAppsSection />}
-        </div>
+        {activeTab === "apps" && <ConnectedAppsSection />}
       </div>
     </div>
   )

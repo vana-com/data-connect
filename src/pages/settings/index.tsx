@@ -63,84 +63,82 @@ export function Settings() {
   } = useSettingsPage()
 
   return (
-    <div className="flex-1 overflow-auto bg-muted">
-      <div className="container py-w16">
-        <div className="space-y-8">
-          <div className="space-y-1">
-            <Text as="h1" intent="heading" weight="semi">
-              Settings
-            </Text>
-            <Text as="p" intent="small" color="mutedForeground">
-              Manage your preferences
-            </Text>
-          </div>
+    <div className="container py-w16">
+      <div className="space-y-8">
+        <div className="space-y-1">
+          <Text as="h1" intent="heading" weight="semi">
+            Settings
+          </Text>
+          <Text as="p" intent="small" color="mutedForeground">
+            Manage your preferences
+          </Text>
+        </div>
 
-          <div className="flex gap-6">
-            <aside className="w-56 shrink-0">
-              <nav className="sticky top-6 space-y-1">
-                {settingsSections.map(section => (
-                  <Button
-                    key={section.key}
-                    type="button"
-                    variant={activeSection === section.key ? "secondary" : "ghost"}
-                    onClick={() => setActiveSection(section.key)}
-                    className={cn(
-                      "w-full justify-start gap-3",
-                      activeSection === section.key && "text-foreground"
-                    )}
-                  >
-                    {section.icon}
-                    {section.label}
-                  </Button>
-                ))}
-              </nav>
-            </aside>
+        <div className="flex gap-6">
+          <aside className="w-56 shrink-0">
+            <nav className="sticky top-6 space-y-1">
+              {settingsSections.map(section => (
+                <Button
+                  key={section.key}
+                  type="button"
+                  variant={activeSection === section.key ? "secondary" : "ghost"}
+                  onClick={() => setActiveSection(section.key)}
+                  className={cn(
+                    "w-full justify-start gap-3",
+                    activeSection === section.key && "text-foreground"
+                  )}
+                >
+                  {section.icon}
+                  {section.label}
+                </Button>
+              ))}
+            </nav>
+          </aside>
 
-            <div className="flex-1">
-              {activeSection === "account" && (
-                <SettingsAccount
-                  user={user}
-                  isAuthenticated={isAuthenticated}
-                  onLogout={onLogout}
-                  onSignIn={onSignIn}
-                />
-              )}
+          <div className="flex-1">
+            {activeSection === "account" && (
+              <SettingsAccount
+                user={user}
+                isAuthenticated={isAuthenticated}
+                onLogout={onLogout}
+                onSignIn={onSignIn}
+              />
+            )}
 
-              {activeSection === "apps" && (
-                <SettingsApps connectedApps={connectedApps} onRevokeApp={onRevokeApp} />
-              )}
+            {activeSection === "apps" && (
+              <SettingsApps connectedApps={connectedApps} onRevokeApp={onRevokeApp} />
+            )}
 
-              {activeSection === "storage" && (
-                <SettingsStorage
-                  dataPath={dataPath}
-                  onOpenDataFolder={onOpenDataFolder}
-                  personalServerPort={personalServer.port}
-                  personalServerStatus={personalServer.status}
-                  walletAddress={walletAddress ?? null}
-                />
-              )}
+            {activeSection === "storage" && (
+              <SettingsStorage
+                dataPath={dataPath}
+                onOpenDataFolder={onOpenDataFolder}
+                personalServerPort={personalServer.port}
+                personalServerStatus={personalServer.status}
+                walletAddress={walletAddress ?? null}
+              />
+            )}
 
-              {activeSection === "about" && (
-                <SettingsAbout
-                  appVersion={appVersion}
-                  nodeTestStatus={nodeTestStatus}
-                  nodeTestResult={nodeTestResult}
-                  nodeTestError={nodeTestError}
-                  browserStatus={browserStatus}
-                  pathsDebug={pathsDebug}
-                  personalServer={{
-                    status: personalServer.status,
-                    port: personalServer.port,
-                    error: personalServer.error,
-                  }}
-                  onTestNodeJs={onTestNodeJs}
-                  onCheckBrowserStatus={onCheckBrowserStatus}
-                  onDebugPaths={onDebugPaths}
-                  onRestartPersonalServer={personalServer.startServer}
-                  onStopPersonalServer={personalServer.stopServer}
-                />
-              )}
-            </div>
+            {activeSection === "about" && (
+              <SettingsAbout
+                appVersion={appVersion}
+                nodeTestStatus={nodeTestStatus}
+                nodeTestResult={nodeTestResult}
+                nodeTestError={nodeTestError}
+                browserStatus={browserStatus}
+                pathsDebug={pathsDebug}
+                personalServer={{
+                  status: personalServer.status,
+                  port: personalServer.port,
+                  error: personalServer.error,
+                }}
+                onTestNodeJs={onTestNodeJs}
+                onCheckBrowserStatus={onCheckBrowserStatus}
+                onDebugPaths={onDebugPaths}
+                onRestartPersonalServer={personalServer.startServer}
+                onStopPersonalServer={personalServer.stopServer}
+              />
+            )}
           </div>
         </div>
       </div>

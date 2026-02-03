@@ -29,10 +29,8 @@ export function Grant() {
 
   if (browserStatus.status !== "ready") {
     return (
-      <div className="flex-1 overflow-auto bg-muted">
-        <div className="container py-w16">
-          <BrowserSetupSection browserStatus={browserStatus} />
-        </div>
+      <div className="container py-w16">
+        <BrowserSetupSection browserStatus={browserStatus} />
       </div>
     )
   }

@@ -81,38 +81,39 @@ export function Home() {
   }, [displayPlatforms, platforms.length])
 
   return (
-    <div className="flex-1 overflow-auto bg-muted">
-      <div className="container py-w16">
-        {/* Connector Updates - show when browser is ready */}
-        <ConnectorUpdates onReloadPlatforms={loadPlatforms} />
+    <div className="container py-w16">
+      {/* Connector Updates - show when browser is ready */}
+      <ConnectorUpdates onReloadPlatforms={loadPlatforms} />
 
-        {/* Tabs */}
-        <Tabs value={activeTab} onValueChange={setActiveTab}>
-          <MotionConfig reducedMotion={enableTabMotion ? "never" : "always"}>
-            <SlidingTabs
-              className="mb-w12"
-              tabs={tabs}
-              value={activeTab}
-              onValueChange={setActiveTab}
-            />
-          </MotionConfig>
+      {/* Tabs */}
+      <Tabs value={activeTab} onValueChange={setActiveTab}>
+        <MotionConfig reducedMotion={enableTabMotion ? "never" : "always"}>
+          <SlidingTabs
+            className="mb-w12"
+            tabs={tabs}
+            value={activeTab}
+            onValueChange={setActiveTab}
+          />
+        </MotionConfig>
 
-          {/* Sources Tab */}
-          <TabsContent value="sources" className="space-y-w12">
-            <ConnectedSourcesList
-              platforms={connectedPlatformsList}
-              runs={runs}
-              onOpenRuns={() => navigate("/runs")}
-            />
-            <AvailableSourcesList platforms={availablePlatforms} onExport={handleExport} />
-          </TabsContent>
+        {/* Sources Tab */}
+        <TabsContent value="sources" className="space-y-w12">
+          <ConnectedSourcesList
+            platforms={connectedPlatformsList}
+            runs={runs}
+            onOpenRuns={() => navigate("/runs")}
+          />
+          <AvailableSourcesList
+            platforms={availablePlatforms}
+            onExport={handleExport}
+          />
+        </TabsContent>
 
-          {/* Connected Apps Tab */}
-          <TabsContent value="apps">
-            <ConnectedAppsList apps={displayConnectedApps} />
-          </TabsContent>
-        </Tabs>
-      </div>
+        {/* Connected Apps Tab */}
+        <TabsContent value="apps">
+          <ConnectedAppsList apps={displayConnectedApps} />
+        </TabsContent>
+      </Tabs>
     </div>
   )
 }

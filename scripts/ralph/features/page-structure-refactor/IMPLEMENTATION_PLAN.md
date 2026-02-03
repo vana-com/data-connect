@@ -40,7 +40,9 @@ Reference implementation: `src/pages/settings/` demonstrates the target pattern.
 
 - [x] Verify app builds and DataApps route works
 
-- [ ] Add README + tests per `ui-page-structure` (deferred until structure settled)
+- [x] Add README + tests per `ui-page-structure`
+  - `src/pages/data-apps/README.md` - Page documentation
+  - `src/pages/data-apps/index.test.tsx` - Component tests (5 tests)
 
 ---
 
@@ -106,7 +108,9 @@ The refactor preserves this for future use or cleanup.
 
 - [x] Verify app builds
 
-- [ ] Add README + tests per `ui-page-structure` (deferred until structure settled)
+- [x] Add README + tests per `ui-page-structure`
+  - `src/pages/your-data/README.md` - Page documentation
+  - `src/pages/your-data/index.test.tsx` - Component tests (7 tests)
 
 ---
 
@@ -162,7 +166,9 @@ The refactor preserves this for future use or cleanup.
 
 - [x] Verify app builds
 
-- [ ] Add README + tests per `ui-page-structure` (deferred until structure settled)
+- [x] Add README + tests per `ui-page-structure`
+  - `src/pages/browser-login/README.md` - Page documentation
+  - `src/pages/browser-login/index.test.tsx` - Component tests (4 tests)
 
 ---
 
@@ -198,10 +204,11 @@ _(Move completed items here)_
 ## Notes
 
 - **Hook placement**: Route-level hooks go in `src/pages/<route>/use-<route>-page.ts`
-- **README/tests**: Tracked as explicit tasks per phase once settled
+- **README/tests**: ✅ Completed for all three pages (16 total tests)
 - **Settings reference**: `src/pages/settings/` is the canonical example of target structure
 - **YourData routing**: Page exists but may not be actively routed - investigate during Phase 2
 - **ESLint**: `npm run lint` has a pre-existing config issue (flat config migration needed) - unrelated to refactor
+- **StrictMode**: Tests use `getAllBy*` variants to handle React StrictMode double-rendering
 
 ## Pre-existing Type Errors Fixed (during Phase 1)
 

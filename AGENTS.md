@@ -21,8 +21,7 @@ DataConnect is the protocol client: it runs connectors, orchestrates grants, and
 - Prefer retrieval‑led reasoning for project‑specific knowledge.
 - Don’t overwrite comments; don’t change styles/classes unless asked.
 - When I report a bug, don't start by trying to fix it. Instead, start by writing a test that reproduces the bug. Then, have subagents try to fix the bug and prove it with a passing test.
-- Commit only; never push unless asked.
-- Commit is file-explicit only: stage specific paths, never `git add .`, `-A`, `-u`, or `git commit -a`. Ask if files are unclear.
+- Commit only when asked; never push; stage explicit paths only (no `git add .`, `-A`, `-u`, `git commit -a`); run relevant tests before commit.
 
 ### Skills (JIT only)
 

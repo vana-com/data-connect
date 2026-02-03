@@ -1,7 +1,6 @@
 ---
 name: commit-discipline
-description:
-  Enforce commit safety and approval gates. Use when asked to commit, amend,
+description: Enforce commit safety and approval gates. Use when asked to commit, amend,
   rebase, or generate a commit message.
 ---
 
@@ -16,6 +15,7 @@ description:
 - Default: make code changes, show a tight diff summary, and ask for approval.
 - If the user asks for a commit message, only provide the message — do not
   commit unless they also explicitly say to commit.
+- If tests exist for the changes being committed, they must be run first.
 
 ## Speed rule (no back-and-forth on commit failures)
 

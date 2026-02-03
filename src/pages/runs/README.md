@@ -9,10 +9,10 @@
 - `index.tsx`: page layout, empty state, run list.
 - `use-runs-page.ts`: reads runs/auth/server status; filters/sorts.
 - `components/personal-server-card.tsx`: personal server status card + sign-in CTA.
-- `components/run-item.tsx`: run card UI.
-- `components/use-run-item.ts`: expansion, ingest, open-folder actions.
-- `components/run-icons.tsx`: status/ingest icon selection.
-- `run-utils.ts`: date formatting + export data shaping + ingest labels.
+- `components/run-item/run-item.tsx`: run card UI.
+- `components/run-item/use-run-item.ts`: expansion, ingest, open-folder actions.
+- `components/run-item/run-icons.tsx`: status/ingest icon selection.
+- `components/run-item/run-item-utils.ts`: date formatting + export data shaping + ingest labels.
 
 ## Data flow
 

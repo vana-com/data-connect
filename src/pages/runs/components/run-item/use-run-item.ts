@@ -7,7 +7,7 @@ import {
   formatRunDate,
   getIngestButtonLabel,
   type IngestStatus,
-} from "../run-utils"
+} from "./run-item-utils"
 
 export interface UseRunItemProps {
   run: Run

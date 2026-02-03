@@ -1,5 +1,5 @@
 import { ChevronDownIcon, ChevronUpIcon, FolderOpenIcon } from "lucide-react"
-import type { Run } from "../../../types"
+import type { Run } from "@/types"
 import { PlatformChatGPTIcon } from "@/components/icons/platform-chatgpt"
 import { Text } from "@/components/typography/text"
 import { Button } from "@/components/ui/button"

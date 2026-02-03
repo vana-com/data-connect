@@ -3,6 +3,7 @@ import { useSelector } from "react-redux"
 import { useNavigate } from "react-router"
 import { usePlatforms } from "@/hooks/usePlatforms"
 import type { RootState } from "@/state/store"
+import { ROUTES } from "@/config/routes"
 import type { TabKey } from "./types"
 
 export function useYourDataPage() {
@@ -24,11 +25,11 @@ export function useYourDataPage() {
   )
 
   const handleConnectSource = (platformId: string) => {
-    navigate(`/?platform=${platformId}`)
+    navigate(`${ROUTES.home}?platform=${platformId}`)
   }
 
   const handleViewRuns = () => {
-    navigate("/runs")
+    navigate(ROUTES.runs)
   }
 
   return {

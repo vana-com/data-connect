@@ -10,6 +10,7 @@ import { InlineLogin } from "./components/auth/InlineLogin"
 import { BrowserLogin } from "./pages/browser-login"
 import { useDeepLink } from "./hooks/use-deep-link"
 import { usePersonalServer } from "./hooks/usePersonalServer"
+import { ROUTES } from "@/config/routes"
 
 // Lazy-loaded pages for reduced initial bundle size
 const Home = lazy(() => import("./pages/home").then(m => ({ default: m.Home })))
@@ -40,15 +41,15 @@ function AppContent() {
           <Suspense fallback={<div className="p-8">Loading...</div>}>
             {/* Routes config: keep @/config/routes.ts in sync when adding/removing routes */}
             <Routes>
-              <Route path="/" element={<Home />} />
-              <Route path="/apps" element={<DataApps />} />
-              <Route path="/apps/:appId" element={<AppPage />} />
-              <Route path="/mcp" element={<Mcp />} />
-              <Route path="/docs" element={<Docs />} />
-              <Route path="/runs" element={<Runs />} />
-              <Route path="/settings" element={<Settings />} />
-              <Route path="/grant" element={<Grant />} />
-              <Route path="/login" element={<InlineLogin />} />
+              <Route path={ROUTES.home} element={<Home />} />
+              <Route path={ROUTES.apps} element={<DataApps />} />
+              <Route path={ROUTES.appRoute} element={<AppPage />} />
+              <Route path={ROUTES.mcp} element={<Mcp />} />
+              <Route path={ROUTES.docs} element={<Docs />} />
+              <Route path={ROUTES.runs} element={<Runs />} />
+              <Route path={ROUTES.settings} element={<Settings />} />
+              <Route path={ROUTES.grant} element={<Grant />} />
+              <Route path={ROUTES.login} element={<InlineLogin />} />
             </Routes>
           </Suspense>
         </main>
@@ -62,7 +63,7 @@ function AppRouter() {
   const location = useLocation()
 
   // Browser login page is standalone (for external browser auth flow)
-  if (location.pathname === "/browser-login") {
+  if (location.pathname === ROUTES.browserLogin) {
     return <BrowserLogin />
   }
 
@@ -75,7 +76,7 @@ function App() {
       <PrivyProvider>
         <BrowserRouter>
           <Routes>
-            <Route path="/browser-login" element={<BrowserLogin />} />
+            <Route path={ROUTES.browserLogin} element={<BrowserLogin />} />
             <Route path="/*" element={<AppRouter />} />
           </Routes>
         </BrowserRouter>

@@ -1,6 +1,7 @@
 import { describe, expect, it, beforeEach, vi } from "vitest"
 import { fireEvent, render, screen } from "@testing-library/react"
 import { createMemoryRouter, RouterProvider } from "react-router-dom"
+import { ROUTES } from "@/config/routes"
 import { DataApps } from "./index"
 import { mockApps } from "./fixtures"
 
@@ -17,8 +18,8 @@ vi.mock("react-router", async () => {
 })
 
 const renderDataApps = () => {
-  const router = createMemoryRouter([{ path: "/", element: <DataApps /> }], {
-    initialEntries: ["/"],
+  const router = createMemoryRouter([{ path: ROUTES.apps, element: <DataApps /> }], {
+    initialEntries: [ROUTES.apps],
   })
 
   return render(<RouterProvider router={router} />)
@@ -80,6 +81,6 @@ describe("DataApps", () => {
     const openAppButtons = screen.getAllByRole("button", { name: "Open App" })
     fireEvent.click(openAppButtons[0])
 
-    expect(mockNavigate).toHaveBeenCalledWith(`/apps/${liveApps[0].id}`)
+    expect(mockNavigate).toHaveBeenCalledWith(ROUTES.app(liveApps[0].id))
   })
 })

@@ -1,6 +1,7 @@
 import { describe, expect, it, beforeEach, vi } from "vitest"
 import { fireEvent, render } from "@testing-library/react"
 import { createMemoryRouter, RouterProvider } from "react-router-dom"
+import { ROUTES } from "@/config/routes"
 import { Settings } from "./index"
 
 const mockUseAuth = vi.fn()
@@ -45,8 +46,8 @@ vi.mock("@tauri-apps/api/core", () => ({
 }))
 
 const renderSettings = () => {
-  const router = createMemoryRouter([{ path: "/", element: <Settings /> }], {
-    initialEntries: ["/"],
+  const router = createMemoryRouter([{ path: ROUTES.settings, element: <Settings /> }], {
+    initialEntries: [ROUTES.settings],
   })
 
   return render(<RouterProvider router={router} />)

@@ -2,6 +2,7 @@ import { useEffect } from "react"
 import { describe, expect, it } from "vitest"
 import { render, waitFor } from "@testing-library/react"
 import { createMemoryRouter, RouterProvider, useLocation } from "react-router-dom"
+import { ROUTES } from "@/config/routes"
 import { useDeepLink } from "./use-deep-link"
 
 function DeepLinkHarness({
@@ -40,7 +41,7 @@ describe("useDeepLink", () => {
       ],
       {
         initialEntries: [
-          "/?sessionId=grant-session-1&appId=rickroll&scopes=read:a,read:b",
+          `${ROUTES.home}?sessionId=grant-session-1&appId=rickroll&scopes=read:a,read:b`,
         ],
       }
     )
@@ -48,7 +49,7 @@ describe("useDeepLink", () => {
     render(<RouterProvider router={router} />)
 
     await waitFor(() => {
-      expect(latestPathname).toBe("/grant")
+      expect(latestPathname).toBe(ROUTES.grant)
     })
 
     const searchParams = new URLSearchParams(latestSearch)
@@ -81,14 +82,14 @@ describe("useDeepLink", () => {
         },
       ],
       {
-        initialEntries: [`/grant?${searchParams.toString()}`],
+        initialEntries: [`${ROUTES.grant}?${searchParams.toString()}`],
       }
     )
 
     render(<RouterProvider router={router} />)
 
     await waitFor(() => {
-      expect(latestPathname).toBe("/grant")
+      expect(latestPathname).toBe(ROUTES.grant)
     })
 
     expect(latestSearch).toBe(`?${searchParams.toString()}`)

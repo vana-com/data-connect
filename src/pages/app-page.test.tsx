@@ -2,6 +2,7 @@ import { useEffect } from "react"
 import { describe, expect, it } from "vitest"
 import { render, waitFor } from "@testing-library/react"
 import { createMemoryRouter, RouterProvider, useLocation } from "react-router-dom"
+import { ROUTES } from "@/config/routes"
 import { AppPage } from "./app-page"
 
 function LocationProbe({ onChange }: { onChange: (pathname: string) => void }) {
@@ -21,7 +22,7 @@ describe("AppPage", () => {
     const router = createMemoryRouter(
       [
         {
-          path: "/apps/:appId",
+          path: ROUTES.appRoute,
           element: (
             <>
               <LocationProbe onChange={pathname => (latestPathname = pathname)} />
@@ -31,14 +32,14 @@ describe("AppPage", () => {
         },
       ],
       {
-        initialEntries: ["/apps/unknown"],
+        initialEntries: [ROUTES.app("unknown")],
       }
     )
 
     render(<RouterProvider router={router} />)
 
     await waitFor(() => {
-      expect(latestPathname).toBe("/apps/rickroll")
+      expect(latestPathname).toBe(ROUTES.app("rickroll"))
     })
   })
 })

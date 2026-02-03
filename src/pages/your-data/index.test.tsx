@@ -3,6 +3,7 @@ import { fireEvent, render, screen } from "@testing-library/react"
 import { createMemoryRouter, RouterProvider } from "react-router-dom"
 import { Provider } from "react-redux"
 import { configureStore } from "@reduxjs/toolkit"
+import { ROUTES } from "@/config/routes"
 import { YourData } from "./index"
 
 const mockNavigate = vi.fn()
@@ -29,8 +30,8 @@ const createMockStore = (connectedPlatforms: Record<string, boolean> = {}) =>
 
 const renderYourData = (connectedPlatforms: Record<string, boolean> = {}) => {
   const store = createMockStore(connectedPlatforms)
-  const router = createMemoryRouter([{ path: "/", element: <YourData /> }], {
-    initialEntries: ["/"],
+  const router = createMemoryRouter([{ path: ROUTES.home, element: <YourData /> }], {
+    initialEntries: [ROUTES.home],
   })
 
   return render(
@@ -116,7 +117,7 @@ describe("YourData", () => {
     expect(chatgptButtons.length).toBeGreaterThan(0)
     fireEvent.click(chatgptButtons[0])
 
-    expect(mockNavigate).toHaveBeenCalledWith("/?platform=chatgpt")
+    expect(mockNavigate).toHaveBeenCalledWith(`${ROUTES.home}?platform=chatgpt`)
   })
 
   it("navigates to runs page when clicking View on connected source", () => {
@@ -127,6 +128,6 @@ describe("YourData", () => {
     expect(viewButtons.length).toBeGreaterThan(0)
     fireEvent.click(viewButtons[0])
 
-    expect(mockNavigate).toHaveBeenCalledWith("/runs")
+    expect(mockNavigate).toHaveBeenCalledWith(ROUTES.runs)
   })
 })

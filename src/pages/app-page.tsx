@@ -1,5 +1,6 @@
 import { Navigate, useParams } from "react-router-dom"
 import { DEFAULT_APP_ID, getAppRegistryEntry } from "../apps/registry"
+import { ROUTES } from "@/config/routes"
 import { RickRollAppPage } from "./RickRollApp"
 
 export function AppPage() {
@@ -7,13 +8,13 @@ export function AppPage() {
   const entry = getAppRegistryEntry(appId)
 
   if (!entry) {
-    return <Navigate to={`/apps/${DEFAULT_APP_ID}`} replace />
+    return <Navigate to={ROUTES.app(DEFAULT_APP_ID)} replace />
   }
 
   switch (entry.id) {
     case "rickroll":
       return <RickRollAppPage />
     default:
-      return <Navigate to={`/apps/${DEFAULT_APP_ID}`} replace />
+      return <Navigate to={ROUTES.app(DEFAULT_APP_ID)} replace />
   }
 }

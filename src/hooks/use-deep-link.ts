@@ -5,6 +5,7 @@ import {
   getGrantParamsFromSearchParams,
   type GrantParams,
 } from "../lib/grant-params"
+import { ROUTES } from "@/config/routes"
 
 export function useDeepLink() {
   const navigate = useNavigate()
@@ -26,10 +27,10 @@ export function useDeepLink() {
         const normalizedSearch = buildGrantSearchParams(params).toString()
         const targetSearch = normalizedSearch ? `?${normalizedSearch}` : ""
         const isAlreadyOnTarget =
-          location.pathname === "/grant" && location.search === targetSearch
+          location.pathname === ROUTES.grant && location.search === targetSearch
 
         if (!isAlreadyOnTarget) {
-          navigate(`/grant${targetSearch}`, { replace: true })
+          navigate(`${ROUTES.grant}${targetSearch}`, { replace: true })
         }
       }
     }

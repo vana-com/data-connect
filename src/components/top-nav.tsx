@@ -11,6 +11,7 @@ import {
 import { DcLogotype } from "@/components/icons/dc-logotype"
 import { IconMcp } from "@/components/icons/icon-mcp"
 import { cn } from "@/lib/classes"
+import { ROUTES } from "@/config/routes"
 import type { LucideIcon } from "lucide-react"
 
 type NavItem = {
@@ -34,19 +35,19 @@ const navItemActiveClasses = "bg-foreground/[0.07] text-foreground"
 const navIconClasses = "size-[18px]"
 
 const navItems: NavItem[] = [
-  { to: "/", label: "Home", Icon: HomeIcon },
-  { to: "/apps", label: "Apps", Icon: BoxIcon },
-  { to: "/mcp", label: "MCP", Icon: IconMcp },
+  { to: ROUTES.home, label: "Home", Icon: HomeIcon },
+  { to: ROUTES.apps, label: "Apps", Icon: BoxIcon },
+  { to: ROUTES.mcp, label: "MCP", Icon: IconMcp },
   // {
   //   to: "https://docs.dataconnect.com",
   //   label: "Docs",
   //   Icon: BookOpenIcon,
   //   external: true,
   // },
-  { to: "/docs", label: "Docs", Icon: BookOpenIcon },
+  { to: ROUTES.docs, label: "Docs", Icon: BookOpenIcon },
   // { to: "/activity", label: "Activity", Icon: ActivityIcon },
-  { to: "/settings", label: "Settings", Icon: SettingsIcon },
-  { to: "/runs", label: "Account", Icon: UserRoundCogIcon },
+  { to: ROUTES.settings, label: "Settings", Icon: SettingsIcon },
+  { to: ROUTES.runs, label: "Account", Icon: UserRoundCogIcon },
 ]
 
 export function TopNav() {
@@ -61,7 +62,11 @@ export function TopNav() {
       )}
     >
       {/* Logo/Brand */}
-      <NavLink to="/" className="flex items-center gap-2" aria-label="Data Connect">
+      <NavLink
+        to={ROUTES.home}
+        className="flex items-center gap-2"
+        aria-label="Data Connect"
+      >
         {/* <DcIcon height={16} aria-hidden /> */}
         <DcLogotype height={13} aria-hidden />
       </NavLink>

@@ -1,6 +1,7 @@
 import { describe, expect, it, vi } from "vitest"
 import { render } from "@testing-library/react"
 import { createMemoryRouter, RouterProvider } from "react-router-dom"
+import { ROUTES } from "@/config/routes"
 import { Runs } from "./index"
 
 vi.mock("react-router", async () => {
@@ -28,8 +29,8 @@ vi.mock("./use-runs-page", () => ({
 
 describe("Runs", () => {
   it("shows the empty state when no runs exist", () => {
-    const router = createMemoryRouter([{ path: "/", element: <Runs /> }], {
-      initialEntries: ["/"],
+    const router = createMemoryRouter([{ path: ROUTES.runs, element: <Runs /> }], {
+      initialEntries: [ROUTES.runs],
     })
 
     const { getByText } = render(<RouterProvider router={router} />)

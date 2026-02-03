@@ -1,6 +1,7 @@
 import { describe, expect, it, vi, beforeEach, afterEach } from "vitest"
 import { render, waitFor, cleanup } from "@testing-library/react"
 import { createMemoryRouter, RouterProvider } from "react-router-dom"
+import { ROUTES } from "@/config/routes"
 import { Home } from "./index"
 
 const mockCheckForUpdates = vi.fn()
@@ -49,8 +50,8 @@ vi.mock("react-redux", async () => {
 })
 
 function renderHome() {
-  const router = createMemoryRouter([{ path: "/", element: <Home /> }], {
-    initialEntries: ["/"],
+  const router = createMemoryRouter([{ path: ROUTES.home, element: <Home /> }], {
+    initialEntries: [ROUTES.home],
   })
 
   return render(<RouterProvider router={router} />)

@@ -3,6 +3,7 @@ import { useNavigate } from "react-router"
 import { Text } from "@/components/typography/text"
 import { Button } from "@/components/ui/button"
 import { cn } from "@/lib/classes"
+import { ROUTES } from "@/config/routes"
 import type { MockApp } from "../types"
 
 export function AppCard({ app }: { app: MockApp }) {
@@ -85,7 +86,7 @@ export function AppCard({ app }: { app: MockApp }) {
           variant="default"
           fullWidth
           className="mt-4"
-          onClick={() => navigate(`/apps/${app.id}`)}
+          onClick={() => navigate(ROUTES.app(app.id))}
         >
           Open App
         </Button>

@@ -12,6 +12,7 @@ import { ConnectedAppsList } from "@/pages/home/components/connected-apps-list"
 import { ConnectedSourcesList } from "@/pages/home/components/connected-sources-list"
 import { AvailableSourcesList } from "@/pages/home/components/available-sources-list"
 import { ConnectorUpdates } from "@/pages/home/components/connector-updates"
+import { ROUTES } from "@/config/routes"
 import {
   USE_TEST_DATA,
   testConnectedApps,
@@ -101,12 +102,9 @@ export function Home() {
           <ConnectedSourcesList
             platforms={connectedPlatformsList}
             runs={runs}
-            onOpenRuns={() => navigate("/runs")}
+            onOpenRuns={() => navigate(ROUTES.runs)}
           />
-          <AvailableSourcesList
-            platforms={availablePlatforms}
-            onExport={handleExport}
-          />
+          <AvailableSourcesList platforms={availablePlatforms} onExport={handleExport} />
         </TabsContent>
 
         {/* Connected Apps Tab */}

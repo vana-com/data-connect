@@ -48,7 +48,8 @@
       "../connectors/openai/**/*": "connectors/openai/",
       "../connectors/types/**/*": "connectors/types/",
       "../playwright-runner/dist/*": "playwright-runner/dist/",
-      "../personal-server/dist/*": "personal-server/dist/"
+      "../personal-server/dist/*": "personal-server/dist/",
+      "auth-page/**": "auth-page/"
     },
     "windows": {
       "nsis": {

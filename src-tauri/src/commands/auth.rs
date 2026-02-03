@@ -1,8 +1,10 @@
 use serde::{Deserialize, Serialize};
 use std::io::{BufRead, BufReader, Read, Write};
 use std::net::TcpListener;
+use std::path::PathBuf;
 use std::sync::mpsc;
 use std::thread;
+use tauri::path::BaseDirectory;
 use tauri::{AppHandle, Emitter, Manager};
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
@@ -53,10 +55,17 @@ pub async fn start_browser_auth(
     thread::spawn(move || {
         log::info!("Auth callback server thread started");
 
-        // Load the bundled auth page HTML and inject the Privy IDs
-        let auth_html = include_str!("../../auth-page/index.html")
-            .replace("{{PRIVY_APP_ID}}", &privy_app_id_clone)
-            .replace("{{PRIVY_CLIENT_ID}}", &privy_client_id_clone);
+        let resource_dir = app_handle
+            .path()
+            .resolve("auth-page", BaseDirectory::Resource)
+            .ok()
+            .filter(|path| path.exists());
+
+        let auth_dir = resource_dir.unwrap_or_else(|| {
+            PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("auth-page")
+        });
+
+        log::info!("Auth page directory: {}", auth_dir.display());
 
         for stream in listener.incoming() {
             match stream {
@@ -79,15 +88,56 @@ pub async fn start_browser_auth(
                     let method = parts[0];
                     let path = parts[1];
 
+                    let request_path = path.split('?').next().unwrap_or(path);
+
                     match method {
                         "GET" if path == "/" || path.starts_with("/?") => {
-                            // Serve the bundled auth page
-                            let response = format!(
-                                "HTTP/1.1 200 OK\r\nContent-Type: text/html; charset=utf-8\r\nContent-Length: {}\r\n\r\n{}",
-                                auth_html.len(),
-                                auth_html
-                            );
-                            let _ = stream.write_all(response.as_bytes());
+                            let index_path = auth_dir.join("index.html");
+                            match std::fs::read_to_string(&index_path) {
+                                Ok(html) => {
+                                    let resolved_html = html
+                                        .replace("%PRIVY_APP_ID%", &privy_app_id_clone)
+                                        .replace("%PRIVY_CLIENT_ID%", &privy_client_id_clone);
+                                    let response = format!(
+                                        "HTTP/1.1 200 OK\r\nContent-Type: text/html; charset=utf-8\r\nContent-Length: {}\r\n\r\n{}",
+                                        resolved_html.len(),
+                                        resolved_html
+                                    );
+                                    let _ = stream.write_all(response.as_bytes());
+                                }
+                                Err(err) => {
+                                    log::error!(
+                                        "Failed to read auth page index.html: {}",
+                                        err
+                                    );
+                                    let response = "HTTP/1.1 500 Internal Server Error\r\n\r\n";
+                                    let _ = stream.write_all(response.as_bytes());
+                                }
+                            }
+                        }
+                        "GET"
+                            if request_path.starts_with("/assets/")
+                                || request_path.starts_with("/fonts/")
+                                || request_path == "/favicon.ico" =>
+                        {
+                            let asset_path = auth_dir.join(request_path.trim_start_matches('/'));
+                            match std::fs::read(&asset_path) {
+                                Ok(bytes) => {
+                                    let mime =
+                                        mime_guess::from_path(&asset_path).first_or_octet_stream();
+                                    let header = format!(
+                                        "HTTP/1.1 200 OK\r\nContent-Type: {}\r\nContent-Length: {}\r\n\r\n",
+                                        mime,
+                                        bytes.len()
+                                    );
+                                    let _ = stream.write_all(header.as_bytes());
+                                    let _ = stream.write_all(&bytes);
+                                }
+                                Err(_) => {
+                                    let response = "HTTP/1.1 404 Not Found\r\n\r\n";
+                                    let _ = stream.write_all(response.as_bytes());
+                                }
+                            }
                         }
                         "POST" if path == "/auth-callback" || path == "/" => {
                             // Read headers to get content length

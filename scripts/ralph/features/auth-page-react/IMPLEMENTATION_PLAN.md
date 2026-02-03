@@ -1,3 +1,5 @@
+## Completed
+
 - [P0] Create `src/auth-page/` with `index.html`, `main.tsx`, `App.tsx`,
   `auth.ts`, `types.ts`, `styles.css` (import `src/styles/index.css`), and move
   all auth UI to React with no direct DOM mutation.

@@ -7,6 +7,7 @@ import { Loader, ExternalLink } from 'lucide-react';
 import { setAuthenticated } from '../../state/store';
 
 const PRIVY_APP_ID = import.meta.env.VITE_PRIVY_APP_ID;
+const PRIVY_CLIENT_ID = import.meta.env.VITE_PRIVY_CLIENT_ID;
 
 interface AuthResult {
   success: boolean;
@@ -71,8 +72,8 @@ export function InlineLogin() {
   }, [dispatch, navigate]);
 
   const handleBrowserAuth = useCallback(async () => {
-    if (!PRIVY_APP_ID) {
-      setError('Authentication is not configured. Missing VITE_PRIVY_APP_ID.');
+    if (!PRIVY_APP_ID || !PRIVY_CLIENT_ID) {
+      setError('Authentication is not configured. Missing VITE_PRIVY_APP_ID or VITE_PRIVY_CLIENT_ID.');
       return;
     }
 
@@ -81,7 +82,7 @@ export function InlineLogin() {
     setAuthStarted(true);
 
     try {
-      await invoke('start_browser_auth', { privyAppId: PRIVY_APP_ID, privyClientId: import.meta.env.VITE_PRIVY_CLIENT_ID || undefined });
+      await invoke('start_browser_auth', { privyAppId: PRIVY_APP_ID, privyClientId: PRIVY_CLIENT_ID });
     } catch (err) {
       console.error('Failed to start browser auth:', err);
       setError(err instanceof Error ? err.message : 'Failed to open browser for authentication.');
@@ -93,7 +94,7 @@ export function InlineLogin() {
   // Auto-start browser auth on mount
   const autoStarted = useRef(false);
   useEffect(() => {
-    if (autoStarted.current || !PRIVY_APP_ID) return;
+    if (autoStarted.current || !PRIVY_APP_ID || !PRIVY_CLIENT_ID) return;
     autoStarted.current = true;
     handleBrowserAuth();
   }, [handleBrowserAuth]);

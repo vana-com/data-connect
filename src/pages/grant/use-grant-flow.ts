@@ -17,6 +17,7 @@ import type { GrantFlowParams, GrantFlowState, GrantSession, GrantStep } from ".
 import { ROUTES } from "@/config/routes"
 
 const PRIVY_APP_ID = import.meta.env.VITE_PRIVY_APP_ID
+const PRIVY_CLIENT_ID = import.meta.env.VITE_PRIVY_CLIENT_ID
 
 export function useGrantFlow(params: GrantFlowParams) {
   const dispatch = useDispatch()
@@ -108,8 +109,8 @@ export function useGrantFlow(params: GrantFlowParams) {
   }, [authLoading, isAuthenticated, flowState.session, flowState.status])
 
   const startBrowserAuth = useCallback(async () => {
-    if (!PRIVY_APP_ID) {
-      setAuthError("Missing VITE_PRIVY_APP_ID.")
+    if (!PRIVY_APP_ID || !PRIVY_CLIENT_ID) {
+      setAuthError("Missing VITE_PRIVY_APP_ID or VITE_PRIVY_CLIENT_ID.")
       return
     }
 
@@ -117,7 +118,7 @@ export function useGrantFlow(params: GrantFlowParams) {
     try {
       const url = await invoke<string>("start_browser_auth", {
         privyAppId: PRIVY_APP_ID,
-        privyClientId: import.meta.env.VITE_PRIVY_CLIENT_ID || undefined,
+        privyClientId: PRIVY_CLIENT_ID,
       })
       setAuthUrl(url)
     } catch (err) {

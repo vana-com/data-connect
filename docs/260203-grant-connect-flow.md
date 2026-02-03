@@ -26,6 +26,10 @@ flowchart TD
   H --> I[App connected state]
 ```
 
+## UI design reference
+
+Linear 4-step connect/grant design: `docs/_wip/260202-connect-flow.png`.
+
 ## Responsibilities
 
 - Connect Flow UI: presents the multi-step UI and sends the user into the grant flow.

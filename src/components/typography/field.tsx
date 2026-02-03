@@ -19,7 +19,7 @@ export const fieldHeight = {
   base: "h-9", // 36px (UNUSED except for icon buttons)
   default: "h-button", // 44px
   lg: "h-tab", // 54px
-  xl: "h-18", // 72px
+  xl: "h-16", // 64px
 }
 
 export const fieldVariants = cva(

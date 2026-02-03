@@ -2,15 +2,23 @@ import type { ComponentProps } from "react"
 import { Button, buttonVariants } from "@/components/ui/button"
 import { cn } from "@/lib/classes"
 
-type ActionButtonProps = ComponentProps<"button">
+type ActionButtonProps = ComponentProps<typeof Button>
 
-export function ActionButton({ className, children, ...props }: ActionButtonProps) {
+export function ActionButton({
+  className,
+  children,
+  variant = "outline",
+  size = "lg",
+  fullWidth = true,
+  type = "button",
+  ...props
+}: ActionButtonProps) {
   return (
     <Button
-      type="button"
-      variant="outline"
-      size="lg"
-      fullWidth
+      type={type}
+      variant={variant}
+      size={size}
+      fullWidth={fullWidth}
       className={cn("px-4", className)}
       {...props}
     >

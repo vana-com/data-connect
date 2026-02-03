@@ -43,6 +43,11 @@ Grant flow inputs are canonical in the URL:
 
 Do not use `location.state` for these values.
 
+## React state stability
+
+- In `useGrantFlow`, the `scopes` dependency uses a stable key (`scopes.join("|")`) to
+  avoid re-running effects on new array identities.
+
 ## Demo behavior (local)
 
 Demo sessions (`sessionId` starts with `grant-session-`) use registry metadata and

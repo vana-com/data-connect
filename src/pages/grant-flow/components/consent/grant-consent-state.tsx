@@ -1,8 +1,9 @@
 import { Link } from "react-router-dom"
 import { LoaderIcon } from "lucide-react"
 import { Text } from "@/components/typography/text"
+import { Button } from "@/components/ui/button"
 import { cn } from "@/lib/classes"
-import type { GrantSession, GrantStep } from "../types"
+import type { GrantSession, GrantStep } from "../../types"
 import { GrantProgressSteps } from "./grant-progress-steps"
 import { GrantAppInfo } from "./grant-app-info"
 import { GrantScopesList } from "./grant-scopes-list"
@@ -26,11 +27,8 @@ export function GrantConsentState({
   declineHref,
   onApprove,
 }: GrantConsentStateProps) {
-  const focusRing =
-    "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background"
-
   return (
-    <div className="flex min-h-screen items-center justify-center bg-muted p-6">
+    <div className="grid min-h-screen place-items-center bg-muted p-6">
       <div className="w-full max-w-[520px] rounded-card bg-background p-10 shadow-md">
         <div className="space-y-6">
           <GrantProgressSteps currentStep={currentStep} />
@@ -39,35 +37,32 @@ export function GrantConsentState({
           <GrantWalletInfo walletAddress={walletAddress} />
           <GrantWarning />
           <div className="flex gap-3">
-            <Text
-              as={Link}
-              to={declineHref}
-              intent="button"
-              weight="medium"
-              color="mutedForeground"
-              aria-disabled={isApproving}
-              onClick={event => {
-                if (isApproving) {
-                  event.preventDefault()
-                }
-              }}
+            <Button
+              asChild
+              variant="outline"
               className={cn(
-                "inline-flex flex-1 items-center justify-center rounded-button border border-border bg-background px-4 py-3 transition-colors hover:bg-muted",
-                focusRing,
+                "flex-1 text-muted-foreground",
                 isApproving && "pointer-events-none opacity-60"
               )}
             >
-              Decline
-            </Text>
-            <button
+              <Link
+                to={declineHref}
+                aria-disabled={isApproving}
+                onClick={event => {
+                  if (isApproving) {
+                    event.preventDefault()
+                  }
+                }}
+              >
+                Decline
+              </Link>
+            </Button>
+            <Button
               type="button"
               onClick={onApprove}
               disabled={isApproving}
-              className={cn(
-                "inline-flex flex-1 items-center justify-center gap-2 rounded-button bg-accent px-4 py-3 text-background transition-colors hover:bg-accent/90",
-                "disabled:cursor-not-allowed disabled:bg-muted disabled:text-muted-foreground disabled:opacity-70",
-                focusRing
-              )}
+              variant="accent"
+              className="flex-1"
             >
               {isApproving ? (
                 <>
@@ -75,22 +70,12 @@ export function GrantConsentState({
                     aria-hidden="true"
                     className="size-4 animate-spin motion-reduce:animate-none"
                   />
-                  <Text
-                    as="span"
-                    intent="button"
-                    weight="medium"
-                    color="inherit"
-                    aria-live="polite"
-                  >
-                    Approving…
-                  </Text>
+                  <span aria-live="polite">Approving…</span>
                 </>
               ) : (
-                <Text as="span" intent="button" weight="medium" color="inherit">
-                  Approve
-                </Text>
+                "Approve"
               )}
-            </button>
+            </Button>
           </div>
         </div>
       </div>

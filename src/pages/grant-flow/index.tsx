@@ -5,7 +5,7 @@ import { GrantLoadingState } from "./components/grant-loading-state"
 import { GrantAuthRequiredState } from "./components/grant-auth-required-state"
 import { GrantErrorState } from "./components/grant-error-state"
 import { GrantSuccessState } from "./components/grant-success-state"
-import { GrantConsentState } from "./components/grant-consent-state"
+import { GrantConsentState } from "./components/consent/grant-consent-state"
 
 export function GrantFlow() {
   const [searchParams] = useSearchParams()

@@ -1,4 +1,4 @@
-import type { GrantStep } from "../types"
+import type { GrantStep } from "../../types"
 import { Text } from "@/components/typography/text"
 
 interface GrantProgressStepsProps {

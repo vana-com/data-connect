@@ -75,7 +75,5 @@ src/pages/runs/
 
 ## Notes
 
-- Hooks that are tightly coupled to a component should live next to it in `components/`.
-- If a hook is truly route-level (not tied to a single component), place it in the route folder, not a `hooks/` directory.
 - Keep imports direct (avoid barrel files).
 - Prefer `@/` path alias over long relative imports.

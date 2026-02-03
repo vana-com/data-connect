@@ -29,7 +29,7 @@ Use this skill to audit or refactor React components to align with:
 - For links, use `Text as="a"` and pass link props (`href`, `target`, `rel`) directly; do not wrap `Text` in an `<a>`.
 - Do not set `weight` unless the UI markup explicitly specifies it.
 - No inline styles; use Tailwind classes + tokens.
-- Always use `cn` for `className`; avoid string literals to prevent duplicate Tailwind classes.
+- Use `cn` only when class names are dynamic, need conditional logic, or when grouping many classes (per Tailwind sort rule). For short static classes, use a string literal `className="..."`.
 - Use tokenized colors (`text-foreground`, `bg-muted`, etc.), not hex.
 - No raw colors anywhere outside `src/styles/vars.css` (no hex/rgb/hsl/oklch in components or CSS).
 - No palette classes like `text-gray-*`, `bg-slate-*`, etc. Use tokens only.

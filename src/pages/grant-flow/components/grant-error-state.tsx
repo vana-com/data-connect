@@ -1,6 +1,7 @@
 import { Link } from "react-router-dom"
 import { XCircleIcon } from "lucide-react"
 import { Text } from "@/components/typography/text"
+import { Button } from "@/components/ui/button"
 
 interface GrantErrorStateProps {
   error?: string
@@ -8,11 +9,8 @@ interface GrantErrorStateProps {
 }
 
 export function GrantErrorState({ error, declineHref }: GrantErrorStateProps) {
-  const focusRing =
-    "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background"
-
   return (
-    <div className="flex min-h-screen items-center justify-center bg-muted p-6">
+    <div className="grid min-h-screen place-items-center bg-muted p-6">
       <div className="w-full max-w-[440px] rounded-card bg-background p-10 shadow-md">
         <div className="flex flex-col items-center space-y-6 text-center">
           <XCircleIcon aria-hidden="true" className="size-16 text-destructive" />
@@ -24,16 +22,9 @@ export function GrantErrorState({ error, declineHref }: GrantErrorStateProps) {
               {error || "Please try again."}
             </Text>
           </div>
-          <Text
-            as={Link}
-            to={declineHref}
-            intent="button"
-            weight="medium"
-            color="inherit"
-            className={`inline-flex items-center justify-center rounded-button bg-foreground px-6 py-3 text-background transition-colors hover:bg-foreground/90 ${focusRing}`}
-          >
-            Go to Your Data
-          </Text>
+          <Button asChild variant="default">
+            <Link to={declineHref}>Go to Your Data</Link>
+          </Button>
         </div>
       </div>
     </div>

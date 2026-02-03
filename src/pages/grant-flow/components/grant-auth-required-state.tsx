@@ -1,6 +1,7 @@
 import { Link } from "react-router-dom"
 import { LoaderIcon } from "lucide-react"
 import { Text } from "@/components/typography/text"
+import { Button } from "@/components/ui/button"
 
 interface GrantAuthRequiredStateProps {
   appName?: string
@@ -17,11 +18,8 @@ export function GrantAuthRequiredState({
   declineHref,
   onRetryAuth,
 }: GrantAuthRequiredStateProps) {
-  const focusRing =
-    "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background"
-
   return (
-    <div className="flex min-h-screen items-center justify-center bg-muted p-6">
+    <div className="grid min-h-screen place-items-center bg-muted p-6">
       <div className="w-full max-w-[440px] rounded-card bg-background p-10 shadow-md">
         <div className="flex flex-col items-center space-y-6 text-center">
           <LoaderIcon
@@ -29,7 +27,7 @@ export function GrantAuthRequiredState({
             className="size-12 animate-spin text-accent motion-reduce:animate-none"
           />
           <div className="space-y-3">
-            <Text as="h1" intent="heading" weight="semi">
+            <Text as="h1" intent="heading">
               Sign In to Continue
             </Text>
             <Text as="p" intent="body" color="mutedForeground">
@@ -44,15 +42,14 @@ export function GrantAuthRequiredState({
           )}
           {authUrl ? (
             <div className="w-full space-y-3">
-              <button
+              <Button
                 type="button"
                 onClick={() => window.open(authUrl, "_blank", "noopener,noreferrer")}
-                className={`inline-flex w-full items-center justify-center rounded-button bg-foreground px-4 py-2.5 text-background transition-colors hover:bg-foreground/90 ${focusRing}`}
+                fullWidth
+                className="hover:bg-foreground/90"
               >
-                <Text as="span" intent="button" weight="medium" color="inherit">
-                  Open Sign-In Page
-                </Text>
-              </button>
+                Open Sign-In Page
+              </Button>
               <Text
                 as="div"
                 intent="fine"
@@ -64,26 +61,23 @@ export function GrantAuthRequiredState({
               </Text>
             </div>
           ) : (
-            <button
+            <Button
               type="button"
               onClick={onRetryAuth}
-              className={`inline-flex w-full items-center justify-center rounded-button border border-border bg-background px-4 py-2 text-foreground transition-colors hover:bg-muted ${focusRing}`}
+              variant="outline"
+              fullWidth
+              className="border-border hover:bg-muted"
             >
-              <Text as="span" intent="button" weight="medium" color="inherit">
-                Try Opening Sign-In Again
-              </Text>
-            </button>
+              Try Opening Sign-In Again
+            </Button>
           )}
-          <Text
-            as={Link}
-            to={declineHref}
-            intent="button"
-            weight="medium"
-            color="mutedForeground"
-            className={`inline-flex items-center justify-center rounded-button border border-border bg-transparent px-5 py-2.5 transition-colors hover:bg-muted ${focusRing}`}
+          <Button
+            asChild
+            variant="outline"
+            className="border-border bg-transparent px-5 py-2.5 hover:bg-muted"
           >
-            Cancel
-          </Text>
+            <Link to={declineHref}>Cancel</Link>
+          </Button>
         </div>
       </div>
     </div>

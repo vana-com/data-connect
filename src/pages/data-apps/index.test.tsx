@@ -33,7 +33,9 @@ describe("DataApps", () => {
     renderDataApps()
 
     expect(screen.getByRole("heading", { level: 1, name: "Data Apps" })).toBeTruthy()
-    expect(screen.getByText("Discover applications that can work with your data")).toBeTruthy()
+    expect(
+      screen.getByText("Discover applications that can work with your data")
+    ).toBeTruthy()
   })
 
   it("renders live apps with Open App button", () => {

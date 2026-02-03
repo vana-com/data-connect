@@ -58,7 +58,9 @@ describe("YourData", () => {
     renderYourData()
 
     expect(screen.getByRole("heading", { level: 1, name: "Your Data" })).toBeTruthy()
-    expect(screen.getByText("Manage your connected data sources and applications")).toBeTruthy()
+    expect(
+      screen.getByText("Manage your connected data sources and applications")
+    ).toBeTruthy()
   })
 
   it("renders tabs for switching views", () => {

@@ -26,13 +26,16 @@ pub struct AuthUser {
 
 /// Start the external browser auth flow
 #[tauri::command]
-pub async fn start_browser_auth(app: AppHandle, privy_app_id: String, privy_client_id: Option<String>) -> Result<(), String> {
+pub async fn start_browser_auth(
+    app: AppHandle,
+    privy_app_id: String,
+    privy_client_id: Option<String>,
+) -> Result<String, String> {
     log::info!("Starting browser auth flow with Privy app ID: {}", privy_app_id);
 
     // Find an available port for the callback server
-    let listener = TcpListener::bind("127.0.0.1:3083")
-        .or_else(|_| TcpListener::bind("127.0.0.1:5173"))
-        .map_err(|e| format!("Failed to bind to port 3083 or 5173: {}", e))?;
+    let listener = TcpListener::bind("127.0.0.1:0")
+        .map_err(|e| format!("Failed to bind to an available port: {}", e))?;
     let callback_port = listener.local_addr()
         .map_err(|e| format!("Failed to get local address: {}", e))?
         .port();
@@ -263,7 +266,6 @@ p { font-size: 14px; color: #6b7280; }
                             let _ = stream.write_all(response.as_bytes());
                         }
                         _ => {
-                            log::info!("Auth server: unmatched request {} {}", method, path);
                             let response = "HTTP/1.1 404 Not Found\r\n\r\n";
                             let _ = stream.write_all(response.as_bytes());
                         }
@@ -307,10 +309,13 @@ p { font-size: 14px; color: #6b7280; }
     }
 
     // Emit event that auth flow has started
-    app.emit("auth-started", serde_json::json!({ "callbackPort": callback_port }))
+    app.emit(
+        "auth-started",
+        serde_json::json!({ "callbackPort": callback_port, "authUrl": auth_url }),
+    )
         .map_err(|e| format!("Failed to emit event: {}", e))?;
 
-    Ok(())
+    Ok(auth_url)
 }
 
 /// Cancel the auth flow

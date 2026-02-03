@@ -1,6 +1,13 @@
 import { NavLink } from "react-router-dom"
-import { BookOpenIcon, BoxesIcon, ActivityIcon, UserRoundCogIcon, SettingsIcon } from "lucide-react"
-import { DcIcon } from "@/components/icons/dc-icon"
+import {
+  BookOpenIcon,
+  BoxIcon,
+  // ActivityIcon,
+  UserRoundCogIcon,
+  SettingsIcon,
+  HomeIcon,
+} from "lucide-react"
+// import { DcIcon } from "@/components/icons/dc-icon"
 import { DcLogotype } from "@/components/icons/dc-logotype"
 import { IconMcp } from "@/components/icons/icon-mcp"
 import { cn } from "@/lib/classes"
@@ -14,29 +21,30 @@ type NavItem = {
 }
 
 const navItemBaseClasses = [
-  // layout
+  // layout & shape
   "flex h-8 items-center justify-center",
-  // shape
-  "rounded-button px-4",
+  "rounded-button px-4.5",
   // transitions
   "transition-all duration-150 ease-in-out",
   // states
   "hover:bg-foreground/[0.07] hover:text-foreground",
 ]
 const navItemInactiveClasses = "bg-transparent text-muted-foreground"
-const navItemActiveClasses = "bg-muted text-foreground"
+const navItemActiveClasses = "bg-foreground/[0.07] text-foreground"
 const navIconClasses = "size-[18px]"
 
 const navItems: NavItem[] = [
-  {
-    to: "https://docs.dataconnect.com",
-    label: "Docs",
-    Icon: BookOpenIcon,
-    external: true,
-  },
-  { to: "/apps", label: "Apps", Icon: BoxesIcon },
+  { to: "/", label: "Home", Icon: HomeIcon },
+  { to: "/apps", label: "Apps", Icon: BoxIcon },
   { to: "/mcp", label: "MCP", Icon: IconMcp },
-  { to: "/activity", label: "Activity", Icon: ActivityIcon },
+  // {
+  //   to: "https://docs.dataconnect.com",
+  //   label: "Docs",
+  //   Icon: BookOpenIcon,
+  //   external: true,
+  // },
+  { to: "/docs", label: "Docs", Icon: BookOpenIcon },
+  // { to: "/activity", label: "Activity", Icon: ActivityIcon },
   { to: "/settings", label: "Settings", Icon: SettingsIcon },
   { to: "/runs", label: "Account", Icon: UserRoundCogIcon },
 ]
@@ -46,18 +54,20 @@ export function TopNav() {
     <header
       data-tauri-drag-region
       className={cn(
-        "h-header px-inset",
-        "backdrop-blur-sm flex items-center justify-between"
+        "h-[48px] px-inset",
+        "backdrop-blur-sm flex items-center justify-between",
+        // set the nav under the macOS traffic lights bar
+        "mt-[28px]"
       )}
     >
       {/* Logo/Brand */}
       <NavLink to="/" className="flex items-center gap-2" aria-label="Data Connect">
-        <DcIcon height={16} aria-hidden />
+        {/* <DcIcon height={16} aria-hidden /> */}
         <DcLogotype height={13} aria-hidden />
       </NavLink>
 
       {/* Navigation Icons */}
-      <nav className="flex items-center gap-1">
+      <nav className="flex items-center gap-[3px]">
         {navItems.map(({ to, label, Icon, external }) => {
           if (external) {
             return (

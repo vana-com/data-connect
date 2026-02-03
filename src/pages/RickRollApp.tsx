@@ -1,117 +1,115 @@
-import { useSyncExternalStore } from 'react';
-import { useNavigate } from 'react-router';
-import { RickRollApp } from '../apps/rickroll/App';
-import { ExternalLink } from 'lucide-react';
-import { isAppConnected, subscribeConnectedApps } from '../lib/storage';
+import { useSyncExternalStore } from "react"
+import { Link, useNavigate } from "react-router-dom"
+import { ChevronRight, ArrowLeftIcon } from "lucide-react"
+import { RickRollApp } from "../apps/rickroll/app"
+import { PlatformIcon } from "@/components/icons/platform-icon"
+import { Text } from "@/components/typography/text"
+import { ActionButton } from "@/components/typography/action-button"
+import { LearnMoreLink } from "@/components/typography/learn-more-link"
+import { Button, ButtonArrow } from "@/components/ui/button"
+import { DEFAULT_APP_ID, getAppRegistryEntry } from "../apps/registry"
+import { buildGrantSearchParams } from "../lib/grant-params"
+import { isAppConnected, subscribeConnectedApps } from "../lib/storage"
+import { ROUTES } from "@/config/routes"
 
-const getIsRickrollConnected = () => isAppConnected('rickroll');
+const getIsRickrollConnected = () => isAppConnected(DEFAULT_APP_ID)
 
+const DATA_SOURCE_LABELS: Record<string, string> = {
+  chatgpt: "ChatGPT",
+  reddit: "Reddit",
+  twitter: "Twitter",
+  x: "X (Twitter)",
+  instagram: "Instagram",
+  linkedin: "LinkedIn",
+  spotify: "Spotify",
+  tiktok: "TikTok",
+  youtube: "YouTube",
+  facebook: "Facebook",
+  google: "Google",
+}
+
+function getPrimaryDataSourceLabel(scopes?: string[]) {
+  if (!scopes || scopes.length === 0) return null
+  const scopeToken = scopes.map(scope => scope.split(":")[1] ?? scope).find(Boolean)
+  if (!scopeToken) return null
+  const scopeKey = scopeToken.split("-")[0]?.toLowerCase()
+  if (!scopeKey) return null
+  return (
+    DATA_SOURCE_LABELS[scopeKey] ??
+    `${scopeKey.charAt(0).toUpperCase()}${scopeKey.slice(1)}`
+  )
+}
+
+// Host page + access gating for the RickRoll demo app.
+// This renders the CTA when not connected, and renders the actual app UI (eg. RickRollApp from src/apps/rickroll/app.tsx) once connected.
 export function RickRollAppPage() {
-  const navigate = useNavigate();
-  const isConnected = useSyncExternalStore(subscribeConnectedApps, getIsRickrollConnected);
+  const navigate = useNavigate()
+  const isConnected = useSyncExternalStore(subscribeConnectedApps, getIsRickrollConnected)
+  const appEntry = getAppRegistryEntry(DEFAULT_APP_ID)
+  const dataSourceLabel = getPrimaryDataSourceLabel(appEntry?.scopes)
+  const connectTitle = dataSourceLabel
+    ? `Connect your ${dataSourceLabel}`
+    : "Connect your data"
+  const dataLabel = dataSourceLabel ? `${dataSourceLabel} data` : "data"
+  const connectDescription = (
+    <>
+      This saves your {dataLabel} to your computer. <LearnMoreLink />
+    </>
+  )
+  const connectCta = dataSourceLabel ? `Connect ${dataSourceLabel}` : "Connect data"
 
   const handleConnect = () => {
     // Trigger grant flow using React Router navigation
-    const sessionId = 'grant-session-' + Date.now();
-    navigate('/grant', { state: { sessionId, appId: 'rickroll' } });
-  };
+    const sessionId = "grant-session-" + Date.now()
+    const searchParams = buildGrantSearchParams({
+      sessionId,
+      appId: appEntry?.id || DEFAULT_APP_ID,
+      scopes: appEntry?.scopes,
+    })
+    const search = searchParams.toString()
+    navigate(`${ROUTES.grant}${search ? `?${search}` : ""}`)
+  }
 
+  // This is where VDC07-CONNECT UI is rendered
   if (!isConnected) {
     return (
-      <div style={{ minHeight: '100vh', backgroundColor: '#f5f5f7', padding: '48px' }}>
-        <div
-          style={{
-            maxWidth: '500px',
-            margin: '0 auto',
-            backgroundColor: 'white',
-            borderRadius: '16px',
-            padding: '48px',
-            boxShadow: '0 4px 24px rgba(0, 0, 0, 0.08)',
-            textAlign: 'center',
-          }}
-        >
-          <h1 style={{ fontSize: '24px', fontWeight: 600, color: '#1a1a1a', marginBottom: '16px' }}>
-            RickRoll Facts
-          </h1>
-          <p style={{ fontSize: '16px', color: '#6b7280', marginBottom: '32px' }}>
-            Discover fun facts from your ChatGPT conversations
-          </p>
+      <div className="container py-w24">
+        <div className="space-y-w6">
+          <Text as="h1" intent="title">
+            {connectTitle}
+          </Text>
+          <Text as="p" intent="body">
+            {connectDescription}
+          </Text>
+          <ActionButton size="xl" className="gap-3 group" onClick={handleConnect}>
+            <span aria-hidden="true">
+              <PlatformIcon name={dataSourceLabel ?? "Data"} size={32} />
+            </span>
+            <span>{connectCta}</span>
+            <ButtonArrow
+              icon={ChevronRight}
+              className="size-[1.5em] text-muted-foreground group-hover:text-foreground"
+              aria-hidden="true"
+            />
+          </ActionButton>
 
-          <div
-            style={{
-              padding: '24px',
-              backgroundColor: '#fef3c7',
-              border: '1px solid #fde68a',
-              borderRadius: '12px',
-              marginBottom: '24px',
-            }}
-          >
-            <p style={{ fontSize: '14px', color: '#92400e', marginBottom: '8px' }}>
-              Authorization Required
-            </p>
-            <p style={{ fontSize: '13px', color: '#78350f', margin: 0 }}>
-              This app needs access to your ChatGPT export data to generate insights about your conversations.
-            </p>
+          <div className="">
+            <Link
+              to={ROUTES.apps}
+              className="link flex items-center gap-2 text-muted-foreground"
+            >
+              <ArrowLeftIcon aria-hidden="true" className="size-4" />
+              Back to your Apps
+            </Link>
           </div>
-
-          <button
-            onClick={handleConnect}
-            style={{
-              width: '100%',
-              padding: '14px',
-              fontSize: '16px',
-              fontWeight: 600,
-              color: 'white',
-              backgroundColor: '#6366f1',
-              border: 'none',
-              borderRadius: '10px',
-              cursor: 'pointer',
-              transition: 'all 0.15s ease',
-            }}
-            onMouseEnter={(e) => {
-              e.currentTarget.style.backgroundColor = '#4f46e5';
-            }}
-            onMouseLeave={(e) => {
-              e.currentTarget.style.backgroundColor = '#6366f1';
-            }}
-          >
-            Grant Access
-          </button>
-
-          <a
-            href="/data"
-            style={{
-              display: 'inline-flex',
-              alignItems: 'center',
-              gap: '8px',
-              padding: '12px 20px',
-              fontSize: '14px',
-              color: '#6b7280',
-              backgroundColor: 'transparent',
-              border: '1px solid #e5e7eb',
-              borderRadius: '8px',
-              textDecoration: 'none',
-              marginTop: '16px',
-              transition: 'all 0.15s ease',
-            }}
-            onMouseEnter={(e) => {
-              e.currentTarget.style.backgroundColor = '#f9fafb';
-            }}
-            onMouseLeave={(e) => {
-              e.currentTarget.style.backgroundColor = 'transparent';
-            }}
-          >
-            <ExternalLink style={{ width: '14px', height: '14px' }} />
-            Back to Your Data
-          </a>
         </div>
       </div>
-    );
+    )
   }
 
   return (
     <div>
       <RickRollApp />
     </div>
-  );
+  )
 }

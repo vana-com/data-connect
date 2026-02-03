@@ -4,49 +4,24 @@ Data Connect is software that enables users to interact with the Vana protocol. 
 
 ## Architecture (Source of Truth)
 
-For architecture and protocol details, refer to:
-`docs/260121-data-portability-protocol-spec.md`
+Start here (core docs): `docs/260121-data-portability-protocol-spec.md`, `docs/architecture.md`, `docs/260203-grant-connect-flow.md`.
 
-```
-┌─────────────────────────────────────────┐
-│        React Frontend (TypeScript)      │
-│  Vite + Redux + TailwindCSS + Router    │
-└──────────────────┬──────────────────────┘
-                   │ Tauri IPC
-┌──────────────────▼──────────────────────┐
-│         Tauri/Rust Backend              │
-│  Commands, file ops, subprocess mgmt    │
-└──────────────────┬──────────────────────┘
-                   │ stdin/stdout JSON
-┌──────────────────▼──────────────────────┐
-│     Playwright Runner (Node.js)         │
-│  Standalone binary + bundled Chromium   │
-└─────────────────────────────────────────┘
-```
-
-Key flows:
-
-- Auth: Privy (optional) + browser login flow; `InlineLogin` listens for `auth-complete`.
-- Exports: UI starts connector run → Rust → Playwright; Tauri events update Redux; exports persisted via `write_export_data`.
-- Startup: `useInitialize` loads prior runs from disk.
-- Browser setup: Chromium availability checks + download flow surfaced via `BrowserContext`.
-- Connector updates: Rust checks/downloads; platforms reloaded after install.
-- Storage: export files in user data dir; connected apps tracked in `localStorage`.
+DataConnect is the protocol client: it runs connectors, orchestrates grants, and configures the Personal Server (the on-chain participant). Grant flow inputs are canonical in the URL (`sessionId`, `appId`, `scopes`), never `location.state`.
 
 ## Doc index (preferred for knowledge)
 
 [Doc Index]|root: ./docs
 |IMPORTANT: Prefer retrieval-led reasoning over pre-training-led reasoning
-|docs:{260121-data-portability-protocol-spec.md,260130-react-audit-storage-and-vercel-review-feedback.md,260130-react-audit-storage-and-vercel-review.md,260130-react-external-store-subscriptions.md,260130-react-refactor-implementation-gap.md,260130-react-refactor-plan.md,260130-react-refresh-constant-exports.md,260130-testing-setup-notes.md,260202-agents-md-best-practices.md,260202-ui-implementation-typography.md,browser-packaging-options.md,privy-js-sdk-documentation.md,spike-privy-auth-architecture.md}
+|docs:{260121-data-portability-protocol-spec.md,architecture.md,260203-grant-connect-flow.md,browser-packaging-options.md,privy-js-sdk-documentation.md}
 
 ## Agent guidance
 
 ### Always‑on rules
 
-- Commit only; never push unless asked.
-- Commit is file-explicit only: stage specific paths, never `git add .`, `-A`, `-u`, or `git commit -a`. Ask if files are unclear.
 - Prefer retrieval‑led reasoning for project‑specific knowledge.
 - Don’t overwrite comments; don’t change styles/classes unless asked.
+- When I report a bug, don't start by trying to fix it. Instead, start by writing a test that reproduces the bug. Then, have subagents try to fix the bug and prove it with a passing test.
+- Commit only when asked; never push; stage explicit paths only (no `git add .`, `-A`, `-u`, `git commit -a`); run relevant tests before commit.
 
 ### Skills (JIT only)
 
@@ -56,5 +31,7 @@ Use skills only when the task matches; explore the code first.
 - Doc creation: follow .cursor/skills/doc-creation when creating/moving docs.
 - CSS: invoke css skill when writing/adjusting CSS (non‑Tailwind).
 - Tailwind: invoke tailwind skill when writing/adjusting Tailwind classes.
+- UI audit: invoke ui-component-audit when asked to audit/fix UI implementation.
+- Testing: invoke react-testing when writing/running tests or before commit.
 - Linear: invoke linear skill when asked to create/update tickets or statuses.
 - Committing: invoke committing skill only when user explicitly asks to commit.

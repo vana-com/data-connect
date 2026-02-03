@@ -37,7 +37,7 @@ const buttonVariants = cva(
         default: "bg-foreground text-background hover:bg-foreground",
         outline: [
           // shadow-xs
-          "border border-ring/50 bg-background",
+          "border border-ring/20 bg-background",
           // "hover:bg-muted "
           "hover:border-ring active:border-ring",
           "active:ring-ring/50 active:ring-[3px] data-[state=open]:border-ring data-[state=open]:ring-ring/50 data-[state=open]:ring-[3px]",
@@ -80,10 +80,10 @@ const buttonVariants = cva(
         ],
         xl: [
           fieldHeight.xl,
-          "rounded-full px-6 has-[>svg]:px-4 gap-1.75",
+          "rounded-button px-6 has-[>svg]:px-4 gap-1.75",
           "[&_svg:not([class*='size-'])]:size-[0.9lh]", // test lh :)
           // "[&_svg:not([class*='size-'])]:size-[1.25em]",
-          "text-button font-normal",
+          "text-button",
         ],
       },
       fullWidth: {
@@ -124,16 +124,12 @@ function Button({
   variant,
   size,
   fullWidth,
-  PrefixIcon,
-  SuffixIcon,
   asChild = false,
   ...props
 }: React.ComponentProps<"button"> &
   VariantProps<typeof buttonVariants> & {
     selected?: boolean
     asChild?: boolean
-    PrefixIcon?: React.ReactNode
-    SuffixIcon?: React.ReactNode
   }) {
   const Comp = asChild ? SlotPrimitive : "button"
   return (
@@ -154,18 +150,22 @@ function Button({
         "aria-selected": true,
       })}
       {...props}
-    >
-      {PrefixIcon}
-      {props.children}
-      {SuffixIcon}
-    </Comp>
+    />
   )
 }
 
 interface ButtonArrowProps extends React.SVGProps<SVGSVGElement> {
-  icon?: LucideIcon // Allows passing any Lucide icon
+  icon?: LucideIcon
 }
 
+/**
+ * Styled icon for button suffixes (dropdowns, menus, etc.).
+ * Uses `ms-auto` to push to the right edge.
+ *
+ * @example
+ * <Button>Label<ButtonArrow /></Button>
+ * <Button>Label<ButtonArrow icon={ArrowRight} /></Button>
+ */
 function ButtonArrow({
   icon: Icon = ChevronDown,
   className,

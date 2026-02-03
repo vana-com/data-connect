@@ -342,7 +342,7 @@ function ComboboxChip({
       {children}
       {showRemove && (
         <ComboboxPrimitive.ChipRemove
-          render={<Button variant="ghost" size="icon-xs" />}
+          render={<Button variant="ghost" size="xs" />}
           className={cn(
             // spacing
             "-ml-1",

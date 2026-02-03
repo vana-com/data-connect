@@ -88,7 +88,10 @@ describe("BrowserLogin", () => {
 
     // Use getAllBy since StrictMode may render multiple elements
     const emailInputs = screen.getAllByPlaceholderText("you@example.com")
-    expect(emailInputs.length).toBeGreaterThan(0)
+    expect(emailInputs.length).toBeGreaterThanOrEqual(1)
+    emailInputs.forEach(input => {
+      expect((input as HTMLInputElement).type).toBe("email")
+    })
   })
 
   it("renders successfully when authenticated", () => {

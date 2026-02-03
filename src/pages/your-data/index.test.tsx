@@ -65,8 +65,16 @@ describe("YourData", () => {
     renderYourData()
 
     // Use getAllBy* because StrictMode may render twice
-    expect(screen.getAllByRole("button", { name: "Your data" }).length).toBeGreaterThan(0)
-    expect(screen.getAllByRole("button", { name: "Connected apps" }).length).toBeGreaterThan(0)
+    const dataTabs = screen.getAllByRole("button", { name: "Your data" })
+    const appsTabs = screen.getAllByRole("button", { name: "Connected apps" })
+    expect(dataTabs.length).toBeGreaterThan(0)
+    expect(appsTabs.length).toBeGreaterThan(0)
+    dataTabs.forEach(button => {
+      expect(button).toHaveProperty("disabled", false)
+    })
+    appsTabs.forEach(button => {
+      expect(button).toHaveProperty("disabled", false)
+    })
   })
 
   it("switches to Connected apps tab when clicked", () => {
@@ -76,6 +84,11 @@ describe("YourData", () => {
     fireEvent.click(appsTabs[0])
 
     expect(screen.getAllByText("No connected apps yet").length).toBeGreaterThan(0)
+    const learnMoreLinks = screen.getAllByRole("link", { name: "Learn more" })
+    expect(learnMoreLinks.length).toBeGreaterThan(0)
+    learnMoreLinks.forEach(link => {
+      expect(link.getAttribute("href")).toBe("https://docs.vana.org")
+    })
   })
 
   it("shows available sources when none are connected", () => {
@@ -83,6 +96,7 @@ describe("YourData", () => {
 
     expect(screen.getAllByText("Connect your data sources").length).toBeGreaterThan(0)
     expect(screen.getAllByText("ChatGPT").length).toBeGreaterThan(0)
+    expect(screen.queryByText("Connected sources")).toBeNull()
   })
 
   it("shows connected sources section when platforms are connected", () => {
@@ -90,17 +104,15 @@ describe("YourData", () => {
 
     expect(screen.getAllByText("Connected sources").length).toBeGreaterThan(0)
     expect(screen.getAllByText("ChatGPT").length).toBeGreaterThan(0)
+    expect(screen.getAllByText("Add more sources").length).toBeGreaterThan(0)
   })
 
   it("navigates to home with platform param when connecting a source", () => {
     renderYourData()
 
-    // Click on the first platform card (ChatGPT)
-    const chatgptTexts = screen.getAllByText("ChatGPT")
-    const chatgptButton = chatgptTexts[0].closest("button")
-    if (chatgptButton) {
-      fireEvent.click(chatgptButton)
-    }
+    const chatgptButtons = screen.getAllByRole("button", { name: /ChatGPT/i })
+    expect(chatgptButtons.length).toBeGreaterThan(0)
+    fireEvent.click(chatgptButtons[0])
 
     expect(mockNavigate).toHaveBeenCalledWith("/?platform=chatgpt")
   })
@@ -110,6 +122,7 @@ describe("YourData", () => {
 
     // Get the first View button (in connected sources section)
     const viewButtons = screen.getAllByRole("button", { name: "View" })
+    expect(viewButtons.length).toBeGreaterThan(0)
     fireEvent.click(viewButtons[0])
 
     expect(mockNavigate).toHaveBeenCalledWith("/runs")

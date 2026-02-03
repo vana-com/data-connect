@@ -1,6 +1,7 @@
 export const ROUTES = {
   home: "/",
   apps: "/apps",
+  appRoute: "/apps/:appId",
   app: (appId: string) => `/apps/${appId}` as const,
   mcp: "/mcp",
   docs: "/docs",

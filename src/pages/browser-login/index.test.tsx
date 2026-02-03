@@ -1,6 +1,7 @@
 import { describe, expect, it, beforeEach, vi } from "vitest"
 import { render, screen } from "@testing-library/react"
 import { createMemoryRouter, RouterProvider } from "react-router-dom"
+import { ROUTES } from "@/config/routes"
 import { BrowserLogin } from "./index"
 
 const mockUsePrivy = vi.fn()
@@ -44,9 +45,12 @@ vi.mock("@privy-io/react-auth", () => ({
 }))
 
 const renderBrowserLogin = () => {
-  const router = createMemoryRouter([{ path: "/", element: <BrowserLogin /> }], {
-    initialEntries: ["/?callbackPort=3456"],
-  })
+  const router = createMemoryRouter(
+    [{ path: ROUTES.browserLogin, element: <BrowserLogin /> }],
+    {
+      initialEntries: [`${ROUTES.browserLogin}?callbackPort=3456`],
+    }
+  )
 
   return render(<RouterProvider router={router} />)
 }

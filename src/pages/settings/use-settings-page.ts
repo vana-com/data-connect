@@ -4,6 +4,7 @@ import { useCallback, useEffect, useState, useSyncExternalStore } from "react"
 import { useNavigate } from "react-router"
 import { useAuth } from "@/hooks/useAuth"
 import { usePersonalServer } from "@/hooks/usePersonalServer"
+import { ROUTES } from "@/config/routes"
 import {
   getAllConnectedApps,
   removeConnectedApp,
@@ -129,11 +130,11 @@ export function useSettingsPage() {
 
   const handleLogout = useCallback(async () => {
     await logout()
-    navigate("/")
+    navigate(ROUTES.home)
   }, [logout, navigate])
 
   const handleSignIn = useCallback(() => {
-    navigate("/login")
+    navigate(ROUTES.login)
   }, [navigate])
 
   return {

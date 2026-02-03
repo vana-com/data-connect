@@ -14,6 +14,7 @@ import { setConnectedApp } from "../../lib/storage"
 import type { ConnectedApp } from "../../types"
 import { DEFAULT_APP_ID, getAppRegistryEntry } from "../../apps/registry"
 import type { GrantFlowParams, GrantFlowState, GrantSession, GrantStep } from "./types"
+import { ROUTES } from "@/config/routes"
 
 const PRIVY_APP_ID = import.meta.env.VITE_PRIVY_APP_ID
 
@@ -225,8 +226,8 @@ export function useGrantFlow(params: GrantFlowParams) {
   }, [flowState.session, flowState.sessionId, walletAddress])
 
   const declineHref = flowState.session?.appId
-    ? `/apps/${flowState.session.appId}`
-    : "/data"
+    ? ROUTES.app(flowState.session.appId)
+    : ROUTES.home
 
   return {
     flowState,

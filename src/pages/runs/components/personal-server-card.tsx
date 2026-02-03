@@ -10,6 +10,7 @@ import type { usePersonalServer } from "../../../hooks/usePersonalServer"
 import { Text } from "@/components/typography/text"
 import { Button } from "@/components/ui/button"
 import { cn } from "@/lib/classes"
+import { ROUTES } from "@/config/routes"
 
 export interface PersonalServerCardProps {
   isAuthenticated: boolean
@@ -62,7 +63,7 @@ export function PersonalServerCard({
             type="button"
             variant="accent"
             size="sm"
-            onClick={() => navigate("/login")}
+            onClick={() => navigate(ROUTES.login)}
           >
             <LogInIcon aria-hidden="true" className="size-4" />
             Sign in

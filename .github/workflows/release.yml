@@ -101,7 +101,7 @@ jobs:
       - name: Build playwright-runner binary
         working-directory: playwright-runner
         run: |
-          npx pkg index.js -t ${{ matrix.pkg_target }} -o dist/${{ matrix.binary_name }} --no-bytecode --public-packages '*' --public
+          npx pkg index.cjs -t ${{ matrix.pkg_target }} -o dist/${{ matrix.binary_name }} --no-bytecode --public-packages '*' --public
 
       - name: Sign playwright-runner binary (macOS)
         if: matrix.platform == 'macos-latest'

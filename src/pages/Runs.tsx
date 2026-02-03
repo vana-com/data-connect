@@ -492,19 +492,7 @@ function PersonalServerCard({ isAuthenticated, personalServer, serverId }: Perso
         </div>
         <button
           onClick={() => navigate('/login')}
-          style={{
-            display: 'flex',
-            alignItems: 'center',
-            gap: '6px',
-            padding: '8px 14px',
-            fontSize: '13px',
-            fontWeight: 500,
-            color: '#ffffff',
-            backgroundColor: '#6366f1',
-            border: 'none',
-            borderRadius: '8px',
-            cursor: 'pointer',
-          }}
+          className="flex items-center gap-1.5 px-3.5 py-2 text-sm font-medium text-white bg-indigo-500 hover:bg-indigo-600 border-0 rounded-lg cursor-pointer"
         >
           <LogIn style={{ width: '14px', height: '14px' }} />
           Sign in

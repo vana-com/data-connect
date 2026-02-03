@@ -2,46 +2,39 @@
 
 ## What this is
 
-- Export run history for data connectors.
-- Shows completed runs and details, plus the personal server status card.
+- Export run history with per-run details and personal server status.
 
 ## Files
 
-- `runs-page.tsx`: page shell and layout.
-- `use-runs-page.ts`: page-level state (runs list, server status, identity).
-- `run-item.tsx`: presentational card for a single run.
-- `use-run-item.ts`: run item logic and side effects (expand, ingest, open folder).
-- `run-utils.ts`: pure helpers (date formatting, export data transform, ingest label).
-- `run-icons.tsx`: status/ingest icon selection (JSX only).
-- `personal-server-card.tsx`: personal server status card.
+- `index.tsx`: page layout, empty state, run list.
+- `use-runs-page.ts`: reads runs/auth/server status; filters/sorts.
+- `components/personal-server-card.tsx`: personal server status card + sign-in CTA.
+- `components/run-item.tsx`: run card UI.
+- `components/use-run-item.ts`: expansion, ingest, open-folder actions.
+- `components/run-icons.tsx`: status/ingest icon selection.
+- `run-utils.ts`: date formatting + export data shaping + ingest labels.
 
 ## Data flow
 
-- `useRunsPage` reads `state.app.runs` and derives `finishedRuns`.
-- `RunItem` renders a single run card.
-- On expand, `useRunItem` loads export data via Tauri:
-  - `invoke("load_run_export_data", { runId, exportPath })`
-- Ingest sends the export payload to the personal server when available.
+- `useRunsPage` reads `state.app.runs`, filters out `running`/`pending`, sorts newest first.
+- `useRunsPage` uses `usePersonalServer` + `fetchServerIdentity` to derive server readiness.
+- `RunItem` uses `useRunItem` for expand state and ingest actions.
+- `useRunItem` invokes `load_run_export_data` and calls `ingestData` when ready.
 
 ## App integration
 
-- Route: lazy-loaded at `/runs` from `App.tsx`.
-- Entry points: Home, YourData, and TopNav link to `/runs`.
-- State: consumes `state.app.runs` written by export/connector flows.
-- Tauri: loads export data and opens the export folder.
-- Personal server: uses `usePersonalServer` + `fetchServerIdentity` for status and `ingestData` for ingest.
+- Route: `/runs` (lazy from `App.tsx`).
+- Entry points: Home, YourData, TopNav.
+- Tauri/IPC: `load_run_export_data`, `open_folder`.
+- Personal server: `usePersonalServer`, `fetchServerIdentity`, `ingestData`.
 
 ## Behavior
 
-- Filters out `running` and `pending` runs in the list.
-- Shows status, timestamp, item count, and action buttons.
-- Supports:
-  - Stop (for running runs)
-  - Open folder (when export path exists)
-  - Ingest (when personal server is ready)
-  - Expand to view conversations (lazy loaded)
+- Shows empty state when there are no finished runs.
+- Run cards show status, timestamp, item counts, and actions (open folder, ingest, expand).
+- Expanding loads conversations or shows an empty message.
 
 ## Notes
 
-- `use-run-item.ts` is logic-only (no JSX) to keep TS inference stable.
-- Use kebab-case for filenames; React components remain PascalCase.
+- Ingest requires a running personal server, export path, and scope.
+- Not part of the grant flow.

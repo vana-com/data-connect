@@ -6,8 +6,8 @@ import {
   UploadIcon,
   XCircleIcon,
 } from "lucide-react"
-import type { Run } from "../../types"
-import type { IngestStatus } from "./run-utils"
+import type { Run } from "../../../types"
+import type { IngestStatus } from "../run-utils"
 
 export const getRunStatusIcon = (status: Run["status"]) => {
   switch (status) {

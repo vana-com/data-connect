@@ -18,9 +18,9 @@ const DataApps = lazy(() =>
   import("./pages/DataApps").then(m => ({ default: m.DataApps }))
 )
 const AppPage = lazy(() => import("./pages/app-page").then(m => ({ default: m.AppPage })))
-const Runs = lazy(() => import("./pages/runs/runs-page").then(m => ({ default: m.Runs })))
+const Runs = lazy(() => import("./pages/runs").then(m => ({ default: m.Runs })))
 const Settings = lazy(() =>
-  import("./pages/Settings").then(m => ({ default: m.Settings }))
+  import("./pages/settings/index").then(m => ({ default: m.Settings }))
 )
 const GrantFlow = lazy(() =>
   import("./pages/grant-flow").then(m => ({ default: m.GrantFlow }))
@@ -35,7 +35,6 @@ function AppContent() {
   return (
     <div className="flex h-screen">
       {/* Tauri app shell layout: fixed header, scrollable main */}
-      {/* Main content */}
       <div className="flex flex-1 flex-col overflow-hidden">
         <TopNav />
         <main className="flex-1 overflow-auto">

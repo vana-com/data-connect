@@ -1,7 +1,7 @@
 import { ActivityIcon } from "lucide-react"
 import { Text } from "@/components/typography/text"
-import { PersonalServerCard } from "./personal-server-card"
-import { RunItem } from "./run-item"
+import { PersonalServerCard } from "./components/personal-server-card"
+import { RunItem } from "./components/run-item"
 import { useRunsPage } from "./use-runs-page"
 
 export function Runs() {

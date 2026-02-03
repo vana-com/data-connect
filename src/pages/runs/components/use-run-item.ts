@@ -1,13 +1,13 @@
 import { useCallback, useEffect, useMemo, useState } from "react"
 import { invoke } from "@tauri-apps/api/core"
-import { getScopeForPlatform, ingestData } from "../../services/personalServerIngest"
-import type { Run } from "../../types"
+import { getScopeForPlatform, ingestData } from "@/services/personalServerIngest"
+import type { Run } from "@/types"
 import {
   buildExportData,
   formatRunDate,
   getIngestButtonLabel,
   type IngestStatus,
-} from "./run-utils"
+} from "../run-utils"
 
 export interface UseRunItemProps {
   run: Run

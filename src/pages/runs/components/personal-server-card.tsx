@@ -6,7 +6,7 @@ import {
   ServerIcon,
   XCircleIcon,
 } from "lucide-react"
-import type { usePersonalServer } from "../../hooks/usePersonalServer"
+import type { usePersonalServer } from "../../../hooks/usePersonalServer"
 import { Text } from "@/components/typography/text"
 import { Button } from "@/components/ui/button"
 import { cn } from "@/lib/classes"

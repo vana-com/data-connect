@@ -1,22 +1,25 @@
 import { useEffect, useMemo, useState } from "react"
+import { MotionConfig } from "motion/react"
 import { useNavigate } from "react-router-dom"
 import { useSelector } from "react-redux"
-import { usePlatforms } from "../hooks/usePlatforms"
-import { useConnector } from "../hooks/useConnector"
-import { useConnectorUpdates } from "../hooks/useConnectorUpdates"
-import { useBrowserStatus } from "../context/BrowserContext"
-import type { ConnectedApp, Platform, RootState } from "../types"
+import { usePlatforms } from "@/hooks/usePlatforms"
+import { useConnector } from "@/hooks/useConnector"
+import { useConnectorUpdates } from "@/hooks/useConnectorUpdates"
+import { useBrowserStatus } from "@/context/BrowserContext"
+import type { Platform, RootState } from "@/types"
 import { SlidingTabs } from "@/components/elements/sliding-tabs"
 import { Tabs, TabsContent } from "@/components/ui/tabs"
-import { ConnectorUpdates } from "../components/connector-updates"
+import { BrowserSetupSection } from "@/pages/home/components/BrowserSetupSection"
+import { ConnectedAppsList } from "@/pages/home/components/connected-apps-list"
+import { ConnectedSourcesList } from "@/pages/home/components/connected-sources-list"
+import { AvailableSourcesList } from "@/pages/home/components/available-sources-list"
+import { ConnectorUpdates } from "@/pages/home/components/connector-updates"
 import {
-  BrowserSetupSection,
-  ConnectedAppsList,
-  ConnectedSourcesList,
-  AvailableSourcesList,
-} from "@/components/home"
-
-const USE_TEST_DATA = true
+  USE_TEST_DATA,
+  testConnectedApps,
+  testConnectedPlatforms,
+  testPlatforms,
+} from "./fixtures"
 
 export function Home() {
   const navigate = useNavigate()
@@ -27,6 +30,7 @@ export function Home() {
   const runs = useSelector((state: RootState) => state.app.runs)
   const connectedApps = useSelector((state: RootState) => state.app.connectedApps)
   const [activeTab, setActiveTab] = useState("sources")
+  const [enableTabMotion, setEnableTabMotion] = useState(false)
 
   const tabs = [
     { value: "sources", label: "Your data" },
@@ -45,6 +49,16 @@ export function Home() {
       checkForUpdates()
     }
   }, [browserStatus.status, checkForUpdates])
+
+  useEffect(() => {
+    if (browserStatus.status !== "ready") {
+      setEnableTabMotion(false)
+      return
+    }
+
+    const frame = requestAnimationFrame(() => setEnableTabMotion(true))
+    return () => cancelAnimationFrame(frame)
+  }, [browserStatus.status])
 
   const handleExport = async (platform: Platform) => {
     console.log(
@@ -91,12 +105,14 @@ export function Home() {
         {/* Tabs */}
         {browserStatus.status === "ready" && (
           <Tabs value={activeTab} onValueChange={setActiveTab}>
-            <SlidingTabs
-              className="mb-w12"
-              tabs={tabs}
-              value={activeTab}
-              onValueChange={setActiveTab}
-            />
+            <MotionConfig reducedMotion={enableTabMotion ? "never" : "always"}>
+              <SlidingTabs
+                className="mb-w12"
+                tabs={tabs}
+                value={activeTab}
+                onValueChange={setActiveTab}
+              />
+            </MotionConfig>
 
             {/* Sources Tab */}
             <TabsContent value="sources" className="space-y-w12">
@@ -122,94 +138,3 @@ export function Home() {
     </div>
   )
 }
-
-const testPlatforms: Platform[] = [
-  {
-    id: "instagram",
-    company: "Meta",
-    name: "Instagram",
-    filename: "instagram",
-    description: "Instagram data export",
-    isUpdated: false,
-    logoURL: "",
-    needsConnection: true,
-    connectURL: null,
-    connectSelector: null,
-    exportFrequency: null,
-    vectorize_config: null,
-    runtime: null,
-  },
-  {
-    id: "linkedin",
-    company: "LinkedIn",
-    name: "LinkedIn",
-    filename: "linkedin",
-    description: "LinkedIn data export",
-    isUpdated: false,
-    logoURL: "",
-    needsConnection: false,
-    connectURL: null,
-    connectSelector: null,
-    exportFrequency: null,
-    vectorize_config: null,
-    runtime: null,
-  },
-  {
-    id: "spotify",
-    company: "Spotify",
-    name: "Spotify",
-    filename: "spotify",
-    description: "Spotify data export",
-    isUpdated: false,
-    logoURL: "",
-    needsConnection: false,
-    connectURL: null,
-    connectSelector: null,
-    exportFrequency: null,
-    vectorize_config: null,
-    runtime: null,
-  },
-  {
-    id: "chatgpt-playwright",
-    company: "OpenAI",
-    name: "ChatGPT",
-    filename: "chatgpt",
-    description: "ChatGPT data export",
-    isUpdated: false,
-    logoURL: "",
-    needsConnection: false,
-    connectURL: "https://chatgpt.com/",
-    connectSelector: "nav a[href^='/c/']",
-    exportFrequency: "daily",
-    vectorize_config: { documents: "content" },
-    runtime: "playwright",
-  },
-]
-
-const testConnectedPlatforms: Platform[] = [
-  {
-    id: "chatgpt-playwright",
-    company: "OpenAI",
-    name: "ChatGPT",
-    filename: "chatgpt",
-    description: "ChatGPT data export",
-    isUpdated: false,
-    logoURL: "",
-    needsConnection: true,
-    connectURL: "https://chatgpt.com/",
-    connectSelector: "nav a[href^='/c/']",
-    exportFrequency: "daily",
-    vectorize_config: { documents: "content" },
-    runtime: "playwright",
-  },
-]
-
-const testConnectedApps: ConnectedApp[] = [
-  {
-    id: "rickroll",
-    name: "RickRoll",
-    icon: "R",
-    permissions: ["Data exports"],
-    connectedAt: "2026-01-16T12:00:00.000Z",
-  },
-]

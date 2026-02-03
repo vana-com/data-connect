@@ -59,36 +59,51 @@ export function AvailableSourcesList({
         Connect sources (more coming soon)
       </Text>
       <div className="grid grid-cols-2 gap-4">
-        <ConnectSourceCard
-          label="Connect Instagram"
-          Icon={PlatformInstagramGlyphIcon}
-          state={isInstagramAvailable ? "available" : "comingSoon"}
-          onClick={
-            isInstagramAvailable && instagramPlatform
-              ? () => onExport(instagramPlatform)
-              : undefined
-          }
-        />
-        <ConnectSourceCard
-          label="Connect LinkedIn"
-          Icon={PlatformLinkedinIcon}
-          state="comingSoon"
-        />
-        <ConnectSourceCard
-          label="Connect Spotify"
-          Icon={PlatformSpotifyIcon}
-          state="comingSoon"
-        />
-        <ConnectSourceCard
-          label="Connect ChatGPT"
-          Icon={PlatformChatGPTIcon}
-          state={isChatGPTAvailable ? "available" : "comingSoon"}
-          onClick={
-            isChatGPTAvailable && chatgptPlatform
-              ? () => onExport(chatgptPlatform)
-              : undefined
-          }
-        />
+        {[
+          {
+            label: "Connect Instagram",
+            Icon: PlatformInstagramGlyphIcon,
+            state: isInstagramAvailable ? "available" : "comingSoon",
+            onClick:
+              isInstagramAvailable && instagramPlatform
+                ? () => onExport(instagramPlatform)
+                : undefined,
+          },
+          {
+            label: "Connect LinkedIn",
+            Icon: PlatformLinkedinIcon,
+            state: "comingSoon",
+          },
+          {
+            label: "Connect Spotify",
+            Icon: PlatformSpotifyIcon,
+            state: "comingSoon",
+          },
+          {
+            label: "Connect ChatGPT",
+            Icon: PlatformChatGPTIcon,
+            state: isChatGPTAvailable ? "available" : "comingSoon",
+            onClick:
+              isChatGPTAvailable && chatgptPlatform
+                ? () => onExport(chatgptPlatform)
+                : undefined,
+          },
+        ]
+          .map((card, index) => ({
+            ...card,
+            index,
+            priority: card.state === "available" ? 0 : 1,
+          }))
+          .sort((a, b) => a.priority - b.priority || a.index - b.index)
+          .map(({ label, Icon, state, onClick }) => (
+            <ConnectSourceCard
+              key={label}
+              label={label}
+              Icon={Icon}
+              state={state}
+              onClick={onClick}
+            />
+          ))}
       </div>
     </section>
   )

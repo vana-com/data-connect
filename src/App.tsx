@@ -13,7 +13,7 @@ import { useDeepLink } from "./hooks/use-deep-link"
 import { usePersonalServer } from "./hooks/usePersonalServer"
 
 // Lazy-loaded pages for reduced initial bundle size
-const Home = lazy(() => import("./pages/Home").then(m => ({ default: m.Home })))
+const Home = lazy(() => import("./pages/home").then(m => ({ default: m.Home })))
 const DataApps = lazy(() =>
   import("./pages/DataApps").then(m => ({ default: m.DataApps }))
 )

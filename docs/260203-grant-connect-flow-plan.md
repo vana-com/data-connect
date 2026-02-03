@@ -33,6 +33,12 @@ tracked and owned separately.
 - Ensure external Passport sign-in flow is preserved
 - UI polish + accessibility pass
 
+## Current app routing note
+
+- `/apps/:appId` renders a host page (e.g. `src/pages/RickRollApp.tsx`) that gates
+  access and triggers `/grant`, then renders the app UI from
+  `src/apps/<appId>/app.tsx` once connected.
+
 ## Next (Backend-heavy / Colleague)
 
 - Replace mock signature with real Privy signing

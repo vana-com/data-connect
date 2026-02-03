@@ -41,6 +41,9 @@ Linear 4-step connect/grant design: `docs/_wip/260202-connect-flow.png`.
 
 - `src/pages/grant/*` covers consent/auth/success states only (steps 2-4).
 - The step-1 Connect CTA screen from the linear design is not implemented yet.
+- Demo app routing: `/apps/:appId` renders a host page (e.g. `src/pages/RickRollApp.tsx`)
+  that handles gating + grant CTA, and then renders the app UI from
+  `src/apps/<appId>/app.tsx` once connected.
 
 ## Canonical inputs
 

@@ -57,5 +57,6 @@ Use skills only when the task matches; explore the code first.
 - Doc creation: follow .cursor/skills/doc-creation when creating/moving docs.
 - CSS: invoke css skill when writing/adjusting CSS (non‑Tailwind).
 - Tailwind: invoke tailwind skill when writing/adjusting Tailwind classes.
+- UI audit: invoke ui-component-audit when asked to audit/fix UI implementation.
 - Linear: invoke linear skill when asked to create/update tickets or statuses.
 - Committing: invoke committing skill only when user explicitly asks to commit.

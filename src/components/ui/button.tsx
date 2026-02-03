@@ -33,7 +33,7 @@ const buttonVariants = cva(
         primary:
           "bg-primary text-primary-foreground hover:bg-primary/90 data-[state=open]:bg-primary/90",
         accent:
-          "bg-accent text-background hover:bg-accent/90 data-[state=open]:bg-accent/90",
+          "bg-accent-9 text-white hover:bg-accent-10 data-[state=open]:bg-accent-10",
         default: "bg-foreground text-background hover:bg-foreground",
         outline: [
           // shadow-xs

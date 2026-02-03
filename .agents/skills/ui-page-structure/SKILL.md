@@ -71,7 +71,7 @@ src/pages/runs/
 ## Tests (minimum bar)
 
 - `index.test.tsx` covering critical wiring and one or two key UI states.
-- Hook/logic tests only where behavior is non-trivial or risk-prone.
+- Add hook/component tests where behavior is non-trivial or risk-prone.
 - Avoid snapshots; assert behavior and side effects.
 - Follow `react-testing` for test scope, commands, and reporting.
 

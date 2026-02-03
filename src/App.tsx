@@ -18,7 +18,7 @@ const DataApps = lazy(() =>
   import("./pages/DataApps").then(m => ({ default: m.DataApps }))
 )
 const AppPage = lazy(() => import("./pages/app-page").then(m => ({ default: m.AppPage })))
-const Runs = lazy(() => import("./pages/Runs").then(m => ({ default: m.Runs })))
+const Runs = lazy(() => import("./pages/runs/runs-page").then(m => ({ default: m.Runs })))
 const Settings = lazy(() =>
   import("./pages/Settings").then(m => ({ default: m.Settings }))
 )

@@ -124,16 +124,12 @@ function Button({
   variant,
   size,
   fullWidth,
-  PrefixIcon,
-  SuffixIcon,
   asChild = false,
   ...props
 }: React.ComponentProps<"button"> &
   VariantProps<typeof buttonVariants> & {
     selected?: boolean
     asChild?: boolean
-    PrefixIcon?: React.ReactNode
-    SuffixIcon?: React.ReactNode
   }) {
   const Comp = asChild ? SlotPrimitive : "button"
   return (
@@ -154,18 +150,22 @@ function Button({
         "aria-selected": true,
       })}
       {...props}
-    >
-      {PrefixIcon}
-      {props.children}
-      {SuffixIcon}
-    </Comp>
+    />
   )
 }
 
 interface ButtonArrowProps extends React.SVGProps<SVGSVGElement> {
-  icon?: LucideIcon // Allows passing any Lucide icon
+  icon?: LucideIcon
 }
 
+/**
+ * Styled icon for button suffixes (dropdowns, menus, etc.).
+ * Uses `ms-auto` to push to the right edge.
+ *
+ * @example
+ * <Button>Label<ButtonArrow /></Button>
+ * <Button>Label<ButtonArrow icon={ArrowRight} /></Button>
+ */
 function ButtonArrow({
   icon: Icon = ChevronDown,
   className,

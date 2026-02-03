@@ -13,6 +13,13 @@ export type ConnectorStatus =
   | 'ERROR'             // An error occurred
   | { data: unknown };  // Custom status with data
 
+/** Scope definition for a connector */
+export interface ConnectorScope {
+  scope: string;
+  label: string;
+  description: string;
+}
+
 /** Metadata structure for connector definition files */
 export interface ConnectorMetadata {
   /** Unique identifier for the connector (e.g., 'chatgpt-001') */
@@ -29,6 +36,8 @@ export interface ConnectorMetadata {
   connectSelector: string;
   /** How often exports should be refreshed */
   exportFrequency?: 'daily' | 'weekly' | 'monthly';
+  /** Data scopes this connector supports */
+  scopes?: ConnectorScope[];
   /** Configuration for vectorization */
   vectorize_config?: {
     documents?: string;

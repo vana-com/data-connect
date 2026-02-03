@@ -25,6 +25,13 @@
     "fs:allow-appdata-write-recursive",
     "shell:default",
     "shell:allow-open",
-    "http:default"
+    "http:default",
+    {
+      "identifier": "http:allow-fetch",
+      "allow": [
+        { "url": "http://localhost:*" },
+        { "url": "https://data-gateway-env-dev-opendatalabs.vercel.app/*" }
+      ]
+    }
   ]
 }

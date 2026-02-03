@@ -99,7 +99,7 @@ async function build() {
   const outputPath = join(DIST, outputName);
 
   log(`Building for target: ${target}`);
-  exec(`npx pkg index.js -t ${target} -o "${outputPath}" --no-bytecode --public-packages '*' --public`);
+  exec(`npx pkg index.cjs -t ${target} -o "${outputPath}" --no-bytecode --public-packages '*' --public`);
 
   // Copy Playwright browser
   const browserSrc = getPlaywrightBrowserPath();

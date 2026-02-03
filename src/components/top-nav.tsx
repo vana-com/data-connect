@@ -4,6 +4,7 @@ import {
   BoxIcon,
   // ActivityIcon,
   UserRoundCogIcon,
+  SettingsIcon,
   HomeIcon,
 } from "lucide-react"
 // import { DcIcon } from "@/components/icons/dc-icon"
@@ -43,6 +44,7 @@ const navItems: NavItem[] = [
     external: true,
   },
   // { to: "/activity", label: "Activity", Icon: ActivityIcon },
+  { to: "/settings", label: "Settings", Icon: SettingsIcon },
   { to: "/runs", label: "Account", Icon: UserRoundCogIcon },
 ]
 

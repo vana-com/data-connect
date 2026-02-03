@@ -4,7 +4,7 @@ use std::sync::Mutex;
 use tauri::{AppHandle, Emitter, Manager};
 
 static PERSONAL_SERVER_PROCESS: Mutex<Option<std::process::Child>> = Mutex::new(None);
-static PERSONAL_SERVER_PORT: Mutex<Option<u16>> = Mutex::new(None);
+pub static PERSONAL_SERVER_PORT: Mutex<Option<u16>> = Mutex::new(None);
 static PERSONAL_SERVER_STARTING: Mutex<bool> = Mutex::new(false);
 
 #[derive(Debug, Serialize, Deserialize, Clone)]

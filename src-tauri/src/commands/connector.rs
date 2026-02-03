@@ -194,8 +194,17 @@ fn load_platforms_from_dir(dir: &PathBuf) -> Vec<Platform> {
         if path.extension().map_or(false, |ext| ext == "json") {
             let filename = path.file_stem().unwrap_or_default().to_string_lossy();
 
-            // Skip type definition files
+            // Skip type definition files and schema files
             if filename == "connector" {
+                continue;
+            }
+
+            let parent_name = path
+                .parent()
+                .and_then(|p| p.file_name())
+                .map(|n| n.to_string_lossy().to_string())
+                .unwrap_or_default();
+            if parent_name == "schemas" || parent_name == "types" {
                 continue;
             }
 
@@ -518,7 +527,7 @@ async fn start_playwright_run(
         }
 
         Command::new("node")
-            .arg("index.js")
+            .arg("index.cjs")
             .current_dir(&runner_dir)
             .stdin(Stdio::piped())
             .stdout(Stdio::piped())

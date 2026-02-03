@@ -7,13 +7,12 @@
   "scripts": {
     "start": "node index.js",
     "start:cjs": "node index.cjs",
-    "build": "node scripts/build.js",
-    "postinstall": "cd node_modules/personal-server-ts && npm install && npm run build"
+    "build": "node scripts/build.js"
   },
   "pkg": {
     "assets": [
-      "node_modules/@personal-server/*/dist/**/*",
-      "node_modules/@personal-server/*/package.json",
+      "node_modules/@opendatalabs/personal-server-ts-*/dist/**/*",
+      "node_modules/@opendatalabs/personal-server-ts-*/package.json",
       "node_modules/@hono/node-server/dist/**/*",
       "node_modules/@hono/node-server/package.json",
       "node_modules/hono/**/*"
@@ -27,7 +26,9 @@
     "outputPath": "dist"
   },
   "dependencies": {
-    "personal-server-ts": "github:vana-com/personal-server-ts#feat/data-portability-v1",
+    "@opendatalabs/personal-server-ts-core": "canary",
+    "@opendatalabs/personal-server-ts-server": "canary",
+    "@hono/node-server": "^1.13.7",
     "better-sqlite3": "^12.6.2"
   },
   "devDependencies": {

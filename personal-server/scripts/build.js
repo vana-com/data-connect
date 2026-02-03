@@ -6,7 +6,7 @@
  */
 
 import { execSync } from 'child_process';
-import { existsSync, mkdirSync, rmSync, readdirSync, statSync, lstatSync, readlinkSync, cpSync } from 'fs';
+import { existsSync, mkdirSync, rmSync, readdirSync, statSync, lstatSync, readlinkSync, cpSync, writeFileSync } from 'fs';
 import { join, dirname, resolve } from 'path';
 import { fileURLToPath } from 'url';
 import { platform, arch } from 'os';
@@ -47,31 +47,21 @@ function getOutputName() {
 /**
  * Replace symlinks in node_modules with actual copies.
  * Required so esbuild and pkg can resolve file: dependencies.
+ * Note: With npm packages from registry, symlinks are less common,
+ * but we keep this for any linked local development.
  */
 function dereferenceSymlinks() {
   const nodeModules = join(ROOT, 'node_modules');
 
-  // Check top-level entries (e.g. personal-server-ts)
-  const topLevel = ['personal-server-ts'];
-  for (const name of topLevel) {
-    const entryPath = join(nodeModules, name);
-    if (existsSync(entryPath) && lstatSync(entryPath).isSymbolicLink()) {
-      const realPath = resolve(dirname(entryPath), readlinkSync(entryPath));
-      log(`Dereferencing symlink: ${name} -> ${realPath}`);
-      rmSync(entryPath, { recursive: true });
-      cpSync(realPath, entryPath, { recursive: true });
-    }
-  }
-
-  // Check scoped entries (e.g. @personal-server/*)
-  const scopes = ['@personal-server', '@opendatalabs'];
+  // Check scoped entries (e.g. @opendatalabs/*)
+  const scopes = ['@opendatalabs'];
   for (const scope of scopes) {
     const scopeDir = join(nodeModules, scope);
     if (!existsSync(scopeDir)) continue;
 
     for (const entry of readdirSync(scopeDir)) {
       const entryPath = join(scopeDir, entry);
-      if (lstatSync(entryPath).isSymbolicLink()) {
+      if (existsSync(entryPath) && lstatSync(entryPath).isSymbolicLink()) {
         const realPath = resolve(dirname(entryPath), readlinkSync(entryPath));
         log(`Dereferencing symlink: ${entry} -> ${realPath}`);
         rmSync(entryPath, { recursive: true });
@@ -103,7 +93,11 @@ async function build() {
     '{paths:[_P.join(_P.dirname(process.execPath),"node_modules")]}),m,o);}catch(e){}}',
     'return _R.call(this,r,p,m,o);};',
   ].join('');
-  exec(`npx esbuild index.js --bundle --platform=node --format=cjs --outfile="${bundlePath}" --external:better-sqlite3 --banner:js='${nativeBanner}'`);
+  // Write banner to file to avoid shell quoting issues on Windows
+  const bannerPath = join(DIST, '_banner.js');
+  writeFileSync(bannerPath, nativeBanner);
+  exec(`npx esbuild index.js --bundle --platform=node --format=cjs --outfile="${bundlePath}" --external:better-sqlite3 --banner:js=file:${bannerPath}`);
+  rmSync(bannerPath, { force: true });
 
   // Step 2: Package with pkg
   const target = getPkgTarget();

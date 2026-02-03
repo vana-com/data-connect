@@ -113,12 +113,7 @@ jobs:
 
       - name: Install personal-server dependencies
         working-directory: personal-server
-        env:
-          GH_PAT: ${{ secrets.GH_PAT }}
-        run: |
-          git config --global url."https://x-access-token:${GH_PAT}@github.com/".insteadOf "ssh://git@github.com/"
-          git config --global url."https://x-access-token:${GH_PAT}@github.com/".insteadOf "https://github.com/"
-          npm install
+        run: npm ci
 
       - name: Build personal-server binary
         working-directory: personal-server

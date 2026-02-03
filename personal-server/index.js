@@ -12,8 +12,8 @@
  */
 
 import { join } from 'node:path';
-import { loadConfig } from './node_modules/personal-server-ts/packages/core/dist/config/index.js';
-import { createServer } from './node_modules/personal-server-ts/packages/server/dist/bootstrap.js';
+import { loadConfig } from '@opendatalabs/personal-server-ts-core/config';
+import { createServer } from '@opendatalabs/personal-server-ts-server';
 import { serve } from '@hono/node-server';
 
 function send(msg) {

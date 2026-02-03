@@ -18,9 +18,9 @@ async function main() {
   const ownerAddress = process.env.OWNER_ADDRESS || undefined;
 
   try {
-    const { loadConfig } = await import('./node_modules/personal-server-ts/packages/core/dist/config/index.js');
-    const { createServer } = await import('./node_modules/personal-server-ts/packages/server/dist/bootstrap.js');
-    const { serve } = await import('./node_modules/@hono/node-server/dist/index.js');
+    const { loadConfig } = await import('@opendatalabs/personal-server-ts-core/config');
+    const { createServer } = await import('@opendatalabs/personal-server-ts-server');
+    const { serve } = await import('@hono/node-server');
 
     const configPath = configDir ? join(configDir, 'server.json') : undefined;
     const config = await loadConfig({ configPath });

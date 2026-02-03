@@ -130,6 +130,98 @@ pub async fn start_browser_auth(app: AppHandle, privy_app_id: String, privy_clie
 
                             log::info!("Auth complete, waiting for close-tab request");
                         }
+                        "GET" if path == "/server-identity" => {
+                            // Proxy the personal server health check to avoid CORS
+                            log::info!("Server identity request received");
+                            let cors = "Access-Control-Allow-Origin: *\r\nAccess-Control-Allow-Methods: GET, POST, OPTIONS\r\nAccess-Control-Allow-Headers: Content-Type";
+                            let port_opt = super::server::PERSONAL_SERVER_PORT.lock().ok().and_then(|g| *g);
+                            log::info!("Personal server port: {:?}", port_opt);
+                            if let Some(port) = port_opt {
+                                match reqwest::blocking::get(format!("http://localhost:{}/health", port)) {
+                                    Ok(resp) if resp.status().is_success() => {
+                                        let body = resp.text().unwrap_or_default();
+                                        let resp_str = format!(
+                                            "HTTP/1.1 200 OK\r\nContent-Type: application/json\r\n{}\r\nContent-Length: {}\r\n\r\n{}",
+                                            cors, body.len(), body
+                                        );
+                                        let _ = stream.write_all(resp_str.as_bytes());
+                                    }
+                                    _ => {
+                                        let resp_str = format!("HTTP/1.1 503 Service Unavailable\r\n{}\r\n\r\n", cors);
+                                        let _ = stream.write_all(resp_str.as_bytes());
+                                    }
+                                }
+                            } else {
+                                let resp_str = format!("HTTP/1.1 503 Service Unavailable\r\n{}\r\n\r\n", cors);
+                                let _ = stream.write_all(resp_str.as_bytes());
+                            }
+                        }
+                        "POST" if path == "/register-server" => {
+                            // Read POST body
+                            let mut content_length: usize = 0;
+                            let mut line = String::new();
+                            loop {
+                                line.clear();
+                                if reader.read_line(&mut line).is_err() || line == "\r\n" {
+                                    break;
+                                }
+                                if line.to_lowercase().starts_with("content-length:") {
+                                    if let Some(len_str) = line.split(':').nth(1) {
+                                        content_length = len_str.trim().parse().unwrap_or(0);
+                                    }
+                                }
+                            }
+
+                            let cors = "Access-Control-Allow-Origin: *\r\nAccess-Control-Allow-Methods: GET, POST, OPTIONS\r\nAccess-Control-Allow-Headers: Content-Type";
+                            let mut body = vec![0u8; content_length];
+                            let gateway_url = "https://data-gateway-env-dev-opendatalabs.vercel.app";
+
+                            if reader.read_exact(&mut body).is_ok() {
+                                if let Ok(body_str) = String::from_utf8(body) {
+                                    log::info!("Register server request: {}", body_str);
+
+                                    // Parse { signature, message }
+                                    if let Ok(reg) = serde_json::from_str::<serde_json::Value>(&body_str) {
+                                        let signature = reg["signature"].as_str().unwrap_or_default();
+                                        let message = &reg["message"];
+
+                                        // POST to gateway
+                                        let client = reqwest::blocking::Client::new();
+                                        match client
+                                            .post(format!("{}/v1/servers", gateway_url))
+                                            .header("Content-Type", "application/json")
+                                            .header("Authorization", format!("Web3Signed {}", signature))
+                                            .json(message)
+                                            .send()
+                                        {
+                                            Ok(resp) => {
+                                                let status = resp.status().as_u16();
+                                                let resp_body = resp.text().unwrap_or_default();
+                                                log::info!("Gateway register response: {} {}", status, resp_body);
+
+                                                if status == 200 || status == 201 || status == 409 {
+                                                    let _ = app_handle.emit("server-registered", serde_json::json!({ "status": status }));
+                                                }
+
+                                                let resp_str = format!(
+                                                    "HTTP/1.1 {} OK\r\nContent-Type: application/json\r\n{}\r\nContent-Length: {}\r\n\r\n{}",
+                                                    status, cors, resp_body.len(), resp_body
+                                                );
+                                                let _ = stream.write_all(resp_str.as_bytes());
+                                            }
+                                            Err(e) => {
+                                                let err_body = format!("{{\"error\":\"{}\"}}", e);
+                                                let resp_str = format!(
+                                                    "HTTP/1.1 502 Bad Gateway\r\nContent-Type: application/json\r\n{}\r\nContent-Length: {}\r\n\r\n{}",
+                                                    cors, err_body.len(), err_body
+                                                );
+                                                let _ = stream.write_all(resp_str.as_bytes());
+                                            }
+                                        }
+                                    }
+                                }
+                            }
+                        }
                         "GET" if path == "/close-tab" => {
                             // Browser tab navigates here after showing success.
                             // Serve a page with the success message, then close the tab
@@ -171,6 +263,7 @@ p { font-size: 14px; color: #6b7280; }
                             let _ = stream.write_all(response.as_bytes());
                         }
                         _ => {
+                            log::info!("Auth server: unmatched request {} {}", method, path);
                             let response = "HTTP/1.1 404 Not Found\r\n\r\n";
                             let _ = stream.write_all(response.as_bytes());
                         }

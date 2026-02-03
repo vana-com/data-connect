@@ -54,7 +54,7 @@ export function TopNav() {
     <header
       data-tauri-drag-region
       className={cn(
-        "h-header px-inset",
+        "h-[48px] px-inset",
         "backdrop-blur-sm flex items-center justify-between",
         // set the nav under the macOS traffic lights bar
         "mt-[28px]"

@@ -35,10 +35,7 @@ export function Runs() {
         {finishedRuns.length === 0 ? (
           <div className="rounded-card border border-border bg-background p-12 text-center">
             <div className="mx-auto mb-4 flex size-16 items-center justify-center rounded-card bg-muted">
-              <ActivityIcon
-                aria-hidden="true"
-                className="size-8 text-muted-foreground"
-              />
+              <ActivityIcon aria-hidden="true" className="size-8 text-muted-foreground" />
             </div>
             <Text as="h3" intent="heading" weight="semi" className="mb-2">
               No exports yet

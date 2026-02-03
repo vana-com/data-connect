@@ -4,10 +4,10 @@ import { Button } from "@/components/ui/button"
 import { mockApps } from "./fixtures"
 import { AppCard } from "./components/AppCard"
 
-export function DataApps() {
-  const liveApps = mockApps.filter(app => app.status === "live")
-  const comingSoonApps = mockApps.filter(app => app.status === "coming-soon")
+const liveApps = mockApps.filter(app => app.status === "live")
+const comingSoonApps = mockApps.filter(app => app.status === "coming-soon")
 
+export function DataApps() {
   return (
     <div className="flex-1 overflow-auto bg-muted">
       <div className="container py-w16">

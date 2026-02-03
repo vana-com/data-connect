@@ -18,6 +18,18 @@ description: Enforce commit safety and approval gates. Use when asked to commit,
 - If tests exist for the changes being committed, they must be run first.
 - Prefer scoped tests for the changed area (page dir or specific files).
 
+## Pre-commit staging hygiene
+
+- Always stage explicit file paths only (no `git add .`, `-A`, `-u`, `-i`,
+  `git commit -a`).
+- Do not reset or unstage anything as part of this workflow (no `git reset`,
+  `git restore --staged`, or `git reset --mixed`) unless the user explicitly
+  asks for it.
+- Never stage unrelated files or any untracked files unless the user explicitly
+  asked to include them.
+- Before committing, run `git diff --staged` and confirm **only** the intended
+  files are staged. If anything unexpected is staged, STOP and ask.
+
 ## Speed rule (no back-and-forth on commit failures)
 
 - If the user explicitly asked you to commit and the commit fails due to

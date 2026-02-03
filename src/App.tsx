@@ -7,7 +7,7 @@ import { useInitialize } from "./hooks/useInitialize"
 import { TopNav } from "./components/top-nav"
 import { PrivyProvider } from "./components/providers/PrivyProvider"
 import { InlineLogin } from "./components/auth/InlineLogin"
-import { BrowserLogin } from "./pages/BrowserLogin"
+import { BrowserLogin } from "./pages/browser-login"
 import { useDeepLink } from "./hooks/use-deep-link"
 import { usePersonalServer } from "./hooks/usePersonalServer"
 

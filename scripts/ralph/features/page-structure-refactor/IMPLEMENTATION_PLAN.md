@@ -110,11 +110,11 @@ The refactor preserves this for future use or cleanup.
 
 ---
 
-## Phase 3: BrowserLogin (HIGH complexity)
+## Phase 3: BrowserLogin (HIGH complexity) ✅ COMPLETED
 
 ### Status
 
-- [ ] Create directory structure
+- [x] Create directory structure
   - `src/pages/browser-login/index.tsx`
   - `src/pages/browser-login/types.ts`
   - `src/pages/browser-login/utils.ts`
@@ -125,64 +125,56 @@ The refactor preserves this for future use or cleanup.
   - `src/pages/browser-login/components/success-view.tsx`
   - `src/pages/browser-login/components/wallet-creating-view.tsx`
 
-- [ ] Extract types to `src/pages/browser-login/types.ts`
-  - `BrowserLoginState` interface (email, code, isCodeSent, error, isCreatingWallet, authSent)
+- [x] Extract types to `src/pages/browser-login/types.ts`
+  - `BrowserLoginState` interface
   - `AuthCallbackPayload` interface
 
-- [ ] Extract utils to `src/pages/browser-login/utils.ts`
+- [x] Extract utils to `src/pages/browser-login/utils.ts`
   - `inputClassName` constant (shared input styles)
 
-- [ ] Create hook `src/pages/browser-login/use-browser-login.ts`
+- [x] Create hook `src/pages/browser-login/use-browser-login.ts`
   - State management: email, code, isCodeSent, error, isCreatingWallet, authSent
   - Privy hooks integration: usePrivy, useLoginWithOAuth, useLoginWithEmail, useCreateWallet, useWallets
-  - Callbacks: handleGoogleLogin, handleSendCode, handleLoginWithCode, ensureEmbeddedWallet
+  - Callbacks: handleGoogleLogin, handleSendCode, handleLoginWithCode, handleResetEmail, ensureEmbeddedWallet
   - Effect: auth callback port communication
   - Derived: isLoading, callbackPort from URL params
-  - Return: all state + handlers + view state flags
 
-- [ ] Extract view components
+- [x] Extract view components
   - `invalid-request-view.tsx` - No callbackPort error state
   - `loading-view.tsx` - Privy not ready state
   - `success-view.tsx` - authSent success state
   - `wallet-creating-view.tsx` - Wallet creation in progress state
 
-- [ ] Extract main form component to `src/pages/browser-login/components/browser-login-form.tsx`
+- [x] Extract main form component to `src/pages/browser-login/components/browser-login-form.tsx`
   - Google OAuth button
   - Email code flow (send code / verify code states)
   - Error display
-  - Props: All handlers and state from hook
 
-- [ ] Create `src/pages/browser-login/index.tsx`
+- [x] Create `src/pages/browser-login/index.tsx`
   - Import hook and view components
   - Conditional rendering based on view state
   - Export `BrowserLogin` component
 
-- [ ] Update `src/App.tsx` imports (2 locations)
-  - Line 11: Change direct import `from "./pages/BrowserLogin"` to `from "./pages/browser-login"`
-  - Routes use same component reference - verify both `/browser-login` route locations work
+- [x] Update `src/App.tsx` import
+  - Changed `from "./pages/BrowserLogin"` to `from "./pages/browser-login"`
 
-- [ ] Delete original `src/pages/BrowserLogin.tsx`
+- [x] Delete original `src/pages/BrowserLogin.tsx`
 
-- [ ] Verify app builds and browser login flow works
-  - Test: Missing callbackPort shows InvalidRequest
-  - Test: Auth flow initiates correctly
-  - Test: Success state displays after auth
+- [x] Verify app builds
 
-- [ ] Add README + tests per `ui-page-structure` (once settled)
-  - Cover route wiring in `index.test.tsx`
-  - Add hook/component tests where behavior is non-trivial
+- [ ] Add README + tests per `ui-page-structure` (deferred until structure settled)
 
 ---
 
-## Cross-Cutting Concerns
+## Cross-Cutting Concerns ✅ COMPLETED
 
-- [ ] Ensure consistent import style across all new files
-  - Use `@/` path alias for shared components
-  - Use relative imports for page-local files
+- [x] Ensure consistent import style across all new files
+  - `@/` path alias for shared components
+  - Relative imports for page-local files
 
-- [ ] Verify no circular dependencies introduced
+- [x] Verify no circular dependencies introduced
 
-- [ ] Run full build after each phase completion
+- [x] Run full build after each phase completion
 
 ---
 

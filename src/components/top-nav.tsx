@@ -37,12 +37,13 @@ const navItems: NavItem[] = [
   { to: "/", label: "Home", Icon: HomeIcon },
   { to: "/apps", label: "Apps", Icon: BoxIcon },
   { to: "/mcp", label: "MCP", Icon: IconMcp },
-  {
-    to: "https://docs.dataconnect.com",
-    label: "Docs",
-    Icon: BookOpenIcon,
-    external: true,
-  },
+  // {
+  //   to: "https://docs.dataconnect.com",
+  //   label: "Docs",
+  //   Icon: BookOpenIcon,
+  //   external: true,
+  // },
+  { to: "/docs", label: "Docs", Icon: BookOpenIcon },
   // { to: "/activity", label: "Activity", Icon: ActivityIcon },
   { to: "/settings", label: "Settings", Icon: SettingsIcon },
   { to: "/runs", label: "Account", Icon: UserRoundCogIcon },
@@ -54,7 +55,9 @@ export function TopNav() {
       data-tauri-drag-region
       className={cn(
         "h-header px-inset",
-        "backdrop-blur-sm flex items-center justify-between"
+        "backdrop-blur-sm flex items-center justify-between",
+        // set the nav under the macOS traffic lights bar
+        "mt-[28px]"
       )}
     >
       {/* Logo/Brand */}

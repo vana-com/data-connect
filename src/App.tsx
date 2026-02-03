@@ -16,6 +16,8 @@ const Home = lazy(() => import("./pages/home").then(m => ({ default: m.Home })))
 const DataApps = lazy(() =>
   import("./pages/data-apps").then(m => ({ default: m.DataApps }))
 )
+const Mcp = lazy(() => import("./pages/mcp").then(m => ({ default: m.Mcp })))
+const Docs = lazy(() => import("./pages/docs").then(m => ({ default: m.Docs })))
 const AppPage = lazy(() => import("./pages/app-page").then(m => ({ default: m.AppPage })))
 const Runs = lazy(() => import("./pages/runs").then(m => ({ default: m.Runs })))
 const Settings = lazy(() =>
@@ -40,6 +42,8 @@ function AppContent() {
               <Route path="/" element={<Home />} />
               <Route path="/apps" element={<DataApps />} />
               <Route path="/apps/:appId" element={<AppPage />} />
+              <Route path="/mcp" element={<Mcp />} />
+              <Route path="/docs" element={<Docs />} />
               <Route path="/runs" element={<Runs />} />
               <Route path="/settings" element={<Settings />} />
               <Route path="/grant" element={<Grant />} />

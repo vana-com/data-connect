@@ -20,7 +20,7 @@ const DataApps = lazy(() =>
 const AppPage = lazy(() => import("./pages/app-page").then(m => ({ default: m.AppPage })))
 const Runs = lazy(() => import("./pages/runs").then(m => ({ default: m.Runs })))
 const Settings = lazy(() =>
-  import("./pages/settings/index").then(m => ({ default: m.Settings }))
+  import("./pages/settings").then(m => ({ default: m.Settings }))
 )
 const GrantFlow = lazy(() =>
   import("./pages/grant-flow").then(m => ({ default: m.GrantFlow }))

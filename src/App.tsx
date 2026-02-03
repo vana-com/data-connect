@@ -38,6 +38,7 @@ function AppContent() {
         <TopNav />
         <main className="flex-1 overflow-auto">
           <Suspense fallback={<div className="p-8">Loading...</div>}>
+            {/* Routes config: keep @/config/routes.ts in sync when adding/removing routes */}
             <Routes>
               <Route path="/" element={<Home />} />
               <Route path="/apps" element={<DataApps />} />

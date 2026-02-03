@@ -14,7 +14,7 @@ import { usePersonalServer } from "./hooks/usePersonalServer"
 // Lazy-loaded pages for reduced initial bundle size
 const Home = lazy(() => import("./pages/home").then(m => ({ default: m.Home })))
 const DataApps = lazy(() =>
-  import("./pages/DataApps").then(m => ({ default: m.DataApps }))
+  import("./pages/data-apps").then(m => ({ default: m.DataApps }))
 )
 const AppPage = lazy(() => import("./pages/app-page").then(m => ({ default: m.AppPage })))
 const Runs = lazy(() => import("./pages/runs").then(m => ({ default: m.Runs })))

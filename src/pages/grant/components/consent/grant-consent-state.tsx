@@ -1,6 +1,5 @@
 import { Link } from "react-router-dom"
 import { LoaderIcon } from "lucide-react"
-import { Text } from "@/components/typography/text"
 import { Button } from "@/components/ui/button"
 import { cn } from "@/lib/classes"
 import type { GrantSession, GrantStep } from "../../types"

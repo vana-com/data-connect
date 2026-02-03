@@ -23,7 +23,7 @@ const connectSourceCardVariants = cva(
   }
 )
 
-type ConnectSourceCardVariant = NonNullable<
+export type ConnectSourceCardVariant = NonNullable<
   VariantProps<typeof connectSourceCardVariants>["state"]
 >
 

@@ -9,41 +9,38 @@ Reference implementation: `src/pages/settings/` demonstrates the target pattern.
 
 ---
 
-## Phase 1: DataApps (LOW complexity)
+## Phase 1: DataApps (LOW complexity) ✅ COMPLETED
 
 ### Status
 
-- [ ] Create directory structure
+- [x] Create directory structure
   - `src/pages/data-apps/index.tsx`
   - `src/pages/data-apps/types.ts`
   - `src/pages/data-apps/fixtures.ts`
-  - `src/pages/data-apps/components/app-card.tsx`
+  - `src/pages/data-apps/components/AppCard.tsx`
 
-- [ ] Extract types to `src/pages/data-apps/types.ts`
-  - `AppStatus` type (`"live" | "coming-soon"`)
-  - `MockApp` interface
+- [x] Extract types to `src/pages/data-apps/types.ts`
+  - `MockApp` interface (status is union type in interface)
 
-- [ ] Extract fixtures to `src/pages/data-apps/fixtures.ts`
+- [x] Extract fixtures to `src/pages/data-apps/fixtures.ts`
   - `mockApps` array (7 apps)
 
-- [ ] Extract component to `src/pages/data-apps/components/app-card.tsx`
-  - `AppCard` component (~87 lines)
+- [x] Extract component to `src/pages/data-apps/components/AppCard.tsx`
+  - `AppCard` component
 
-- [ ] Create `src/pages/data-apps/index.tsx`
+- [x] Create `src/pages/data-apps/index.tsx`
   - Import types, fixtures, and AppCard
   - Export `DataApps` component
   - Note: No custom hook needed (only 2 simple filter operations)
 
-- [ ] Update `src/App.tsx` import
-  - Change: `import("./pages/DataApps")` to `import("./pages/data-apps")`
+- [x] Update `src/App.tsx` import
+  - Changed: `import("./pages/DataApps")` to `import("./pages/data-apps")`
 
-- [ ] Delete original `src/pages/DataApps.tsx`
+- [x] Delete original `src/pages/DataApps.tsx`
 
-- [ ] Verify app builds and DataApps route works
+- [x] Verify app builds and DataApps route works
 
-- [ ] Add README + tests per `ui-page-structure` (once settled)
-  - Cover route wiring in `index.test.tsx`
-  - Add hook/component tests where behavior is non-trivial
+- [ ] Add README + tests per `ui-page-structure` (deferred until structure settled)
 
 ---
 
@@ -212,3 +209,14 @@ _(Move completed items here)_
 - **README/tests**: Tracked as explicit tasks per phase once settled
 - **Settings reference**: `src/pages/settings/` is the canonical example of target structure
 - **YourData routing**: Page exists but may not be actively routed - investigate during Phase 2
+- **ESLint**: `npm run lint` has a pre-existing config issue (flat config migration needed) - unrelated to refactor
+
+## Pre-existing Type Errors Fixed (during Phase 1)
+
+Fixed 5 pre-existing TypeScript errors to get build passing:
+
+1. `src/components/elements/spinner.tsx` - Fixed import path (`@vana/ui/lib/classes` → `@/lib/classes`)
+2. `src/components/ui/combobox.tsx` - Fixed invalid button size (`icon-xs` → `xs`)
+3. `src/pages/grant/components/consent/grant-consent-state.tsx` - Removed unused `Text` import
+4. `src/pages/grant/use-grant-flow.test.tsx` - Fixed spread argument type in vi.mock
+5. `src/pages/home/components/available-sources-list.tsx` - Added proper type for `state` prop (exported `ConnectSourceCardVariant` from connect-source-card)

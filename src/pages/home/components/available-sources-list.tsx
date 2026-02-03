@@ -1,5 +1,5 @@
 import { Text } from "@/components/typography/text"
-import { ConnectSourceCard } from "@/components/connect-source-card"
+import { ConnectSourceCard, type ConnectSourceCardVariant } from "@/components/connect-source-card"
 import { PlatformChatGPTIcon } from "@/components/icons/platform-chatgpt"
 import { PlatformInstagramGlyphIcon } from "@/components/icons/platform-instagram-glyph"
 import { PlatformLinkedinIcon } from "@/components/icons/platform-linkedin"
@@ -38,11 +38,11 @@ export function AvailableSourcesList({
         Connect sources (more coming soon)
       </Text>
       <div className="grid grid-cols-2 gap-4">
-        {[
+        {([
           {
             label: "Connect Instagram",
             Icon: PlatformInstagramGlyphIcon,
-            state: isInstagramAvailable ? "available" : "comingSoon",
+            state: (isInstagramAvailable ? "available" : "comingSoon") as ConnectSourceCardVariant,
             onClick:
               isInstagramAvailable && instagramPlatform
                 ? () => onExport(instagramPlatform)
@@ -51,23 +51,23 @@ export function AvailableSourcesList({
           {
             label: "Connect LinkedIn",
             Icon: PlatformLinkedinIcon,
-            state: "comingSoon",
+            state: "comingSoon" as ConnectSourceCardVariant,
           },
           {
             label: "Connect Spotify",
             Icon: PlatformSpotifyIcon,
-            state: "comingSoon",
+            state: "comingSoon" as ConnectSourceCardVariant,
           },
           {
             label: "Connect ChatGPT",
             Icon: PlatformChatGPTIcon,
-            state: isChatGPTAvailable ? "available" : "comingSoon",
+            state: (isChatGPTAvailable ? "available" : "comingSoon") as ConnectSourceCardVariant,
             onClick:
               isChatGPTAvailable && chatgptPlatform
                 ? () => onExport(chatgptPlatform)
                 : undefined,
           },
-        ]
+        ])
           .map((card, index) => ({
             ...card,
             index,

@@ -1,6 +1,6 @@
 /* Taken from the Rainbow Wallet repo a long time ago… */
 
-import { cn } from "@vana/ui/lib/classes";
+import { cn } from "@/lib/classes";
 
 export const Spinner = ({
   id = "spinner-01",

@@ -31,17 +31,17 @@ vi.mock("../../hooks/useAuth", () => ({
 }))
 
 vi.mock("../../services/sessionRelay", () => ({
-  approveSession: (...args: unknown[]) => mockApproveSession(...args),
-  getSessionInfo: (...args: unknown[]) => mockGetSessionInfo(...args),
+  approveSession: (...args: unknown[]) => mockApproveSession.apply(null, args as []),
+  getSessionInfo: (...args: unknown[]) => mockGetSessionInfo.apply(null, args as []),
   SessionRelayError: class SessionRelayError extends Error {},
 }))
 
 vi.mock("../../services/grantSigning", () => ({
-  prepareGrantMessage: (...args: unknown[]) => mockPrepareGrantMessage(...args),
+  prepareGrantMessage: (...args: unknown[]) => mockPrepareGrantMessage.apply(null, args as []),
 }))
 
 vi.mock("../../lib/storage", () => ({
-  setConnectedApp: (...args: unknown[]) => mockSetConnectedApp(...args),
+  setConnectedApp: (...args: unknown[]) => mockSetConnectedApp.apply(null, args as []),
 }))
 
 beforeEach(() => {

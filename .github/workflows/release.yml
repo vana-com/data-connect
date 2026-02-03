@@ -163,7 +163,8 @@ jobs:
           fi
 
           # Copy into macOS .app bundles
-          for app in src-tauri/target/${{ matrix.target }}/release/bundle/macos/*.app 2>/dev/null; do
+          for app in src-tauri/target/${{ matrix.target }}/release/bundle/macos/*.app; do
+            [ -e "$app" ] || continue
             dest="$app/Contents/Resources/personal-server/dist/node_modules"
             if [ -d "$(dirname "$dest")" ]; then
               cp -R personal-server/dist/node_modules "$dest"
@@ -173,7 +174,8 @@ jobs:
 
           # Re-sign the .app after modification (macOS)
           if [ "${{ matrix.platform }}" = "macos-latest" ]; then
-            for app in src-tauri/target/${{ matrix.target }}/release/bundle/macos/*.app 2>/dev/null; do
+            for app in src-tauri/target/${{ matrix.target }}/release/bundle/macos/*.app; do
+              [ -e "$app" ] || continue
               codesign --force --deep --options runtime --timestamp \
                 --sign "Developer ID Application: Corsali, Inc (${{ secrets.APPLE_TEAM_ID }})" \
                 "$app"
@@ -183,7 +185,8 @@ jobs:
 
           # Recreate DMG (macOS)
           if [ "${{ matrix.platform }}" = "macos-latest" ]; then
-            for app in src-tauri/target/${{ matrix.target }}/release/bundle/macos/*.app 2>/dev/null; do
+            for app in src-tauri/target/${{ matrix.target }}/release/bundle/macos/*.app; do
+              [ -e "$app" ] || continue
               app_name=$(basename "$app" .app)
               version=$(grep '"version"' src-tauri/tauri.conf.json | head -1 | sed 's/.*: "\(.*\)".*/\1/')
               arch=$(echo "${{ matrix.target }}" | cut -d- -f1)

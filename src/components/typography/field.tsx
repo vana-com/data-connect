@@ -4,9 +4,13 @@ export const stateInvalid =
   "aria-invalid:border-destructive dark:aria-invalid:ring-destructive/40"
 
 export const stateFocus = [
+  // remove outline
   "outline-none",
-  // "ring-offset-background focus-visible:ring-ring focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-offset-2",
+  "focus-visible:outline-none",
+  // ring
   "focus-visible:border-ring focus-visible:ring-ring/50 focus-visible:ring-[3px]",
+  // ring offset
+  "focus-visible:ring-offset-2 focus-visible:ring-offset-background",
 ]
 
 export const fieldHeight = {

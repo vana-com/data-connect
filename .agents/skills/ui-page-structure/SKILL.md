@@ -12,6 +12,7 @@ Keep route-level code predictable: entry files, page-only components (and hooks)
 ## Rules (short)
 
 - **Route entry**: `src/pages/<route>/index.tsx` exports the page component.
+- **Tiny single-file exception**: keep `src/pages/<route>.tsx` when the page is small and has no page-local components/hooks/tests/types/utils; once any co-located file is needed, move to `src/pages/<route>/`.
 - **Page-only UI + hooks**: `src/pages/<route>/components/*` (hooks live with related components; no standalone `hooks/` dir).
 - **Types + utils**: colocate in the route folder (`types.ts`, `utils.ts`, etc.).
 - **Logic vs JSX**: keep logic in hooks/logic files, JSX in components (details below).
@@ -72,6 +73,7 @@ src/pages/runs/
 - `index.test.tsx` covering critical wiring and one or two key UI states.
 - Hook/logic tests only where behavior is non-trivial or risk-prone.
 - Avoid snapshots; assert behavior and side effects.
+- Follow `react-testing` for test scope, commands, and reporting.
 
 ## Notes
 

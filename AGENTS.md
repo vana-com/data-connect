@@ -32,5 +32,6 @@ Use skills only when the task matches; explore the code first.
 - CSS: invoke css skill when writing/adjusting CSS (non‑Tailwind).
 - Tailwind: invoke tailwind skill when writing/adjusting Tailwind classes.
 - UI audit: invoke ui-component-audit when asked to audit/fix UI implementation.
+- Testing: invoke react-testing when writing/running tests or before commit.
 - Linear: invoke linear skill when asked to create/update tickets or statuses.
 - Committing: invoke committing skill only when user explicitly asks to commit.

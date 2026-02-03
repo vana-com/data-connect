@@ -16,6 +16,7 @@ description: Enforce commit safety and approval gates. Use when asked to commit,
 - If the user asks for a commit message, only provide the message — do not
   commit unless they also explicitly say to commit.
 - If tests exist for the changes being committed, they must be run first.
+- Prefer scoped tests for the changed area (page dir or specific files).
 
 ## Speed rule (no back-and-forth on commit failures)
 

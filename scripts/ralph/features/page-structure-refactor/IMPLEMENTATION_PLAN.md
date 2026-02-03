@@ -44,11 +44,14 @@ Reference implementation: `src/pages/settings/` demonstrates the target pattern.
 
 ---
 
-## Phase 2: YourData (MEDIUM complexity)
+## Phase 2: YourData (MEDIUM complexity) ✅ COMPLETED
+
+**Note:** YourData is an **orphaned page** - it's defined but never imported anywhere in the app.
+The refactor preserves this for future use or cleanup.
 
 ### Status
 
-- [ ] Create directory structure
+- [x] Create directory structure
   - `src/pages/your-data/index.tsx`
   - `src/pages/your-data/types.ts`
   - `src/pages/your-data/utils.ts`
@@ -59,54 +62,51 @@ Reference implementation: `src/pages/settings/` demonstrates the target pattern.
   - `src/pages/your-data/components/available-sources-section.tsx`
   - `src/pages/your-data/components/connected-apps-section.tsx`
 
-- [ ] Extract types to `src/pages/your-data/types.ts`
+- [x] Extract types to `src/pages/your-data/types.ts`
   - `TabKey` type (`"sources" | "apps"`)
   - `PlatformDisplay` type
 
-- [ ] Extract utils to `src/pages/your-data/utils.ts`
+- [x] Extract utils to `src/pages/your-data/utils.ts`
   - `PLATFORM_DISPLAY` constant (10 platforms)
   - `getPlatformDisplay` function
 
-- [ ] Create hook `src/pages/your-data/use-your-data-page.ts`
+- [x] Create hook `src/pages/your-data/use-your-data-page.ts`
   - State: `activeTab`
   - Derived: `connectedSources`, `availableSources`
-  - Handlers: `handleConnectSource`, `setActiveTab`
+  - Handlers: `handleConnectSource`, `handleViewRuns`, `setActiveTab`
   - Dependencies: `usePlatforms`, `useSelector`, `useNavigate`
 
-- [ ] Extract header component to `src/pages/your-data/components/your-data-header.tsx`
+- [x] Extract header component to `src/pages/your-data/components/your-data-header.tsx`
   - Page title and description
 
-- [ ] Extract tabs component to `src/pages/your-data/components/your-data-tabs.tsx`
+- [x] Extract tabs component to `src/pages/your-data/components/your-data-tabs.tsx`
   - Tab switcher UI
   - Props: `activeTab`, `onTabChange`
 
-- [ ] Extract connected sources section to `src/pages/your-data/components/connected-sources-section.tsx`
+- [x] Extract connected sources section to `src/pages/your-data/components/connected-sources-section.tsx`
   - Grid of connected platform cards
   - Props: `connectedSources`, `onViewRuns`
 
-- [ ] Extract available sources section to `src/pages/your-data/components/available-sources-section.tsx`
+- [x] Extract available sources section to `src/pages/your-data/components/available-sources-section.tsx`
   - Grid of available platforms with connect buttons
-  - Props: `availableSources`, `connectedSourcesCount`, `onConnect`
+  - Props: `availableSources`, `hasConnectedSources`, `onConnect`
 
-- [ ] Extract connected apps section to `src/pages/your-data/components/connected-apps-section.tsx`
+- [x] Extract connected apps section to `src/pages/your-data/components/connected-apps-section.tsx`
   - Empty state for apps tab
 
-- [ ] Create `src/pages/your-data/index.tsx`
+- [x] Create `src/pages/your-data/index.tsx`
   - Import hook and all components
   - Wire up container/presenter pattern per settings example
   - Export `YourData` component
 
-- [ ] Determine YourData routing
-  - Note: Not currently in App.tsx routes - verify if page is used or orphaned
-  - If used elsewhere, update that import
+- [x] Determine YourData routing
+  - **Finding:** Orphaned page - not imported anywhere in App.tsx or other files
 
-- [ ] Delete original `src/pages/YourData.tsx`
+- [x] Delete original `src/pages/YourData.tsx`
 
-- [ ] Verify app builds and YourData functionality works
+- [x] Verify app builds
 
-- [ ] Add README + tests per `ui-page-structure` (once settled)
-  - Cover route wiring in `index.test.tsx`
-  - Add hook/component tests where behavior is non-trivial
+- [ ] Add README + tests per `ui-page-structure` (deferred until structure settled)
 
 ---
 

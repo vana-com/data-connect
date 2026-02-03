@@ -1,0 +1,248 @@
+import { useCallback, useEffect, useRef, useState } from "react"
+import { invoke } from "@tauri-apps/api/core"
+import { listen } from "@tauri-apps/api/event"
+import { useDispatch } from "react-redux"
+import { useAuth } from "../../hooks/useAuth"
+import { setAuthenticated } from "../../state/store"
+import {
+  approveSession,
+  getSessionInfo,
+  SessionRelayError,
+} from "../../services/sessionRelay"
+import { prepareGrantMessage } from "../../services/grantSigning"
+import { setConnectedApp } from "../../lib/storage"
+import type { ConnectedApp } from "../../types"
+import type { GrantFlowParams, GrantFlowState, GrantSession, GrantStep } from "./types"
+
+const PRIVY_APP_ID = import.meta.env.VITE_PRIVY_APP_ID
+
+const DEMO_APPS: Record<string, { name: string; icon: string; scopes: string[] }> = {
+  rickroll: {
+    name: "RickRoll Facts",
+    icon: "🎵",
+    scopes: ["read:chatgpt-conversations"],
+  },
+}
+
+export function useGrantFlow(params: GrantFlowParams) {
+  const dispatch = useDispatch()
+  const { isAuthenticated, isLoading: authLoading, walletAddress } = useAuth()
+  const [flowState, setFlowState] = useState<GrantFlowState>({
+    sessionId: "",
+    status: "loading",
+  })
+  const [currentStep, setCurrentStep] = useState<GrantStep>(1)
+  const authTriggered = useRef(false)
+  const [isApproving, setIsApproving] = useState(false)
+  const [authUrl, setAuthUrl] = useState<string | null>(null)
+  const [authError, setAuthError] = useState<string | null>(null)
+
+  const sessionId = params?.sessionId
+  const appId = params?.appId
+
+  useEffect(() => {
+    authTriggered.current = false
+    setAuthUrl(null)
+    setAuthError(null)
+  }, [sessionId])
+
+  useEffect(() => {
+    if (!sessionId) {
+      setFlowState({
+        sessionId: "",
+        status: "error",
+        error: "No session ID provided. Please restart the flow from the app.",
+      })
+      return
+    }
+
+    const loadSession = async () => {
+      try {
+        setFlowState({ sessionId, status: "loading" })
+
+        // Check if this is a local demo app (sessionId starts with 'grant-session-')
+        // For demo apps, use mock session data instead of fetching from relay
+        let session: GrantSession
+        if (sessionId.startsWith("grant-session-") && appId) {
+          // Mock session data for local demo apps
+          const appInfo = DEMO_APPS[appId] || {
+            name: appId,
+            icon: "🔗",
+            scopes: ["read:data"],
+          }
+          session = {
+            id: sessionId,
+            appId,
+            appName: appInfo.name,
+            appIcon: appInfo.icon,
+            scopes: appInfo.scopes,
+            expiresAt: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString(), // 30 days
+          }
+        } else {
+          const fetchedSession = await getSessionInfo(sessionId)
+          if (!fetchedSession) {
+            throw new Error("Session not found")
+          }
+          session = fetchedSession
+        }
+        setFlowState(prev => ({ ...prev, session, sessionId }))
+      } catch (error) {
+        setFlowState({
+          sessionId,
+          status: "error",
+          error:
+            error instanceof SessionRelayError ? error.message : "Failed to load session",
+        })
+      }
+    }
+
+    loadSession()
+  }, [sessionId, appId])
+
+  useEffect(() => {
+    if (!flowState.session || authLoading) return
+    if (flowState.status === "success" || flowState.status === "error") return
+    if (flowState.status === "signing") return
+
+    const nextStatus = isAuthenticated ? "consent" : "auth-required"
+    setFlowState(prev =>
+      prev.status === nextStatus ? prev : { ...prev, status: nextStatus }
+    )
+    setCurrentStep(isAuthenticated ? 2 : 1)
+  }, [authLoading, isAuthenticated, flowState.session, flowState.status])
+
+  const startBrowserAuth = useCallback(async () => {
+    if (!PRIVY_APP_ID) {
+      setAuthError("Missing VITE_PRIVY_APP_ID.")
+      return
+    }
+
+    setAuthError(null)
+    try {
+      const url = await invoke<string>("start_browser_auth", {
+        privyAppId: PRIVY_APP_ID,
+        privyClientId: import.meta.env.VITE_PRIVY_CLIENT_ID || undefined,
+      })
+      setAuthUrl(url)
+    } catch (err) {
+      console.error("Failed to start browser auth:", err)
+      setAuthError(
+        err instanceof Error ? err.message : "Failed to open browser for authentication."
+      )
+      authTriggered.current = false
+    }
+  }, [])
+
+  // Auto-start browser auth when auth is required
+  useEffect(() => {
+    if (flowState.status !== "auth-required" || authTriggered.current) return
+    authTriggered.current = true
+    startBrowserAuth()
+  }, [flowState.status, startBrowserAuth])
+
+  // Listen for auth completion from browser
+  useEffect(() => {
+    const unlisten = listen<{
+      success: boolean
+      user?: { id: string; email: string | null }
+      walletAddress?: string
+      masterKeySignature?: string
+      error?: string
+    }>("auth-complete", event => {
+      const result = event.payload
+      if (result.success && result.user) {
+        dispatch(
+          setAuthenticated({
+            user: { id: result.user.id, email: result.user.email || undefined },
+            walletAddress: result.walletAddress || null,
+            masterKeySignature: result.masterKeySignature || null,
+          })
+        )
+      }
+    })
+    return () => {
+      unlisten.then(fn => fn())
+    }
+  }, [dispatch])
+
+  const handleApprove = useCallback(async () => {
+    if (!flowState.session || !walletAddress) return
+
+    setIsApproving(true)
+    setFlowState(prev => ({ ...prev, status: "signing" }))
+    setCurrentStep(3)
+
+    try {
+      const grantData = {
+        sessionId: flowState.session.id,
+        appId: flowState.session.appId,
+        scopes: flowState.session.scopes,
+        expiresAt: flowState.session.expiresAt,
+        walletAddress,
+      }
+
+      // Prepare the grant message
+      const typedData = prepareGrantMessage(grantData)
+
+      // For now, we'll use a placeholder signature
+      // In production, this would use the Privy wallet to sign
+      const typedDataString = JSON.stringify(typedData)
+      const mockSignature =
+        `0x${typedDataString}${"0".repeat(Math.max(0, 130 - typedDataString.length))}`.slice(
+          0,
+          132
+        )
+
+      // Skip relay call for local demo sessions
+      if (!flowState.sessionId.startsWith("grant-session-")) {
+        await approveSession({
+          sessionId: flowState.sessionId,
+          walletAddress,
+          grantSignature: mockSignature,
+        })
+      }
+
+      setFlowState(prev => ({ ...prev, status: "success" }))
+
+      // Add to connected apps (this would normally come from the backend)
+      const newApp: ConnectedApp = {
+        id: flowState.session.appId,
+        name: flowState.session.appName,
+        icon: flowState.session.appIcon,
+        permissions: flowState.session.scopes,
+        connectedAt: new Date().toISOString(),
+      }
+
+      // Store in versioned storage
+      setConnectedApp(newApp)
+    } catch (error) {
+      setFlowState({
+        sessionId: flowState.sessionId,
+        status: "error",
+        error:
+          error instanceof SessionRelayError
+            ? error.message
+            : "Failed to approve session",
+      })
+    } finally {
+      setIsApproving(false)
+    }
+  }, [flowState.session, flowState.sessionId, walletAddress])
+
+  const declineHref = flowState.session?.appId
+    ? `/apps/${flowState.session.appId}`
+    : "/data"
+
+  return {
+    flowState,
+    currentStep,
+    isApproving,
+    authUrl,
+    authError,
+    startBrowserAuth,
+    handleApprove,
+    declineHref,
+    authLoading,
+    walletAddress,
+  }
+}

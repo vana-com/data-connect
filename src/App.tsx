@@ -25,7 +25,7 @@ const Settings = lazy(() =>
   import("./pages/Settings").then(m => ({ default: m.Settings }))
 )
 const GrantFlow = lazy(() =>
-  import("./pages/GrantFlow").then(m => ({ default: m.GrantFlow }))
+  import("./pages/grant-flow").then(m => ({ default: m.GrantFlow }))
 )
 
 function AppContent() {

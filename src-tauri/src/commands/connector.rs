@@ -382,7 +382,22 @@ fn get_bundled_playwright_runner(app: &AppHandle) -> Option<(PathBuf, Option<Pat
     #[cfg(target_os = "linux")]
     let binary_name = "playwright-runner";
 
-    // Try binaries/ path first (CI builds)
+    // Try playwright-runner/dist path (matches tauri.conf.json resources config)
+    let dist_path = resource_dir.join("playwright-runner").join("dist");
+    let dist_binary = dist_path.join(binary_name);
+    let dist_browsers = dist_path.join("browsers");
+
+    if dist_binary.exists() {
+        log::info!("Found bundled Playwright runner at {:?}", dist_binary);
+        let browsers = if dist_browsers.exists() {
+            Some(dist_browsers)
+        } else {
+            None
+        };
+        return Some((dist_binary, browsers));
+    }
+
+    // Try binaries/ path (alternative CI builds layout)
     let binary_path = resource_dir.join("binaries").join(binary_name);
     let browsers_path = resource_dir.join("binaries").join("browsers");
 

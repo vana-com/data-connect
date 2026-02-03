@@ -2,7 +2,7 @@ import { useEffect } from "react"
 import { describe, expect, it } from "vitest"
 import { render, waitFor } from "@testing-library/react"
 import { createMemoryRouter, RouterProvider, useLocation } from "react-router-dom"
-import { useDeepLink } from "./useDeepLink"
+import { useDeepLink } from "./use-deep-link"
 
 function DeepLinkHarness({
   onChange,

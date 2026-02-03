@@ -57,10 +57,11 @@ export const textVariants = cva(
         xlarge: "text-xlarge",
         heading: "text-heading",
         subtitle: "text-subtitle",
-        title: "text-title text-balance",
-        display: "text-display text-balance",
-        hero: "text-hero text-balance",
+        title: "text-title text-balance font-[450]",
+        display: "text-display text-balance font-[450]",
+        hero: "text-hero text-balance font-[450]",
       },
+      // opsz 32 matches Inter's static Display font
       optical: {
         auto: "",
         display: '[font-variation-settings:"opsz"_32]',

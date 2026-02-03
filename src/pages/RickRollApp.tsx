@@ -1,21 +1,62 @@
 import { useSyncExternalStore } from "react"
 import { Link, useNavigate } from "react-router-dom"
-import { ExternalLinkIcon } from "lucide-react"
+import { ChevronRight, ArrowLeftIcon } from "lucide-react"
 import { RickRollApp } from "../apps/rickroll/app"
+import { PlatformIcon } from "@/components/icons/platform-icon"
 import { Text } from "@/components/typography/text"
-import { Button } from "@/components/ui/button"
+import { ActionButton } from "@/components/typography/action-button"
+import { LearnMoreLink } from "@/components/typography/learn-more-link"
+import { Button, ButtonArrow } from "@/components/ui/button"
 import { DEFAULT_APP_ID, getAppRegistryEntry } from "../apps/registry"
 import { buildGrantSearchParams } from "../lib/grant-params"
 import { isAppConnected, subscribeConnectedApps } from "../lib/storage"
+import { ROUTES } from "@/config/routes"
 
 const getIsRickrollConnected = () => isAppConnected(DEFAULT_APP_ID)
 
-// Host page + access gating for the RickRoll demo app. The actual app UI
-// lives in `src/apps/rickroll/app.tsx` and renders after the grant is approved.
+const DATA_SOURCE_LABELS: Record<string, string> = {
+  chatgpt: "ChatGPT",
+  reddit: "Reddit",
+  twitter: "Twitter",
+  x: "X (Twitter)",
+  instagram: "Instagram",
+  linkedin: "LinkedIn",
+  spotify: "Spotify",
+  tiktok: "TikTok",
+  youtube: "YouTube",
+  facebook: "Facebook",
+  google: "Google",
+}
+
+function getPrimaryDataSourceLabel(scopes?: string[]) {
+  if (!scopes || scopes.length === 0) return null
+  const scopeToken = scopes.map(scope => scope.split(":")[1] ?? scope).find(Boolean)
+  if (!scopeToken) return null
+  const scopeKey = scopeToken.split("-")[0]?.toLowerCase()
+  if (!scopeKey) return null
+  return (
+    DATA_SOURCE_LABELS[scopeKey] ??
+    `${scopeKey.charAt(0).toUpperCase()}${scopeKey.slice(1)}`
+  )
+}
+
+// Host page + access gating for the RickRoll demo app.
+// This renders the CTA when not connected, and renders the actual app UI (eg. RickRollApp from src/apps/rickroll/app.tsx) once connected.
 export function RickRollAppPage() {
   const navigate = useNavigate()
   const isConnected = useSyncExternalStore(subscribeConnectedApps, getIsRickrollConnected)
   const appEntry = getAppRegistryEntry(DEFAULT_APP_ID)
+  const dataSourceLabel = getPrimaryDataSourceLabel(appEntry?.scopes)
+  const connectTitle = dataSourceLabel
+    ? `Connect your ${dataSourceLabel}`
+    : "Connect your data"
+  const dataLabel = dataSourceLabel ? `${dataSourceLabel} data` : "data"
+  const connectDescription = (
+    <>
+      This saves your {dataLabel} to your computer. <LearnMoreLink />
+    </>
+  )
+  const connectCta = dataSourceLabel ? `Connect ${dataSourceLabel}` : "Connect data"
 
   const handleConnect = () => {
     // Trigger grant flow using React Router navigation
@@ -26,41 +67,40 @@ export function RickRollAppPage() {
       scopes: appEntry?.scopes,
     })
     const search = searchParams.toString()
-    navigate(`/grant${search ? `?${search}` : ""}`)
+    navigate(`${ROUTES.grant}${search ? `?${search}` : ""}`)
   }
 
+  // This is where VDC07-CONNECT UI is rendered
   if (!isConnected) {
     return (
-      <div className="flex-1 overflow-auto bg-muted">
-        <div className="container py-w16">
-          <div className="mx-auto max-w-[500px] rounded-card bg-background p-10 text-center shadow-md">
-            <Text as="h1" intent="heading" weight="semi" className="mb-4">
-              RickRoll Facts
-            </Text>
-            <Text as="p" intent="body" color="mutedForeground" className="mb-8">
-              Discover fun facts from your ChatGPT conversations
-            </Text>
+      <div className="container py-w24">
+        <div className="space-y-w6">
+          <Text as="h1" intent="title">
+            {connectTitle}
+          </Text>
+          <Text as="p" intent="body">
+            {connectDescription}
+          </Text>
+          <ActionButton size="xl" className="gap-3 group" onClick={handleConnect}>
+            <span aria-hidden="true">
+              <PlatformIcon name={dataSourceLabel ?? "Data"} size={32} />
+            </span>
+            <span>{connectCta}</span>
+            <ButtonArrow
+              icon={ChevronRight}
+              className="size-[1.5em] text-muted-foreground group-hover:text-foreground"
+              aria-hidden="true"
+            />
+          </ActionButton>
 
-            <div className="mb-6 rounded-card border border-border bg-muted p-6 text-left">
-              <Text as="p" intent="small" weight="medium" className="mb-2">
-                Authorization Required
-              </Text>
-              <Text as="p" intent="small" color="mutedForeground">
-                This app needs access to your ChatGPT export data to generate insights
-                about your conversations.
-              </Text>
-            </div>
-
-            <Button type="button" variant="accent" fullWidth onClick={handleConnect}>
-              Grant Access
-            </Button>
-
-            <Button asChild variant="outline" className="mt-4">
-              <Link to="/data">
-                <ExternalLinkIcon aria-hidden="true" className="size-4" />
-                Back to Your Data
-              </Link>
-            </Button>
+          <div className="">
+            <Link
+              to={ROUTES.apps}
+              className="link flex items-center gap-2 text-muted-foreground"
+            >
+              <ArrowLeftIcon aria-hidden="true" className="size-4" />
+              Back to your Apps
+            </Link>
           </div>
         </div>
       </div>

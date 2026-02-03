@@ -47,7 +47,8 @@ export function RickRollApp() {
 
             <Button
               type="button"
-              variant="accent"
+              variant="default"
+              size="lg"
               fullWidth
               onClick={handleRequestAccess}
             >

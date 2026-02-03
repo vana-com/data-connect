@@ -27,7 +27,7 @@ type SettingsSection = 'account' | 'apps' | 'storage' | 'about';
 
 export function Settings() {
   const navigate = useNavigate();
-  const { user, logout, isAuthenticated } = useAuth();
+  const { user, logout, isAuthenticated, walletAddress } = useAuth();
   const personalServer = usePersonalServer();
   const [activeSection, setActiveSection] = useState<SettingsSection>('account');
   const [dataPath, setDataPath] = useState<string>('');
@@ -216,6 +216,9 @@ export function Settings() {
               <SettingsStorage
                 dataPath={dataPath}
                 onOpenDataFolder={openDataFolder}
+                personalServerPort={personalServer.port}
+                personalServerStatus={personalServer.status}
+                walletAddress={walletAddress ?? null}
               />
             )}
 

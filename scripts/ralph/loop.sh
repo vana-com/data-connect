@@ -7,13 +7,16 @@ set -euo pipefail
 #   ./loop.sh                      # build mode, unlimited iterations
 #   ./loop.sh plan                 # plan mode, unlimited iterations
 #   ./loop.sh 10                   # build mode, max 10 iterations
-#   ./loop.sh plan 5               # plan mode, max 5 iterations
+#   ./loop.sh plan 1               # plan mode, max 1 iterations
 #   ./loop.sh path/to/feature plan # plan mode, feature root override
 #   ./loop.sh path/to/feature 3    # build mode, feature root override
 #
 # Notes:
-# - This script assumes you have an agent CLI that can read a prompt from stdin.
-# - Default command is Claude Code in headless mode (override via RALPH_AGENT_CMD).
+# - This script supports stdin or prompt-arg agents (Cursor defaults to arg).
+# - Default agent is Cursor CLI (override via RALPH_AGENT or RALPH_AGENT_CMD).
+# - Toggle agent: RALPH_AGENT=cursor|claude (or set RALPH_AGENT_CMD for a custom command).
+# - Prompt mode: RALPH_AGENT_PROMPT_MODE=arg|stdin.
+# - Cursor model: RALPH_AGENT_MODEL=gpt-5.2-codex (default).
 # - We intentionally keep this script close to the Ralph playbook: dumb outer loop,
 #   shared state in files + git, minimal orchestration.
 
@@ -57,13 +60,49 @@ if [[ ! -f "$PROMPT_FILE" ]]; then
   fi
 fi
 
-AGENT_CMD_DEFAULT=(claude -p --dangerously-skip-permissions)
+CURSOR_AGENT_MODEL_DEFAULT="gpt-5.2-codex"
+CURSOR_AGENT_MODEL="${RALPH_AGENT_MODEL:-$CURSOR_AGENT_MODEL_DEFAULT}"
+CURSOR_AGENT_CMD_DEFAULT=(agent -p --force --output-format text --model "$CURSOR_AGENT_MODEL")
+CLAUDE_AGENT_CMD_DEFAULT=(claude -p --dangerously-skip-permissions)
+AGENT_CMD_DEFAULT=("${CURSOR_AGENT_CMD_DEFAULT[@]}")
+AGENT_FLAVOR="cursor"
 if [[ -n "${RALPH_AGENT_CMD:-}" ]]; then
+  AGENT_FLAVOR="custom"
   # shellcheck disable=SC2206
   AGENT_CMD=($RALPH_AGENT_CMD)
 else
-  AGENT_CMD=("${AGENT_CMD_DEFAULT[@]}")
+  case "${RALPH_AGENT:-cursor}" in
+    claude)
+      AGENT_FLAVOR="claude"
+      AGENT_CMD=("${CLAUDE_AGENT_CMD_DEFAULT[@]}")
+      ;;
+    cursor)
+      AGENT_FLAVOR="cursor"
+      AGENT_CMD=("${CURSOR_AGENT_CMD_DEFAULT[@]}")
+      ;;
+    *)
+      AGENT_FLAVOR="cursor"
+      AGENT_CMD=("${AGENT_CMD_DEFAULT[@]}")
+      ;;
+  esac
 fi
+AGENT_MODEL=""
+case "$AGENT_FLAVOR" in
+  cursor)
+    AGENT_MODEL="$CURSOR_AGENT_MODEL"
+    ;;
+  claude)
+    AGENT_MODEL="(claude default)"
+    ;;
+  custom)
+    AGENT_MODEL="(from RALPH_AGENT_CMD)"
+    ;;
+esac
+AGENT_PROMPT_MODE_DEFAULT="stdin"
+if [[ "$AGENT_FLAVOR" == "cursor" ]]; then
+  AGENT_PROMPT_MODE_DEFAULT="arg"
+fi
+AGENT_PROMPT_MODE="${RALPH_AGENT_PROMPT_MODE:-$AGENT_PROMPT_MODE_DEFAULT}"
 
 function render_prompt() {
   local src="$1"
@@ -86,6 +125,10 @@ else
   echo "Max loops:   unlimited"
 fi
 echo "Agent cmd:   ${AGENT_CMD[*]}"
+if [[ -n "$AGENT_MODEL" ]]; then
+  echo "Agent model: $AGENT_MODEL"
+fi
+echo "Prompt mode: $AGENT_PROMPT_MODE"
 echo "Repo:        $REPO_DIR"
 echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
 
@@ -105,7 +148,12 @@ while true; do
   echo "ITERATION_START: iteration=$ITERATION mode=$MODE started_at=\"$(date -u "+%Y-%m-%dT%H:%M:%SZ")\""
   echo "ITERATION_LOG: $LOG_FILE"
   render_prompt "$PROMPT_FILE" "$FEATURE_ROOT" > "$TMP_PROMPT"
-  "${AGENT_CMD[@]}" < "$TMP_PROMPT" 2>&1 | tee "$LOG_FILE"
+  if [[ "$AGENT_PROMPT_MODE" == "arg" ]]; then
+    PROMPT_CONTENT="$(<"$TMP_PROMPT")"
+    "${AGENT_CMD[@]}" "$PROMPT_CONTENT" 2>&1 | tee "$LOG_FILE"
+  else
+    "${AGENT_CMD[@]}" < "$TMP_PROMPT" 2>&1 | tee "$LOG_FILE"
+  fi
   AGENT_EXIT_CODE_RAW="${PIPESTATUS[0]}"
   rm -f "$TMP_PROMPT"
   set -e

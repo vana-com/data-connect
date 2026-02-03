@@ -27,7 +27,7 @@
     "outputPath": "dist"
   },
   "dependencies": {
-    "personal-server-ts": "github:vana-com/personal-server-ts#main",
+    "personal-server-ts": "github:vana-com/personal-server-ts#feat/data-portability-v1",
     "better-sqlite3": "^12.6.2"
   },
   "devDependencies": {

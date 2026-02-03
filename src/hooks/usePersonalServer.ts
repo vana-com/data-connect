@@ -10,7 +10,7 @@ interface PersonalServerStatus {
 }
 
 export function usePersonalServer() {
-  const { walletAddress } = useSelector(
+  const { walletAddress, masterKeySignature } = useSelector(
     (state: RootState) => state.app.auth
   );
   const [status, setStatus] = useState<'stopped' | 'starting' | 'running' | 'error'>('stopped');
@@ -29,7 +29,7 @@ export function usePersonalServer() {
       console.log('[PersonalServer] Starting with wallet:', owner ?? 'none');
       const result = await invoke<PersonalServerStatus>('start_personal_server', {
         port: null,
-        masterKeySignature: null,
+        masterKeySignature: masterKeySignature ?? null,
         gatewayUrl: null,
         ownerAddress: owner,
       });
@@ -45,7 +45,7 @@ export function usePersonalServer() {
       setStatus('error');
       setError(err instanceof Error ? err.message : String(err));
     }
-  }, [walletAddress]);
+  }, [walletAddress, masterKeySignature]);
 
   const stopServer = useCallback(async () => {
     try {

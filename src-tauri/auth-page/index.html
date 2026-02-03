@@ -372,26 +372,47 @@
 
     async function setupWalletIframe(privy) {
       try {
+        console.log('[AUTH] setupWalletIframe: starting...');
+        console.log('[AUTH] privy.embeddedWallet methods:', Object.keys(privy.embeddedWallet || {}));
+        console.log('[AUTH] privy methods:', Object.getOwnPropertyNames(Object.getPrototypeOf(privy)));
+
         const iframeUrl = privy.embeddedWallet.getURL();
+        console.log('[AUTH] iframe URL:', iframeUrl);
+
+        // Remove any existing wallet iframes
+        document.querySelectorAll('iframe[data-privy-wallet]').forEach(el => el.remove());
+
         const iframe = document.createElement('iframe');
         iframe.src = iframeUrl;
         iframe.style.display = 'none';
+        iframe.setAttribute('data-privy-wallet', 'true');
         document.body.appendChild(iframe);
 
         await new Promise((resolve) => {
           iframe.addEventListener('load', () => {
+            console.log('[AUTH] iframe loaded');
             privy.setMessagePoster(iframe.contentWindow);
             window.addEventListener('message', (e) => {
               if (e.source === iframe.contentWindow) {
-                try { privy.embeddedWallet.onMessage(e.data); } catch (_) {}
+                try { privy.embeddedWallet.onMessage(e.data); } catch (err) {
+                  console.warn('[AUTH] onMessage error:', err);
+                }
               }
             });
-            setTimeout(resolve, 1000);
+            setTimeout(resolve, 2000);
           });
-          setTimeout(resolve, 5000);
+          iframe.addEventListener('error', (e) => {
+            console.error('[AUTH] iframe load error:', e);
+            resolve();
+          });
+          setTimeout(() => {
+            console.warn('[AUTH] iframe setup timed out after 5s');
+            resolve();
+          }, 5000);
         });
+        console.log('[AUTH] setupWalletIframe: done');
       } catch (e) {
-        console.warn('Embedded wallet iframe setup failed:', e);
+        console.error('[AUTH] Embedded wallet iframe setup failed:', e);
       }
     }
 
@@ -424,20 +445,25 @@
 
       // Sign master key message for personal server key derivation
       let masterKeySignature = null;
-      if (walletAddress) {
+      if (walletAddress && embeddedWallet) {
         try {
           showLoading('Signing master key...');
+          console.log('[AUTH] Embedded wallet account:', JSON.stringify(embeddedWallet));
           await setupWalletIframe(privy);
-          const provider = await privy.embeddedWallet.getProvider();
+          console.log('[AUTH] Getting provider for wallet:', embeddedWallet.address);
+          const provider = await privy.embeddedWallet.getProvider(embeddedWallet);
+          console.log('[AUTH] Provider obtained:', typeof provider, provider ? 'ok' : 'null');
           // personal_sign expects hex-encoded message
           const msgHex = '0x' + Array.from(new TextEncoder().encode('vana-master-key-v1')).map(b => b.toString(16).padStart(2, '0')).join('');
+          console.log('[AUTH] Requesting personal_sign...');
           masterKeySignature = await provider.request({
             method: 'personal_sign',
             params: [msgHex, walletAddress],
           });
           console.log('[AUTH] Master key signed:', masterKeySignature?.substring(0, 20) + '...');
         } catch (e) {
-          console.warn('[AUTH] Master key signing failed (non-fatal):', e.message || e);
+          console.error('[AUTH] Master key signing failed:', e);
+          console.error('[AUTH] Error details:', e.stack || e.message || e);
         }
       }
 
@@ -456,10 +482,127 @@
         masterKeySignature,
       });
 
+      // Register personal server on-chain
+      if (walletAddress && embeddedWallet) {
+        try {
+          await registerPersonalServer(privy, walletAddress, embeddedWallet);
+        } catch (e) {
+          console.warn('[AUTH] Server registration failed (non-fatal):', e.message || e);
+        }
+      }
+
       showSuccess();
       // Try to close the tab; browsers block this for non-JS-opened tabs,
       // so the user may need to close it manually
       setTimeout(() => { try { window.close(); } catch (_) {} }, 1500);
+    }
+
+    async function registerPersonalServer(privy, walletAddress, walletAccount) {
+      console.log('[AUTH] registerPersonalServer: starting...');
+      showLoading('Starting your server...');
+
+      // Poll /server-identity until the personal server is ready
+      let identity = null;
+      for (let i = 0; i < 15; i++) {
+        await new Promise(r => setTimeout(r, 2000));
+        try {
+          console.log('[AUTH] Polling /server-identity attempt', i + 1);
+          const resp = await fetch('/server-identity');
+          console.log('[AUTH] /server-identity response:', resp.status);
+          if (resp.ok) {
+            identity = await resp.json();
+            console.log('[AUTH] Server identity:', JSON.stringify(identity).substring(0, 200));
+            break;
+          }
+        } catch (e) {
+          console.warn('[AUTH] /server-identity fetch error:', e.message);
+        }
+      }
+
+      if (!identity) {
+        console.warn('[AUTH] Server not ready after 30s, skipping registration');
+        return;
+      }
+
+      const serverAddress = identity.identity?.address || identity.address;
+      const publicKey = identity.identity?.publicKey || identity.publicKey;
+      const serverId = identity.identity?.serverId || identity.serverId;
+      const serverPort = identity.port || identity.identity?.port;
+
+      if (serverId) {
+        console.log('[AUTH] Server already registered:', serverId);
+        return;
+      }
+
+      if (!serverAddress || !publicKey) {
+        console.warn('[AUTH] Server identity missing address or publicKey');
+        return;
+      }
+
+      showLoading('Registering your server...');
+
+      const serverUrl = serverPort ? `http://localhost:${serverPort}` : 'http://localhost:8080';
+
+      const message = {
+        ownerAddress: walletAddress,
+        serverAddress,
+        publicKey,
+        serverUrl,
+      };
+
+      const typedData = {
+        types: {
+          EIP712Domain: [
+            { name: 'name', type: 'string' },
+            { name: 'version', type: 'string' },
+            { name: 'chainId', type: 'uint256' },
+            { name: 'verifyingContract', type: 'address' },
+          ],
+          ServerRegistration: [
+            { name: 'ownerAddress', type: 'address' },
+            { name: 'serverAddress', type: 'address' },
+            { name: 'publicKey', type: 'string' },
+            { name: 'serverUrl', type: 'string' },
+          ],
+        },
+        domain: {
+          name: 'Vana Data Portability',
+          version: '1',
+          chainId: 14800,
+          verifyingContract: '0x1483B1F634DBA75AeaE60da7f01A679aabd5ee2c',
+        },
+        primaryType: 'ServerRegistration',
+        message,
+      };
+
+      // Sign with Privy embedded wallet
+      await setupWalletIframe(privy);
+      const provider = await privy.embeddedWallet.getProvider(walletAccount);
+      const signature = await provider.request({
+        method: 'eth_signTypedData_v4',
+        params: [walletAddress, JSON.stringify(typedData)],
+      });
+
+      console.log('[AUTH] Server registration signed:', signature?.substring(0, 20) + '...');
+
+      // Send to our callback server which proxies to gateway
+      const regResp = await fetch('/register-server', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ signature, message }),
+      });
+
+      if (regResp.status === 409) {
+        console.log('[AUTH] Server already registered (409)');
+        return;
+      }
+
+      if (!regResp.ok) {
+        const errText = await regResp.text().catch(() => '');
+        throw new Error(`Registration failed (${regResp.status}): ${errText}`);
+      }
+
+      console.log('[AUTH] Server registered successfully');
     }
 
     async function init() {
@@ -491,6 +634,16 @@
             console.log('[AUTH] Calling loginWithCode...');
             const session = await privy.auth.oauth.loginWithCode(oauthCode, oauthState);
             console.log('[AUTH] loginWithCode succeeded, session keys:', Object.keys(session || {}));
+
+            // Initialize SDK now that we have a valid session — needed for wallet recovery
+            try {
+              console.log('[AUTH] Initializing SDK after login...');
+              await privy.initialize();
+              console.log('[AUTH] SDK initialized successfully');
+            } catch (initErr) {
+              console.warn('[AUTH] Post-login initialize (may be ok):', initErr.message);
+            }
+
             const user = session.user;
             await handleAuthenticatedUser(privy, user, session);
             return;

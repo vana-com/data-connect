@@ -26,6 +26,15 @@ export function AvailableSourcesList({
   )
   const isInstagramAvailable = Boolean(instagramPlatform) && browserReady
 
+  const chatgptPlatform = platforms.find(
+    platform =>
+      platform.id === "chatgpt-playwright" ||
+      platform.id === "chatgpt" ||
+      platform.name.toLowerCase().includes("chatgpt") ||
+      platform.company.toLowerCase().includes("openai")
+  )
+  const isChatGPTAvailable = Boolean(chatgptPlatform) && browserReady
+
   // Empty state when browser not ready
   if (!browserReady) {
     return (
@@ -73,7 +82,12 @@ export function AvailableSourcesList({
         <ConnectSourceCard
           label="Connect ChatGPT"
           Icon={PlatformChatGPTIcon}
-          state="comingSoon"
+          state={isChatGPTAvailable ? "available" : "comingSoon"}
+          onClick={
+            isChatGPTAvailable && chatgptPlatform
+              ? () => onExport(chatgptPlatform)
+              : undefined
+          }
         />
       </div>
     </section>

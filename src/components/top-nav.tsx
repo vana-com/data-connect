@@ -1,5 +1,5 @@
 import { NavLink } from "react-router-dom"
-import { BookOpenIcon, BoxesIcon, ActivityIcon, UserRoundCogIcon } from "lucide-react"
+import { BookOpenIcon, BoxesIcon, ActivityIcon, UserRoundCogIcon, SettingsIcon } from "lucide-react"
 import { DcIcon } from "@/components/icons/dc-icon"
 import { DcLogotype } from "@/components/icons/dc-logotype"
 import { IconMcp } from "@/components/icons/icon-mcp"
@@ -37,6 +37,7 @@ const navItems: NavItem[] = [
   { to: "/apps", label: "Apps", Icon: BoxesIcon },
   { to: "/mcp", label: "MCP", Icon: IconMcp },
   { to: "/activity", label: "Activity", Icon: ActivityIcon },
+  { to: "/settings", label: "Settings", Icon: SettingsIcon },
   { to: "/runs", label: "Account", Icon: UserRoundCogIcon },
 ]
 

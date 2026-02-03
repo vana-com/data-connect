@@ -12,17 +12,10 @@ import {
 import { prepareGrantMessage } from "../../services/grantSigning"
 import { setConnectedApp } from "../../lib/storage"
 import type { ConnectedApp } from "../../types"
+import { DEFAULT_APP_ID, getAppRegistryEntry } from "../../apps/registry"
 import type { GrantFlowParams, GrantFlowState, GrantSession, GrantStep } from "./types"
 
 const PRIVY_APP_ID = import.meta.env.VITE_PRIVY_APP_ID
-
-const DEMO_APPS: Record<string, { name: string; icon: string; scopes: string[] }> = {
-  rickroll: {
-    name: "RickRoll Facts",
-    icon: "🎵",
-    scopes: ["read:chatgpt-conversations"],
-  },
-}
 
 export function useGrantFlow(params: GrantFlowParams) {
   const dispatch = useDispatch()
@@ -39,6 +32,7 @@ export function useGrantFlow(params: GrantFlowParams) {
 
   const sessionId = params?.sessionId
   const appId = params?.appId
+  const scopesKey = params?.scopes?.join("|") ?? ""
 
   useEffect(() => {
     authTriggered.current = false
@@ -63,19 +57,20 @@ export function useGrantFlow(params: GrantFlowParams) {
         // Check if this is a local demo app (sessionId starts with 'grant-session-')
         // For demo apps, use mock session data instead of fetching from relay
         let session: GrantSession
-        if (sessionId.startsWith("grant-session-") && appId) {
+        if (sessionId.startsWith("grant-session-")) {
           // Mock session data for local demo apps
-          const appInfo = DEMO_APPS[appId] || {
-            name: appId,
-            icon: "🔗",
-            scopes: ["read:data"],
-          }
+          const resolvedAppId = appId || DEFAULT_APP_ID
+          const appInfo = getAppRegistryEntry(resolvedAppId)
+          const scopes =
+            params.scopes && params.scopes.length > 0
+              ? params.scopes
+              : appInfo?.scopes || ["read:data"]
           session = {
             id: sessionId,
-            appId,
-            appName: appInfo.name,
-            appIcon: appInfo.icon,
-            scopes: appInfo.scopes,
+            appId: resolvedAppId,
+            appName: appInfo?.name || resolvedAppId,
+            appIcon: appInfo?.icon || "🔗",
+            scopes,
             expiresAt: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString(), // 30 days
           }
         } else {
@@ -97,7 +92,7 @@ export function useGrantFlow(params: GrantFlowParams) {
     }
 
     loadSession()
-  }, [sessionId, appId])
+  }, [sessionId, appId, scopesKey])
 
   useEffect(() => {
     if (!flowState.session || authLoading) return

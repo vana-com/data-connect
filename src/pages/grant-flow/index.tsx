@@ -1,4 +1,5 @@
-import { useLocation } from "react-router-dom"
+import { useSearchParams } from "react-router-dom"
+import { getGrantParamsFromSearchParams } from "@/lib/grant-params"
 import { useGrantFlow } from "./use-grant-flow"
 import { GrantLoadingState } from "./components/grant-loading-state"
 import { GrantAuthRequiredState } from "./components/grant-auth-required-state"
@@ -7,12 +8,8 @@ import { GrantSuccessState } from "./components/grant-success-state"
 import { GrantConsentState } from "./components/grant-consent-state"
 
 export function GrantFlow() {
-  const location = useLocation()
-  const params = location.state as {
-    sessionId?: string
-    appId?: string
-    scopes?: string[]
-  } | null
+  const [searchParams] = useSearchParams()
+  const params = getGrantParamsFromSearchParams(searchParams)
 
   const {
     flowState,

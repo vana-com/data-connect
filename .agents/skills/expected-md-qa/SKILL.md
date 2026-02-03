@@ -1,6 +1,7 @@
 ---
 name: expected-md-qa
 description: Generate a short expected.md listing what to test in a frontend UI. Use when the user asks for expected.md, QA checklist, or frontend testing instructions.
+link: https://x.com/0xsero/status/2018101731591176325?s=12
 ---
 
 # expected.md QA generator

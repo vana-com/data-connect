@@ -3,6 +3,14 @@ import { render } from "@testing-library/react"
 import { createMemoryRouter, RouterProvider } from "react-router-dom"
 import { Runs } from "./index"
 
+vi.mock("react-router", async () => {
+  const actual = await vi.importActual<object>("react-router")
+  return {
+    ...actual,
+    useNavigate: () => vi.fn(),
+  }
+})
+
 vi.mock("./use-runs-page", () => ({
   useRunsPage: () => ({
     finishedRuns: [],

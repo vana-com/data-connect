@@ -1,9 +1,16 @@
 import { ArrowRight, Loader2, Mail } from "lucide-react"
+import { VanaLogotype } from "@/components/icons/vana-logotype"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Text } from "@/components/typography/text"
 import { PlatformAppleIcon } from "@/components/icons/platform-apple"
 import { useAuthPage } from "./auth"
+import { cn } from "@/lib/classes"
+
+// View this page locally:
+// - npx vite --config vite.auth.config.ts
+// - open http://localhost:5173
+// (Optional) Full Tauri window: npm run tauri:dev
 
 const GoogleIcon = () => (
   <svg className="size-5" viewBox="0 0 24 24" aria-hidden="true">
@@ -55,7 +62,13 @@ export const App = () => {
   return (
     <main className="viewport-wrapper bg-muted text-foreground">
       <div className="viewport-wrapper-child flex min-h-[inherit] items-center justify-center px-6 py-10">
-        <div className="w-full max-w-[520px] rounded-[16px] bg-background p-12 shadow-sm ring-1 ring-foreground/10">
+        <div
+          className={cn(
+            "container bg-background rounded-squish",
+            "py-w12 px-w8",
+            "ring-1 ring-foreground/10"
+          )}
+        >
           {view === "loading" && (
             <div className="flex flex-col items-center justify-center gap-4 py-8 text-center">
               <Loader2 className="size-8 animate-spin text-accent" />
@@ -68,7 +81,12 @@ export const App = () => {
           {view === "success" && (
             <div className="flex flex-col items-center justify-center gap-4 py-8 text-center">
               <div className="flex size-16 items-center justify-center rounded-full bg-success/20 text-success">
-                <svg className="size-8" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+                <svg
+                  className="size-8"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  aria-hidden="true"
+                >
                   <path
                     d="M5 13l4 4L19 7"
                     stroke="currentColor"
@@ -89,16 +107,16 @@ export const App = () => {
 
           {view === "login" && (
             <div className="space-y-6">
-              <div className="space-y-3">
-                <Text as="div" intent="small" weight="bold" className="tracking-tight">
-                  vana
-                </Text>
-                <Text as="h1" intent="heading" weight="semi" className="text-balance">
-                  <span className="text-accent">Data Connect uses Vana Passport</span>
+              <div className="space-y-gap">
+                <VanaLogotype height={13} className="text-iris" />
+                <Text as="h1" intent="title">
+                  <span className="text-iris">
+                    Data Connect uses Vana Passport
+                  </span>
                   <br />
                   to bring your data everywhere
                 </Text>
-                <Text as="p" intent="body" color="mutedForeground">
+                <Text as="p" dim>
                   Sign-in or create your Vana Passport to grant permissions.
                 </Text>
               </div>
@@ -109,7 +127,7 @@ export const App = () => {
                 </div>
               )}
 
-              <div className="space-y-4">
+              <div className="space-y-gap">
                 {!showCode && (
                   <div className="flex items-center gap-3 rounded-[14px] border border-input bg-background px-3 py-1.5 focus-within:border-ring focus-within:ring-2 focus-within:ring-ring/20">
                     <Mail className="size-5 text-muted-foreground" />
@@ -167,7 +185,12 @@ export const App = () => {
 
               {showCode && (
                 <div className="space-y-3">
-                  <Text as="label" intent="small" weight="medium" className="block">
+                  <Text
+                    as="label"
+                    intent="small"
+                    weight="medium"
+                    className="block"
+                  >
                     Enter verification code
                   </Text>
                   <Input
@@ -196,9 +219,18 @@ export const App = () => {
                 </div>
               )}
 
-              <Text intent="fine" color="mutedForeground" align="center" className="leading-relaxed">
+              <Text
+                intent="fine"
+                color="mutedForeground"
+                align="center"
+                className="leading-relaxed"
+              >
                 By creating an account, you agree to our{" "}
-                <a className="link" href="https://www.vana.org/terms" target="_blank">
+                <a
+                  className="link"
+                  href="https://www.vana.org/terms"
+                  target="_blank"
+                >
                   Terms of Service
                 </a>{" "}
                 and{" "}

@@ -1,19 +1,21 @@
 import type { ButtonHTMLAttributes, ElementType } from "react"
 import { cva, type VariantProps } from "class-variance-authority"
 import { buttonVariants } from "@/components/ui/button"
-import { SourceRow } from "@/components/elements/source-row"
+import { SourceStack } from "@/components/elements/source-row"
 import { cn } from "@/lib/utils"
 
 const connectSourceCardVariants = cva(
   [
-    buttonVariants({ variant: "outline" }),
+    buttonVariants({ variant: "outline", size: "xl" }),
     "h-auto w-full items-start justify-between py-4",
     "text-left",
   ],
   {
     variants: {
       state: {
-        available: ["hover:border-accent hover:shadow-[0_2px_8px_rgba(99,102,241,0.1)]"],
+        available: [
+          "hover:border-accent hover:shadow-[0_2px_8px_rgba(99,102,241,0.1)]",
+        ],
         comingSoon: "cursor-default text-muted-foreground",
       },
     },
@@ -60,8 +62,7 @@ export function ConnectSourceCard({
       className={cn(connectSourceCardVariants({ state, className }))}
       {...props}
     >
-      <SourceRow
-        layout="stacked"
+      <SourceStack
         Icon={Icon}
         label={label}
         meta={meta}

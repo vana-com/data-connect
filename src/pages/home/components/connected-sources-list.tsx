@@ -1,8 +1,11 @@
-import { ActionButton, ActionPanel } from "@/components/typography/action-button"
+import {
+  ActionButton,
+  ActionPanel,
+} from "@/components/typography/action-button"
 import { Text } from "@/components/typography/text"
 import { SourceRow } from "@/components/elements/source-row"
 import { cn } from "@/lib/classes"
-import { getLastRunLabel, getPlatformIconComponent } from "@/lib/platform-ui"
+import { getLastRunLabel, getPlatformIconComponent } from "@/lib/platform/ui"
 import type { Platform, Run } from "@/types"
 
 interface ConnectedSourcesListProps {
@@ -33,7 +36,7 @@ export function ConnectedSourcesList({
 
   return (
     <section className="space-y-4">
-      <Text as="h2" intent="body">
+      <Text as="h2" intent="body" weight="medium">
         Your sources
       </Text>
       <div className="flex flex-col gap-3">
@@ -44,9 +47,10 @@ export function ConnectedSourcesList({
             <ActionButton
               key={platform.id}
               onClick={onOpenRuns ? () => onOpenRuns(platform) : undefined}
-              className={cn("items-start justify-between gap-4", "text-left")}
+              size="xl"
+              className={cn("items-start justify-between text-left")}
             >
-              <SourceRow layout="row" Icon={Icon} label={platform.name} meta={meta} />
+              <SourceRow Icon={Icon} label={platform.name} meta={meta} />
             </ActionButton>
           )
         })}

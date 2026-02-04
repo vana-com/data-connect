@@ -10,7 +10,7 @@
 
 - `index.tsx`: page shell, tab switching, section wiring.
 - `types.ts`: `TabKey` union type, `PlatformDisplay` type.
-- `utils.ts`: `PLATFORM_DISPLAY` constant (10 platforms), `getPlatformDisplay` helper.
+- `utils.ts`: re-exports `getPlatformDisplay` from `src/lib/platform/ui.ts`.
 - `use-your-data-page.ts`: route-level state, derived lists, navigation handlers.
 - `components/your-data-header.tsx`: page title and description.
 - `components/your-data-tabs.tsx`: tab switcher UI.
@@ -42,5 +42,5 @@
 ### Notes
 
 - Direct imports only (no barrels) per Vercel React rule `bundle-barrel-imports`.
-- Platform display config is colocated in `utils.ts` for easy updates.
+- Platform display config lives in `src/lib/platform/ui.ts` (data in `registry.ts`).
 - Follows container/presenter pattern: hook handles logic, components handle rendering.

@@ -1,21 +1,10 @@
-import { PlatformChatGPTIcon } from "./platform-chatgpt"
-import { PlatformInstagramGlyphIcon } from "./platform-instagram-glyph"
-import { PlatformLinkedinIcon } from "./platform-linkedin"
-import { PlatformSpotifyIcon } from "./platform-spotify"
+import { getPlatformIconComponentForName } from "@/lib/platform/icons"
+import { cn } from "@/lib/utils"
 
 /**
  * Shared platform icon utilities for displaying connector icons.
  * Used by Home.tsx and ConnectorUpdates.tsx.
  */
-
-function getPlatformIconComponent(platformName: string) {
-  const name = platformName.toLowerCase()
-  if (name.includes("chatgpt")) return PlatformChatGPTIcon
-  if (name.includes("instagram")) return PlatformInstagramGlyphIcon
-  if (name.includes("linkedin")) return PlatformLinkedinIcon
-  if (name.includes("spotify")) return PlatformSpotifyIcon
-  return null
-}
 
 interface PlatformIconProps {
   /** Platform name to display icon for */
@@ -28,8 +17,12 @@ interface PlatformIconProps {
 /**
  * Platform icon component that displays a platform logo or first-letter fallback.
  */
-export function PlatformIcon({ name, size = 24, className }: PlatformIconProps) {
-  const Icon = getPlatformIconComponent(name)
+export function PlatformIcon({
+  name,
+  size = 24,
+  className,
+}: PlatformIconProps) {
+  const Icon = getPlatformIconComponentForName(name)
 
   if (Icon) {
     return (
@@ -45,8 +38,8 @@ export function PlatformIcon({ name, size = 24, className }: PlatformIconProps) 
   const fontSize = Math.round(size * 0.75)
   return (
     <span
-      className={className}
-      style={{ fontSize: `${fontSize}px`, fontWeight: 600, color: "#6b7280" }}
+      className={cn("text-background bg-foreground font-semi", className)}
+      style={{ fontSize: `${fontSize}px` }}
     >
       {name.charAt(0)}
     </span>

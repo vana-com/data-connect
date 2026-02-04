@@ -1,7 +1,10 @@
 import type { ElementType } from "react"
 import type { Platform, Run } from "@/types"
 import { PlatformIcon } from "@/components/icons/platform-icon"
-import { type PlatformRegistryAvailability } from "./registry"
+import {
+  type PlatformRegistryAvailability,
+  type PlatformRegistryEntry,
+} from "./registry"
 import {
   getPlatformRegistryEntryById,
   getPlatformRegistryEntryByName,
@@ -15,6 +18,11 @@ export const getAvailabilityIconClassName = (
   if (availability === "requiresConnector") return "bg-muted text-foreground"
   return "bg-accent/10 text-accent"
 }
+
+const DEFAULT_PLATFORM_PRIMARY = "#94A3B8"
+
+export const getPlatformPrimaryColor = (entry: PlatformRegistryEntry | null) =>
+  entry?.primaryColor ?? DEFAULT_PLATFORM_PRIMARY
 
 export const getPlatformDisplay = (platform: { id: string; name: string }) => {
   const entry =
@@ -61,6 +69,6 @@ export function getPlatformIconComponent(
   const Icon = getPlatformIconComponentForPlatform(platform)
   if (Icon) return Icon
   return ({ className }: { className?: string }) => (
-    <PlatformIcon name={platform.name} size={20} className={className} />
+    <PlatformIcon iconName={platform.name} size={20} className={className} />
   )
 }

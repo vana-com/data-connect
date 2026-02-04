@@ -8,6 +8,7 @@ export interface PlatformRegistryEntry {
   displayName: string
   iconKey?: string
   iconEmoji: string
+  primaryColor: string
   platformIds?: string[]
   aliases?: string[]
   availability?: PlatformRegistryAvailability
@@ -21,6 +22,7 @@ export const PLATFORM_REGISTRY: PlatformRegistryEntry[] = [
     displayName: "ChatGPT",
     iconKey: "chatgpt",
     iconEmoji: "🤖",
+    primaryColor: "#10A37F",
     platformIds: ["chatgpt-playwright", "chatgpt"],
     aliases: ["openai"],
     availability: "requiresConnector",
@@ -32,6 +34,7 @@ export const PLATFORM_REGISTRY: PlatformRegistryEntry[] = [
     displayName: "Instagram",
     iconKey: "instagram",
     iconEmoji: "📸",
+    primaryColor: "#E4405F",
     platformIds: ["instagram-playwright", "instagram"],
     aliases: ["meta"],
     availability: "requiresConnector",
@@ -43,6 +46,7 @@ export const PLATFORM_REGISTRY: PlatformRegistryEntry[] = [
     displayName: "LinkedIn",
     iconKey: "linkedin",
     iconEmoji: "💼",
+    primaryColor: "#0A66C2",
     platformIds: ["linkedin-playwright", "linkedin"],
     availability: "comingSoon",
     showInConnectList: true,
@@ -53,6 +57,7 @@ export const PLATFORM_REGISTRY: PlatformRegistryEntry[] = [
     displayName: "Spotify",
     iconKey: "spotify",
     iconEmoji: "🎵",
+    primaryColor: "#1DB954",
     platformIds: ["spotify"],
     availability: "comingSoon",
     showInConnectList: true,
@@ -62,6 +67,7 @@ export const PLATFORM_REGISTRY: PlatformRegistryEntry[] = [
     displayName: "X (Twitter)",
     iconKey: "x",
     iconEmoji: "𝕏",
+    primaryColor: "#111111",
     platformIds: ["x"],
     aliases: ["x (twitter)"],
   },
@@ -69,36 +75,42 @@ export const PLATFORM_REGISTRY: PlatformRegistryEntry[] = [
     id: "twitter",
     displayName: "Twitter",
     iconEmoji: "🐦",
+    primaryColor: "#1D9BF0",
     platformIds: ["twitter"],
   },
   {
     id: "reddit",
     displayName: "Reddit",
     iconEmoji: "🔴",
+    primaryColor: "#FF4500",
     platformIds: ["reddit"],
   },
   {
     id: "facebook",
     displayName: "Facebook",
     iconEmoji: "👤",
+    primaryColor: "#1877F2",
     platformIds: ["facebook"],
   },
   {
     id: "google",
     displayName: "Google",
     iconEmoji: "🔵",
+    primaryColor: "#4285F4",
     platformIds: ["google"],
   },
   {
     id: "tiktok",
     displayName: "TikTok",
     iconEmoji: "🎵",
+    primaryColor: "#EE1D52",
     platformIds: ["tiktok"],
   },
   {
     id: "youtube",
     displayName: "YouTube",
     iconEmoji: "▶️",
+    primaryColor: "#FF0000",
     platformIds: ["youtube"],
   },
 ]

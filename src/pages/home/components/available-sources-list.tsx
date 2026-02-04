@@ -1,4 +1,5 @@
 import { ActionButton } from "@/components/typography/action-button"
+import { EyebrowBadge } from "@/components/typography/eyebrow-badge"
 import { Text } from "@/components/typography/text"
 import { SourceStack } from "@/components/elements/source-row"
 import { cn } from "@/lib/classes"
@@ -8,6 +9,7 @@ import {
   getConnectSourceState,
   resolvePlatformForEntry,
 } from "@/lib/platform/utils"
+import { getPlatformPrimaryColor } from "@/lib/platform/ui"
 
 interface AvailableSourcesListProps {
   platforms: Platform[]
@@ -23,7 +25,7 @@ export function AvailableSourcesList({
   return (
     <section className="space-y-gap">
       <Text as="h2" weight="medium">
-        Connect sources (more coming soon)
+        Connect sources
       </Text>
       <div className="grid grid-cols-2 gap-2 action-outset">
         {connectEntries
@@ -33,6 +35,7 @@ export function AvailableSourcesList({
             return {
               iconName: entry.displayName,
               label: `Connect ${entry.displayName}`,
+              stackPrimaryColor: getPlatformPrimaryColor(entry),
               isAvailable: state === "available",
               onClick:
                 state === "available" && platform
@@ -46,28 +49,37 @@ export function AvailableSourcesList({
             priority: card.isAvailable ? 0 : 1,
           }))
           .sort((a, b) => a.priority - b.priority || a.index - b.index)
-          .map(({ iconName, label, isAvailable, onClick }) => (
-            <ActionButton
-              key={label}
-              onClick={onClick}
-              disabled={!isAvailable}
-              size="xl"
-              className={cn(
-                "h-auto py-4",
-                "items-start justify-between text-left"
-                // isAvailable &&
-                //   "hover:border-accent hover:shadow-[0_2px_8px_rgba(99,102,241,0.1)]"
-              )}
-            >
-              <SourceStack
-                iconName={iconName}
-                label={label}
-                showArrow={isAvailable}
-                iconClassName={cn(!isAvailable && "opacity-70")}
-                labelColor={isAvailable ? "foreground" : "mutedForeground"}
-              />
-            </ActionButton>
-          ))}
+          .map(
+            ({ iconName, label, stackPrimaryColor, isAvailable, onClick }) => (
+              <ActionButton
+                key={label}
+                onClick={onClick}
+                disabled={!isAvailable}
+                size="xl"
+                className={cn(
+                  "h-auto p-0 overflow-hidden disabled:opacity-100"
+                )}
+              >
+                <SourceStack
+                  iconName={iconName}
+                  label={label}
+                  stackPrimaryColor={stackPrimaryColor}
+                  showArrow={isAvailable}
+                  trailingSlot={
+                    isAvailable ? null : (
+                      <EyebrowBadge
+                        variant="outline"
+                        className="text-foreground-muted"
+                      >
+                        soon
+                      </EyebrowBadge>
+                    )
+                  }
+                  labelColor={isAvailable ? "foreground" : "mutedForeground"}
+                />
+              </ActionButton>
+            )
+          )}
       </div>
     </section>
   )

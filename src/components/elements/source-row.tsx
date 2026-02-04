@@ -1,7 +1,9 @@
-import { ArrowRight, ChevronRight } from "lucide-react"
+import type { ReactNode } from "react"
+import { ChevronRightIcon } from "lucide-react"
 import { PlatformIcon } from "@/components/icons/platform-icon"
 import { Text } from "@/components/typography/text"
 import { cn } from "@/lib/classes"
+import { fieldHeight } from "../typography/field"
 
 export interface SourceRowProps {
   iconName: string
@@ -13,6 +15,13 @@ export interface SourceRowProps {
   metaColor?: "foreground" | "mutedForeground"
   arrowClassName?: string
 }
+
+export interface SourceStackProps extends SourceRowProps {
+  stackPrimaryColor?: string
+  trailingSlot?: ReactNode
+}
+
+const chevronStyle = "text-foreground/30 group-hover:text-foreground"
 
 export function SourceRow({
   iconName,
@@ -50,11 +59,8 @@ export function SourceRow({
         <div className="h-full flex items-center gap-3">
           {/* CTA icon */}
           {shouldShowArrow ? (
-            <ChevronRight
-              className={cn(
-                "size-7 text-foreground/30 group-hover:text-foreground",
-                arrowClassName
-              )}
+            <ChevronRightIcon
+              className={cn(chevronStyle, "size-7", arrowClassName)}
               aria-hidden
             />
           ) : null}
@@ -73,38 +79,65 @@ export function SourceStack({
   labelColor = "foreground",
   metaColor = "mutedForeground",
   arrowClassName,
-}: SourceRowProps) {
+  stackPrimaryColor,
+  trailingSlot,
+}: SourceStackProps) {
   const shouldShowArrow = showArrow ?? Boolean(meta)
-  const shouldRenderMetaSection = shouldShowArrow || Boolean(meta)
+  const shouldRenderMetaSection =
+    shouldShowArrow || Boolean(meta) || Boolean(trailingSlot)
 
   return (
-    <>
-      <div className="flex flex-col gap-3">
-        <PlatformIcon
-          iconName={iconName}
-          size={30}
-          className={cn(iconClassName)}
-        />
-        <Text as="span" intent="button" weight="medium" color={labelColor}>
-          {label}
-        </Text>
+    <div className="w-full">
+      <div
+        className="h-[90px] flex items-start border-b"
+        style={
+          stackPrimaryColor
+            ? {
+                backgroundImage: `linear-gradient(30deg, color-mix(in srgb, ${stackPrimaryColor} 9%, transparent) 0%, color-mix(in srgb, ${stackPrimaryColor} 3%, transparent) 55%, transparent 100%)`,
+              }
+            : undefined
+        }
+      >
+        <div className="p-2">
+          <PlatformIcon
+            iconName={iconName}
+            size={24}
+            className={cn("p-3", iconClassName)}
+          />
+        </div>
       </div>
 
       {/* Bottom */}
-      {shouldRenderMetaSection ? (
-        <div className="flex items-center gap-2 self-end">
-          {meta ? (
-            <Text as="span" intent="small" color={metaColor}>
-              {meta}
-            </Text>
-          ) : null}
+      <div
+        className={cn(
+          "flex items-center justify-between",
+          fieldHeight.default,
+          "px-4"
+        )}
+      >
+        <Text as="span" intent="button" weight="medium" color={labelColor}>
+          {label}
+        </Text>
+        {shouldRenderMetaSection ? (
+          <div className="flex items-center gap-2 self-end h-full">
+            {meta ? (
+              <Text as="span" intent="small" color={metaColor}>
+                {meta}
+              </Text>
+            ) : null}
 
-          {/* CTA icon */}
-          {shouldShowArrow ? (
-            <ArrowRight className={cn("size-5", arrowClassName)} aria-hidden />
-          ) : null}
-        </div>
-      ) : null}
-    </>
+            {trailingSlot}
+
+            {/* CTA icon */}
+            {shouldShowArrow ? (
+              <ChevronRightIcon
+                className={cn(chevronStyle, "size-5", arrowClassName)}
+                aria-hidden
+              />
+            ) : null}
+          </div>
+        ) : null}
+      </div>
+    </div>
   )
 }

@@ -30,7 +30,9 @@ const DATA_SOURCE_LABELS: Record<string, string> = {
 
 function getPrimaryDataSourceLabel(scopes?: string[]) {
   if (!scopes || scopes.length === 0) return null
-  const scopeToken = scopes.map(scope => scope.split(":")[1] ?? scope).find(Boolean)
+  const scopeToken = scopes
+    .map(scope => scope.split(":")[1] ?? scope)
+    .find(Boolean)
   if (!scopeToken) return null
   const scopeKey = scopeToken.split("-")[0]?.toLowerCase()
   if (!scopeKey) return null
@@ -44,7 +46,10 @@ function getPrimaryDataSourceLabel(scopes?: string[]) {
 // This renders the CTA when not connected, and renders the actual app UI (eg. RickRollApp from src/apps/rickroll/app.tsx) once connected.
 export function RickRollAppPage() {
   const navigate = useNavigate()
-  const isConnected = useSyncExternalStore(subscribeConnectedApps, getIsRickrollConnected)
+  const isConnected = useSyncExternalStore(
+    subscribeConnectedApps,
+    getIsRickrollConnected
+  )
   const appEntry = getAppRegistryEntry(DEFAULT_APP_ID)
   const dataSourceLabel = getPrimaryDataSourceLabel(appEntry?.scopes)
   const connectTitle = dataSourceLabel
@@ -56,7 +61,9 @@ export function RickRollAppPage() {
       This saves your {dataLabel} to your computer. <LearnMoreLink />
     </>
   )
-  const connectCta = dataSourceLabel ? `Connect ${dataSourceLabel}` : "Connect data"
+  const connectCta = dataSourceLabel
+    ? `Connect ${dataSourceLabel}`
+    : "Connect data"
 
   const handleConnect = () => {
     // Trigger grant flow using React Router navigation
@@ -70,7 +77,8 @@ export function RickRollAppPage() {
     navigate(`${ROUTES.grant}${search ? `?${search}` : ""}`)
   }
 
-  // This is where VDC07-CONNECT UI is rendered
+  // This is currently "Connect your ChatGPT data" BUT instead it opens the Privy/Passport Auth page.
+  // TODO: so change this to "Allow access to your ChatGPT data", where upon success opens Privy/Passport is correct
   if (!isConnected) {
     return (
       <div className="container py-w24">
@@ -81,9 +89,13 @@ export function RickRollAppPage() {
           <Text as="p" intent="body">
             {connectDescription}
           </Text>
-          <ActionButton size="xl" className="gap-3 group" onClick={handleConnect}>
+          <ActionButton
+            size="xl"
+            className="gap-3 group"
+            onClick={handleConnect}
+          >
             <span aria-hidden="true">
-              <PlatformIcon name={dataSourceLabel ?? "Data"} size={32} />
+              <PlatformIcon iconName={dataSourceLabel ?? "Data"} size={32} />
             </span>
             <span>{connectCta}</span>
             <ButtonArrow
@@ -96,9 +108,9 @@ export function RickRollAppPage() {
           <div className="">
             <Link
               to={ROUTES.apps}
-              className="link flex items-center gap-2 text-muted-foreground"
+              className="link flex items-center gap-1.5 text-muted-foreground"
             >
-              <ArrowLeftIcon aria-hidden="true" className="size-4" />
+              <ArrowLeftIcon aria-hidden="true" className="size-em" />
               Back to your Apps
             </Link>
           </div>

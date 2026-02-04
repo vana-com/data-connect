@@ -17,7 +17,7 @@ export function AvailableSourcesSection({
   onConnect,
 }: AvailableSourcesSectionProps) {
   return (
-    <section className="space-y-4">
+    <section className="space-y-gap">
       <Text as="h2" intent="heading" weight="semi">
         {hasConnectedSources ? "Add more sources" : "Connect your data sources"}
       </Text>

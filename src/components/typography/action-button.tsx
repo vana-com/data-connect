@@ -8,7 +8,7 @@ export function ActionButton({
   className,
   children,
   variant = "outline",
-  size = "lg",
+  size = "xl",
   fullWidth = true,
   type = "button",
   ...props
@@ -27,14 +27,23 @@ export function ActionButton({
   )
 }
 
-type ActionPanelProps = ComponentProps<"div">
+type ActionPanelProps = ComponentProps<"div"> &
+  Pick<ActionButtonProps, "fullWidth" | "size" | "variant">
 
-export function ActionPanel({ className, children, ...props }: ActionPanelProps) {
+export function ActionPanel({
+  className,
+  children,
+  variant = "outline",
+  size = "xl",
+  fullWidth = true,
+  ...props
+}: ActionPanelProps) {
   return (
     <div
       className={cn(
-        buttonVariants({ variant: "outline", size: "lg", fullWidth: true }),
+        buttonVariants({ variant, size, fullWidth }),
         "bg-background/40 px-4",
+        "cursor-default hover:bg-background/40 hover:border-ring/20",
         className
       )}
       {...props}

@@ -100,7 +100,7 @@ export function BrowserLoginForm({
           </div>
 
           {!isCodeSent ? (
-            <div className="space-y-4">
+            <div className="space-y-gap">
               <div className="space-y-2">
                 <Text as="label" intent="fine" weight="medium" htmlFor="email">
                   Email
@@ -135,7 +135,7 @@ export function BrowserLoginForm({
               </Button>
             </div>
           ) : (
-            <div className="space-y-4">
+            <div className="space-y-gap">
               <div className="space-y-2">
                 <Text as="label" intent="fine" weight="medium" htmlFor="code">
                   Enter the code sent to {email}

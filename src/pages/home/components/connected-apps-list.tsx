@@ -1,5 +1,9 @@
 import { ArrowUpRight, Settings } from "lucide-react"
-import { ActionButton, ActionPanel } from "@/components/typography/action-button"
+import {
+  ActionButton,
+  ActionPanel,
+} from "@/components/typography/action-button"
+import { LearnMoreLink } from "@/components/typography/learn-more-link"
 import { Text } from "@/components/typography/text"
 import { cn } from "@/lib/classes"
 import type { ConnectedApp } from "@/types"
@@ -20,10 +24,11 @@ function formatConnectedAt(value: string) {
   })
 }
 
-function AppIcon({ icon, name }: { icon?: string; name: string }) {
+function DefaultAppIcon({ icon, name }: { icon?: string; name: string }) {
   const label = icon?.trim() || name.charAt(0).toUpperCase()
   return (
     <div
+      data-component="default-app-icon"
       className={cn(
         // layout
         "flex items-center justify-center",
@@ -40,57 +45,56 @@ function AppIcon({ icon, name }: { icon?: string; name: string }) {
 
 const Header = () => {
   return (
-    <div className="flex items-center gap-2">
-      <Text as="h2" intent="body">
-        Apps using your data.&nbsp;
-        <Text
-          as="a"
-          color="mutedForeground"
-          className="link"
-          href="https://www.google.com/search?q=apps+using+your+data"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          Learn more.
-        </Text>
-      </Text>
-    </div>
+    <Text as="h2" weight="medium">
+      Apps using your data.&nbsp;
+      <LearnMoreLink className="text-muted-foreground" />
+    </Text>
   )
 }
 
 export function ConnectedAppsList({ apps }: ConnectedAppsListProps) {
   if (apps.length === 0) {
     return (
-      <section className="space-y-4">
+      <section data-component="connected-apps-list" className="space-y-gap">
         <Header />
-        <ActionPanel>
-          <Text as="p" intent="small" color="mutedForeground">
-            No apps yet.
-          </Text>
-        </ActionPanel>
+        <div className="action-outset">
+          <ActionPanel>
+            <Text as="p" intent="small" color="mutedForeground">
+              No apps yet.
+            </Text>
+          </ActionPanel>
+        </div>
       </section>
     )
   }
 
   return (
-    <section className="space-y-4">
+    <section data-component="connected-apps-list" className="space-y-gap">
       <Header />
-      <div className="flex flex-col gap-3">
+      <div className="flex flex-col gap-3 action-outset">
         {apps.map(app => (
           <ActionButton
             key={app.id}
-            className={cn("items-start justify-between gap-4", "text-left")}
+            className={cn("items-start justify-between gap-4 text-left")}
           >
             <div className="flex h-full flex-1 items-center gap-3">
-              <AppIcon icon={app.icon} name={app.name} />
+              <DefaultAppIcon icon={app.icon} name={app.name} />
               <span>{app.name}</span>
             </div>
             <div className="flex h-full items-center gap-3">
-              <Text as="span" intent="small" weight="medium" color="mutedForeground">
+              <Text
+                as="span"
+                intent="small"
+                weight="medium"
+                color="mutedForeground"
+              >
                 {formatConnectedAt(app.connectedAt)}
               </Text>
               <Settings className="size-4 text-muted-foreground" aria-hidden />
-              <ArrowUpRight className="size-5 text-muted-foreground" aria-hidden />
+              <ArrowUpRight
+                className="size-5 text-muted-foreground"
+                aria-hidden
+              />
             </div>
           </ActionButton>
         ))}

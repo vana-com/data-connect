@@ -26,7 +26,9 @@ export function Home() {
   const { startExport } = useConnector()
   const { checkForUpdates } = useConnectorUpdates()
   const runs = useSelector((state: RootState) => state.app.runs)
-  const connectedApps = useSelector((state: RootState) => state.app.connectedApps)
+  const connectedApps = useSelector(
+    (state: RootState) => state.app.connectedApps
+  )
   const [activeTab, setActiveTab] = useState("sources")
   const [enableTabMotion, setEnableTabMotion] = useState(false)
 
@@ -38,7 +40,11 @@ export function Home() {
   const displayPlatforms =
     platforms.length > 0 ? platforms : USE_TEST_DATA ? testPlatforms : []
   const displayConnectedApps =
-    connectedApps.length > 0 ? connectedApps : USE_TEST_DATA ? testConnectedApps : []
+    connectedApps.length > 0
+      ? connectedApps
+      : USE_TEST_DATA
+        ? testConnectedApps
+        : []
 
   // Derived state: recently completed platform IDs (memoized, not effect-stored)
   useEffect(() => {
@@ -87,27 +93,33 @@ export function Home() {
       <ConnectorUpdates onReloadPlatforms={loadPlatforms} />
 
       {/* Tabs */}
-      <Tabs value={activeTab} onValueChange={setActiveTab}>
+      <Tabs
+        value={activeTab}
+        onValueChange={setActiveTab}
+        className="space-y-w12"
+      >
         <MotionConfig reducedMotion={enableTabMotion ? "never" : "always"}>
           <SlidingTabs
-            className="mb-w12"
             tabs={tabs}
             value={activeTab}
             onValueChange={setActiveTab}
           />
         </MotionConfig>
 
-        {/* Sources Tab */}
+        {/* SOURCES */}
         <TabsContent value="sources" className="space-y-w12">
           <ConnectedSourcesList
             platforms={connectedPlatformsList}
             runs={runs}
             onOpenRuns={() => navigate(ROUTES.runs)}
           />
-          <AvailableSourcesList platforms={availablePlatforms} onExport={handleExport} />
+          <AvailableSourcesList
+            platforms={availablePlatforms}
+            onExport={handleExport}
+          />
         </TabsContent>
 
-        {/* Connected Apps Tab */}
+        {/* APPS */}
         <TabsContent value="apps">
           <ConnectedAppsList apps={displayConnectedApps} />
         </TabsContent>

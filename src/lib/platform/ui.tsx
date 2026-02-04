@@ -38,7 +38,7 @@ export const getPlatformDisplay = (platform: { id: string; name: string }) => {
 export function getLastRunLabel(runs: Run[], platformId: string) {
   const platformRuns = runs.filter(run => run.platformId === platformId)
   if (platformRuns.length === 0) {
-    return "No runs yet"
+    return "Never run"
   }
   const latestRun = platformRuns
     .slice()
@@ -49,7 +49,7 @@ export function getLastRunLabel(runs: Run[], platformId: string) {
     )[0]
   const date = new Date(latestRun.endDate || latestRun.startDate)
   if (Number.isNaN(date.getTime())) {
-    return "No runs yet"
+    return "Never run"
   }
   const weekday = date.toLocaleDateString(undefined, { weekday: "long" })
   return `Last ${weekday}`

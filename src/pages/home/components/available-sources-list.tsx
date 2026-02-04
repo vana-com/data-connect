@@ -1,15 +1,13 @@
+import { ActionButton } from "@/components/typography/action-button"
 import { Text } from "@/components/typography/text"
-import {
-  ConnectSourceCard,
-  type ConnectSourceCardVariant,
-} from "@/components/connect-source-card"
+import { SourceStack } from "@/components/elements/source-row"
+import { cn } from "@/lib/classes"
 import type { Platform } from "@/types"
 import {
   getConnectSourceEntries,
   getConnectSourceState,
   resolvePlatformForEntry,
 } from "@/lib/platform/utils"
-import { getPlatformIconComponentForEntry } from "@/lib/platform/icons"
 
 interface AvailableSourcesListProps {
   platforms: Platform[]
@@ -23,24 +21,19 @@ export function AvailableSourcesList({
   const connectEntries = getConnectSourceEntries()
 
   return (
-    <section className="space-y-4">
-      <Text as="h2" intent="body" weight="medium">
+    <section className="space-y-gap">
+      <Text as="h2" weight="medium">
         Connect sources (more coming soon)
       </Text>
-      <div className="grid grid-cols-2 gap-4">
+      <div className="grid grid-cols-2 gap-2 action-outset">
         {connectEntries
           .map(entry => {
             const platform = resolvePlatformForEntry(platforms, entry)
             const state = getConnectSourceState(entry, platform)
-            const Icon =
-              getPlatformIconComponentForEntry(entry) ??
-              (({ className }) => (
-                <span className={className}>{entry.displayName.charAt(0)}</span>
-              ))
             return {
+              iconName: entry.displayName,
               label: `Connect ${entry.displayName}`,
-              Icon,
-              state: state as ConnectSourceCardVariant,
+              isAvailable: state === "available",
               onClick:
                 state === "available" && platform
                   ? () => onExport(platform)
@@ -50,17 +43,30 @@ export function AvailableSourcesList({
           .map((card, index) => ({
             ...card,
             index,
-            priority: card.state === "available" ? 0 : 1,
+            priority: card.isAvailable ? 0 : 1,
           }))
           .sort((a, b) => a.priority - b.priority || a.index - b.index)
-          .map(({ label, Icon, state, onClick }) => (
-            <ConnectSourceCard
+          .map(({ iconName, label, isAvailable, onClick }) => (
+            <ActionButton
               key={label}
-              label={label}
-              Icon={Icon}
-              state={state}
               onClick={onClick}
-            />
+              disabled={!isAvailable}
+              size="xl"
+              className={cn(
+                "h-auto py-4",
+                "items-start justify-between text-left"
+                // isAvailable &&
+                //   "hover:border-accent hover:shadow-[0_2px_8px_rgba(99,102,241,0.1)]"
+              )}
+            >
+              <SourceStack
+                iconName={iconName}
+                label={label}
+                showArrow={isAvailable}
+                iconClassName={cn(!isAvailable && "opacity-70")}
+                labelColor={isAvailable ? "foreground" : "mutedForeground"}
+              />
+            </ActionButton>
           ))}
       </div>
     </section>

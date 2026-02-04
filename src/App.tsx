@@ -11,6 +11,7 @@ import { BrowserLogin } from "./pages/browser-login"
 import { useDeepLink } from "./hooks/use-deep-link"
 import { usePersonalServer } from "./hooks/usePersonalServer"
 import { ROUTES } from "@/config/routes"
+import { dotPatternStyle } from "@/components/elements/dot-pattern"
 
 // Lazy-loaded pages for reduced initial bundle size
 const Home = lazy(() => import("./pages/home").then(m => ({ default: m.Home })))
@@ -19,12 +20,16 @@ const DataApps = lazy(() =>
 )
 const Mcp = lazy(() => import("./pages/mcp").then(m => ({ default: m.Mcp })))
 const Docs = lazy(() => import("./pages/docs").then(m => ({ default: m.Docs })))
-const AppPage = lazy(() => import("./pages/app-page").then(m => ({ default: m.AppPage })))
+const AppPage = lazy(() =>
+  import("./pages/app-page").then(m => ({ default: m.AppPage }))
+)
 const Runs = lazy(() => import("./pages/runs").then(m => ({ default: m.Runs })))
 const Settings = lazy(() =>
   import("./pages/settings").then(m => ({ default: m.Settings }))
 )
-const Grant = lazy(() => import("./pages/grant").then(m => ({ default: m.Grant })))
+const Grant = lazy(() =>
+  import("./pages/grant").then(m => ({ default: m.Grant }))
+)
 
 function AppContent() {
   useEvents()
@@ -74,12 +79,14 @@ function App() {
   return (
     <Provider store={store}>
       <PrivyProvider>
-        <BrowserRouter>
-          <Routes>
-            <Route path={ROUTES.browserLogin} element={<BrowserLogin />} />
-            <Route path="/*" element={<AppRouter />} />
-          </Routes>
-        </BrowserRouter>
+        <div style={dotPatternStyle} className="min-h-screen">
+          <BrowserRouter>
+            <Routes>
+              <Route path={ROUTES.browserLogin} element={<BrowserLogin />} />
+              <Route path="/*" element={<AppRouter />} />
+            </Routes>
+          </BrowserRouter>
+        </div>
       </PrivyProvider>
     </Provider>
   )

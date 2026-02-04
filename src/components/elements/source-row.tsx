@@ -1,10 +1,10 @@
-import type { ElementType } from "react"
 import { ArrowRight, ChevronRight } from "lucide-react"
+import { PlatformIcon } from "@/components/icons/platform-icon"
 import { Text } from "@/components/typography/text"
 import { cn } from "@/lib/classes"
 
 export interface SourceRowProps {
-  Icon: ElementType<{ className?: string }>
+  iconName: string
   label: string
   meta?: string
   showArrow?: boolean
@@ -15,7 +15,7 @@ export interface SourceRowProps {
 }
 
 export function SourceRow({
-  Icon,
+  iconName,
   label,
   meta,
   showArrow,
@@ -28,10 +28,12 @@ export function SourceRow({
 
   return (
     <>
-      <div className="h-full flex-1 flex items-center gap-3">
-        <div className="flex size-6.5 items-center justify-center rounded-card">
-          <Icon className={cn("size-6 grayscale", iconClassName)} aria-hidden />
-        </div>
+      <div className="h-full flex-1 flex items-center gap-1.5">
+        <PlatformIcon
+          iconName={iconName}
+          size={30}
+          className={cn(iconClassName)}
+        />
         <div className="flex items-baseline gap-1.5">
           {label}
 
@@ -63,7 +65,7 @@ export function SourceRow({
 }
 
 export function SourceStack({
-  Icon,
+  iconName,
   label,
   meta,
   showArrow,
@@ -78,10 +80,12 @@ export function SourceStack({
   return (
     <>
       <div className="flex flex-col gap-3">
-        <div className="flex size-6 items-center justify-center rounded-card">
-          <Icon className={cn("size-6 grayscale", iconClassName)} aria-hidden />
-        </div>
-        <Text as="span" intent="button" color={labelColor}>
+        <PlatformIcon
+          iconName={iconName}
+          size={30}
+          className={cn(iconClassName)}
+        />
+        <Text as="span" intent="button" weight="medium" color={labelColor}>
           {label}
         </Text>
       </div>

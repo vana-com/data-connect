@@ -7,41 +7,49 @@ import { cn } from "@/lib/utils"
  */
 
 interface PlatformIconProps {
-  /** Platform name to display icon for */
-  name: string
-  /** Icon size in pixels (default: 24) */
+  iconName: string
   size?: number
   className?: string
 }
 
+const iconWrapper = "flex items-center justify-center rounded-card"
+
 /**
- * Platform icon component that displays a platform logo or first-letter fallback.
+ * Platform icon component
+ * Displays a platform logo or first-letter fallback
  */
 export function PlatformIcon({
-  name,
+  iconName,
   size = 24,
   className,
 }: PlatformIconProps) {
-  const Icon = getPlatformIconComponentForName(name)
+  const Icon = getPlatformIconComponentForName(iconName)
+  const wrapperSize = Math.round(size * 1.15)
 
   if (Icon) {
     return (
-      <Icon
-        className={className}
-        style={{ width: `${size}px`, height: `${size}px` }}
-        aria-hidden
-      />
+      <div
+        className={cn(iconWrapper, className)}
+        style={{ width: `${wrapperSize}px`, height: `${wrapperSize}px` }}
+      >
+        <Icon style={{ width: `${size}px`, height: `${size}px` }} aria-hidden />
+      </div>
     )
   }
 
   // Fallback: show first letter
   const fontSize = Math.round(size * 0.75)
   return (
-    <span
-      className={cn("text-background bg-foreground font-semi", className)}
-      style={{ fontSize: `${fontSize}px` }}
+    <div
+      className={cn(iconWrapper, className)}
+      style={{ width: `${wrapperSize}px`, height: `${wrapperSize}px` }}
     >
-      {name.charAt(0)}
-    </span>
+      <span
+        className={cn("text-background bg-foreground font-semi")}
+        style={{ fontSize: `${fontSize}px` }}
+      >
+        {iconName.charAt(0)}
+      </span>
+    </div>
   )
 }

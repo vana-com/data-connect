@@ -5,7 +5,7 @@ import {
 import { Text } from "@/components/typography/text"
 import { SourceRow } from "@/components/elements/source-row"
 import { cn } from "@/lib/classes"
-import { getLastRunLabel, getPlatformIconComponent } from "@/lib/platform/ui"
+import { getLastRunLabel } from "@/lib/platform/ui"
 import type { Platform, Run } from "@/types"
 
 interface ConnectedSourcesListProps {
@@ -21,27 +21,28 @@ export function ConnectedSourcesList({
 }: ConnectedSourcesListProps) {
   if (platforms.length === 0) {
     return (
-      <section className="space-y-4">
-        <Text as="h2" intent="body">
+      <section className="space-y-gap">
+        <Text as="h2" weight="medium">
           Your sources
         </Text>
-        <ActionPanel>
-          <Text as="p" intent="small" color="mutedForeground">
-            No sources yet.
-          </Text>
-        </ActionPanel>
+        <div className="action-outset">
+          <ActionPanel>
+            <Text align="left" weight="medium" muted>
+              No sources yet.
+            </Text>
+          </ActionPanel>
+        </div>
       </section>
     )
   }
 
   return (
-    <section className="space-y-4">
-      <Text as="h2" intent="body" weight="medium">
+    <section className="space-y-gap">
+      <Text as="h2" weight="medium">
         Your sources
       </Text>
-      <div className="flex flex-col gap-3">
+      <div className="flex flex-col gap-3 action-outset">
         {platforms.map(platform => {
-          const Icon = getPlatformIconComponent(platform)
           const meta = getLastRunLabel(runs, platform.id)
           return (
             <ActionButton
@@ -50,7 +51,11 @@ export function ConnectedSourcesList({
               size="xl"
               className={cn("items-start justify-between text-left")}
             >
-              <SourceRow Icon={Icon} label={platform.name} meta={meta} />
+              <SourceRow
+                iconName={platform.name}
+                label={platform.name}
+                meta={meta}
+              />
             </ActionButton>
           )
         })}

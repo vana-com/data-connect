@@ -36,6 +36,7 @@ type UseAuthPageState = {
   isAppleLoading: boolean
   walletIframeUrl: string | null
   walletIframeRef: RefObject<HTMLIFrameElement>
+  handleWalletIframeLoad: () => void
   handleEmailChange: (value: string) => void
   handleCodeChange: (value: string) => void
   handleEmailSubmit: () => Promise<void>
@@ -108,6 +109,7 @@ export const useAuthPage = (): UseAuthPageState => {
   const [isGoogleLoading, setIsGoogleLoading] = useState(false)
   const [isAppleLoading, setIsAppleLoading] = useState(false)
   const [walletIframeUrl, setWalletIframeUrl] = useState<string | null>(null)
+  const [walletIframeLoaded, setWalletIframeLoaded] = useState(false)
 
   const privyRef = useRef<PrivyClient | null>(null)
   const currentEmailRef = useRef("")
@@ -130,6 +132,10 @@ export const useAuthPage = (): UseAuthPageState => {
   const showError = useCallback((message: string) => {
     setError(message)
     setView("login")
+  }, [])
+
+  const handleWalletIframeLoad = useCallback(() => {
+    setWalletIframeLoaded(true)
   }, [])
 
   const createPrivyClient = useCallback(
@@ -637,9 +643,8 @@ export const useAuthPage = (): UseAuthPageState => {
   useEffect(() => {
     const privy = privyRef.current
     const iframe = walletIframeRef.current
-    if (!privy || !iframe) return
+    if (!privy || !iframe || !walletIframeLoaded) return
 
-    let listenerAttached = false
     const handleMessage = (event: MessageEvent) => {
       const contentWindow = iframe.contentWindow
       if (!contentWindow || event.source !== contentWindow) return
@@ -650,25 +655,16 @@ export const useAuthPage = (): UseAuthPageState => {
       }
     }
 
-    const attachMessageListener = () => {
-      if (listenerAttached || !iframe.contentWindow) return
-      window.addEventListener("message", handleMessage)
-      listenerAttached = true
-    }
-
-    const handleLoad = () => {
-      attachMessageListener()
-    }
-
-    attachMessageListener()
-    iframe.addEventListener("load", handleLoad)
+    if (!iframe.contentWindow) return
+    window.addEventListener("message", handleMessage)
 
     return () => {
-      iframe.removeEventListener("load", handleLoad)
-      if (listenerAttached) {
-        window.removeEventListener("message", handleMessage)
-      }
+      window.removeEventListener("message", handleMessage)
     }
+  }, [walletIframeLoaded])
+
+  useEffect(() => {
+    setWalletIframeLoaded(false)
   }, [walletIframeUrl])
 
   return {
@@ -684,6 +680,7 @@ export const useAuthPage = (): UseAuthPageState => {
     isAppleLoading,
     walletIframeUrl,
     walletIframeRef,
+    handleWalletIframeLoad,
     handleEmailChange: setEmail,
     handleCodeChange: setCode,
     handleEmailSubmit,

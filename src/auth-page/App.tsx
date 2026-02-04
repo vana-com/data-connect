@@ -40,6 +40,7 @@ export const App = () => {
     isAppleLoading,
     walletIframeUrl,
     walletIframeRef,
+    handleWalletIframeLoad,
     handleEmailChange,
     handleCodeChange,
     handleEmailSubmit,
@@ -219,6 +220,7 @@ export const App = () => {
             ref={walletIframeRef}
             title="Privy Wallet"
             src={walletIframeUrl}
+            onLoad={handleWalletIframeLoad}
             className="hidden"
             data-privy-wallet="true"
           />

@@ -37,8 +37,8 @@
   ad-hoc duplicates to keep the design system consistent.
 - [P1] When Privy env vars are missing, show an in-app error and prevent
   launching browser auth (remove demo-mode fallback in `InlineLogin`).
-- [P1] Attach the embedded wallet message listener after iframe load to avoid
-  missing events when `contentWindow` is initially unavailable.
+- [P1] Attach the embedded wallet message listener after iframe load (wired to
+  `onLoad`) so `contentWindow` is ready and wallet messages are not dropped.
 
 ## Validation
 

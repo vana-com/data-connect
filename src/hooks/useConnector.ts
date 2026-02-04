@@ -29,6 +29,9 @@ export function useConnector() {
       dispatch(startRun(newRun));
 
       try {
+        // Check if simulate no chrome is enabled (for testing download flow)
+        const simulateNoChrome = localStorage.getItem('databridge_simulate_no_chrome') === 'true';
+
         await invoke('start_connector_run', {
           runId,
           platformId: platform.id,
@@ -37,6 +40,7 @@ export function useConnector() {
           name: platform.name,
           connectUrl: platform.connectURL || '',
           runtime: platform.runtime || null,
+          simulateNoChrome,
         });
       } catch (error) {
         console.error('Failed to start connector run:', error);

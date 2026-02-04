@@ -297,18 +297,9 @@ async function runConnector(runId, connectorPath, url) {
         log(`Using downloaded Chromium: ${browserPath}`);
         launchOptions.executablePath = browserPath;
       } else {
-        // Download Chromium on-demand
-        send({ type: 'log', runId, message: 'No browser found. Downloading Chromium (one-time, ~170MB)...' });
-        browserPath = await downloadChromium((status) => {
-          send({ type: 'status', runId, status });
-        });
-
-        if (browserPath) {
-          log(`Using newly downloaded Chromium: ${browserPath}`);
-          launchOptions.executablePath = browserPath;
-        } else {
-          throw new Error('No browser available. Please install Google Chrome.');
-        }
+        // No browser available - Rust should have downloaded before starting
+        // If we get here, something went wrong
+        throw new Error('No browser available. The Rust backend should have downloaded Chromium before starting the connector.');
       }
     }
 

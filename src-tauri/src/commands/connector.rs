@@ -492,6 +492,27 @@ async fn start_playwright_run(
     log::info!("Starting Playwright run for {} (platform: {}, company: {}, filename: {})",
         run_id, platform_id, company, filename);
 
+    // Check if browser is available before starting
+    let browser_status = check_browser_available(simulate_no_chrome).await?;
+    if !browser_status.available {
+        log::info!("No browser available, downloading Chromium...");
+        let _ = app.emit("connector-log", serde_json::json!({
+            "runId": run_id,
+            "message": "No browser found. Downloading Chromium (~170MB)...",
+            "timestamp": chrono_timestamp()
+        }));
+
+        // Download using Rust (with progress events)
+        download_chromium_rust(app.clone()).await?;
+
+        log::info!("Chromium download complete, continuing with connector");
+        let _ = app.emit("connector-log", serde_json::json!({
+            "runId": run_id,
+            "message": "Browser download complete. Starting connector...",
+            "timestamp": chrono_timestamp()
+        }));
+    }
+
     // Find the connector script (check user dir first, then bundled)
     let company_lower = company.to_lowercase();
     let connector_path = if let Some(user_dir) = get_user_connectors_dir() {

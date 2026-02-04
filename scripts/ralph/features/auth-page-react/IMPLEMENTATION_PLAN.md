@@ -30,6 +30,8 @@
   the tab and shut down the auth server.
 - [P1] Ensure `/close-tab` navigation happens before `window.close()` so the
   auth server can shut down even if the window closes.
+- [P2] Add unit test coverage to ensure `/close-tab` navigation precedes
+  `window.close()` via invocation ordering in `scheduleCloseTab`.
 - [P2] Prefer shared DS primitives and utilities from `src/lib`/components for
   the auth page UI (e.g., `Text`, `Button`, `cn`, shared input classes) over
   ad-hoc duplicates to keep the design system consistent.
@@ -37,3 +39,8 @@
   launching browser auth (remove demo-mode fallback in `InlineLogin`).
 - [P1] Attach the embedded wallet message listener after iframe load to avoid
   missing events when `contentWindow` is initially unavailable.
+
+## Validation
+
+- `npm run test -- src/auth-page/auth.test.ts` (ensures `/close-tab` navigation
+  happens before `window.close()` so the Rust auth server can shut down cleanly).

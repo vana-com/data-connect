@@ -17,5 +17,8 @@ describe("scheduleCloseTab", () => {
 
     expect(closeSpy).toHaveBeenCalled()
     expect(assignSpy).toHaveBeenCalledWith("/close-tab")
+    expect(assignSpy.mock.invocationCallOrder[0]).toBeLessThan(
+      closeSpy.mock.invocationCallOrder[0]
+    )
   })
 })

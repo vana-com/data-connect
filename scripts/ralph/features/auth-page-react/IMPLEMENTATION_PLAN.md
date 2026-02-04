@@ -44,4 +44,4 @@
 
 - `npm run test -- src/auth-page/auth.test.ts` (ensures `/close-tab` navigation
   happens before `window.close()` so the Rust auth server can shut down cleanly).
-- Last run: `npm run test -- src/auth-page/auth.test.ts` (2026-02-04).
+- Last run: `npm run test -- src/auth-page/auth.test.ts` (2026-02-04 10:37 AEST).

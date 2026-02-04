@@ -18,9 +18,12 @@ vi.mock("react-router", async () => {
 })
 
 const renderDataApps = () => {
-  const router = createMemoryRouter([{ path: ROUTES.apps, element: <DataApps /> }], {
-    initialEntries: [ROUTES.apps],
-  })
+  const router = createMemoryRouter(
+    [{ path: ROUTES.apps, element: <DataApps /> }],
+    {
+      initialEntries: [ROUTES.apps],
+    }
+  )
 
   return render(<RouterProvider router={router} />)
 }
@@ -33,9 +36,11 @@ describe("DataApps", () => {
   it("renders the page title and description", () => {
     renderDataApps()
 
-    expect(screen.getByRole("heading", { level: 1, name: "Data Apps" })).toBeTruthy()
     expect(
-      screen.getByText("Discover applications that can work with your data")
+      screen.getByRole("heading", { level: 1, name: "Data Apps" })
+    ).toBeTruthy()
+    expect(
+      screen.getByText(/Create apps with the Vana Data Protocol/i)
     ).toBeTruthy()
   })
 
@@ -43,7 +48,9 @@ describe("DataApps", () => {
     renderDataApps()
 
     // Use getAllBy* because StrictMode may render twice
-    expect(screen.getAllByText("RickRoll Facts").length).toBeGreaterThanOrEqual(1)
+    expect(screen.getAllByText("RickRoll Facts").length).toBeGreaterThanOrEqual(
+      1
+    )
     const openAppButtons = screen.getAllByRole("button", { name: "Open App" })
     expect(openAppButtons.length).toBeGreaterThanOrEqual(liveApps.length)
     openAppButtons.forEach(button => {
@@ -64,13 +71,12 @@ describe("DataApps", () => {
     })
   })
 
-  it("renders the build your own section with documentation link", () => {
+  it("renders the learn more documentation link", () => {
     renderDataApps()
 
-    expect(screen.getAllByText("Build your own data app").length).toBeGreaterThan(0)
-    const docLinks = screen.getAllByRole("link", { name: /View Documentation/i })
-    expect(docLinks.length).toBeGreaterThan(0)
-    docLinks.forEach(link => {
+    const learnMoreLinks = screen.getAllByRole("link", { name: /Learn more/i })
+    expect(learnMoreLinks.length).toBeGreaterThan(0)
+    learnMoreLinks.forEach(link => {
       expect(link.getAttribute("href")).toBe("https://docs.vana.org")
     })
   })

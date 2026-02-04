@@ -31,6 +31,8 @@ Use skills only when the task matches; explore the code first.
 - Doc creation: follow .cursor/skills/doc-creation when creating/moving docs.
 - CSS: invoke css skill when writing/adjusting CSS (non‑Tailwind).
 - Tailwind: invoke tailwind skill when writing/adjusting Tailwind classes.
+- ShadCN import: invoke tailwind-shadcn-adaptation for primitives.
+- ShadCN semantics: invoke shadcn-primitives-wrappers for product wrappers.
 - UI audit: invoke ui-component-audit when asked to audit/fix UI implementation.
 - Testing: invoke react-testing when writing/running tests or before commit.
 - Linear: invoke linear skill when asked to create/update tickets or statuses.

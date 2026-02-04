@@ -48,6 +48,7 @@ export function Settings() {
     nodeTestError,
     pathsDebug,
     browserStatus,
+    simulateNoChrome,
     connectedApps,
     personalServer,
     user,
@@ -57,6 +58,7 @@ export function Settings() {
     onTestNodeJs,
     onDebugPaths,
     onCheckBrowserStatus,
+    onSimulateNoChromeChange,
     onRevokeApp,
     onLogout,
     onSignIn,
@@ -132,11 +134,13 @@ export function Settings() {
                   port: personalServer.port,
                   error: personalServer.error,
                 }}
+                simulateNoChrome={simulateNoChrome}
                 onTestNodeJs={onTestNodeJs}
                 onCheckBrowserStatus={onCheckBrowserStatus}
                 onDebugPaths={onDebugPaths}
                 onRestartPersonalServer={personalServer.startServer}
                 onStopPersonalServer={personalServer.stopServer}
+                onSimulateNoChromeChange={onSimulateNoChromeChange}
               />
             )}
           </div>

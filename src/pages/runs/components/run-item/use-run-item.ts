@@ -56,7 +56,14 @@ export function useRunItem({ run, serverPort, serverReady }: UseRunItemProps) {
     if (!canIngest) return
     setIngestStatus("sending")
     try {
-      const dirPath = run.exportPath!.replace(/\/[^/]+$/, "")
+      // exportPath can be either a file path (from write_export_data) or
+      // a directory path (from load_runs on app restart). Handle both:
+      // - If ends with .json, strip filename to get directory
+      // - Otherwise, use as-is (already a directory)
+      const exportPath = run.exportPath!
+      const dirPath = exportPath.endsWith(".json")
+        ? exportPath.replace(/\/[^/]+$/, "")
+        : exportPath
       const data = await invoke<Record<string, unknown>>("load_run_export_data", {
         runId: run.id,
         exportPath: dirPath,

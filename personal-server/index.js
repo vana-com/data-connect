@@ -11,6 +11,10 @@
  * - CONFIG_DIR - override ~/.vana config directory
  */
 
+// Set NODE_ENV=production before imports to prevent pino-pretty transport loading
+// This avoids "unable to determine transport target" errors in bundled binary
+process.env.NODE_ENV = 'production';
+
 import { join } from 'node:path';
 import { loadConfig } from '@opendatalabs/personal-server-ts-core/config';
 import { createServer } from '@opendatalabs/personal-server-ts-server';

@@ -85,19 +85,45 @@ async function build() {
   // Step 1: Bundle with esbuild into a single CJS file
   const bundlePath = join(DIST, 'bundle.cjs');
   log('Bundling with esbuild...');
+
   // Patch require resolution so native addons load from beside the executable
+  // Also provide import.meta.url shim for ESM code bundled to CJS
   const nativeBanner = [
-    'var _M=require("module"),_P=require("path"),_R=_M._resolveFilename;',
+    'var _M=require("module"),_P=require("path"),_U=require("url"),_R=_M._resolveFilename;',
+    // Shim for import.meta.url
+    'if(typeof globalThis.__importMetaUrl==="undefined"){globalThis.__importMetaUrl=_U.pathToFileURL(__filename).href;}',
+    // Patch require resolution for better-sqlite3
     '_M._resolveFilename=function(r,p,m,o){',
     'if(r==="better-sqlite3"){try{return _R.call(this,r,Object.assign({},p,',
     '{paths:[_P.join(_P.dirname(process.execPath),"node_modules")]}),m,o);}catch(e){}}',
     'return _R.call(this,r,p,m,o);};',
   ].join('');
-  // Write banner to file to avoid shell quoting issues on Windows
-  const bannerPath = join(DIST, '_banner.js');
-  writeFileSync(bannerPath, nativeBanner);
-  exec(`npx esbuild index.js --bundle --platform=node --format=cjs --outfile="${bundlePath}" --external:better-sqlite3 --banner:js=file:${bannerPath}`);
-  rmSync(bannerPath, { force: true });
+
+  // Create shim file for import.meta.url injection
+  const shimPath = join(DIST, '_shim.js');
+  writeFileSync(shimPath, `
+    const { pathToFileURL } = require('url');
+    globalThis.__importMetaUrl = pathToFileURL(__filename).href;
+  `);
+
+  // Use esbuild JavaScript API for reliable banner injection
+  const esbuild = await import('esbuild');
+  await esbuild.build({
+    entryPoints: [join(ROOT, 'index.js')],
+    bundle: true,
+    platform: 'node',
+    format: 'cjs',
+    outfile: bundlePath,
+    external: ['better-sqlite3'],
+    banner: { js: nativeBanner },
+    inject: [shimPath],
+    define: {
+      'import.meta.url': 'globalThis.__importMetaUrl',
+    },
+  });
+
+  // Clean up shim file
+  rmSync(shimPath, { force: true });
 
   // Step 2: Package with pkg
   const target = getPkgTarget();

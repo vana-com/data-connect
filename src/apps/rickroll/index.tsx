@@ -23,8 +23,8 @@ export function useRickRollData() {
           const sorted = [...files].sort((a, b) => b.name.localeCompare(a.name));
           const raw = JSON.parse(sorted[0].content);
 
-          // The connector wraps data as { content: { data: { ... } } }
-          const innerData = raw?.content?.data || raw;
+          // The connector wraps data as { content: { memories: [...], ... } }
+          const innerData = raw?.content || raw;
 
           const exportData: ChatGPTExport = {
             memories: innerData.memories || [],

@@ -81,7 +81,13 @@ function getOutputName() {
 }
 
 async function build() {
-  log('Starting build...');
+  // Check for --lean flag (production builds without bundled Chromium)
+  const isLean = process.argv.includes('--lean');
+
+  log(`Starting ${isLean ? 'LEAN ' : ''}build...`);
+  if (isLean) {
+    log('Lean mode: Chromium will NOT be bundled (downloaded on-demand at runtime)');
+  }
 
   // Clean dist
   if (existsSync(DIST)) {
@@ -89,9 +95,11 @@ async function build() {
   }
   mkdirSync(DIST, { recursive: true });
 
-  // Ensure Playwright browsers are installed
-  log('Ensuring Playwright browsers are installed...');
-  exec('npx playwright install chromium');
+  // Only install browsers if not lean build (needed for pkg to bundle playwright-core)
+  if (!isLean) {
+    log('Ensuring Playwright browsers are installed...');
+    exec('npx playwright install chromium');
+  }
 
   // Build with pkg
   const target = getPkgTarget();
@@ -101,23 +109,27 @@ async function build() {
   log(`Building for target: ${target}`);
   exec(`npx pkg index.cjs -t ${target} -o "${outputPath}" --no-bytecode --public-packages '*' --public`);
 
-  // Copy Playwright browser
-  const browserSrc = getPlaywrightBrowserPath();
-  const chromiumDir = findChromiumDir(browserSrc);
+  // Copy Playwright browser (only for non-lean builds)
+  if (!isLean) {
+    const browserSrc = getPlaywrightBrowserPath();
+    const chromiumDir = findChromiumDir(browserSrc);
 
-  if (chromiumDir) {
-    const browserDest = join(DIST, 'browsers');
-    mkdirSync(browserDest, { recursive: true });
+    if (chromiumDir) {
+      const browserDest = join(DIST, 'browsers');
+      mkdirSync(browserDest, { recursive: true });
 
-    const chromiumDirName = chromiumDir.split('/').pop() || chromiumDir.split('\\').pop();
-    const destPath = join(browserDest, chromiumDirName);
+      const chromiumDirName = chromiumDir.split('/').pop() || chromiumDir.split('\\').pop();
+      const destPath = join(browserDest, chromiumDirName);
 
-    log(`Copying Chromium from ${chromiumDir} to ${destPath}...`);
-    cpSync(chromiumDir, destPath, { recursive: true });
+      log(`Copying Chromium from ${chromiumDir} to ${destPath}...`);
+      cpSync(chromiumDir, destPath, { recursive: true });
 
-    log('Browser copied successfully');
+      log('Browser copied successfully');
+    } else {
+      log('WARNING: Could not find Chromium browser. Run "npx playwright install chromium" first.');
+    }
   } else {
-    log('WARNING: Could not find Chromium browser. Run "npx playwright install chromium" first.');
+    log('Skipping browser copy (lean build)');
   }
 
   log('Build complete!');

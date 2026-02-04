@@ -117,7 +117,7 @@ async function build() {
     platform: 'node',
     format: 'cjs',
     outfile: bundlePath,
-    external: ['better-sqlite3'],
+    external: ['better-sqlite3', 'bindings', 'file-uri-to-path'],
     banner: { js: nativeBanner },
     inject: [shimPath],
     define: {

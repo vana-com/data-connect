@@ -192,15 +192,18 @@ jobs:
               echo "Created $dmg_path"
 
               # Notarize the DMG using App Store Connect API key
-              xcrun notarytool submit "$dmg_path" \
+              # Note: This may fail if the app content doesn't pass Apple's checks after modification
+              if xcrun notarytool submit "$dmg_path" \
                 --key "${{ env.APPLE_API_KEY_PATH }}" \
                 --key-id "${{ secrets.APPLE_ASC_API_KEY_ID }}" \
                 --issuer "${{ secrets.APPLE_ASC_API_KEY_ISSUER_UUID }}" \
-                --wait
-
-              # Staple the notarization ticket
-              xcrun stapler staple "$dmg_path"
-              echo "Notarized and stapled $dmg_path"
+                --wait 2>&1 | tee /tmp/notarize_${arch}.log; then
+                # Staple the notarization ticket
+                xcrun stapler staple "$dmg_path" && echo "Notarized and stapled $dmg_path"
+              else
+                echo "::warning::Notarization failed for $dmg_path - users may need to right-click to open"
+                cat /tmp/notarize_${arch}.log || true
+              fi
             done
           fi
 

@@ -160,6 +160,16 @@ jobs:
             echo "=== Contents of personal-server/dist/node_modules ==="
             ls -la personal-server/dist/node_modules/ || echo "node_modules not found in dist"
 
+            # Sign all native .node binaries BEFORE copying to app bundle
+            # This is required for Apple notarization to succeed
+            echo "=== Signing native .node binaries ==="
+            find personal-server/dist/node_modules -name "*.node" -type f | while read node_binary; do
+              echo "Signing: $node_binary"
+              codesign --force --options runtime --timestamp \
+                --sign "Developer ID Application: Corsali, Inc (${{ secrets.APPLE_TEAM_ID }})" \
+                "$node_binary"
+            done
+
             for app in src-tauri/target/${{ matrix.target }}/release/bundle/macos/*.app; do
               [ -e "$app" ] || { echo "No .app found at $app"; continue; }
               echo "=== Processing $app ==="
@@ -184,7 +194,7 @@ jobs:
               echo "Copied node_modules to $dest"
             done
 
-            # Re-sign the .app after modification
+            # Re-sign the .app after modification (--deep signs all nested code)
             for app in src-tauri/target/${{ matrix.target }}/release/bundle/macos/*.app; do
               [ -e "$app" ] || continue
               codesign --force --deep --options runtime --timestamp \
@@ -233,7 +243,7 @@ jobs:
               echo "=== DMG verification passed ==="
 
               # Notarize the DMG using App Store Connect API key
-              # Note: This may fail if the app content doesn't pass Apple's checks after modification
+              echo "=== Notarizing $dmg_path ==="
               if xcrun notarytool submit "$dmg_path" \
                 --key "${{ env.APPLE_API_KEY_PATH }}" \
                 --key-id "${{ secrets.APPLE_ASC_API_KEY_ID }}" \
@@ -242,8 +252,18 @@ jobs:
                 # Staple the notarization ticket
                 xcrun stapler staple "$dmg_path" && echo "Notarized and stapled $dmg_path"
               else
-                echo "::warning::Notarization failed for $dmg_path - users may need to right-click to open"
+                echo "::error::Notarization FAILED for $dmg_path"
                 cat /tmp/notarize_${arch}.log || true
+                # Get detailed log from Apple
+                submission_id=$(grep -oE '[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}' /tmp/notarize_${arch}.log | head -1)
+                if [ -n "$submission_id" ]; then
+                  echo "=== Fetching notarization log for $submission_id ==="
+                  xcrun notarytool log "$submission_id" \
+                    --key "${{ env.APPLE_API_KEY_PATH }}" \
+                    --key-id "${{ secrets.APPLE_ASC_API_KEY_ID }}" \
+                    --issuer "${{ secrets.APPLE_ASC_API_KEY_ISSUER_UUID }}" || true
+                fi
+                exit 1
               fi
             done
           fi

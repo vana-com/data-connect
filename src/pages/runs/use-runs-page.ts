@@ -1,10 +1,16 @@
 import { useEffect, useMemo, useState } from "react"
 import { useSelector } from "react-redux"
+import { listen } from "@tauri-apps/api/event"
 import { useConnector } from "../../hooks/useConnector"
 import { useAuth } from "../../hooks/useAuth"
 import { usePersonalServer } from "../../hooks/usePersonalServer"
 import { fetchServerIdentity } from "../../services/serverRegistration"
 import type { RootState } from "../../state/store"
+
+interface ServerRegisteredPayload {
+  status: number
+  serverId: string | null
+}
 
 export function useRunsPage() {
   const runs = useSelector((state: RootState) => state.app.runs)
@@ -13,15 +19,28 @@ export function useRunsPage() {
   const personalServer = usePersonalServer()
   const [serverId, setServerId] = useState<string | null>(null)
 
+  // Listen for server-registered event from auth flow
   useEffect(() => {
-    if (personalServer.status === "running" && personalServer.port) {
+    const unlisten = listen<ServerRegisteredPayload>("server-registered", (event) => {
+      if (event.payload.serverId) {
+        setServerId(event.payload.serverId)
+      }
+    })
+    return () => { unlisten.then(fn => fn()) }
+  }, [])
+
+  // Also try to fetch serverId from health endpoint (for already registered servers)
+  useEffect(() => {
+    if (personalServer.status === "running" && personalServer.port && !serverId) {
       fetchServerIdentity(personalServer.port)
-        .then(identity => setServerId(identity.serverId))
+        .then(identity => {
+          if (identity.serverId) setServerId(identity.serverId)
+        })
         .catch(() => {})
-    } else {
+    } else if (personalServer.status !== "running") {
       setServerId(null)
     }
-  }, [personalServer.status, personalServer.port])
+  }, [personalServer.status, personalServer.port, serverId])
 
   const serverReady = personalServer.status === "running" && !!serverId
 

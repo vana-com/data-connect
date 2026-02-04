@@ -31,3 +31,5 @@
 - [P2] Prefer shared DS primitives and utilities from `src/lib`/components for
   the auth page UI (e.g., `Text`, `Button`, `cn`, shared input classes) over
   ad-hoc duplicates to keep the design system consistent.
+- [P1] When Privy env vars are missing, show an in-app error and prevent
+  launching browser auth (remove demo-mode fallback in `InlineLogin`).

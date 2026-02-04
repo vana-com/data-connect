@@ -27,6 +27,7 @@ export function InlineLogin() {
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [authStarted, setAuthStarted] = useState(false);
+  const isPrivyConfigured = Boolean(PRIVY_APP_ID && PRIVY_CLIENT_ID);
 
   // Store unlisten function in ref for synchronous cleanup
   const unlistenRef = useRef<(() => void) | null>(null);
@@ -99,76 +100,10 @@ export function InlineLogin() {
     handleBrowserAuth();
   }, [handleBrowserAuth]);
 
-  const handleDemoLogin = useCallback(() => {
-    // Create a demo wallet address for testing when Privy is not configured
-    const demoWalletAddress = '0xDemo' + Math.random().toString(16).slice(2, 10) + '...Demo';
-    dispatch(
-      setAuthenticated({
-        user: { id: 'demo-user', email: 'demo@example.com' },
-        walletAddress: demoWalletAddress,
-      })
-    );
-    navigate(-1);
-  }, [dispatch, navigate]);
-
-  // Demo mode when Privy is not configured
-  if (!PRIVY_APP_ID) {
-    return (
-      <div
-        style={{
-          display: 'flex',
-          flexDirection: 'column',
-          alignItems: 'center',
-          justifyContent: 'center',
-          minHeight: '100vh',
-          padding: '24px',
-          backgroundColor: '#f5f5f7',
-        }}
-      >
-        <div
-          style={{
-            width: '100%',
-            maxWidth: '400px',
-            backgroundColor: 'white',
-            borderRadius: '16px',
-            padding: '40px',
-            boxShadow: '0 4px 24px rgba(0, 0, 0, 0.06)',
-            textAlign: 'center',
-          }}
-        >
-          <h1 style={{ fontSize: '24px', fontWeight: 600, color: '#1a1a1a', marginBottom: '8px' }}>
-            Demo Mode
-          </h1>
-          <p style={{ fontSize: '14px', color: '#6b7280', marginBottom: '24px' }}>
-            Privy authentication is not configured. Continue with a demo account to test the app.
-          </p>
-          <button
-            onClick={handleDemoLogin}
-            style={{
-              width: '100%',
-              padding: '14px',
-              fontSize: '15px',
-              fontWeight: 500,
-              color: 'white',
-              backgroundColor: '#6366f1',
-              border: 'none',
-              borderRadius: '10px',
-              cursor: 'pointer',
-              transition: 'all 0.15s ease',
-            }}
-            onMouseEnter={(e) => {
-              e.currentTarget.style.backgroundColor = '#4f46e5';
-            }}
-            onMouseLeave={(e) => {
-              e.currentTarget.style.backgroundColor = '#6366f1';
-            }}
-          >
-            Continue with Demo Account
-          </button>
-        </div>
-      </div>
-    );
-  }
+  useEffect(() => {
+    if (isPrivyConfigured) return;
+    setError('Authentication is not configured. Missing VITE_PRIVY_APP_ID or VITE_PRIVY_CLIENT_ID.');
+  }, [isPrivyConfigured]);
 
   // Waiting for browser auth to complete
   if (authStarted) {
@@ -279,7 +214,7 @@ export function InlineLogin() {
 
         <button
           onClick={handleBrowserAuth}
-          disabled={isLoading}
+          disabled={isLoading || !isPrivyConfigured}
           style={{
             display: 'flex',
             alignItems: 'center',

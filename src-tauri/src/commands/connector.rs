@@ -382,10 +382,34 @@ fn get_bundled_playwright_runner(app: &AppHandle) -> Option<(PathBuf, Option<Pat
     #[cfg(target_os = "linux")]
     let binary_name = "playwright-runner";
 
+    log::info!("=== Looking for Playwright runner ===");
+    log::info!("Resource directory: {:?}", resource_dir);
+    log::info!("Binary name: {}", binary_name);
+
+    // List contents of resource directory for debugging
+    if let Ok(entries) = std::fs::read_dir(&resource_dir) {
+        let contents: Vec<_> = entries
+            .filter_map(|e| e.ok())
+            .map(|e| e.file_name().to_string_lossy().to_string())
+            .collect();
+        log::info!("Resource dir contents: {:?}", contents);
+    }
+
     // Try playwright-runner/dist path (matches tauri.conf.json resources config)
     let dist_path = resource_dir.join("playwright-runner").join("dist");
     let dist_binary = dist_path.join(binary_name);
     let dist_browsers = dist_path.join("browsers");
+
+    log::info!("Checking path 1: {:?} (exists: {})", dist_binary, dist_binary.exists());
+    if dist_path.exists() {
+        if let Ok(entries) = std::fs::read_dir(&dist_path) {
+            let contents: Vec<_> = entries
+                .filter_map(|e| e.ok())
+                .map(|e| e.file_name().to_string_lossy().to_string())
+                .collect();
+            log::info!("  dist path contents: {:?}", contents);
+        }
+    }
 
     if dist_binary.exists() {
         log::info!("Found bundled Playwright runner at {:?}", dist_binary);
@@ -400,6 +424,8 @@ fn get_bundled_playwright_runner(app: &AppHandle) -> Option<(PathBuf, Option<Pat
     // Try binaries/ path (alternative CI builds layout)
     let binary_path = resource_dir.join("binaries").join(binary_name);
     let browsers_path = resource_dir.join("binaries").join("browsers");
+
+    log::info!("Checking path 2: {:?} (exists: {})", binary_path, binary_path.exists());
 
     if binary_path.exists() {
         log::info!("Found bundled Playwright runner at {:?}", binary_path);
@@ -416,6 +442,17 @@ fn get_bundled_playwright_runner(app: &AppHandle) -> Option<(PathBuf, Option<Pat
     let up_binary = up_path.join(binary_name);
     let up_browsers = up_path.join("browsers");
 
+    log::info!("Checking path 3: {:?} (exists: {})", up_binary, up_binary.exists());
+    if up_path.exists() {
+        if let Ok(entries) = std::fs::read_dir(&up_path) {
+            let contents: Vec<_> = entries
+                .filter_map(|e| e.ok())
+                .map(|e| e.file_name().to_string_lossy().to_string())
+                .collect();
+            log::info!("  _up_ path contents: {:?}", contents);
+        }
+    }
+
     if up_binary.exists() {
         log::info!("Found bundled Playwright runner at {:?}", up_binary);
         let browsers = if up_browsers.exists() {
@@ -426,6 +463,7 @@ fn get_bundled_playwright_runner(app: &AppHandle) -> Option<(PathBuf, Option<Pat
         return Some((up_binary, browsers));
     }
 
+    log::error!("=== Playwright runner NOT FOUND in any location ===");
     None
 }
 

@@ -20,11 +20,13 @@ interface SettingsAboutProps {
   browserStatus: BrowserStatus | null
   pathsDebug: Record<string, unknown> | null
   personalServer: PersonalServerInfo
+  simulateNoChrome: boolean
   onTestNodeJs: () => void
   onCheckBrowserStatus: () => void
   onDebugPaths: () => void
   onRestartPersonalServer: () => void
   onStopPersonalServer: () => void
+  onSimulateNoChromeChange: (value: boolean) => void
 }
 
 const statusStyles = {
@@ -42,11 +44,13 @@ export function SettingsAbout({
   browserStatus,
   pathsDebug,
   personalServer,
+  simulateNoChrome,
   onTestNodeJs,
   onCheckBrowserStatus,
   onDebugPaths,
   onRestartPersonalServer,
   onStopPersonalServer,
+  onSimulateNoChromeChange,
 }: SettingsAboutProps) {
   const nodeStatusKey: keyof typeof statusStyles =
     nodeTestStatus === "success"
@@ -283,6 +287,25 @@ export function SettingsAbout({
               </Button>
             }
           />
+
+          <div className="flex items-center justify-between border-t border-border/50 px-4 py-3">
+            <div className="space-y-0.5">
+              <Text as="div" intent="small" weight="medium">
+                Simulate No System Browser
+              </Text>
+              <Text as="div" intent="fine" color="mutedForeground">
+                Testing: pretend system Chrome/Edge is not installed
+              </Text>
+            </div>
+            <Button
+              type="button"
+              variant={simulateNoChrome ? "default" : "outline"}
+              size="sm"
+              onClick={() => onSimulateNoChromeChange(!simulateNoChrome)}
+            >
+              {simulateNoChrome ? "On" : "Off"}
+            </Button>
+          </div>
 
           <SettingsRow
             iconContainerClassName="bg-muted"

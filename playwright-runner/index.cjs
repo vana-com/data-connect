@@ -274,10 +274,17 @@ async function runConnector(runId, connectorPath, url) {
     };
 
     // Try to find a browser in this order:
-    // 1. System Chrome/Edge
+    // 1. System Chrome/Edge (unless DATABRIDGE_SIMULATE_NO_CHROME is set)
     // 2. Previously downloaded Chromium
     // 3. Download Chromium on-demand
-    let browserPath = getSystemChromePath();
+    let browserPath = null;
+
+    // Skip system Chrome if simulating no Chrome (for testing download flow)
+    if (!process.env.DATABRIDGE_SIMULATE_NO_CHROME) {
+      browserPath = getSystemChromePath();
+    } else {
+      log('DATABRIDGE_SIMULATE_NO_CHROME is set, skipping system Chrome detection');
+    }
 
     if (browserPath) {
       log(`Using system browser: ${browserPath}`);

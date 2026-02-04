@@ -27,6 +27,9 @@ export function useSettingsPage() {
   const [nodeTestError, setNodeTestError] = useState<string | null>(null)
   const [pathsDebug, setPathsDebug] = useState<Record<string, unknown> | null>(null)
   const [browserStatus, setBrowserStatus] = useState<BrowserStatus | null>(null)
+  const [simulateNoChrome, setSimulateNoChrome] = useState<boolean>(() => {
+    return localStorage.getItem("databridge_simulate_no_chrome") === "true"
+  })
 
   useEffect(() => {
     let cancelled = false
@@ -90,13 +93,19 @@ export function useSettingsPage() {
     }
   }, [])
 
+  // Persist simulateNoChrome to localStorage
+  useEffect(() => {
+    localStorage.setItem("databridge_simulate_no_chrome", String(simulateNoChrome))
+  }, [simulateNoChrome])
+
   useEffect(() => {
     let cancelled = false
 
     const checkBrowser = async () => {
       try {
         const result = await invoke<BrowserStatus & { needs_download: boolean }>(
-          "check_browser_available"
+          "check_browser_available",
+          { simulateNoChrome }
         )
         if (!cancelled) {
           setBrowserStatus(result)
@@ -111,18 +120,19 @@ export function useSettingsPage() {
     return () => {
       cancelled = true
     }
-  }, [])
+  }, [simulateNoChrome])
 
   const checkBrowserStatus = useCallback(async () => {
     try {
       const result = await invoke<BrowserStatus & { needs_download: boolean }>(
-        "check_browser_available"
+        "check_browser_available",
+        { simulateNoChrome }
       )
       setBrowserStatus(result)
     } catch (error) {
       console.error("Browser check error:", error)
     }
-  }, [])
+  }, [simulateNoChrome])
 
   const handleRevokeApp = useCallback((appId: string) => {
     removeConnectedApp(appId)
@@ -147,6 +157,7 @@ export function useSettingsPage() {
     nodeTestError,
     pathsDebug,
     browserStatus,
+    simulateNoChrome,
     connectedApps,
     personalServer,
     user,
@@ -156,6 +167,7 @@ export function useSettingsPage() {
     onTestNodeJs: testNodeJs,
     onDebugPaths: debugPaths,
     onCheckBrowserStatus: checkBrowserStatus,
+    onSimulateNoChromeChange: setSimulateNoChrome,
     onRevokeApp: handleRevokeApp,
     onLogout: handleLogout,
     onSignIn: handleSignIn,

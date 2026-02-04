@@ -637,10 +637,12 @@ export const useAuthPage = (): UseAuthPageState => {
   useEffect(() => {
     const privy = privyRef.current
     const iframe = walletIframeRef.current
-    if (!privy || !iframe?.contentWindow) return
+    if (!privy || !iframe) return
 
+    let listenerAttached = false
     const handleMessage = (event: MessageEvent) => {
-      if (event.source !== iframe.contentWindow) return
+      const contentWindow = iframe.contentWindow
+      if (!contentWindow || event.source !== contentWindow) return
       try {
         privy.embeddedWallet.onMessage(event.data)
       } catch (err) {
@@ -648,9 +650,24 @@ export const useAuthPage = (): UseAuthPageState => {
       }
     }
 
-    window.addEventListener("message", handleMessage)
+    const attachMessageListener = () => {
+      if (listenerAttached || !iframe.contentWindow) return
+      window.addEventListener("message", handleMessage)
+      listenerAttached = true
+    }
+
+    const handleLoad = () => {
+      attachMessageListener()
+    }
+
+    attachMessageListener()
+    iframe.addEventListener("load", handleLoad)
+
     return () => {
-      window.removeEventListener("message", handleMessage)
+      iframe.removeEventListener("load", handleLoad)
+      if (listenerAttached) {
+        window.removeEventListener("message", handleMessage)
+      }
     }
   }, [walletIframeUrl])
 

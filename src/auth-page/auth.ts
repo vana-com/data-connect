@@ -47,6 +47,29 @@ type UseAuthPageState = {
 const MASTER_KEY_MESSAGE = "vana-master-key-v1"
 const LOGIN_ERROR_MESSAGE = "Failed to initialize authentication."
 
+type CloseTabActions = {
+  close?: () => void
+  assign?: (url: string) => void
+}
+
+export const scheduleCloseTab = (delayMs = 1500, actions: CloseTabActions = {}) => {
+  const close = actions.close ?? (() => window.close())
+  const assign = actions.assign ?? (url => window.location.assign(url))
+
+  window.setTimeout(() => {
+    try {
+      close()
+    } catch {
+      // ignored
+    }
+    try {
+      assign("/close-tab")
+    } catch {
+      // ignored
+    }
+  }, delayMs)
+}
+
 const toHexMessage = (value: string) => {
   const encoded = new TextEncoder().encode(value)
   return `0x${Array.from(encoded)
@@ -425,13 +448,7 @@ export const useAuthPage = (): UseAuthPageState => {
       }
 
       showSuccess()
-      window.setTimeout(() => {
-        try {
-          window.close()
-        } catch {
-          // ignored
-        }
-      }, 1500)
+      scheduleCloseTab()
     },
     [registerPersonalServer, sendAuthResult, setupWalletIframe, showLoading, showSuccess]
   )

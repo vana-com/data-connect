@@ -26,6 +26,8 @@
 - [P1] Ensure `src/auth-page/index.html` injects `window.__AUTH_CONFIG__`
   placeholders _before_ the module script and that Vite keeps `%PRIVY_*%`
   placeholders in the built HTML.
+- [P1] Navigate to `/close-tab` after auth success so the Rust server can close
+  the tab and shut down the auth server.
 - [P2] Prefer shared DS primitives and utilities from `src/lib`/components for
   the auth page UI (e.g., `Text`, `Button`, `cn`, shared input classes) over
   ad-hoc duplicates to keep the design system consistent.

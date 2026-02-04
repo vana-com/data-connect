@@ -13,7 +13,7 @@ describe("scheduleCloseTab", () => {
     const assignSpy = vi.fn()
 
     scheduleCloseTab(10, { close: closeSpy, assign: assignSpy })
-    vi.advanceTimersByTime(10)
+    vi.runAllTimers()
 
     expect(closeSpy).toHaveBeenCalled()
     expect(assignSpy).toHaveBeenCalledWith("/close-tab")

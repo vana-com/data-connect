@@ -28,6 +28,8 @@
   placeholders in the built HTML.
 - [P1] Navigate to `/close-tab` after auth success so the Rust server can close
   the tab and shut down the auth server.
+- [P1] Ensure `/close-tab` navigation happens before `window.close()` so the
+  auth server can shut down even if the window closes.
 - [P2] Prefer shared DS primitives and utilities from `src/lib`/components for
   the auth page UI (e.g., `Text`, `Button`, `cn`, shared input classes) over
   ad-hoc duplicates to keep the design system consistent.

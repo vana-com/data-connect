@@ -58,15 +58,17 @@ export const scheduleCloseTab = (delayMs = 1500, actions: CloseTabActions = {}) 
 
   window.setTimeout(() => {
     try {
-      close()
-    } catch {
-      // ignored
-    }
-    try {
       assign("/close-tab")
     } catch {
       // ignored
     }
+    window.setTimeout(() => {
+      try {
+        close()
+      } catch {
+        // ignored
+      }
+    }, 250)
   }, delayMs)
 }
 

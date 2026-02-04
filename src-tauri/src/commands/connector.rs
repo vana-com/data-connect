@@ -545,47 +545,55 @@ async fn start_playwright_run(
 
     log::info!("Connector script found at: {:?}, looking for Playwright runner...", connector_path);
 
-    // Try to use bundled binary first (production), fall back to dev mode
-    let mut child = if let Some((binary_path, browsers_path)) = get_bundled_playwright_runner(&app) {
-        log::info!("Found bundled Playwright runner at: {:?}", binary_path);
+    // In debug mode, always use node directly (avoids macOS code signing issues with copied binaries)
+    // In release mode, use the bundled binary
+    #[cfg(debug_assertions)]
+    let use_bundled_binary = false;
+    #[cfg(not(debug_assertions))]
+    let use_bundled_binary = true;
 
-        // Production mode: use bundled binary
-        let mut cmd = Command::new(&binary_path);
-        cmd.stdin(Stdio::piped())
-            .stdout(Stdio::piped())
-            .stderr(Stdio::piped());
+    let mut child = if use_bundled_binary {
+        if let Some((binary_path, browsers_path)) = get_bundled_playwright_runner(&app) {
+            log::info!("Found bundled Playwright runner at: {:?}", binary_path);
 
-        // Set browser path if bundled
-        if let Some(ref browsers) = browsers_path {
-            log::info!("Setting PLAYWRIGHT_BROWSERS_PATH to: {:?}", browsers);
-            cmd.env("PLAYWRIGHT_BROWSERS_PATH", browsers);
-        }
+            // Production mode: use bundled binary
+            let mut cmd = Command::new(&binary_path);
+            cmd.stdin(Stdio::piped())
+                .stdout(Stdio::piped())
+                .stderr(Stdio::piped());
 
-        // Set simulate no chrome flag for testing
-        if simulate_no_chrome.unwrap_or(false) {
-            log::info!("Setting DATABRIDGE_SIMULATE_NO_CHROME=1");
-            cmd.env("DATABRIDGE_SIMULATE_NO_CHROME", "1");
-        }
-
-        log::info!("Spawning Playwright runner...");
-        match cmd.spawn() {
-            Ok(child) => {
-                log::info!("Playwright runner spawned successfully");
-                child
+            // Set browser path if bundled
+            if let Some(ref browsers) = browsers_path {
+                log::info!("Setting PLAYWRIGHT_BROWSERS_PATH to: {:?}", browsers);
+                cmd.env("PLAYWRIGHT_BROWSERS_PATH", browsers);
             }
-            Err(e) => {
-                let err = format!("Failed to spawn bundled Playwright runner: {}", e);
-                log::error!("{}", err);
-                let _ = app.emit("connector-log", serde_json::json!({
-                    "runId": run_id,
-                    "message": format!("Error: {}", err),
-                    "timestamp": chrono_timestamp()
-                }));
-                return Err(err);
+
+            // Set simulate no chrome flag for testing
+            if simulate_no_chrome.unwrap_or(false) {
+                log::info!("Setting DATABRIDGE_SIMULATE_NO_CHROME=1");
+                cmd.env("DATABRIDGE_SIMULATE_NO_CHROME", "1");
             }
+
+            log::info!("Spawning Playwright runner...");
+            match cmd.spawn() {
+                Ok(child) => child,
+                Err(e) => {
+                    let err = format!("Failed to spawn bundled Playwright runner: {}", e);
+                    log::error!("{}", err);
+                    let _ = app.emit("connector-log", serde_json::json!({
+                        "runId": run_id,
+                        "message": format!("Error: {}", err),
+                        "timestamp": chrono_timestamp()
+                    }));
+                    return Err(err);
+                }
+            }
+        } else {
+            return Err("Bundled Playwright runner not found".to_string());
         }
     } else {
-        // Dev mode: use node index.js
+        // Dev mode: use node index.cjs directly (avoids code signing issues)
+        log::info!("Dev mode: using node index.cjs directly");
         let connectors_dir = get_connectors_dir(&app);
         let runner_dir = connectors_dir.parent()
             .and_then(|p| Some(p.join("playwright-runner")))
@@ -611,6 +619,8 @@ async fn start_playwright_run(
         cmd.spawn()
             .map_err(|e| format!("Failed to spawn Playwright runner: {}", e))?
     };
+
+    log::info!("Playwright runner spawned successfully");
 
     // Get handles to stdin/stdout
     let stdin = child.stdin.take().ok_or("Failed to get stdin")?;

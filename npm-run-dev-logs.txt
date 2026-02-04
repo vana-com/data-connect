@@ -1,0 +1,123 @@
+npm run tauri:dev
+
+> databridge@0.0.0 tauri:dev
+> node scripts/ensure-playwright-runner.js && node scripts/ensure-personal-server.js && tauri dev
+
+     Running BeforeDevCommand (`npm run dev`)
+
+> databridge@0.0.0 dev
+> vite
+
+
+  VITE v7.3.1  ready in 611 ms
+
+  ➜  Local:   http://localhost:5173/
+  ➜  Network: use --host to expose
+     Running DevCommand (`cargo  run --no-default-features --color always --`)
+        Info Watching /Users/volod/Documents/GitHub/data-dt-app/src-tauri for changes...
+   Compiling databridge v0.1.0 (/Users/volod/Documents/GitHub/data-dt-app/src-tauri)
+    Finished `dev` profile [unoptimized + debuginfo] target(s) in 11.18s
+     Running `target/debug/databridge`
+[2026-02-04][09:46:13][databridge_lib::commands::file_ops][INFO] Loaded 8 runs from disk
+[2026-02-04][09:46:14][databridge_lib::commands::connector][INFO] Found bundled connectors at: "/Users/volod/Documents/GitHub/data-dt-app/connectors"
+[2026-02-04][09:46:14][databridge_lib::commands::connector][INFO] Loading bundled connectors from: "/Users/volod/Documents/GitHub/data-dt-app/connectors"
+[2026-02-04][09:46:14][databridge_lib::commands::updates][INFO] Using cached registry
+[2026-02-04][09:46:14][databridge_lib::commands::connector][INFO] Found user connectors at: "/Users/volod/.databridge/connectors"
+[2026-02-04][09:46:14][databridge_lib::commands::connector][INFO] Loading user connectors from: "/Users/volod/.databridge/connectors"
+[2026-02-04][09:46:14][databridge_lib::commands::connector][INFO] Found bundled connectors at: "/Users/volod/Documents/GitHub/data-dt-app/connectors"
+[2026-02-04][09:46:14][databridge_lib::commands::connector][INFO] Loading bundled connectors from: "/Users/volod/Documents/GitHub/data-dt-app/connectors"
+[2026-02-04][09:46:14][databridge_lib::commands::updates][INFO] Using cached registry
+[2026-02-04][09:46:14][databridge_lib::commands::connector][INFO] Found user connectors at: "/Users/volod/.databridge/connectors"
+[2026-02-04][09:46:14][databridge_lib::commands::connector][INFO] Loading user connectors from: "/Users/volod/.databridge/connectors"
+[2026-02-04][09:46:14][databridge_lib::commands::updates][INFO] Found 0 connector updates
+[2026-02-04][09:46:14][databridge_lib::commands::updates][INFO] Found 0 connector updates
+[2026-02-04][09:46:14][databridge_lib::commands::connector][INFO] Loaded 3 total platforms
+[2026-02-04][09:46:14][databridge_lib::commands::connector][INFO] Loaded 3 total platforms
+[2026-02-04][09:46:14][databridge_lib::commands::connector][INFO] Found bundled connectors at: "/Users/volod/Documents/GitHub/data-dt-app/connectors"
+[2026-02-04][09:46:14][databridge_lib::commands::connector][INFO] Loading bundled connectors from: "/Users/volod/Documents/GitHub/data-dt-app/connectors"
+[2026-02-04][09:46:14][databridge_lib::commands::connector][INFO] Found user connectors at: "/Users/volod/.databridge/connectors"
+[2026-02-04][09:46:14][databridge_lib::commands::connector][INFO] Loading user connectors from: "/Users/volod/.databridge/connectors"
+[2026-02-04][09:46:14][databridge_lib::commands::connector][INFO] Loaded 3 total platforms
+[2026-02-04][09:46:14][databridge_lib::commands::connector][INFO] Found bundled connectors at: "/Users/volod/Documents/GitHub/data-dt-app/connectors"
+[2026-02-04][09:46:14][databridge_lib::commands::connector][INFO] Loading bundled connectors from: "/Users/volod/Documents/GitHub/data-dt-app/connectors"
+[2026-02-04][09:46:14][databridge_lib::commands::connector][INFO] Found user connectors at: "/Users/volod/.databridge/connectors"
+[2026-02-04][09:46:14][databridge_lib::commands::connector][INFO] Loading user connectors from: "/Users/volod/.databridge/connectors"
+[2026-02-04][09:46:14][databridge_lib::commands::connector][INFO] Loaded 3 total platforms
+[2026-02-04][09:46:54][databridge_lib::commands::connector][INFO] Starting Playwright run for chatgpt-playwright-1770198414644 (platform: chatgpt-playwright, company: OpenAI, filename: chatgpt-playwright)
+[2026-02-04][09:46:54][databridge_lib::commands::connector][INFO] Found user connectors at: "/Users/volod/.databridge/connectors"
+[2026-02-04][09:46:54][databridge_lib::commands::connector][INFO] Found connector in user directory: "/Users/volod/.databridge/connectors/openai/chatgpt-playwright.js"
+[2026-02-04][09:46:54][databridge_lib::commands::connector][INFO] Connector script found at: "/Users/volod/.databridge/connectors/openai/chatgpt-playwright.js", looking for Playwright runner...
+[2026-02-04][09:46:54][databridge_lib::commands::connector][INFO] === Looking for Playwright runner ===
+[2026-02-04][09:46:54][databridge_lib::commands::connector][INFO] Resource directory: "/Users/volod/Documents/GitHub/data-dt-app/src-tauri/target/debug"
+[2026-02-04][09:46:54][databridge_lib::commands::connector][INFO] Binary name: playwright-runner
+[2026-02-04][09:46:54][databridge_lib::commands::connector][INFO] Resource dir contents: ["connectors", ".fingerprint", "databridge", "incremental", "personal-server", "playwright-runner", "libdatabridge_lib.d", "libdatabridge_lib.rlib", "libdatabridge_lib.dylib", "databridge.d", ".cargo-lock", "examples", "deps", "libdatabridge_lib.a", "build"]
+[2026-02-04][09:46:54][databridge_lib::commands::connector][INFO] Checking path 1: "/Users/volod/Documents/GitHub/data-dt-app/src-tauri/target/debug/playwright-runner/dist/playwright-runner" (exists: true)
+[2026-02-04][09:46:54][databridge_lib::commands::connector][INFO]   dist path contents: ["playwright-runner"]
+[2026-02-04][09:46:54][databridge_lib::commands::connector][INFO] Found bundled Playwright runner at "/Users/volod/Documents/GitHub/data-dt-app/src-tauri/target/debug/playwright-runner/dist/playwright-runner"
+[2026-02-04][09:46:54][databridge_lib::commands::connector][INFO] Found bundled Playwright runner at: "/Users/volod/Documents/GitHub/data-dt-app/src-tauri/target/debug/playwright-runner/dist/playwright-runner"
+[2026-02-04][09:46:54][databridge_lib::commands::connector][INFO] Spawning Playwright runner...
+[2026-02-04][09:46:54][databridge_lib::commands::connector][INFO] Playwright runner spawned successfully
+[2026-02-04][09:46:55][databridge_lib::commands::connector][INFO] [Playwright:chatgpt-playwright-1770198414644] [PlaywrightRunner] Playwright runner started
+[2026-02-04][09:46:55][databridge_lib::commands::connector][INFO] Playwright runner ready for chatgpt-playwright-1770198414644
+[2026-02-04][09:46:55][databridge_lib::commands::connector][INFO] [Playwright:chatgpt-playwright-1770198414644] [PlaywrightRunner] Starting run chatgpt-playwright-1770198414644 with connector /Users/volod/.databridge/connectors/openai/chatgpt-playwright.js
+[2026-02-04][09:46:55][databridge_lib::commands::connector][INFO] [Playwright:chatgpt-playwright-1770198414644] [PlaywrightRunner] Checking system Chrome at: /Applications/Google Chrome.app/Contents/MacOS/Google Chrome
+[2026-02-04][09:46:55][databridge_lib::commands::connector][INFO] [Playwright:chatgpt-playwright-1770198414644] [PlaywrightRunner] Found system Chrome: /Applications/Google Chrome.app/Contents/MacOS/Google Chrome
+[2026-02-04][09:46:55][databridge_lib::commands::connector][INFO] [Playwright:chatgpt-playwright-1770198414644] [PlaywrightRunner] Using system browser: /Applications/Google Chrome.app/Contents/MacOS/Google Chrome
+[2026-02-04][09:46:57][databridge_lib::commands::connector][INFO] [Playwright:chatgpt-playwright-1770198414644] [PlaywrightRunner] Navigating to initial URL: https://chatgpt.com/
+[2026-02-04][09:46:57][databridge_lib::commands::connector][INFO] [Playwright:chatgpt-playwright-1770198414644] [PlaywrightRunner] Initial navigation complete
+[2026-02-04][09:46:57][databridge_lib::commands::connector][INFO] [Playwright:chatgpt-playwright-1770198414644] [PlaywrightRunner] Added return before IIFE (match 1 of 1)
+[2026-02-04][09:46:57][databridge_lib::commands::connector][INFO] [Playwright:chatgpt-playwright-1770198414644] [PlaywrightRunner] Starting connector execution...
+[2026-02-04][09:46:57][databridge_lib::commands::connector][INFO] [Playwright:chatgpt-playwright-1770198414644] [PlaywrightRunner] Calling connector function...
+[2026-02-04][09:46:57][databridge_lib::commands::connector][INFO] [Playwright:chatgpt-playwright-1770198414644] [PlaywrightRunner] pageApi.goto called with: https://chatgpt.com/
+[2026-02-04][09:46:59][databridge_lib::commands::connector][INFO] [Playwright:chatgpt-playwright-1770198414644] [PlaywrightRunner] pageApi.goto completed successfully
+[2026-02-04][09:47:18][databridge_lib::commands::connector][INFO] Found bundled connectors at: "/Users/volod/Documents/GitHub/data-dt-app/connectors"
+[2026-02-04][09:47:18][databridge_lib::commands::connector][INFO] Loading bundled connectors from: "/Users/volod/Documents/GitHub/data-dt-app/connectors"
+[2026-02-04][09:47:18][databridge_lib::commands::connector][INFO] Found bundled connectors at: "/Users/volod/Documents/GitHub/data-dt-app/connectors"
+[2026-02-04][09:47:18][databridge_lib::commands::connector][INFO] Loading bundled connectors from: "/Users/volod/Documents/GitHub/data-dt-app/connectors"
+[2026-02-04][09:47:18][databridge_lib::commands::updates][INFO] Using cached registry
+[2026-02-04][09:47:18][databridge_lib::commands::updates][INFO] Using cached registry
+[2026-02-04][09:47:18][databridge_lib::commands::updates][INFO] Found 0 connector updates
+[2026-02-04][09:47:18][databridge_lib::commands::updates][INFO] Found 0 connector updates
+[2026-02-04][09:47:18][databridge_lib::commands::connector][INFO] Found user connectors at: "/Users/volod/.databridge/connectors"
+[2026-02-04][09:47:18][databridge_lib::commands::connector][INFO] Found user connectors at: "/Users/volod/.databridge/connectors"
+[2026-02-04][09:47:18][databridge_lib::commands::connector][INFO] Loading user connectors from: "/Users/volod/.databridge/connectors"
+[2026-02-04][09:47:18][databridge_lib::commands::connector][INFO] Loading user connectors from: "/Users/volod/.databridge/connectors"
+[2026-02-04][09:47:18][databridge_lib::commands::connector][INFO] Loaded 3 total platforms
+[2026-02-04][09:47:18][databridge_lib::commands::connector][INFO] Loaded 3 total platforms
+[2026-02-04][09:47:18][databridge_lib::commands::connector][INFO] Found bundled connectors at: "/Users/volod/Documents/GitHub/data-dt-app/connectors"
+[2026-02-04][09:47:18][databridge_lib::commands::connector][INFO] Loading bundled connectors from: "/Users/volod/Documents/GitHub/data-dt-app/connectors"
+[2026-02-04][09:47:18][databridge_lib::commands::connector][INFO] Found user connectors at: "/Users/volod/.databridge/connectors"
+[2026-02-04][09:47:18][databridge_lib::commands::connector][INFO] Loading user connectors from: "/Users/volod/.databridge/connectors"
+[2026-02-04][09:47:18][databridge_lib::commands::connector][INFO] Loaded 3 total platforms
+[2026-02-04][09:47:18][databridge_lib::commands::connector][INFO] Found bundled connectors at: "/Users/volod/Documents/GitHub/data-dt-app/connectors"
+[2026-02-04][09:47:18][databridge_lib::commands::connector][INFO] Loading bundled connectors from: "/Users/volod/Documents/GitHub/data-dt-app/connectors"
+[2026-02-04][09:47:18][databridge_lib::commands::connector][INFO] Found user connectors at: "/Users/volod/.databridge/connectors"
+[2026-02-04][09:47:18][databridge_lib::commands::connector][INFO] Loading user connectors from: "/Users/volod/.databridge/connectors"
+[2026-02-04][09:47:18][databridge_lib::commands::connector][INFO] Loaded 3 total platforms
+[2026-02-04][09:47:19][databridge_lib::commands::connector][INFO] Starting Playwright run for chatgpt-playwright-1770198439194 (platform: chatgpt-playwright, company: OpenAI, filename: chatgpt-playwright)
+[2026-02-04][09:47:19][databridge_lib::commands::connector][INFO] Found user connectors at: "/Users/volod/.databridge/connectors"
+[2026-02-04][09:47:19][databridge_lib::commands::connector][INFO] Found connector in user directory: "/Users/volod/.databridge/connectors/openai/chatgpt-playwright.js"
+[2026-02-04][09:47:19][databridge_lib::commands::connector][INFO] Connector script found at: "/Users/volod/.databridge/connectors/openai/chatgpt-playwright.js", looking for Playwright runner...
+[2026-02-04][09:47:19][databridge_lib::commands::connector][INFO] === Looking for Playwright runner ===
+[2026-02-04][09:47:19][databridge_lib::commands::connector][INFO] Resource directory: "/Users/volod/Documents/GitHub/data-dt-app/src-tauri/target/debug"
+[2026-02-04][09:47:19][databridge_lib::commands::connector][INFO] Binary name: playwright-runner
+[2026-02-04][09:47:19][databridge_lib::commands::connector][INFO] Resource dir contents: ["connectors", ".fingerprint", "databridge", "incremental", "personal-server", "playwright-runner", "libdatabridge_lib.d", "libdatabridge_lib.rlib", "libdatabridge_lib.dylib", "databridge.d", ".cargo-lock", "examples", "deps", "libdatabridge_lib.a", "build"]
+[2026-02-04][09:47:19][databridge_lib::commands::connector][INFO] Checking path 1: "/Users/volod/Documents/GitHub/data-dt-app/src-tauri/target/debug/playwright-runner/dist/playwright-runner" (exists: true)
+[2026-02-04][09:47:19][databridge_lib::commands::connector][INFO]   dist path contents: ["playwright-runner"]
+[2026-02-04][09:47:19][databridge_lib::commands::connector][INFO] Found bundled Playwright runner at "/Users/volod/Documents/GitHub/data-dt-app/src-tauri/target/debug/playwright-runner/dist/playwright-runner"
+[2026-02-04][09:47:19][databridge_lib::commands::connector][INFO] Found bundled Playwright runner at: "/Users/volod/Documents/GitHub/data-dt-app/src-tauri/target/debug/playwright-runner/dist/playwright-runner"
+[2026-02-04][09:47:19][databridge_lib::commands::connector][INFO] Spawning Playwright runner...
+[2026-02-04][09:47:19][databridge_lib::commands::connector][INFO] Playwright runner spawned successfully
+[2026-02-04][09:47:19][databridge_lib::commands::connector][INFO] [Playwright:chatgpt-playwright-1770198439194] [PlaywrightRunner] Playwright runner started
+[2026-02-04][09:47:19][databridge_lib::commands::connector][INFO] Playwright runner ready for chatgpt-playwright-1770198439194
+[2026-02-04][09:47:19][databridge_lib::commands::connector][INFO] [Playwright:chatgpt-playwright-1770198439194] [PlaywrightRunner] Starting run chatgpt-playwright-1770198439194 with connector /Users/volod/.databridge/connectors/openai/chatgpt-playwright.js
+[2026-02-04][09:47:19][databridge_lib::commands::connector][INFO] [Playwright:chatgpt-playwright-1770198439194] [PlaywrightRunner] Checking system Chrome at: /Applications/Google Chrome.app/Contents/MacOS/Google Chrome
+[2026-02-04][09:47:19][databridge_lib::commands::connector][INFO] [Playwright:chatgpt-playwright-1770198439194] [PlaywrightRunner] Found system Chrome: /Applications/Google Chrome.app/Contents/MacOS/Google Chrome
+[2026-02-04][09:47:19][databridge_lib::commands::connector][INFO] [Playwright:chatgpt-playwright-1770198439194] [PlaywrightRunner] Using system browser: /Applications/Google Chrome.app/Contents/MacOS/Google Chrome
+[2026-02-04][09:47:20][databridge_lib::commands::connector][INFO] [Playwright:chatgpt-playwright-1770198439194] [PlaywrightRunner] Navigating to initial URL: https://chatgpt.com/
+[2026-02-04][09:47:21][databridge_lib::commands::connector][INFO] [Playwright:chatgpt-playwright-1770198439194] [PlaywrightRunner] Initial navigation complete
+[2026-02-04][09:47:21][databridge_lib::commands::connector][INFO] [Playwright:chatgpt-playwright-1770198439194] [PlaywrightRunner] Added return before IIFE (match 1 of 1)
+[2026-02-04][09:47:21][databridge_lib::commands::connector][INFO] [Playwright:chatgpt-playwright-1770198439194] [PlaywrightRunner] Starting connector execution...
+[2026-02-04][09:47:21][databridge_lib::commands::connector][INFO] [Playwright:chatgpt-playwright-1770198439194] [PlaywrightRunner] Calling connector function...
+[2026-02-04][09:47:21][databridge_lib::commands::connector][INFO] [Playwright:chatgpt-playwright-1770198439194] [PlaywrightRunner] pageApi.goto called with: https://chatgpt.com/
+[2026-02-04][09:47:22][databridge_lib::commands::connector][INFO] [Playwright:chatgpt-playwright-1770198439194] [PlaywrightRunner] pageApi.goto completed successfully

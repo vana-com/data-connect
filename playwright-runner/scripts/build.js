@@ -132,6 +132,17 @@ async function build() {
     log('Skipping browser copy (lean build)');
   }
 
+  // Sign the binary on macOS (required for it to run after being copied)
+  if (PLATFORM === 'darwin') {
+    log('Signing binary for macOS...');
+    try {
+      execSync(`codesign --force --sign - "${outputPath}"`, { stdio: 'inherit' });
+      log('Binary signed successfully');
+    } catch (e) {
+      log('Warning: Failed to sign binary (may cause issues running the binary)');
+    }
+  }
+
   log('Build complete!');
   log(`Output: ${DIST}`);
 

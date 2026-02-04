@@ -50,16 +50,27 @@ const LOGIN_ERROR_MESSAGE = "Failed to initialize authentication."
 
 type CloseTabActions = {
   close?: () => void
-  assign?: (url: string) => void
+  requestCloseTab?: () => void
 }
 
-export const scheduleCloseTab = (delayMs = 1500, actions: CloseTabActions = {}) => {
+const requestCloseTabDefault = () => {
+  try {
+    void fetch("/close-tab", { method: "GET", keepalive: true })
+  } catch {
+    // ignored
+  }
+}
+
+export const scheduleCloseTab = (
+  delayMs = 1500,
+  actions: CloseTabActions = {}
+) => {
   const close = actions.close ?? (() => window.close())
-  const assign = actions.assign ?? (url => window.location.assign(url))
+  const requestCloseTab = actions.requestCloseTab ?? requestCloseTabDefault
 
   window.setTimeout(() => {
     try {
-      assign("/close-tab")
+      requestCloseTab()
     } catch {
       // ignored
     }
@@ -115,6 +126,23 @@ export const useAuthPage = (): UseAuthPageState => {
   const currentEmailRef = useRef("")
   const walletIframeRef = useRef<HTMLIFrameElement>(null)
 
+  const setWalletMessagePoster = useCallback(
+    (privy: PrivyClient | null) => {
+      if (!privy) return false
+      const iframe = walletIframeRef.current
+      if (!iframe?.contentWindow) return false
+      try {
+        privy.setMessagePoster(iframe.contentWindow)
+        setWalletIframeLoaded(true)
+        return true
+      } catch (err) {
+        console.warn("[AUTH] setMessagePoster error:", err)
+        return false
+      }
+    },
+    [setWalletIframeLoaded]
+  )
+
   const showLoading = useCallback((message: string) => {
     setView("loading")
     setLoadingText(message)
@@ -135,8 +163,8 @@ export const useAuthPage = (): UseAuthPageState => {
   }, [])
 
   const handleWalletIframeLoad = useCallback(() => {
-    setWalletIframeLoaded(true)
-  }, [])
+    setWalletMessagePoster(privyRef.current)
+  }, [setWalletMessagePoster])
 
   const createPrivyClient = useCallback(
     async (config: AuthConfig, skipInit: boolean) => {
@@ -168,82 +196,90 @@ export const useAuthPage = (): UseAuthPageState => {
         body: JSON.stringify(result),
       })
       console.log("Auth callback response:", resp.status)
+      return resp.ok
     } catch (err) {
       console.error("Failed to send auth result:", err)
-      setLoadingText(`Error: ${err instanceof Error ? err.message : "Unknown error"}`)
+      return false
     }
   }, [])
 
-  const setupWalletIframe = useCallback(async (privy: PrivyClient) => {
-    try {
-      console.log("[AUTH] setupWalletIframe: starting...")
-      console.log(
-        "[AUTH] privy.embeddedWallet methods:",
-        Object.keys(privy.embeddedWallet || {})
-      )
-      console.log(
-        "[AUTH] privy methods:",
-        Object.getOwnPropertyNames(Object.getPrototypeOf(privy))
-      )
+  const setupWalletIframe = useCallback(
+    async (privy: PrivyClient) => {
+      try {
+        console.log("[AUTH] setupWalletIframe: starting...")
+        console.log(
+          "[AUTH] privy.embeddedWallet methods:",
+          Object.keys(privy.embeddedWallet || {})
+        )
+        console.log(
+          "[AUTH] privy methods:",
+          Object.getOwnPropertyNames(Object.getPrototypeOf(privy))
+        )
 
-      const iframeUrl = privy.embeddedWallet.getURL()
-      console.log("[AUTH] iframe URL:", iframeUrl)
-      setWalletIframeUrl(iframeUrl)
+        const iframeUrl = privy.embeddedWallet.getURL()
+        console.log("[AUTH] iframe URL:", iframeUrl)
+        setWalletIframeUrl(iframeUrl)
 
-      await new Promise<void>(resolve => {
-        let resolved = false
-        const timeoutId = window.setTimeout(() => {
-          if (resolved) return
-          resolved = true
-          console.warn("[AUTH] iframe setup timed out after 5s")
-          resolve()
-        }, 5000)
-
-        const attachListeners = () => {
-          const iframe = walletIframeRef.current
-          if (!iframe) {
-            requestAnimationFrame(attachListeners)
-            return
-          }
-
-          const handleLoad = () => {
+        await new Promise<void>(resolve => {
+          let resolved = false
+          const resolveOnce = () => {
             if (resolved) return
             resolved = true
             window.clearTimeout(timeoutId)
-            console.log("[AUTH] iframe loaded")
-            try {
-              if (iframe.contentWindow) {
-                privy.setMessagePoster(iframe.contentWindow)
-              }
-            } catch (err) {
-              console.warn("[AUTH] setMessagePoster error:", err)
-            }
-            window.setTimeout(resolve, 2000)
-          }
-
-          const handleError = (err: Event) => {
-            if (resolved) return
-            resolved = true
-            window.clearTimeout(timeoutId)
-            console.error("[AUTH] iframe load error:", err)
             resolve()
           }
+          const timeoutId = window.setTimeout(() => {
+            if (resolved) return
+            console.warn("[AUTH] iframe setup timed out after 5s")
+            resolveOnce()
+          }, 5000)
 
-          iframe.addEventListener("load", handleLoad, { once: true })
-          iframe.addEventListener("error", handleError, { once: true })
-        }
+          const attachListeners = () => {
+            const iframe = walletIframeRef.current
+            if (!iframe) {
+              requestAnimationFrame(attachListeners)
+              return
+            }
 
-        attachListeners()
-      })
+            const handleLoad = () => {
+              if (resolved) return
+              console.log("[AUTH] iframe loaded")
+              setWalletMessagePoster(privy)
+              window.setTimeout(resolveOnce, 2000)
+            }
 
-      console.log("[AUTH] setupWalletIframe: done")
-    } catch (err) {
-      console.error("[AUTH] Embedded wallet iframe setup failed:", err)
-    }
-  }, [])
+            const handleError = (err: Event) => {
+              if (resolved) return
+              console.error("[AUTH] iframe load error:", err)
+              resolveOnce()
+            }
+
+            if (setWalletMessagePoster(privy)) {
+              resolveOnce()
+              return
+            }
+
+            iframe.addEventListener("load", handleLoad, { once: true })
+            iframe.addEventListener("error", handleError, { once: true })
+          }
+
+          attachListeners()
+        })
+
+        console.log("[AUTH] setupWalletIframe: done")
+      } catch (err) {
+        console.error("[AUTH] Embedded wallet iframe setup failed:", err)
+      }
+    },
+    [setWalletMessagePoster]
+  )
 
   const registerPersonalServer = useCallback(
-    async (privy: PrivyClient, walletAddress: string, walletAccount: PrivyLinkedAccount) => {
+    async (
+      privy: PrivyClient,
+      walletAddress: string,
+      walletAccount: PrivyLinkedAccount
+    ) => {
       console.log("[AUTH] registerPersonalServer: starting...")
       showLoading("Starting your server...")
 
@@ -285,9 +321,12 @@ export const useAuthPage = (): UseAuthPageState => {
         port?: number
       }
 
-      const serverAddress = identityRecord.identity?.address ?? identityRecord.address
-      const publicKey = identityRecord.identity?.publicKey ?? identityRecord.publicKey
-      const serverId = identityRecord.identity?.serverId ?? identityRecord.serverId
+      const serverAddress =
+        identityRecord.identity?.address ?? identityRecord.address
+      const publicKey =
+        identityRecord.identity?.publicKey ?? identityRecord.publicKey
+      const serverId =
+        identityRecord.identity?.serverId ?? identityRecord.serverId
       const serverPort = identityRecord.identity?.port ?? identityRecord.port
 
       if (serverId) {
@@ -302,7 +341,9 @@ export const useAuthPage = (): UseAuthPageState => {
 
       showLoading("Registering your server...")
 
-      const serverUrl = serverPort ? `http://localhost:${serverPort}` : "http://localhost:8080"
+      const serverUrl = serverPort
+        ? `http://localhost:${serverPort}`
+        : "http://localhost:8080"
       const message = {
         ownerAddress: walletAddress,
         serverAddress,
@@ -342,7 +383,10 @@ export const useAuthPage = (): UseAuthPageState => {
         params: [walletAddress, JSON.stringify(typedData)],
       })
 
-      console.log("[AUTH] Server registration signed:", signature?.substring(0, 20) + "...")
+      console.log(
+        "[AUTH] Server registration signed:",
+        signature?.substring(0, 20) + "..."
+      )
 
       const regResp = await fetch("/register-server", {
         method: "POST",
@@ -366,13 +410,18 @@ export const useAuthPage = (): UseAuthPageState => {
   )
 
   const handleAuthenticatedUser = useCallback(
-    async (privy: PrivyClient, user: PrivyUser, session?: PrivySession | null) => {
+    async (
+      privy: PrivyClient,
+      user: PrivyUser,
+      session?: PrivySession | null
+    ) => {
       showLoading("Setting up your wallet...")
 
       let embeddedWallet = (user.linked_accounts || user.linkedAccounts)?.find(
         account =>
           account.type === "wallet" &&
-          (account.walletClientType === "privy" || account.wallet_client_type === "privy")
+          (account.walletClientType === "privy" ||
+            account.wallet_client_type === "privy")
       )
       let walletAddress = embeddedWallet?.address ?? null
 
@@ -381,7 +430,9 @@ export const useAuthPage = (): UseAuthPageState => {
           await setupWalletIframe(privy)
           const result = await privy.embeddedWallet.create({})
           const createdUser = result.user as PrivyUser
-          embeddedWallet = (createdUser.linked_accounts || createdUser.linkedAccounts)?.find(
+          embeddedWallet = (
+            createdUser.linked_accounts || createdUser.linkedAccounts
+          )?.find(
             account =>
               account.type === "wallet" &&
               (account.walletClientType === "privy" ||
@@ -406,10 +457,17 @@ export const useAuthPage = (): UseAuthPageState => {
       if (walletAddress && embeddedWallet) {
         try {
           showLoading("Signing master key...")
-          console.log("[AUTH] Embedded wallet account:", JSON.stringify(embeddedWallet))
+          console.log(
+            "[AUTH] Embedded wallet account:",
+            JSON.stringify(embeddedWallet)
+          )
           await setupWalletIframe(privy)
-          console.log("[AUTH] Getting provider for wallet:", embeddedWallet.address)
-          const provider = await privy.embeddedWallet.getProvider(embeddedWallet)
+          console.log(
+            "[AUTH] Getting provider for wallet:",
+            embeddedWallet.address
+          )
+          const provider =
+            await privy.embeddedWallet.getProvider(embeddedWallet)
           console.log("[AUTH] Provider obtained:", provider ? "ok" : "null")
           console.log("[AUTH] Requesting personal_sign...")
           masterKeySignature = await provider.request({
@@ -425,7 +483,7 @@ export const useAuthPage = (): UseAuthPageState => {
         }
       }
 
-      await sendAuthResult({
+      const didSend = await sendAuthResult({
         success: true,
         user: {
           id: user.id,
@@ -447,6 +505,11 @@ export const useAuthPage = (): UseAuthPageState => {
         masterKeySignature,
       })
 
+      if (!didSend) {
+        showError("Failed to return to the app. Please try again.")
+        return
+      }
+
       if (walletAddress && embeddedWallet) {
         try {
           await registerPersonalServer(privy, walletAddress, embeddedWallet)
@@ -458,7 +521,14 @@ export const useAuthPage = (): UseAuthPageState => {
       showSuccess()
       scheduleCloseTab()
     },
-    [registerPersonalServer, sendAuthResult, setupWalletIframe, showLoading, showSuccess]
+    [
+      registerPersonalServer,
+      sendAuthResult,
+      setupWalletIframe,
+      showError,
+      showLoading,
+      showSuccess,
+    ]
   )
 
   const handleOAuthLogin = useCallback(
@@ -601,7 +671,10 @@ export const useAuthPage = (): UseAuthPageState => {
 
         if (oauthCode && oauthState) {
           showLoading("Completing sign-in...")
-          console.log("[AUTH] OAuth callback detected, code:", oauthCode.substring(0, 8) + "...")
+          console.log(
+            "[AUTH] OAuth callback detected, code:",
+            oauthCode.substring(0, 8) + "..."
+          )
           try {
             console.log("[AUTH] Calling loginWithCode...")
             const session = (await privy.auth.oauth.loginWithCode(
@@ -622,7 +695,9 @@ export const useAuthPage = (): UseAuthPageState => {
           } catch (err) {
             console.error("[AUTH] OAuth callback error:", err)
             showError(
-              err instanceof Error ? err.message : "Failed to complete OAuth sign-in."
+              err instanceof Error
+                ? err.message
+                : "Failed to complete OAuth sign-in."
             )
           }
         }
@@ -632,13 +707,21 @@ export const useAuthPage = (): UseAuthPageState => {
         console.error("Privy initialization error:", err)
         showLoginForm()
         showError(
-          err instanceof Error ? `${LOGIN_ERROR_MESSAGE} ${err.message}` : LOGIN_ERROR_MESSAGE
+          err instanceof Error
+            ? `${LOGIN_ERROR_MESSAGE} ${err.message}`
+            : LOGIN_ERROR_MESSAGE
         )
       }
     }
 
     init()
-  }, [createPrivyClient, handleAuthenticatedUser, showError, showLoading, showLoginForm])
+  }, [
+    createPrivyClient,
+    handleAuthenticatedUser,
+    showError,
+    showLoading,
+    showLoginForm,
+  ])
 
   useEffect(() => {
     const privy = privyRef.current

@@ -28,7 +28,7 @@ function exec(cmd, opts = {}) {
 }
 
 function getPkgTarget() {
-  const nodeVersion = 'node20';
+  const nodeVersion = 'node22';
   if (PLATFORM === 'darwin') {
     return ARCH === 'arm64'
       ? `${nodeVersion}-macos-arm64`

@@ -7,18 +7,18 @@ date: 2026-02-03
 
 ## Purpose
 
-Explain how connect UI, deep links, and the grant flow fit together so the system
-is predictable, debuggable, and easy to extend.
+Explain how connect UI, data-source login/scrape, deep links, and the grant flow
+fit together so the system is predictable, debuggable, and easy to extend.
 
 ## Flow diagram
 
 ```mermaid
 flowchart TD
-  A["Data app / Connect CTA"] -->|build /grant?sessionId&appId&scopes| B[Connect Flow UI]
-  X[Deep link: dataconnect://?sessionId&appId&scopes] --> C[useDeepLink]
-  C -->|normalize + replace| D["/grant?sessionId&appId&scopes"]
-  B -->|Continue/Allow| D
-  D --> E[GrantFlow orchestrator]
+  A["Connect CTA"] --> B[Step 1: data-source login + scrape]
+  B -->|connector run completes| C["/grant?sessionId&appId&scopes"]
+  X[Deep link: dataconnect://?sessionId&appId&scopes] --> D[useDeepLink]
+  D -->|normalize + replace| C
+  C --> E[GrantFlow orchestrator]
   E -->|auth required| F[Open Privy in browser]
   F -->|auth-complete event| E
   E -->|Approve| G[grantSigning + approveSession]
@@ -32,15 +32,17 @@ Linear 4-step connect/grant design: `docs/_wip/260202-connect-flow.png`.
 
 ## Responsibilities
 
-- Connect Flow UI: presents the multi-step UI and sends the user into the grant flow.
-- Grant Flow: owns auth/consent/signing states and persists the connected app.
+- Connect Flow UI: presents the multi-step UI, starts data-source login/scrape,
+  then routes into the grant flow.
+- Data-source login/scrape: connector run launched from step 1.
+- Grant Flow: owns consent/auth/signing states and persists the connected app.
 - Deep links: normalize to canonical `/grant` URL params, then route with `replace`.
 - App registry: defines available apps, default app, and scopes for demo usage.
 
 ## Current implementation status
 
 - `src/pages/grant/*` covers consent/auth/success states only (steps 2-4).
-- The step-1 Connect CTA screen from the linear design is not implemented yet.
+- Step 1 (data-source login + scrape) is not implemented in the grant flow.
 - Demo app routing: `/apps/:appId` renders a host page (e.g. `src/pages/RickRollApp.tsx`)
   that handles gating + grant CTA, and then renders the app UI from
   `src/apps/<appId>/app.tsx` once connected.
@@ -72,3 +74,4 @@ skip relay calls. If `appId` is missing, the default app is used.
 - Grant flow state machine: `src/pages/grant/use-grant-flow.ts`
 - Grant flow UI: `src/pages/grant/*`
 - App registry + default: `src/apps/registry.ts`
+- Connector run entrypoint: `src/hooks/useConnector.ts` + `start_connector_run`

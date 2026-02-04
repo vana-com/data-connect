@@ -22,8 +22,12 @@ const CHROME_PATHS = {
   linux: '/usr/bin/google-chrome'
 };
 
-// Get browser cache directory
+// Get browser cache directory - checks PLAYWRIGHT_BROWSERS_PATH first (for bundled browsers)
 function getBrowserCacheDir() {
+  if (process.env.PLAYWRIGHT_BROWSERS_PATH) {
+    log(`Using PLAYWRIGHT_BROWSERS_PATH: ${process.env.PLAYWRIGHT_BROWSERS_PATH}`);
+    return process.env.PLAYWRIGHT_BROWSERS_PATH;
+  }
   const home = process.env.HOME || process.env.USERPROFILE || '';
   return path.join(home, '.databridge', 'browsers');
 }
@@ -31,9 +35,12 @@ function getBrowserCacheDir() {
 // Check if system Chrome exists
 function getSystemChromePath() {
   const chromePath = CHROME_PATHS[process.platform];
+  log(`Checking system Chrome at: ${chromePath}`);
   if (chromePath && fs.existsSync(chromePath)) {
+    log(`Found system Chrome: ${chromePath}`);
     return chromePath;
   }
+  log(`System Chrome not found at default path`);
   // Try alternative Windows paths
   if (process.platform === 'win32') {
     const altPaths = [
@@ -52,10 +59,14 @@ function getSystemChromePath() {
   return null;
 }
 
-// Check if Playwright Chromium is already downloaded
+// Check if Playwright Chromium is already downloaded (or bundled via PLAYWRIGHT_BROWSERS_PATH)
 function getDownloadedChromiumPath() {
   const cacheDir = getBrowserCacheDir();
-  if (!fs.existsSync(cacheDir)) return null;
+  log(`Checking for Chromium in: ${cacheDir}`);
+  if (!fs.existsSync(cacheDir)) {
+    log(`Browser cache dir does not exist: ${cacheDir}`);
+    return null;
+  }
 
   // Look for chromium directory
   const entries = fs.readdirSync(cacheDir);

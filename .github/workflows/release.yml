@@ -150,13 +150,37 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
+          set -x  # Enable verbose debugging
+
           # Copy node_modules into macOS .app bundles (preserving directory structure)
           if [ "${{ matrix.platform }}" = "macos-latest" ]; then
+            # Debug: Show what's in personal-server/dist
+            echo "=== Contents of personal-server/dist ==="
+            ls -la personal-server/dist/ || echo "dist not found"
+            echo "=== Contents of personal-server/dist/node_modules ==="
+            ls -la personal-server/dist/node_modules/ || echo "node_modules not found in dist"
+
             for app in src-tauri/target/${{ matrix.target }}/release/bundle/macos/*.app; do
-              [ -e "$app" ] || continue
+              [ -e "$app" ] || { echo "No .app found at $app"; continue; }
+              echo "=== Processing $app ==="
+
+              # Show current state
+              echo "Before copy - Resources contents:"
+              ls -la "$app/Contents/Resources/personal-server/dist/" || echo "personal-server/dist not in Resources"
+
               dest="$app/Contents/Resources/personal-server/dist/node_modules"
               mkdir -p "$dest"
-              cp -R personal-server/dist/node_modules/* "$dest/"
+
+              # Copy with verbose output
+              if [ -d "personal-server/dist/node_modules" ]; then
+                cp -Rv personal-server/dist/node_modules/* "$dest/"
+                echo "=== After copy - node_modules contents ==="
+                ls -la "$dest/" || echo "copy failed"
+              else
+                echo "ERROR: personal-server/dist/node_modules does not exist!"
+                exit 1
+              fi
+
               echo "Copied node_modules to $dest"
             done
 
@@ -185,11 +209,28 @@ jobs:
               cp -R "$app" "$dmg_temp/"
               ln -s /Applications "$dmg_temp/Applications"
 
+              # Verify node_modules is in the temp folder before creating DMG
+              echo "=== Verifying temp folder contents ==="
+              ls -la "$dmg_temp/"
+              ls -la "$dmg_temp/$(basename $app)/Contents/Resources/personal-server/dist/" || echo "WARNING: personal-server dist not found in temp"
+              ls -la "$dmg_temp/$(basename $app)/Contents/Resources/personal-server/dist/node_modules/" || { echo "ERROR: node_modules NOT in temp folder app!"; exit 1; }
+
               # Create DMG
               rm -f "$dmg_path"
               hdiutil create -volname "$app_name" -srcfolder "$dmg_temp" -ov -format UDZO "$dmg_path"
               rm -rf "$dmg_temp"
               echo "Created $dmg_path"
+
+              # Verify DMG contents by mounting and checking
+              echo "=== Verifying DMG contents ==="
+              mount_point="/tmp/verify_dmg_${arch}"
+              mkdir -p "$mount_point"
+              hdiutil attach "$dmg_path" -mountpoint "$mount_point" -nobrowse -quiet
+              ls -la "$mount_point/"
+              ls -la "$mount_point/DataBridge.app/Contents/Resources/personal-server/dist/" || echo "WARNING: dist not in mounted DMG"
+              ls -la "$mount_point/DataBridge.app/Contents/Resources/personal-server/dist/node_modules/" || { hdiutil detach "$mount_point" -quiet; echo "ERROR: node_modules NOT in final DMG!"; exit 1; }
+              hdiutil detach "$mount_point" -quiet
+              echo "=== DMG verification passed ==="
 
               # Notarize the DMG using App Store Connect API key
               # Note: This may fail if the app content doesn't pass Apple's checks after modification

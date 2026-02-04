@@ -95,10 +95,11 @@ async function build() {
     // Shim for import.meta.url
     'if(typeof globalThis.__importMetaUrl==="undefined"){globalThis.__importMetaUrl=_U.pathToFileURL(__filename).href;}',
     // Patch require resolution for native modules
+    // _resolveFilename(request, parent, isMain, options) - paths goes in options (4th param)
     `var _NM=${JSON.stringify(nativeModulesList)};`,
     '_M._resolveFilename=function(r,p,m,o){',
-    'if(_NM.includes(r)){try{return _R.call(this,r,Object.assign({},p,',
-    '{paths:[_P.join(_P.dirname(process.execPath),"node_modules")]}),m,o);}catch(e){}}',
+    'if(_NM.includes(r)){var _np=_P.join(_P.dirname(process.execPath),"node_modules");',
+    'try{return _R.call(this,r,p,m,Object.assign({},o||{},{paths:[_np]}));}catch(e){}}',
     'return _R.call(this,r,p,m,o);};',
   ].join('');
 
@@ -111,13 +112,35 @@ async function build() {
 
   // Use esbuild JavaScript API for reliable banner injection
   const esbuild = await import('esbuild');
+
+  // Plugin to make native module requires invisible to pkg's static analysis.
+  // pkg bundles any require() it finds statically. By using eval('require'),
+  // we hide these from pkg so they're loaded from the real filesystem at runtime.
+  const dynamicNativeRequirePlugin = {
+    name: 'dynamic-native-require',
+    setup(build) {
+      // For each native module, intercept the require and replace with dynamic require
+      for (const mod of nativeModulesList) {
+        build.onResolve({ filter: new RegExp(`^${mod}$`) }, args => ({
+          path: mod,
+          namespace: 'dynamic-native',
+        }));
+      }
+      build.onLoad({ filter: /.*/, namespace: 'dynamic-native' }, args => ({
+        // eval('require') hides the require from pkg's static analysis
+        contents: `module.exports = eval('require')(${JSON.stringify(args.path)});`,
+        loader: 'js',
+      }));
+    }
+  };
+
   await esbuild.build({
     entryPoints: [join(ROOT, 'index.js')],
     bundle: true,
     platform: 'node',
     format: 'cjs',
     outfile: bundlePath,
-    external: ['better-sqlite3', 'bindings', 'file-uri-to-path'],
+    plugins: [dynamicNativeRequirePlugin],
     banner: { js: nativeBanner },
     inject: [shimPath],
     define: {

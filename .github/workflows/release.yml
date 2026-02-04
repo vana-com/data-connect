@@ -119,13 +119,6 @@ jobs:
         working-directory: personal-server
         run: npm run build
 
-      - name: Move personal-server native addons out of dist
-        run: |
-          if [ -d "personal-server/dist/node_modules" ]; then
-            mv personal-server/dist/node_modules personal-server/_node_modules_tmp
-          fi
-        shell: bash
-
       - name: Sign personal-server binary (macOS)
         if: matrix.platform == 'macos-latest'
         run: |
@@ -153,27 +146,21 @@ jobs:
           prerelease: false
           args: --target ${{ matrix.target }}
 
-      - name: Copy native addons into bundle and upload
+      - name: Copy native modules and finalize bundles
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
-          # Restore node_modules
-          if [ -d "personal-server/_node_modules_tmp" ]; then
-            mv personal-server/_node_modules_tmp personal-server/dist/node_modules
-          fi
-
-          # Copy into macOS .app bundles
-          for app in src-tauri/target/${{ matrix.target }}/release/bundle/macos/*.app; do
-            [ -e "$app" ] || continue
-            dest="$app/Contents/Resources/personal-server/dist/node_modules"
-            if [ -d "$(dirname "$dest")" ]; then
-              cp -R personal-server/dist/node_modules "$dest"
-              echo "Copied node_modules to $dest"
-            fi
-          done
-
-          # Re-sign the .app after modification (macOS)
+          # Copy node_modules into macOS .app bundles (preserving directory structure)
           if [ "${{ matrix.platform }}" = "macos-latest" ]; then
+            for app in src-tauri/target/${{ matrix.target }}/release/bundle/macos/*.app; do
+              [ -e "$app" ] || continue
+              dest="$app/Contents/Resources/personal-server/dist/node_modules"
+              mkdir -p "$dest"
+              cp -R personal-server/dist/node_modules/* "$dest/"
+              echo "Copied node_modules to $dest"
+            done
+
+            # Re-sign the .app after modification
             for app in src-tauri/target/${{ matrix.target }}/release/bundle/macos/*.app; do
               [ -e "$app" ] || continue
               codesign --force --deep --options runtime --timestamp \
@@ -181,10 +168,8 @@ jobs:
                 "$app"
               echo "Re-signed $app"
             done
-          fi
 
-          # Recreate DMG (macOS)
-          if [ "${{ matrix.platform }}" = "macos-latest" ]; then
+            # Recreate DMG with updated .app
             for app in src-tauri/target/${{ matrix.target }}/release/bundle/macos/*.app; do
               [ -e "$app" ] || continue
               app_name=$(basename "$app" .app)
@@ -192,17 +177,56 @@ jobs:
               arch=$(echo "${{ matrix.target }}" | cut -d- -f1)
               dmg_name="${app_name}_${version}_${arch}.dmg"
               dmg_path="src-tauri/target/${{ matrix.target }}/release/bundle/dmg/${dmg_name}"
-              mkdir -p "$(dirname "$dmg_path")"
+              rm -f "$dmg_path"
               hdiutil create -volname "$app_name" -srcfolder "$app" -ov -format UDZO "$dmg_path"
               echo "Created $dmg_path"
-
-              # Upload DMG to release
-              gh release upload "${{ github.ref_name }}" "$dmg_path" --clobber
-              echo "Uploaded $dmg_name"
             done
           fi
 
-          # Upload other artifacts (Linux, Windows)
+          # Copy node_modules for Linux AppImage (extract, modify, repack)
+          if [ "${{ matrix.platform }}" = "ubuntu-22.04" ]; then
+            for appimage in src-tauri/target/${{ matrix.target }}/release/bundle/appimage/*.AppImage; do
+              [ -e "$appimage" ] || continue
+              # Extract AppImage
+              chmod +x "$appimage"
+              "$appimage" --appimage-extract
+              # Copy node_modules
+              dest="squashfs-root/usr/lib/personal-server/dist/node_modules"
+              mkdir -p "$dest"
+              cp -R personal-server/dist/node_modules/* "$dest/"
+              # Repack (requires appimagetool)
+              if command -v appimagetool &> /dev/null; then
+                rm "$appimage"
+                ARCH=x86_64 appimagetool squashfs-root "$appimage"
+              fi
+              rm -rf squashfs-root
+              echo "Updated AppImage with node_modules"
+            done
+          fi
+
+          # Copy node_modules for Windows (into the installation directory structure)
+          if [ "${{ matrix.platform }}" = "windows-latest" ]; then
+            # For NSIS, we need to modify the installer or include in resources
+            # The simpler approach is to ensure node_modules is included in the bundle
+            echo "Windows: node_modules should be handled by resource bundling"
+          fi
+        shell: bash
+
+      - name: Upload release artifacts
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          # Upload macOS DMG
+          if [ "${{ matrix.platform }}" = "macos-latest" ]; then
+            for f in src-tauri/target/${{ matrix.target }}/release/bundle/dmg/*.dmg; do
+              if [ -f "$f" ]; then
+                gh release upload "${{ github.ref_name }}" "$f" --clobber
+                echo "Uploaded $(basename "$f")"
+              fi
+            done
+          fi
+
+          # Upload Linux artifacts
           if [ "${{ matrix.platform }}" = "ubuntu-22.04" ]; then
             for f in src-tauri/target/${{ matrix.target }}/release/bundle/deb/*.deb \
                      src-tauri/target/${{ matrix.target }}/release/bundle/appimage/*.AppImage; do
@@ -213,6 +237,7 @@ jobs:
             done
           fi
 
+          # Upload Windows artifacts
           if [ "${{ matrix.platform }}" = "windows-latest" ]; then
             for f in src-tauri/target/${{ matrix.target }}/release/bundle/nsis/*.exe \
                      src-tauri/target/${{ matrix.target }}/release/bundle/msi/*.msi; do

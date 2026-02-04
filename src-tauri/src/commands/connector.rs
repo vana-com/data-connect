@@ -528,26 +528,6 @@ async fn start_playwright_run(
     let mut child = if let Some((binary_path, browsers_path)) = get_bundled_playwright_runner(&app) {
         log::info!("Found bundled Playwright runner at: {:?}", binary_path);
 
-        // Re-sign the binary with adhoc signature (macOS requirement for bundled binaries)
-        #[cfg(target_os = "macos")]
-        {
-            use std::process::Command;
-            log::info!("Re-signing bundled Playwright runner for macOS...");
-            if let Ok(output) = Command::new("codesign")
-                .arg("--force")
-                .arg("--sign")
-                .arg("-")
-                .arg(&binary_path)
-                .output()
-            {
-                if !output.status.success() {
-                    log::warn!("Failed to codesign bundled runner: {}", String::from_utf8_lossy(&output.stderr));
-                } else {
-                    log::info!("Successfully re-signed bundled Playwright runner");
-                }
-            }
-        }
-
         // Production mode: use bundled binary
         let mut cmd = Command::new(&binary_path);
         cmd.stdin(Stdio::piped())

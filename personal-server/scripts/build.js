@@ -88,13 +88,16 @@ async function build() {
 
   // Patch require resolution so native addons load from beside the executable
   // Also provide import.meta.url shim for ESM code bundled to CJS
+  // Must redirect better-sqlite3, bindings, and file-uri-to-path to external node_modules
+  const nativeModulesList = ['better-sqlite3', 'bindings', 'file-uri-to-path'];
   const nativeBanner = [
     'var _M=require("module"),_P=require("path"),_U=require("url"),_R=_M._resolveFilename;',
     // Shim for import.meta.url
     'if(typeof globalThis.__importMetaUrl==="undefined"){globalThis.__importMetaUrl=_U.pathToFileURL(__filename).href;}',
-    // Patch require resolution for better-sqlite3
+    // Patch require resolution for native modules
+    `var _NM=${JSON.stringify(nativeModulesList)};`,
     '_M._resolveFilename=function(r,p,m,o){',
-    'if(r==="better-sqlite3"){try{return _R.call(this,r,Object.assign({},p,',
+    'if(_NM.includes(r)){try{return _R.call(this,r,Object.assign({},p,',
     '{paths:[_P.join(_P.dirname(process.execPath),"node_modules")]}),m,o);}catch(e){}}',
     'return _R.call(this,r,p,m,o);};',
   ].join('');

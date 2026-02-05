@@ -31,7 +31,10 @@ tracked and owned separately. Includes step 1 data-source login + scrape.
 
 - App card handoff: open external app in default browser, deep-link back to
   `/connect?sessionId&appId&scopes`
-- Mock data app: local React page (tunnel) that only launches the deep link
+- Mock data app: external web page (RickRoll) that only launches the deep link
+  back to DataBridge (`dataconnect://?sessionId&appId&scopes`)
+- Decide external app base URL for handoff (dev: Vite web origin; prod: not
+  `tauri://`, needs a real web URL or registry value)
 - Step-2: "Allow access to your <data source>" (consent screen)
 - Step-3: Passport auth if not authenticated (external browser via `start_browser_auth`; this means create & test the src/auth-page app and distribute it with the tauri app binary)
 - Step-4: success + return to app

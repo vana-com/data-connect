@@ -68,6 +68,14 @@ Do not use `location.state` for these values.
 Demo sessions (`sessionId` starts with `grant-session-`) use registry metadata and
 skip relay calls. If `appId` is missing, the default app is used.
 
+## External app handoff
+
+Data Apps open an external web app in the user's default browser. That app does
+not live inside the Tauri shell; it only needs to launch the deep link back into
+DataBridge (`dataconnect://?sessionId&appId&scopes`). In development we can use
+the Vite web origin. In production, the external app URL must be a real web URL
+or a registry value — `tauri://` origins are not valid in a normal browser.
+
 ## Where to look
 
 - URL parsing/building: `src/lib/grant-params.ts`

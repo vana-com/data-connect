@@ -47,7 +47,7 @@ async function main() {
       config.server.address = ownerAddress;
     }
 
-    const { app, devToken } = await createServer(config, { configDir });
+    const { app, devToken } = await createServer(config, { rootPath: configDir });
 
     // Custom status endpoint exposing owner
     app.get('/status', (c) => c.json({

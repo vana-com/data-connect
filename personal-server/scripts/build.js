@@ -176,6 +176,22 @@ async function build() {
     }
   }
 
+  // Re-download the better-sqlite3 prebuilt binary for the pkg target Node version.
+  // The local npm install compiles for the host Node.js, which may differ from the
+  // Node.js version embedded in the pkg binary (e.g. local Node 20 vs pkg Node 22).
+  const pkgNodeMajor = target.match(/node(\d+)/)?.[1];
+  if (pkgNodeMajor) {
+    const bsqlDist = join(DIST, 'node_modules', 'better-sqlite3');
+    if (existsSync(bsqlDist)) {
+      log(`Downloading better-sqlite3 prebuilt for Node ${pkgNodeMajor}...`);
+      try {
+        exec(`npx prebuild-install -r node -t ${pkgNodeMajor}.0.0 --platform ${PLATFORM} --arch ${ARCH}`, { cwd: bsqlDist });
+      } catch (e) {
+        log(`WARNING: prebuild-install failed, falling back to local build: ${e.message}`);
+      }
+    }
+  }
+
   log('Build complete!');
   log(`Output: ${DIST}`);
 

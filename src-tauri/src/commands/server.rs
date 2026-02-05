@@ -36,6 +36,19 @@ fn get_bundled_personal_server(app: &AppHandle) -> Option<PathBuf> {
 
     for candidate in &candidates {
         if candidate.exists() {
+            // Verify that node_modules/ exists alongside the binary.
+            // Native addons (e.g. better-sqlite3) can't be embedded in the pkg snapshot
+            // and must live on the real filesystem. In dev mode Tauri's resource glob
+            // only copies the binary, not node_modules/, so skip incomplete copies
+            // and fall through to the dev-mode path that uses the source tree.
+            let dist_dir = candidate.parent().unwrap_or(candidate);
+            if !dist_dir.join("node_modules").exists() {
+                log::warn!(
+                    "Skipping {:?}: node_modules/ not found alongside binary",
+                    candidate
+                );
+                continue;
+            }
             log::info!("Found bundled personal server at {:?}", candidate);
             return Some(candidate.clone());
         }

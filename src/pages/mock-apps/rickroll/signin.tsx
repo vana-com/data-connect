@@ -7,18 +7,30 @@ import { ROUTES } from "@/config/routes"
 import { DcIcon } from "@/components/icons/dc-icon"
 import { DcLogotype } from "@/components/icons/dc-logotype"
 import { fieldHeight } from "@/components/typography/field"
+import {
+  buildGrantSearchParams,
+  getGrantParamsFromSearchParams,
+} from "@/lib/grant-params"
+import { DEFAULT_APP_ID, getAppRegistryEntry } from "@/apps/registry"
 
 export function RickrollMockSignIn() {
   const [searchParams] = useSearchParams()
-  const search = searchParams.toString()
-  const backHref = search
-    ? `${ROUTES.rickrollMockRoot}?${search}`
-    : ROUTES.rickrollMockRoot
+  const parsedParams = getGrantParamsFromSearchParams(searchParams)
+  const appEntry = getAppRegistryEntry(DEFAULT_APP_ID)
+  const resolvedParams = {
+    sessionId: parsedParams.sessionId ?? `grant-session-${Date.now()}`,
+    appId: parsedParams.appId ?? DEFAULT_APP_ID,
+    scopes: parsedParams.scopes ?? appEntry?.scopes,
+  }
+  const search = buildGrantSearchParams(resolvedParams).toString()
+  const backHref = ROUTES.rickrollMockRoot
   const deepLink = search ? `dataconnect://?${search}` : "dataconnect://"
   const connectHref = search ? `${ROUTES.connect}?${search}` : ROUTES.connect
 
-  // In dev, use the connect page; in prod, use the deep link
-  const launchHref = import.meta.env.DEV ? connectHref : deepLink
+  const isLocalhost =
+    typeof window !== "undefined" && window.location.hostname === "localhost"
+  // In dev/localhost, use the connect page; in prod, use the deep link
+  const launchHref = import.meta.env.DEV || isLocalhost ? connectHref : deepLink
 
   return (
     <div className="min-h-screen bg-[#F0F4F8]">

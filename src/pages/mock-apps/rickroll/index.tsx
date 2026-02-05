@@ -1,4 +1,4 @@
-import { Link, useSearchParams } from "react-router-dom"
+import { Link } from "react-router-dom"
 import { Button, ButtonArrow } from "@/components/ui/button"
 import { Text } from "@/components/typography/text"
 import { cn } from "@/lib/classes"
@@ -6,11 +6,7 @@ import { ROUTES } from "@/config/routes"
 import { ArrowRightIcon } from "lucide-react"
 
 export function RickrollMockRoot() {
-  const [searchParams] = useSearchParams()
-  const search = searchParams.toString()
-  const signInHref = search
-    ? `${ROUTES.rickrollMockSignIn}?${search}`
-    : ROUTES.rickrollMockSignIn
+  const signInHref = ROUTES.rickrollMockSignIn
 
   return (
     <div className="min-h-screen bg-[#F0F4F8]">

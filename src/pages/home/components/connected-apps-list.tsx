@@ -59,9 +59,7 @@ export function ConnectedAppsList({ apps }: ConnectedAppsListProps) {
         <Header />
         <div className="action-outset">
           <ActionPanel>
-            <Text as="p" intent="small" color="mutedForeground">
-              No apps yet.
-            </Text>
+            <Text muted>No apps yet</Text>
           </ActionPanel>
         </div>
       </section>

@@ -137,6 +137,11 @@ export const textVariants = cva(
       },
       {
         withIcon: true,
+        intent: ["button"],
+        className: "gap-2",
+      },
+      {
+        withIcon: true,
         intent: ["pill", "fine"],
         className: "gap-1",
       },

@@ -22,7 +22,7 @@ export function DataApps() {
         </div>
 
         <section className="container max-w-wide-width">
-          <div className="grid gap-2 md:grid-cols-2 xl:grid-cols-3">
+          <div className="grid gap-w4 md:grid-cols-2 xl:grid-cols-3">
             {mockApps.map(app => (
               <AppCard key={app.id} app={app} />
             ))}

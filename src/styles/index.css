@@ -85,8 +85,8 @@
   /* text line-height */
   --default-line-height: calc(24 / 17);
   --text-pill--line-height: 1;
-  --text-fine--line-height: 1;
-  --text-small--line-height: 1.3;
+  --text-fine--line-height: var(--default-line-height);
+  --text-small--line-height: var(--default-line-height);
   --text-body--line-height: var(--default-line-height);
   --text-button--line-height: var(--default-line-height);
   --text-large--line-height: var(--default-line-height);

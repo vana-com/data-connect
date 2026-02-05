@@ -140,9 +140,9 @@ pub async fn start_personal_server(
         env_vars.push(("OWNER_ADDRESS", addr.clone()));
     }
 
-    // Get config dir (~/.vana)
+    // Get config dir (~/data-connect/personal-server)
     if let Some(home) = dirs::home_dir() {
-        let config_dir = home.join(".vana");
+        let config_dir = home.join("data-connect").join("personal-server");
         env_vars.push(("CONFIG_DIR", config_dir.to_string_lossy().to_string()));
     }
 

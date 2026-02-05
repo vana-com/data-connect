@@ -56,7 +56,10 @@ export function AppCard({ app }: { app: MockApp }) {
 
       <div className="mt-4 space-y-3 border-t border-border pt-4">
         <div className="flex items-center gap-2">
-          <LockIcon aria-hidden="true" className="size-4 text-muted-foreground" />
+          <LockIcon
+            aria-hidden="true"
+            className="size-4 text-muted-foreground"
+          />
           <Text as="span" intent="fine" weight="medium" color="mutedForeground">
             Data required:
           </Text>
@@ -77,7 +80,13 @@ export function AppCard({ app }: { app: MockApp }) {
       </div>
 
       {app.status === "coming-soon" ? (
-        <Button type="button" variant="outline" fullWidth className="mt-4" disabled>
+        <Button
+          type="button"
+          variant="outline"
+          fullWidth
+          className="mt-4"
+          disabled
+        >
           Connect
         </Button>
       ) : (
@@ -86,6 +95,8 @@ export function AppCard({ app }: { app: MockApp }) {
           variant="default"
           fullWidth
           className="mt-4"
+          // TODO: Design expects opening the app in the user's browser, then deep-linking back to
+          // `/connect?sessionId&appId&scopes`. Current behavior opens the in-app route.
           onClick={() => navigate(ROUTES.app(app.id))}
         >
           Open App

@@ -77,8 +77,8 @@ export function RickRollAppPage() {
     navigate(`${ROUTES.grant}${search ? `?${search}` : ""}`)
   }
 
-  // This is currently "Connect your ChatGPT data" BUT instead it opens the Privy/Passport Auth page.
-  // TODO: so change this to "Allow access to your ChatGPT data", where upon success opens Privy/Passport is correct
+  // This is currently "Connect your ChatGPT data" UI
+  // TODO: …but should be "Allow access to your ChatGPT data" UI
   if (!isConnected) {
     return (
       <div className="container py-w24">

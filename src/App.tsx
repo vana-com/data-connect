@@ -30,6 +30,9 @@ const Settings = lazy(() =>
 const Grant = lazy(() =>
   import("./pages/grant").then(m => ({ default: m.Grant }))
 )
+const Connect = lazy(() =>
+  import("./pages/connect").then(m => ({ default: m.Connect }))
+)
 
 function AppContent() {
   useEvents()
@@ -53,6 +56,7 @@ function AppContent() {
               <Route path={ROUTES.docs} element={<Docs />} />
               <Route path={ROUTES.runs} element={<Runs />} />
               <Route path={ROUTES.settings} element={<Settings />} />
+              <Route path={ROUTES.connect} element={<Connect />} />
               <Route path={ROUTES.grant} element={<Grant />} />
               <Route path={ROUTES.login} element={<InlineLogin />} />
             </Routes>

@@ -7,6 +7,7 @@ export const ROUTES = {
   docs: "/docs",
   runs: "/runs",
   settings: "/settings",
+  connect: "/connect",
   grant: "/grant",
   login: "/login",
   browserLogin: "/browser-login",

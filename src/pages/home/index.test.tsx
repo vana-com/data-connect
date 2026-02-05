@@ -67,9 +67,11 @@ describe("Home", () => {
   })
 
   it("shows sources tab content and checks for updates", async () => {
-    const { getByText } = renderHome()
+    const { getByRole } = renderHome()
 
-    expect(getByText("Connect sources (more coming soon)")).toBeTruthy()
+    expect(
+      getByRole("heading", { name: /connect sources/i })
+    ).toBeTruthy()
 
     await waitFor(() => {
       expect(mockCheckForUpdates).toHaveBeenCalled()

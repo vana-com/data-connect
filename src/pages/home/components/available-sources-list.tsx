@@ -1,9 +1,11 @@
+import { useMemo } from "react"
+import { LoaderIcon } from "lucide-react"
 import { ActionButton } from "@/components/typography/action-button"
 import { EyebrowBadge } from "@/components/typography/eyebrow-badge"
 import { Text } from "@/components/typography/text"
 import { SourceStack } from "@/components/elements/source-row"
 import { cn } from "@/lib/classes"
-import type { Platform } from "@/types"
+import type { Platform, Run } from "@/types"
 import {
   getConnectSourceEntries,
   getConnectSourceState,
@@ -13,14 +15,23 @@ import { getPlatformPrimaryColor } from "@/lib/platform/ui"
 
 interface AvailableSourcesListProps {
   platforms: Platform[]
+  runs: Run[]
   onExport: (platform: Platform) => void
 }
 
 export function AvailableSourcesList({
   platforms,
+  runs,
   onExport,
 }: AvailableSourcesListProps) {
   const connectEntries = getConnectSourceEntries()
+  const connectingPlatformIds = useMemo(
+    () =>
+      new Set(
+        runs.filter(run => run.status === "running").map(run => run.platformId)
+      ),
+    [runs]
+  )
 
   return (
     <section className="space-y-gap">
@@ -37,6 +48,9 @@ export function AvailableSourcesList({
               label: `Connect ${entry.displayName}`,
               stackPrimaryColor: getPlatformPrimaryColor(entry),
               isAvailable: state === "available",
+              isConnecting: platform
+                ? connectingPlatformIds.has(platform.id)
+                : false,
               onClick:
                 state === "available" && platform
                   ? () => onExport(platform)
@@ -50,15 +64,23 @@ export function AvailableSourcesList({
           }))
           .sort((a, b) => a.priority - b.priority || a.index - b.index)
           .map(
-            ({ iconName, label, stackPrimaryColor, isAvailable, onClick }) => (
+            ({
+              iconName,
+              label,
+              stackPrimaryColor,
+              isAvailable,
+              isConnecting,
+              onClick,
+            }) => (
               <ActionButton
                 key={label}
                 onClick={onClick}
-                disabled={!isAvailable}
+                disabled={!isAvailable || isConnecting}
                 size="xl"
                 className={cn(
-                  "h-auto p-0 overflow-hidden disabled:opacity-100"
+                  "relative h-auto overflow-hidden p-0 disabled:opacity-100"
                 )}
+                aria-busy={isConnecting}
               >
                 <SourceStack
                   iconName={iconName}
@@ -77,6 +99,22 @@ export function AvailableSourcesList({
                   }
                   labelColor={isAvailable ? "foreground" : "mutedForeground"}
                 />
+                {isConnecting ? (
+                  <div
+                    className={cn(
+                      "absolute inset-0 flex items-center justify-center",
+                      "bg-background/70"
+                    )}
+                  >
+                    <span className="flex items-center gap-2 text-sm font-medium text-foreground">
+                      <LoaderIcon
+                        className="size-4 animate-spin motion-reduce:animate-none"
+                        aria-hidden="true"
+                      />
+                      Opening browser…
+                    </span>
+                  </div>
+                ) : null}
               </ActionButton>
             )
           )}

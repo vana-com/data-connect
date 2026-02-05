@@ -115,6 +115,7 @@ export function Home() {
           />
           <AvailableSourcesList
             platforms={availablePlatforms}
+            runs={runs}
             onExport={handleExport}
           />
         </TabsContent>

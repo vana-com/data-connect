@@ -33,6 +33,16 @@ const Grant = lazy(() =>
 const Connect = lazy(() =>
   import("./pages/connect").then(m => ({ default: m.Connect }))
 )
+const RickrollMockRoot = lazy(() =>
+  import("./pages/mock-apps/rickroll").then(m => ({
+    default: m.RickrollMockRoot,
+  }))
+)
+const RickrollMockSignIn = lazy(() =>
+  import("./pages/mock-apps/rickroll/signin").then(m => ({
+    default: m.RickrollMockSignIn,
+  }))
+)
 
 function AppContent() {
   useEvents()
@@ -85,10 +95,20 @@ function App() {
       <PrivyProvider>
         <div style={dotPatternStyle} className="min-h-screen">
           <BrowserRouter>
-            <Routes>
-              <Route path={ROUTES.browserLogin} element={<BrowserLogin />} />
-              <Route path="/*" element={<AppRouter />} />
-            </Routes>
+            <Suspense fallback={<div className="p-8">Loading...</div>}>
+              <Routes>
+                <Route path={ROUTES.browserLogin} element={<BrowserLogin />} />
+                <Route
+                  path={ROUTES.rickrollMockRoot}
+                  element={<RickrollMockRoot />}
+                />
+                <Route
+                  path={ROUTES.rickrollMockSignIn}
+                  element={<RickrollMockSignIn />}
+                />
+                <Route path="/*" element={<AppRouter />} />
+              </Routes>
+            </Suspense>
           </BrowserRouter>
         </div>
       </PrivyProvider>

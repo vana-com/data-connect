@@ -11,6 +11,8 @@ export const ROUTES = {
   grant: "/grant",
   login: "/login",
   browserLogin: "/browser-login",
+  rickrollMockRoot: "/rickroll",
+  rickrollMockSignIn: "/signin",
 } as const
 
 export type StaticRoute = (typeof ROUTES)[Exclude<keyof typeof ROUTES, "app">]

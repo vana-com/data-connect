@@ -1,5 +1,5 @@
-import { useSyncExternalStore } from "react"
-import { Link, useNavigate } from "react-router-dom"
+import { useState, useSyncExternalStore } from "react"
+import { Link, useNavigate, useSearchParams } from "react-router-dom"
 import { ChevronRight, ArrowLeftIcon } from "lucide-react"
 import { RickRollApp } from "../apps/rickroll/App"
 import { PlatformIcon } from "@/components/icons/platform-icon"
@@ -8,7 +8,10 @@ import { ActionButton } from "@/components/typography/action-button"
 import { LearnMoreLink } from "@/components/typography/learn-more-link"
 import { ButtonArrow } from "@/components/ui/button"
 import { DEFAULT_APP_ID, getAppRegistryEntry } from "../apps/registry"
-import { buildGrantSearchParams } from "../lib/grant-params"
+import {
+  buildGrantSearchParams,
+  getGrantParamsFromSearchParams,
+} from "../lib/grant-params"
 import { isAppConnected, subscribeConnectedApps } from "../lib/storage"
 import { ROUTES } from "@/config/routes"
 
@@ -46,12 +49,19 @@ function getPrimaryDataSourceLabel(scopes?: string[]) {
 // This renders the CTA when not connected, and renders the actual app UI (eg. RickRollApp from src/apps/rickroll/app.tsx) once connected.
 export function RickRollAppPage() {
   const navigate = useNavigate()
+  const [searchParams] = useSearchParams()
   const isConnected = useSyncExternalStore(
     subscribeConnectedApps,
     getIsRickrollConnected
   )
   const appEntry = getAppRegistryEntry(DEFAULT_APP_ID)
-  const dataSourceLabel = getPrimaryDataSourceLabel(appEntry?.scopes)
+  const grantParams = getGrantParamsFromSearchParams(searchParams)
+  const [generatedSessionId] = useState(() => `grant-session-${Date.now()}`)
+  const sessionId = grantParams.sessionId ?? generatedSessionId
+  const resolvedAppId = grantParams.appId ?? appEntry?.id ?? DEFAULT_APP_ID
+  const resolvedScopes = grantParams.scopes ?? appEntry?.scopes
+  const isExternalApp = searchParams.get("external") === "1"
+  const dataSourceLabel = getPrimaryDataSourceLabel(resolvedScopes)
   const connectTitle = dataSourceLabel
     ? `Connect your ${dataSourceLabel}`
     : "Connect your data"
@@ -67,13 +77,17 @@ export function RickRollAppPage() {
 
   const handleConnect = () => {
     // Trigger grant flow using React Router navigation
-    const sessionId = "grant-session-" + Date.now()
     const searchParams = buildGrantSearchParams({
       sessionId,
-      appId: appEntry?.id || DEFAULT_APP_ID,
-      scopes: appEntry?.scopes,
+      appId: resolvedAppId,
+      scopes: resolvedScopes,
     })
     const search = searchParams.toString()
+    if (isExternalApp) {
+      const deepLink = search ? `dataconnect://?${search}` : "dataconnect://"
+      window.location.href = deepLink
+      return
+    }
     navigate(`${ROUTES.grant}${search ? `?${search}` : ""}`)
   }
 

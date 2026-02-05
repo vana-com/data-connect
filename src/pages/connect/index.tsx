@@ -143,6 +143,20 @@ export function Connect() {
     setConnectRunId(runId)
   }
 
+  const handleDebugDeepLink = () => {
+    const connectHref = grantSearch
+      ? `${ROUTES.connect}?${grantSearch}`
+      : ROUTES.connect
+    window.location.assign(connectHref)
+  }
+
+  const handleDebugGrant = () => {
+    const grantHref = grantSearch
+      ? `${ROUTES.grant}?${grantSearch}`
+      : ROUTES.grant
+    navigate(grantHref)
+  }
+
   return (
     <div className="container py-w24">
       <div className="space-y-w6">
@@ -206,10 +220,19 @@ export function Connect() {
               {connectorErrorMessage}
             </Text>
             {import.meta.env.DEV ? (
-              <Text as="p" intent="small" color="destructive">
-                If you’re viewing this in a browser, connectors won’t load. Use
-                the Tauri app.
-              </Text>
+              <>
+                <Text as="p" intent="small" color="destructive">
+                  If you’re viewing this in a browser, connectors won’t load.
+                  Use the Tauri app.
+                </Text>
+                <Text as="p" intent="small" color="destructive">
+                  Need to bypass connectors?{" "}
+                  <a className="link cursor-pointer" onClick={handleDebugGrant}>
+                    Skip to grant step
+                  </a>
+                  .
+                </Text>
+              </>
             ) : null}
           </div>
         ) : null}

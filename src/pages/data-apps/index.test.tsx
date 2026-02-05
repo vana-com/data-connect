@@ -1,6 +1,9 @@
 import { describe, expect, it, beforeEach, vi } from "vitest"
-import { fireEvent, render, screen } from "@testing-library/react"
+import { fireEvent, render, screen, waitFor } from "@testing-library/react"
 import { createMemoryRouter, RouterProvider } from "react-router-dom"
+import { open } from "@tauri-apps/plugin-shell"
+import { buildGrantSearchParams } from "@/lib/grant-params"
+import { getAppRegistryEntry } from "@/apps/registry"
 import { ROUTES } from "@/config/routes"
 import { DataApps } from "./index"
 import { mockApps } from "./fixtures"
@@ -8,6 +11,10 @@ import { mockApps } from "./fixtures"
 const mockNavigate = vi.fn()
 const liveApps = mockApps.filter(app => app.status === "live")
 const comingSoonApps = mockApps.filter(app => app.status === "coming-soon")
+
+vi.mock("@tauri-apps/plugin-shell", () => ({
+  open: vi.fn().mockResolvedValue(undefined),
+}))
 
 vi.mock("react-router", async () => {
   const actual = await vi.importActual<object>("react-router")
@@ -81,12 +88,32 @@ describe("DataApps", () => {
     })
   })
 
-  it("navigates to app page when clicking Open App on live app", () => {
+  it("opens external app when clicking Open App on live app", async () => {
+    const nowSpy = vi.spyOn(Date, "now").mockReturnValue(123)
     renderDataApps()
 
     const openAppButtons = screen.getAllByRole("button", { name: "Open App" })
     fireEvent.click(openAppButtons[0])
 
-    expect(mockNavigate).toHaveBeenCalledWith(ROUTES.app(liveApps[0].id))
+    const appId = liveApps[0].id
+    const appEntry = getAppRegistryEntry(appId)
+    const searchParams = buildGrantSearchParams({
+      sessionId: "grant-session-123",
+      appId,
+      scopes: appEntry?.scopes,
+    })
+    const appPath =
+      appId === "rickroll" ? ROUTES.rickrollMockRoot : ROUTES.app(appId)
+    const expectedUrl = new URL(appPath, window.location.origin)
+    const search = searchParams.toString()
+    if (search) {
+      expectedUrl.search = search
+    }
+
+    const mockOpen = vi.mocked(open)
+    await waitFor(() => {
+      expect(mockOpen).toHaveBeenCalledWith(expectedUrl.toString())
+    })
+    nowSpy.mockRestore()
   })
 })

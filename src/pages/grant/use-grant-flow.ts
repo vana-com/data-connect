@@ -23,6 +23,7 @@ import { ROUTES } from "@/config/routes"
 
 const PRIVY_APP_ID = import.meta.env.VITE_PRIVY_APP_ID
 const PRIVY_CLIENT_ID = import.meta.env.VITE_PRIVY_CLIENT_ID
+const DEV_AUTH_PAGE_URL = "http://localhost:5175"
 
 export function useGrantFlow(params: GrantFlowParams) {
   const dispatch = useDispatch()
@@ -134,6 +135,13 @@ export function useGrantFlow(params: GrantFlowParams) {
       })
       setAuthUrl(url)
     } catch (err) {
+      if (import.meta.env.DEV) {
+        setAuthUrl(DEV_AUTH_PAGE_URL)
+        if (typeof window !== "undefined") {
+          window.open(DEV_AUTH_PAGE_URL, "_blank", "noopener,noreferrer")
+        }
+        return
+      }
       console.error("Failed to start browser auth:", err)
       setAuthError(
         err instanceof Error

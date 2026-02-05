@@ -12,38 +12,11 @@ import {
   buildGrantSearchParams,
   getGrantParamsFromSearchParams,
 } from "../lib/grant-params"
+import { getPrimaryDataSourceLabel } from "@/lib/scope-labels"
 import { isAppConnected, subscribeConnectedApps } from "../lib/storage"
 import { ROUTES } from "@/config/routes"
 
 const getIsRickrollConnected = () => isAppConnected(DEFAULT_APP_ID)
-
-const DATA_SOURCE_LABELS: Record<string, string> = {
-  chatgpt: "ChatGPT",
-  reddit: "Reddit",
-  twitter: "Twitter",
-  x: "X (Twitter)",
-  instagram: "Instagram",
-  linkedin: "LinkedIn",
-  spotify: "Spotify",
-  tiktok: "TikTok",
-  youtube: "YouTube",
-  facebook: "Facebook",
-  google: "Google",
-}
-
-function getPrimaryDataSourceLabel(scopes?: string[]) {
-  if (!scopes || scopes.length === 0) return null
-  const scopeToken = scopes
-    .map(scope => scope.split(":")[1] ?? scope)
-    .find(Boolean)
-  if (!scopeToken) return null
-  const scopeKey = scopeToken.split("-")[0]?.toLowerCase()
-  if (!scopeKey) return null
-  return (
-    DATA_SOURCE_LABELS[scopeKey] ??
-    `${scopeKey.charAt(0).toUpperCase()}${scopeKey.slice(1)}`
-  )
-}
 
 // Host page + access gating for the RickRoll demo app.
 // This renders the CTA when not connected, and renders the actual app UI (eg. RickRollApp from src/apps/rickroll/app.tsx) once connected.

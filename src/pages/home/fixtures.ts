@@ -1,6 +1,6 @@
 import type { ConnectedApp, Platform } from "@/types"
 
-export const USE_TEST_DATA = true
+export const USE_TEST_DATA = false
 
 export const testPlatforms: Platform[] = [
   {

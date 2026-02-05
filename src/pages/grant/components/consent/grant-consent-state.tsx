@@ -1,18 +1,19 @@
 import { Link } from "react-router-dom"
-import { LoaderIcon } from "lucide-react"
+import { ArrowRightIcon, LoaderIcon } from "lucide-react"
 import { Button } from "@/components/ui/button"
+import { PlatformIcon } from "@/components/icons/platform-icon"
+import { Text } from "@/components/typography/text"
 import { cn } from "@/lib/classes"
-import type { GrantSession, GrantStep } from "../../types"
-import { GrantProgressSteps } from "./grant-progress-steps"
-import { GrantAppInfo } from "./grant-app-info"
-import { GrantScopesList } from "./grant-scopes-list"
-import { GrantWalletInfo } from "./grant-wallet-info"
+import { getPrimaryDataSourceLabel } from "@/lib/scope-labels"
+import type { GrantSession } from "../../types"
 import { GrantWarning } from "./grant-warning"
+import { ActionPanel } from "@/components/typography/action-button"
 
+// Note: `isApproving` maps to the "signing" state from `useGrantFlow`.
+// `useGrantFlow.handleApprove()` sets status "signing" + `isApproving=true`,
+// so this consent screen stays visible while the Allow button shows loading.
 interface GrantConsentStateProps {
   session?: GrantSession
-  walletAddress: string | null
-  currentStep: GrantStep
   isApproving: boolean
   declineHref: string
   onApprove: () => void
@@ -20,62 +21,90 @@ interface GrantConsentStateProps {
 
 export function GrantConsentState({
   session,
-  walletAddress,
-  currentStep,
   isApproving,
   declineHref,
   onApprove,
 }: GrantConsentStateProps) {
+  const dataSourceLabel = getPrimaryDataSourceLabel(session?.scopes)
+  const dataLabel = dataSourceLabel ? `${dataSourceLabel} data` : "data"
+  const appName = session?.appName ?? "this app"
+  const appIcon = session?.appIcon ?? "🔗"
+
   return (
-    <div className="grid min-h-screen place-items-center bg-muted p-6">
-      <div className="w-full max-w-[520px] rounded-card bg-background p-10 shadow-md">
-        <div className="space-y-6">
-          <GrantProgressSteps currentStep={currentStep} />
-          <GrantAppInfo appName={session?.appName} appIcon={session?.appIcon} />
-          <GrantScopesList scopes={session?.scopes} />
-          <GrantWalletInfo walletAddress={walletAddress} />
+    // {cn("grid min-h-screen place-items-center bg-muted p-6")}
+    <div className="container py-w24">
+      <div className="space-y-w6">
+        <Text as="h1" intent="title">
+          Allow access to your {dataLabel}
+        </Text>
+        <Text as="p">
+          This will allow <strong>{appName}</strong> to:
+        </Text>
+
+        <div className="action-outsetx">
+          <ActionPanel className="justify-start gap-w4">
+            {/* same layout as SourceRow */}
+            <div className="h-full flex items-center gap-1">
+              <PlatformIcon
+                iconName={dataSourceLabel ?? "Data"}
+                size={30}
+                aria-hidden="true"
+              />
+              <ArrowRightIcon aria-hidden="true" className="size-[1.5em]" />
+              <PlatformIcon iconName={appName} size={30} aria-hidden="true" />
+            </div>
+            <Text as="p" intent="button" weight="medium">
+              See your {dataLabel}
+            </Text>
+          </ActionPanel>
+        </div>
+
+        <div className="flex items-center justify-end gap-2.5">
+          <Button
+            asChild
+            variant="ghost"
+            className={cn(
+              "text-muted-foreground",
+              "border border-transparent hover:border-ring hover:bg-background",
+              isApproving && "pointer-events-none opacity-60"
+            )}
+          >
+            <Link
+              to={declineHref}
+              aria-disabled={isApproving}
+              onClick={event => {
+                if (isApproving) {
+                  event.preventDefault()
+                }
+              }}
+            >
+              Cancel
+            </Link>
+          </Button>
+          <Button
+            type="button"
+            onClick={onApprove}
+            disabled={isApproving}
+            variant="accent"
+            className="w-[140px] disabled:opacity-100"
+          >
+            {isApproving ? (
+              <>
+                <LoaderIcon
+                  aria-hidden="true"
+                  className="animate-spin motion-reduce:animate-none"
+                />
+                <span aria-live="polite">Allowing…</span>
+              </>
+            ) : (
+              "Allow"
+            )}
+          </Button>
+        </div>
+
+        <hr />
+        <div className="flex justify-end">
           <GrantWarning />
-          <div className="flex gap-3">
-            <Button
-              asChild
-              variant="outline"
-              className={cn(
-                "flex-1 text-muted-foreground",
-                isApproving && "pointer-events-none opacity-60"
-              )}
-            >
-              <Link
-                to={declineHref}
-                aria-disabled={isApproving}
-                onClick={event => {
-                  if (isApproving) {
-                    event.preventDefault()
-                  }
-                }}
-              >
-                Decline
-              </Link>
-            </Button>
-            <Button
-              type="button"
-              onClick={onApprove}
-              disabled={isApproving}
-              variant="accent"
-              className="flex-1"
-            >
-              {isApproving ? (
-                <>
-                  <LoaderIcon
-                    aria-hidden="true"
-                    className="size-4 animate-spin motion-reduce:animate-none"
-                  />
-                  <span aria-live="polite">Approving…</span>
-                </>
-              ) : (
-                "Approve"
-              )}
-            </Button>
-          </div>
         </div>
       </div>
     </div>

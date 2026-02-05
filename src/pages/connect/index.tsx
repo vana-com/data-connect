@@ -13,6 +13,10 @@ import {
   buildGrantSearchParams,
   getGrantParamsFromSearchParams,
 } from "@/lib/grant-params"
+import {
+  getPrimaryDataSourceLabel,
+  getPrimaryScopeToken,
+} from "@/lib/scope-labels"
 import { ROUTES } from "@/config/routes"
 import { usePlatforms } from "@/hooks/usePlatforms"
 import { useConnector } from "@/hooks/useConnector"
@@ -22,38 +26,6 @@ import {
 } from "@/lib/platform/utils"
 import type { RootState } from "@/types"
 import { cn } from "@/lib/classes"
-
-const DATA_SOURCE_LABELS: Record<string, string> = {
-  chatgpt: "ChatGPT",
-  reddit: "Reddit",
-  twitter: "Twitter",
-  x: "X (Twitter)",
-  instagram: "Instagram",
-  linkedin: "LinkedIn",
-  spotify: "Spotify",
-  tiktok: "TikTok",
-  youtube: "YouTube",
-  facebook: "Facebook",
-  google: "Google",
-}
-
-function getPrimaryScopeToken(scopes?: string[]) {
-  if (!scopes || scopes.length === 0) return null
-  const scopeToken = scopes
-    .map(scope => scope.split(":")[1] ?? scope)
-    .find(Boolean)
-  if (!scopeToken) return null
-  return scopeToken.split("-")[0]?.toLowerCase() ?? null
-}
-
-function getPrimaryDataSourceLabel(scopes?: string[]) {
-  const scopeKey = getPrimaryScopeToken(scopes)
-  if (!scopeKey) return null
-  return (
-    DATA_SOURCE_LABELS[scopeKey] ??
-    `${scopeKey.charAt(0).toUpperCase()}${scopeKey.slice(1)}`
-  )
-}
 
 /*
   NB! If you’re running the web build (not Tauri), invoke fails → no platforms.

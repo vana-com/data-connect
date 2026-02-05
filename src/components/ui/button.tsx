@@ -33,7 +33,7 @@ const buttonVariants = cva(
         primary:
           "bg-primary text-primary-foreground hover:bg-primary/90 data-[state=open]:bg-primary/90",
         accent:
-          "bg-accent-9 text-white hover:bg-accent-10 data-[state=open]:bg-accent-10",
+          "bg-accent text-background hover:bg-accent-foreground data-[state=open]:bg-accent-surface",
         default: "bg-foreground text-background hover:bg-foreground",
         outline: [
           // shadow-xs
@@ -46,7 +46,8 @@ const buttonVariants = cva(
           "aria-selected:border-ring aria-selected:ring-ring/50 aria-selected:ring-[3px]",
         ],
         ghost: "hover:bg-muted hover:text-foreground",
-        secondary: "bg-secondary text-secondary-foreground hover:bg-secondary/80",
+        secondary:
+          "bg-secondary text-secondary-foreground hover:bg-secondary/80",
         destructive:
           "bg-destructive text-destructive-foreground hover:bg-destructive/90 focus-visible:ring-destructive/20 dark:focus-visible:ring-destructive/40 dark:bg-destructive/60",
         link: "text-foreground underline-offset-4 hover:underline",

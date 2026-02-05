@@ -13,7 +13,7 @@ interface PlatformIconProps {
 }
 
 // Default 2px padding to ensure the icon is centered within the wrapper
-const iconWrapper = "flex items-center justify-center rounded-card p-1"
+const iconWrapper = "flex items-center justify-center rounded-button p-1"
 
 /**
  * Platform icon component
@@ -37,12 +37,22 @@ export function PlatformIcon({
   // Fallback: show first letter
   const fontSize = Math.round(size * 0.75)
   return (
-    <div className={cn(iconWrapper, className)}>
+    <div
+      className={cn(
+        iconWrapper,
+        "text-background bg-foreground font-semi",
+        className
+      )}
+    >
       <span
-        className={cn("text-background bg-foreground font-semi")}
-        style={{ fontSize: `${fontSize}px` }}
+        className={cn("flex items-center justify-center")}
+        style={{
+          fontSize: `${fontSize}px`,
+          width: `${size}px`,
+          height: `${size}px`,
+        }}
       >
-        {iconName.charAt(0)}
+        <span>{iconName.charAt(0)}</span>
       </span>
     </div>
   )

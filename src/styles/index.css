@@ -131,7 +131,7 @@
 
   /* radius */
   --radius-soft: calc(var(--radius) / 3);
-  --radius-button: calc(var(--radius) - 2px);
+  --radius-button: calc(var(--radius) - 4px);
   --radius-card: var(--radius);
   --radius-squish: calc(var(--radius) * 1.333);
   --radius-dialog: calc(var(--radius) * 2.667);

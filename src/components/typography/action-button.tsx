@@ -42,8 +42,9 @@ export function ActionPanel({
     <div
       className={cn(
         buttonVariants({ variant, size, fullWidth }),
-        "bg-background/40 px-4",
-        "cursor-default hover:bg-background/40 hover:border-ring/20",
+        "cursor-default px-4",
+        // "bg-background/40 hover:bg-background/40 hover:border-ring/20",
+        "hover:border-ring/20",
         className
       )}
       {...props}

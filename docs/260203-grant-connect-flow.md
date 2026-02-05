@@ -17,13 +17,14 @@ flowchart TD
   A["Connect CTA"] --> B[Step 1: data-source login + scrape]
   B -->|connector run completes| C["/grant?sessionId&appId&scopes"]
   X[Deep link: dataconnect://?sessionId&appId&scopes] --> D[useDeepLink]
-  D -->|normalize + replace| C
-  C --> E[GrantFlow orchestrator]
-  E -->|auth required| F[Open Privy in browser]
-  F -->|auth-complete event| E
-  E -->|Approve| G[grantSigning + approveSession]
-  G -->|success| H["setConnectedApp (localStorage)"]
-  H --> I[App connected state]
+  D -->|normalize + replace| E["/connect?sessionId&appId&scopes"]
+  E --> B
+  C --> F[GrantFlow orchestrator]
+  F -->|auth required| G[Open Privy in browser]
+  G -->|auth-complete event| F
+  F -->|Approve| H[grantSigning + approveSession]
+  H -->|success| I["setConnectedApp (localStorage)"]
+  I --> J[App connected state]
 ```
 
 ## UI design reference
@@ -32,17 +33,17 @@ Linear 4-step connect/grant design: `docs/_wip/260202-connect-flow.png`.
 
 ## Responsibilities
 
-- Connect Flow UI: presents the multi-step UI, starts data-source login/scrape,
-  then routes into the grant flow.
+- Connect Flow UI: `/connect` step 1, starts data-source login/scrape, then
+  routes into the grant flow.
 - Data-source login/scrape: connector run launched from step 1.
 - Grant Flow: owns consent/auth/signing states and persists the connected app.
-- Deep links: normalize to canonical `/grant` URL params, then route with `replace`.
+- Deep links: normalize to canonical params, then route to `/connect` with `replace`.
 - App registry: defines available apps, default app, and scopes for demo usage.
 
 ## Current implementation status
 
+- Step 1 (data-source login + scrape) is implemented at `/connect`.
 - `src/pages/grant/*` covers consent/auth/success states only (steps 2-4).
-- Step 1 (data-source login + scrape) is not implemented in the grant flow.
 - Demo app routing: `/apps/:appId` renders a host page (e.g. `src/pages/RickRollApp.tsx`)
   that handles gating + grant CTA, and then renders the app UI from
   `src/apps/<appId>/app.tsx` once connected.
@@ -73,5 +74,6 @@ skip relay calls. If `appId` is missing, the default app is used.
 - Deep links: `src/hooks/useDeepLink.ts`
 - Grant flow state machine: `src/pages/grant/use-grant-flow.ts`
 - Grant flow UI: `src/pages/grant/*`
+- Step 1 route: `src/pages/connect/index.tsx`
 - App registry + default: `src/apps/registry.ts`
 - Connector run entrypoint: `src/hooks/useConnector.ts` + `start_connector_run`

@@ -26,11 +26,15 @@ export function useDeepLink() {
 
         const normalizedSearch = buildGrantSearchParams(params).toString()
         const targetSearch = normalizedSearch ? `?${normalizedSearch}` : ""
-        const isAlreadyOnTarget =
-          location.pathname === ROUTES.grant && location.search === targetSearch
+        const isAlreadyOnConnect =
+          location.pathname === ROUTES.connect &&
+          location.search === targetSearch
+        const shouldRedirect =
+          location.pathname !== ROUTES.connect &&
+          location.pathname !== ROUTES.grant
 
-        if (!isAlreadyOnTarget) {
-          navigate(`${ROUTES.grant}${targetSearch}`, { replace: true })
+        if (shouldRedirect && !isAlreadyOnConnect) {
+          navigate(`${ROUTES.connect}${targetSearch}`, { replace: true })
         }
       }
     }

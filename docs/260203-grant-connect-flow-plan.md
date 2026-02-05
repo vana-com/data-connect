@@ -17,22 +17,23 @@ tracked and owned separately. Includes step 1 data-source login + scrape.
 
 ## Done
 
+- Connect Flow UI (step 1) matches design and routes into `/grant`
 - Canonical `/grant` URL params (`sessionId`, `appId`, `scopes`)
-- Deep-link normalization to `/grant` with `replace`
+- Deep-link normalization to `/connect` with `replace`
 - App registry + default app + `/apps/:appId` routing
 - Demo session behavior (registry metadata, scopes override)
 - RickRoll connect CTA builds `/grant` URL params
 - Minimal tests for URL params, deep links, app routing, grant flow
 - Flow doc + architecture link (`docs/260203-grant-connect-flow.md`)
+- Step 1 `/connect` route wired to connector run + `/grant` handoff
 
 ## Next (Frontend)
 
-- Build Connect Flow UI to match design
-- Implement step-1: connect data source -> open browser login -> scrape data
-  - Use connector run (`start_connector_run`) for data-source login/scrape
-  - Persist run result so the flow can proceed to step-2
+- App card handoff: open external app in default browser, deep-link back to
+  `/connect?sessionId&appId&scopes`
+- Mock data app: local React page (tunnel) that only launches the deep link
 - Step-2: "Allow access to your <data source>" (consent screen)
-- Step-3: Passport auth if not authenticated (external browser via `start_browser_auth`)
+- Step-3: Passport auth if not authenticated (external browser via `start_browser_auth`; this means create & test the src/auth-page app and distribute it with the tauri app binary)
 - Step-4: success + return to app
 - Reuse grant components where possible (auth-required, consent, success)
 - Ensure external Passport sign-in flow is preserved

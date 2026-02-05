@@ -1,7 +1,11 @@
 import { useEffect } from "react"
 import { describe, expect, it } from "vitest"
 import { render, waitFor } from "@testing-library/react"
-import { createMemoryRouter, RouterProvider, useLocation } from "react-router-dom"
+import {
+  createMemoryRouter,
+  RouterProvider,
+  useLocation,
+} from "react-router-dom"
 import { ROUTES } from "@/config/routes"
 import { useDeepLink } from "./use-deep-link"
 
@@ -21,7 +25,7 @@ function DeepLinkHarness({
 }
 
 describe("useDeepLink", () => {
-  it("normalizes deep link params into /grant URL", async () => {
+  it("normalizes deep link params into /connect URL", async () => {
     let latestPathname = ""
     let latestSearch = ""
 
@@ -49,7 +53,7 @@ describe("useDeepLink", () => {
     render(<RouterProvider router={router} />)
 
     await waitFor(() => {
-      expect(latestPathname).toBe(ROUTES.grant)
+      expect(latestPathname).toBe(ROUTES.connect)
     })
 
     const searchParams = new URLSearchParams(latestSearch)

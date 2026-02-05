@@ -21,6 +21,8 @@ tracked and owned separately. Includes step 1 data-source login + scrape.
 - Canonical `/grant` URL params (`sessionId`, `appId`, `scopes`)
 - Deep-link normalization to `/connect` with `replace`
 - App registry + default app + `/apps/:appId` routing
+- App card handoff opens external app in browser
+- Mock external app routes (`/rickroll` → `/signin`) with dev loop to `/connect`
 - Demo session behavior (registry metadata, scopes override)
 - RickRoll connect CTA builds `/grant` URL params
 - Minimal tests for URL params, deep links, app routing, grant flow
@@ -29,12 +31,7 @@ tracked and owned separately. Includes step 1 data-source login + scrape.
 
 ## Next (Frontend)
 
-- App card handoff: open external app in default browser, deep-link back to
-  `/connect?sessionId&appId&scopes`
-- Mock data app: external web page (RickRoll) that only launches the deep link
-  back to DataBridge (`dataconnect://?sessionId&appId&scopes`)
-- Decide external app base URL for handoff (dev: Vite web origin; prod: not
-  `tauri://`, needs a real web URL or registry value)
+- Decide external app base URL for handoff, ie. choose a real, non‑Tauri URL to open when you “Open App” in production. (dev: Vite web origin; prod: not `tauri://`, needs a real web URL or registry value)
 - Step-2: "Allow access to your <data source>" (consent screen)
 - Step-3: Passport auth if not authenticated (external browser via `start_browser_auth`; this means create & test the src/auth-page app and distribute it with the tauri app binary)
 - Step-4: success + return to app
@@ -47,6 +44,15 @@ tracked and owned separately. Includes step 1 data-source login + scrape.
 - `/apps/:appId` renders a host page (e.g. `src/pages/RickRollApp.tsx`) that gates
   access and triggers `/grant`, then renders the app UI from
   `src/apps/<appId>/app.tsx` once connected.
+
+## External app URL decision (pending)
+
+We can't lock this yet, but the likely direction is storing the external app URL
+in the app registry. Options to decide later:
+
+- App registry entry per app (preferred/likely)
+- Env base URL + app path convention
+- Backend/remote registry lookup
 
 ## Next (Backend-heavy / Colleague)
 

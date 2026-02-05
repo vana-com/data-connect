@@ -49,6 +49,7 @@ tracked and owned separately. Includes step 1 data-source login + scrape.
   `src/apps/<appId>/app.tsx` once connected.
 - `/apps/:appId` is an internal app detail/host view, not an external app landing
   page. It should not be the back target for external grant flows.
+- App ID design reference: `docs/260205-app-id-design.md`
 
 ## External app URL decision (pending)
 

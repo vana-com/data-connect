@@ -24,27 +24,6 @@ import { ROUTES } from "@/config/routes"
 const PRIVY_APP_ID = import.meta.env.VITE_PRIVY_APP_ID
 const PRIVY_CLIENT_ID = import.meta.env.VITE_PRIVY_CLIENT_ID
 const DEV_AUTH_PAGE_URL = "http://localhost:5175"
-const DEV_AUTH_BOOT_RETRIES = 12
-const DEV_AUTH_BOOT_DELAY_MS = 400
-
-const waitForAuthDevServer = async (baseUrl: string) => {
-  const checkUrl = new URL("App.tsx", baseUrl).toString()
-  for (let attempt = 0; attempt < DEV_AUTH_BOOT_RETRIES; attempt += 1) {
-    try {
-      const response = await fetch(checkUrl, {
-        method: "HEAD",
-        cache: "no-store",
-      })
-      if (response.ok) return true
-    } catch {
-      // swallow and retry
-    }
-    await new Promise(resolve =>
-      window.setTimeout(resolve, DEV_AUTH_BOOT_DELAY_MS)
-    )
-  }
-  return false
-}
 
 export function useGrantFlow(params: GrantFlowParams) {
   const dispatch = useDispatch()
@@ -157,17 +136,10 @@ export function useGrantFlow(params: GrantFlowParams) {
       setAuthUrl(url)
     } catch (err) {
       if (import.meta.env.DEV) {
-        setAuthUrl(DEV_AUTH_PAGE_URL)
-        if (typeof window !== "undefined") {
-          const isReady = await waitForAuthDevServer(DEV_AUTH_PAGE_URL)
-          if (!isReady) {
-            setAuthError(
-              "Auth dev server isn't ready yet. Wait a second and click “Try Opening Sign-In Again”."
-            )
-            return
-          }
-          window.open(DEV_AUTH_PAGE_URL, "_blank", "noopener,noreferrer")
-        }
+        setAuthUrl(null)
+        setAuthError(
+          `Auth dev server runs at ${DEV_AUTH_PAGE_URL}. Switch to that tab to continue.`
+        )
         return
       }
       console.error("Failed to start browser auth:", err)

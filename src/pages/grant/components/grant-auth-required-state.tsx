@@ -31,7 +31,7 @@ export function GrantAuthRequiredState({
               Sign In to Continue
             </Text>
             <Text as="p" intent="body" color="mutedForeground">
-              A sign-in page has opened in your browser. Complete the sign-in to grant{" "}
+              Open the sign-in page in your browser to grant{" "}
               <strong>{appName || "this app"}</strong> access to your data.
             </Text>
           </div>
@@ -44,7 +44,9 @@ export function GrantAuthRequiredState({
             <div className="w-full space-y-3">
               <Button
                 type="button"
-                onClick={() => window.open(authUrl, "_blank", "noopener,noreferrer")}
+                onClick={() =>
+                  window.open(authUrl, "_blank", "noopener,noreferrer")
+                }
                 fullWidth
                 className="hover:bg-foreground/90"
               >

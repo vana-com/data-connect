@@ -30,7 +30,7 @@ tracked and owned separately. Includes step 1 data-source login + scrape.
 - Step 1 `/connect` route wired to connector run + `/grant` handoff
 - Step-2 consent UI ("Allow access to your <data source>") matches design
 - Shared data-source label helper across `/connect` + `/grant`
-- Web dev mock opens auth page dev server (`auth:dev` + `dev:app` in separate tabs)
+- Web dev mock runs with `auth:dev` + `dev:app` in separate tabs
 
 ## Next (Frontend)
 

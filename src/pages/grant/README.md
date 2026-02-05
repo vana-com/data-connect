@@ -54,7 +54,7 @@ Use these in the browser when testing the grant flow directly:
 - JSON scopes (what `buildGrantSearchParams` generates):
   `http://localhost:5173/grant?sessionId=grant-session-123&appId=rickroll&scopes=%5B%22read:chatgpt-conversations%22%5D`
 
-When you click **Allow** in the browser, it opens the auth page dev server at
+When you click **Allow** in the browser, switch to the auth page dev server at
 `http://localhost:5175`. Run this first:
 
 ```

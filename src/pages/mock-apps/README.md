@@ -12,7 +12,7 @@ Important:
 Current mock:
 
 - RickRoll mock app (external web flow):
-  `http://localhost:5173/rickroll` → `http://localhost:5173/signin`
+  `http://localhost:5173/rickroll` → `http://localhost:5173/rickroll/signin`
   → in dev, Launch Data Connect routes to
   `http://localhost:5173/connect?sessionId&appId&scopes`
   (prod/installed app uses `dataconnect://?sessionId&appId&scopes`)

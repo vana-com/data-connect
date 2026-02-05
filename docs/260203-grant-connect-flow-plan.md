@@ -28,11 +28,14 @@ tracked and owned separately. Includes step 1 data-source login + scrape.
 - Minimal tests for URL params, deep links, app routing, grant flow
 - Flow doc + architecture link (`docs/260203-grant-connect-flow.md`)
 - Step 1 `/connect` route wired to connector run + `/grant` handoff
+- Step-2 consent UI ("Allow access to your <data source>") matches design
+- Shared data-source label helper across `/connect` + `/grant`
+- Web dev mock opens auth page dev server (`auth:dev` + `dev:app` in separate tabs)
 
 ## Next (Frontend)
 
 - Decide external app base URL for handoff, ie. choose a real, non‑Tauri URL to open when you “Open App” in production. (dev: Vite web origin; prod: not `tauri://`, needs a real web URL or registry value)
-- Step-2: "Allow access to your <data source>" (consent screen)
+- Grant cancel/back behavior: disable cancel CTA for now in the grant mock flow to avoid routing back to `/apps/:appId` (confusing duplicate of `/connect`). Only re-enable after external app URL/back target is defined.
 - Step-3: Passport auth if not authenticated (external browser via `start_browser_auth`; this means create & test the src/auth-page app and distribute it with the tauri app binary)
 - Step-4: success + return to app
 - Reuse grant components where possible (auth-required, consent, success)
@@ -44,6 +47,8 @@ tracked and owned separately. Includes step 1 data-source login + scrape.
 - `/apps/:appId` renders a host page (e.g. `src/pages/RickRollApp.tsx`) that gates
   access and triggers `/grant`, then renders the app UI from
   `src/apps/<appId>/app.tsx` once connected.
+- `/apps/:appId` is an internal app detail/host view, not an external app landing
+  page. It should not be the back target for external grant flows.
 
 ## External app URL decision (pending)
 

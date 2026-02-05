@@ -61,10 +61,10 @@ When you click **Allow** in the browser, it opens the auth page dev server at
 npm run auth:dev
 ```
 
-Or run both app + auth together:
+Run the app in another tab:
 
 ```
-npm run dev:mock
+npm run dev:app
 ```
 
 If generating in code, do not encode the full query string:

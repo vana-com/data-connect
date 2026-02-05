@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from "react"
 import { useNavigate, useSearchParams } from "react-router-dom"
 import { useSelector } from "react-redux"
 import { ChevronRight, LoaderIcon } from "lucide-react"
+import { EyebrowBadge } from "@/components/typography/eyebrow-badge"
 import { PlatformIcon } from "@/components/icons/platform-icon"
 import { Text } from "@/components/typography/text"
 import { ActionButton } from "@/components/typography/action-button"
@@ -183,20 +184,29 @@ export function Connect() {
         <div className="action-outset">
           <ActionButton
             size="xl"
-            className="relative gap-3 group"
             onClick={handleConnect}
-            disabled={!connectPlatform || isBusy}
             aria-busy={isBusy}
+            disabled={!connectPlatform || isBusy}
+            className="relative gap-3 group disabled:opacity-100"
           >
             <span aria-hidden="true">
               <PlatformIcon iconName={dataSourceLabel ?? "Data"} size={32} />
             </span>
             <span>{connectCta}</span>
-            <ButtonArrow
-              icon={ChevronRight}
-              className="size-[1.5em] text-muted-foreground group-hover:text-foreground"
-              aria-hidden="true"
-            />
+            {!connectPlatform && !isBusy ? (
+              <EyebrowBadge
+                variant="outline"
+                className="text-foreground-dim ml-auto"
+              >
+                No connector
+              </EyebrowBadge>
+            ) : (
+              <ButtonArrow
+                icon={ChevronRight}
+                className="size-[1.5em] text-muted-foreground group-hover:text-foreground"
+                aria-hidden="true"
+              />
+            )}
             {isBusy ? (
               <span
                 className={cn(
@@ -219,9 +229,17 @@ export function Connect() {
         </div>
 
         {connectorErrorMessage ? (
-          <Text as="p" intent="small" color="destructive">
-            {connectorErrorMessage}
-          </Text>
+          <div className="space-y-1">
+            <Text as="p" intent="small" color="destructive">
+              {connectorErrorMessage}
+            </Text>
+            {import.meta.env.DEV ? (
+              <Text as="p" intent="small" color="destructive">
+                If you’re viewing this in a browser, connectors won’t load. Use
+                the Tauri app.
+              </Text>
+            ) : null}
+          </div>
         ) : null}
 
         {/* <div className="">

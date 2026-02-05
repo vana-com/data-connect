@@ -1,5 +1,6 @@
 import { beforeEach, describe, expect, it, vi } from "vitest"
 import { act, renderHook, waitFor } from "@testing-library/react"
+import { invoke } from "@tauri-apps/api/core"
 import { DEFAULT_APP_ID, getDefaultAppEntry } from "../../apps/registry"
 import { useGrantFlow } from "./use-grant-flow"
 
@@ -14,12 +15,21 @@ let authState = {
   walletAddress: null as string | null,
 }
 
+let authCompleteHandler: ((event: { payload: any }) => void) | null = null
+
 vi.mock("@tauri-apps/api/core", () => ({
   invoke: vi.fn(),
 }))
 
 vi.mock("@tauri-apps/api/event", () => ({
-  listen: vi.fn(() => Promise.resolve(() => {})),
+  listen: vi.fn(
+    (eventName: string, handler: (event: { payload: any }) => void) => {
+      if (eventName === "auth-complete") {
+        authCompleteHandler = handler
+      }
+      return Promise.resolve(() => {})
+    }
+  ),
 }))
 
 vi.mock("react-redux", () => ({
@@ -31,17 +41,21 @@ vi.mock("../../hooks/useAuth", () => ({
 }))
 
 vi.mock("../../services/sessionRelay", () => ({
-  approveSession: (...args: unknown[]) => mockApproveSession.apply(null, args as []),
-  getSessionInfo: (...args: unknown[]) => mockGetSessionInfo.apply(null, args as []),
+  approveSession: (...args: unknown[]) =>
+    mockApproveSession.apply(null, args as []),
+  getSessionInfo: (...args: unknown[]) =>
+    mockGetSessionInfo.apply(null, args as []),
   SessionRelayError: class SessionRelayError extends Error {},
 }))
 
 vi.mock("../../services/grantSigning", () => ({
-  prepareGrantMessage: (...args: unknown[]) => mockPrepareGrantMessage.apply(null, args as []),
+  prepareGrantMessage: (...args: unknown[]) =>
+    mockPrepareGrantMessage.apply(null, args as []),
 }))
 
 vi.mock("../../lib/storage", () => ({
-  setConnectedApp: (...args: unknown[]) => mockSetConnectedApp.apply(null, args as []),
+  setConnectedApp: (...args: unknown[]) =>
+    mockSetConnectedApp.apply(null, args as []),
 }))
 
 beforeEach(() => {
@@ -50,6 +64,7 @@ beforeEach(() => {
   mockPrepareGrantMessage.mockReset()
   mockPrepareGrantMessage.mockImplementation(() => ({}))
   mockSetConnectedApp.mockReset()
+  authCompleteHandler = null
   authState = {
     isAuthenticated: false,
     isLoading: false,
@@ -74,8 +89,58 @@ describe("useGrantFlow", () => {
     expect(session?.appId).toBe(DEFAULT_APP_ID)
     expect(session?.appName).toBe(getDefaultAppEntry().name)
     expect(session?.scopes).toEqual(["read:custom"])
-    expect(result.current.flowState.status).toBe("auth-required")
-    expect(result.current.currentStep).toBe(1)
+    expect(result.current.flowState.status).toBe("consent")
+    expect(result.current.currentStep).toBe(2)
+  })
+
+  it("starts auth only after approval and auto-approves on auth completion", async () => {
+    const mockedInvoke = vi.mocked(invoke)
+    mockedInvoke.mockResolvedValue("https://auth.vana.test")
+
+    const { result, rerender } = renderHook(() =>
+      useGrantFlow({
+        sessionId: "grant-session-456",
+      })
+    )
+
+    await waitFor(() => {
+      expect(result.current.flowState.status).toBe("consent")
+    })
+
+    await act(async () => {
+      await result.current.handleApprove()
+    })
+
+    await waitFor(() => {
+      expect(result.current.flowState.status).toBe("auth-required")
+    })
+    expect(mockPrepareGrantMessage).not.toHaveBeenCalled()
+    expect(mockedInvoke).toHaveBeenCalledWith("start_browser_auth", {
+      privyAppId: expect.any(String),
+      privyClientId: expect.any(String),
+    })
+
+    await act(async () => {
+      authState = {
+        isAuthenticated: true,
+        isLoading: false,
+        walletAddress: "0xabc",
+      }
+      authCompleteHandler?.({
+        payload: {
+          success: true,
+          user: { id: "user-1", email: "test@vana.org" },
+          walletAddress: "0xabc",
+        },
+      })
+      rerender()
+    })
+
+    await waitFor(() => {
+      expect(result.current.flowState.status).toBe("success")
+    })
+    expect(mockPrepareGrantMessage).toHaveBeenCalled()
+    expect(mockSetConnectedApp).toHaveBeenCalled()
   })
 
   it("approves real sessions and stores connected app", async () => {

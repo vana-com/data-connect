@@ -13,7 +13,12 @@ import { prepareGrantMessage } from "../../services/grantSigning"
 import { setConnectedApp } from "../../lib/storage"
 import type { ConnectedApp } from "../../types"
 import { DEFAULT_APP_ID, getAppRegistryEntry } from "../../apps/registry"
-import type { GrantFlowParams, GrantFlowState, GrantSession, GrantStep } from "./types"
+import type {
+  GrantFlowParams,
+  GrantFlowState,
+  GrantSession,
+  GrantStep,
+} from "./types"
 import { ROUTES } from "@/config/routes"
 
 const PRIVY_APP_ID = import.meta.env.VITE_PRIVY_APP_ID
@@ -29,6 +34,7 @@ export function useGrantFlow(params: GrantFlowParams) {
   const [currentStep, setCurrentStep] = useState<GrantStep>(1)
   const authTriggered = useRef(false)
   const [isApproving, setIsApproving] = useState(false)
+  const [authPending, setAuthPending] = useState(false)
   const [authUrl, setAuthUrl] = useState<string | null>(null)
   const [authError, setAuthError] = useState<string | null>(null)
 
@@ -40,6 +46,7 @@ export function useGrantFlow(params: GrantFlowParams) {
     authTriggered.current = false
     setAuthUrl(null)
     setAuthError(null)
+    setAuthPending(false)
   }, [sessionId])
 
   useEffect(() => {
@@ -73,7 +80,9 @@ export function useGrantFlow(params: GrantFlowParams) {
             appName: appInfo?.name || resolvedAppId,
             appIcon: appInfo?.icon || "🔗",
             scopes,
-            expiresAt: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString(), // 30 days
+            expiresAt: new Date(
+              Date.now() + 30 * 24 * 60 * 60 * 1000
+            ).toISOString(), // 30 days
           }
         } else {
           const fetchedSession = await getSessionInfo(sessionId)
@@ -88,7 +97,9 @@ export function useGrantFlow(params: GrantFlowParams) {
           sessionId,
           status: "error",
           error:
-            error instanceof SessionRelayError ? error.message : "Failed to load session",
+            error instanceof SessionRelayError
+              ? error.message
+              : "Failed to load session",
         })
       }
     }
@@ -101,12 +112,13 @@ export function useGrantFlow(params: GrantFlowParams) {
     if (flowState.status === "success" || flowState.status === "error") return
     if (flowState.status === "signing") return
 
-    const nextStatus = isAuthenticated ? "consent" : "auth-required"
+    if (flowState.status === "auth-required") return
+    const nextStatus = "consent"
     setFlowState(prev =>
       prev.status === nextStatus ? prev : { ...prev, status: nextStatus }
     )
-    setCurrentStep(isAuthenticated ? 2 : 1)
-  }, [authLoading, isAuthenticated, flowState.session, flowState.status])
+    setCurrentStep(2)
+  }, [authLoading, flowState.session, flowState.status])
 
   const startBrowserAuth = useCallback(async () => {
     if (!PRIVY_APP_ID || !PRIVY_CLIENT_ID) {
@@ -124,7 +136,9 @@ export function useGrantFlow(params: GrantFlowParams) {
     } catch (err) {
       console.error("Failed to start browser auth:", err)
       setAuthError(
-        err instanceof Error ? err.message : "Failed to open browser for authentication."
+        err instanceof Error
+          ? err.message
+          : "Failed to open browser for authentication."
       )
       authTriggered.current = false
     }
@@ -163,7 +177,12 @@ export function useGrantFlow(params: GrantFlowParams) {
   }, [dispatch])
 
   const handleApprove = useCallback(async () => {
-    if (!flowState.session || !walletAddress) return
+    if (!flowState.session) return
+    if (!isAuthenticated || !walletAddress) {
+      setAuthPending(true)
+      setFlowState(prev => ({ ...prev, status: "auth-required" }))
+      return
+    }
 
     setIsApproving(true)
     setFlowState(prev => ({ ...prev, status: "signing" }))
@@ -224,7 +243,13 @@ export function useGrantFlow(params: GrantFlowParams) {
     } finally {
       setIsApproving(false)
     }
-  }, [flowState.session, flowState.sessionId, walletAddress])
+  }, [flowState.session, flowState.sessionId, isAuthenticated, walletAddress])
+
+  useEffect(() => {
+    if (!authPending || !isAuthenticated || !walletAddress) return
+    setAuthPending(false)
+    void handleApprove()
+  }, [authPending, handleApprove, isAuthenticated, walletAddress])
 
   const declineHref = flowState.session?.appId
     ? ROUTES.app(flowState.session.appId)

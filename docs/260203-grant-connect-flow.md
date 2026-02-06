@@ -20,11 +20,12 @@ flowchart TD
   D -->|normalize + replace| E["/connect?sessionId&appId&scopes"]
   E --> B
   C --> F[GrantFlow orchestrator]
-  F -->|auth required| G[Open Privy in browser]
-  G -->|auth-complete event| F
-  F -->|Approve| H[grantSigning + approveSession]
-  H -->|success| I["setConnectedApp (localStorage)"]
-  I --> J[App connected state]
+  F -->|auth required| G[Launch auth page (start_browser_auth)]
+  G -->|/auth-callback| H[AuthResult -> auth-complete event]
+  H --> F
+  F -->|Approve| I[grantSigning + approveSession]
+  I -->|success| J["setConnectedApp (localStorage)"]
+  J --> K[Success UI + return to app]
 ```
 
 ## UI design reference
@@ -37,6 +38,7 @@ Linear 4-step connect/grant design: `docs/_wip/260202-connect-flow.png`.
   routes into the grant flow.
 - Data-source login/scrape: connector run launched from step 1.
 - Grant Flow: owns consent/auth/signing states and persists the connected app.
+- Auth page: `src/auth-page`, launched via Tauri, posts `/auth-callback`.
 - Deep links: normalize to canonical params, then route to `/connect` with `replace`.
 - App registry: defines available apps, default app, and scopes for demo usage.
 
@@ -54,6 +56,7 @@ Grant flow inputs are canonical in the URL:
 - `sessionId`
 - `appId`
 - `scopes` (JSON array or comma-delimited fallback)
+- `status` (optional, `success` forces Step 4 UI)
 
 Do not use `location.state` for these values.
 
@@ -74,6 +77,15 @@ not live inside the Tauri shell; it only needs to launch the deep link back into
 DataBridge (`dataconnect://?sessionId&appId&scopes`). In development we can use
 the Vite web origin. In production, the external app URL must be a real web URL
 or a registry value — `tauri://` origins are not valid in a normal browser.
+
+## Post-auth (non-fatal)
+
+- After auth, the app may attempt personal server registration.
+- Failure to register does not block success UI or grant completion.
+- Endpoints:
+  - `POST /auth-callback` (auth page -> Tauri, emits `auth-complete`)
+  - `GET /server-identity` (proxies personal server health)
+  - `POST /register-server` (gateway registration, `200/201/409` treated as OK)
 
 ## Where to look
 

@@ -34,7 +34,7 @@ tracked and owned separately. Includes step 1 data-source login + scrape.
 - Shared data-source label helper across `/connect` + `/grant`
 - Web dev mock runs with `auth:dev` + `dev:app` in separate tabs
 
-## Next (Frontend)
+## TODO (Frontend)
 
 - Decide external app URL per app for handoff, stored in the app registry (no single base URL). (dev: Vite web origin; prod: real web URLs, not `tauri://`)
 - Step-3: Passport auth if not authenticated (external browser via `start_browser_auth`; this means create & test the src/auth-page app and distribute it with the tauri app binary)

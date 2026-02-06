@@ -3,10 +3,9 @@ import { Text } from "@/components/typography/text"
 import { Button } from "@/components/ui/button"
 import { cn } from "@/lib/classes"
 import { ROUTES } from "@/config/routes"
-import { getAppRegistryEntry } from "@/apps/registry"
+import type { AppRegistryEntry } from "@/apps/registry"
 import { buildGrantSearchParams } from "@/lib/grant-params"
 import { DEV_FLAGS } from "@/config/dev-flags"
-import type { MockApp } from "../types"
 
 async function openExternalApp(url: string) {
   try {
@@ -19,8 +18,7 @@ async function openExternalApp(url: string) {
   }
 }
 
-export function AppCard({ app }: { app: MockApp }) {
-  const appEntry = getAppRegistryEntry(app.id)
+export function AppCard({ app }: { app: AppRegistryEntry }) {
   // TODO: Design expects opening the app in the user's browser, then deep-linking back to
   // `/connect?sessionId&appId&scopes`. Current behavior opens the in-app route.
   const handleOpenApp = () => {
@@ -28,7 +26,7 @@ export function AppCard({ app }: { app: MockApp }) {
     const searchParams = buildGrantSearchParams({
       sessionId,
       appId: app.id,
-      scopes: appEntry?.scopes,
+      scopes: app.scopes,
     })
     // Mock routing is explicit and opt-in to avoid internal app mental models.
     const appUrl = DEV_FLAGS.useRickrollMock

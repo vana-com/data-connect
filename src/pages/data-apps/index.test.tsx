@@ -3,15 +3,15 @@ import { fireEvent, render, screen, waitFor } from "@testing-library/react"
 import { createMemoryRouter, RouterProvider } from "react-router-dom"
 import { open } from "@tauri-apps/plugin-shell"
 import { buildGrantSearchParams } from "@/lib/grant-params"
-import { getAppRegistryEntry } from "@/apps/registry"
+import { getAppRegistryEntries } from "@/apps/registry"
 import { ROUTES } from "@/config/routes"
 import { DEV_FLAGS } from "@/config/dev-flags"
 import { DataApps } from "./index"
-import { mockApps } from "./fixtures"
 
 const mockNavigate = vi.fn()
-const liveApps = mockApps.filter(app => app.status === "live")
-const comingSoonApps = mockApps.filter(app => app.status === "coming-soon")
+const apps = getAppRegistryEntries()
+const liveApps = apps.filter(app => app.status === "live")
+const comingSoonApps = apps.filter(app => app.status === "coming-soon")
 
 vi.mock("@tauri-apps/plugin-shell", () => ({
   open: vi.fn().mockResolvedValue(undefined),
@@ -97,11 +97,10 @@ describe("DataApps", () => {
     fireEvent.click(openAppButtons[0])
 
     const appId = liveApps[0].id
-    const appEntry = getAppRegistryEntry(appId)
     const searchParams = buildGrantSearchParams({
       sessionId: "grant-session-123",
       appId,
-      scopes: appEntry?.scopes,
+      scopes: liveApps[0].scopes,
     })
     const expectedUrl = DEV_FLAGS.useRickrollMock
       ? new URL(ROUTES.rickrollMockRoot, window.location.origin)

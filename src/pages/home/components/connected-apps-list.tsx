@@ -1,16 +1,16 @@
-import { ArrowUpRight, Settings } from "lucide-react"
+import { Link } from "react-router-dom"
+import { sourceRowActionStyle } from "@/components/elements/source-row"
 import { PlatformIcon } from "@/components/icons/platform-icon"
-import {
-  ActionButton,
-  ActionPanel,
-} from "@/components/typography/action-button"
-import { LearnMoreLink } from "@/components/typography/learn-more-link"
+import { ActionPanel } from "@/components/typography/action-button"
+import { stateFocus } from "@/components/typography/field"
 import { Text } from "@/components/typography/text"
-import { cn } from "@/lib/classes"
-import { ROUTES } from "@/config/routes"
+import { buttonVariants } from "@/components/ui/button"
 import { DEV_FLAGS } from "@/config/dev-flags"
-import { mockApps } from "@/pages/data-apps/fixtures"
+import { ROUTES } from "@/config/routes"
+import { cn } from "@/lib/classes"
+import { getAppRegistryEntry } from "@/apps/registry"
 import type { ConnectedApp } from "@/types"
+import { ArrowUpRight, Settings } from "lucide-react"
 
 interface ConnectedAppsListProps {
   apps: ConnectedApp[]
@@ -51,18 +51,17 @@ function getConnectedAppUrl(app: ConnectedApp) {
   if (app.id === "rickroll") {
     return new URL(ROUTES.rickrollMockRoot, window.location.origin)
   }
-  const match = mockApps.find(item => item.id === app.id)
-  // Otherwise, rely on the fixture's externalUrl.
-  return match?.externalUrl
-    ? new URL(match.externalUrl, window.location.origin)
+  const entry = getAppRegistryEntry(app.id)
+  // Otherwise, rely on the registry's externalUrl.
+  return entry?.status === "live"
+    ? new URL(entry.externalUrl, window.location.origin)
     : null
 }
 
 const Header = () => {
   return (
     <Text as="h2" weight="medium">
-      Apps using your data.&nbsp;
-      <LearnMoreLink className="text-muted-foreground" />
+      Apps using your data
     </Text>
   )
 }
@@ -87,47 +86,95 @@ export function ConnectedAppsList({ apps }: ConnectedAppsListProps) {
       <div className="flex flex-col gap-3 action-outset">
         {apps.map(app => {
           const appUrl = getConnectedAppUrl(app)
-          return (
-            <ActionButton
-              key={app.id}
-              className={cn("items-start justify-between gap-4 text-left")}
-              onClick={
-                appUrl
-                  ? () => {
-                      void openExternalApp(appUrl.toString())
-                    }
-                  : undefined
+          const handleOpenApp = appUrl
+            ? () => {
+                void openExternalApp(appUrl.toString())
               }
+            : undefined
+
+          return (
+            <div
+              key={app.id}
+              className={cn(
+                buttonVariants({
+                  variant: "outline",
+                  size: "xl",
+                  fullWidth: true,
+                }),
+                "gap-0 items-stretch px-0"
+              )}
             >
-              <div className="flex h-full flex-1 items-center gap-3">
+              <button
+                type="button"
+                className={cn(
+                  // layout
+                  "flex h-full min-w-0 flex-1 items-center gap-3",
+                  // spacing
+                  "px-4",
+                  // typography
+                  "text-left",
+                  // focus
+                  stateFocus
+                )}
+                onClick={handleOpenApp}
+              >
+                {/* Duplicated SourceRow LHS; RHS is different! */}
                 <PlatformIcon
                   iconName={app.id}
-                  fallbackScale={0.5}
                   fallbackLabel={
                     app.icon?.trim() || app.name.charAt(0).toUpperCase()
                   }
                 />
-                <span>{app.name}</span>
-              </div>
-              <div className="flex h-full items-center gap-3">
-                <Text
-                  as="span"
-                  intent="small"
-                  weight="medium"
-                  color="mutedForeground"
-                >
-                  {formatConnectedAt(app.connectedAt)}
-                </Text>
+                <div className="flex items-baseline gap-2">
+                  {app.name}
+
+                  <Text as="span" intent="small" muted>
+                    {formatConnectedAt(app.connectedAt)}
+                  </Text>
+                </div>
+              </button>
+
+              <Link
+                to={ROUTES.settings}
+                className={cn(
+                  // layout
+                  "flex h-full items-center justify-center",
+                  // spacing
+                  "px-4",
+                  // borders
+                  "border-l border-ring/20 group-hover:border-ring",
+                  // focus
+                  stateFocus
+                )}
+                aria-label="Account settings"
+              >
                 <Settings
                   className="size-4 text-muted-foreground"
                   aria-hidden
                 />
+              </Link>
+
+              <button
+                type="button"
+                className={cn(
+                  // layout
+                  "flex h-full items-center justify-center",
+                  // spacing
+                  "px-4",
+                  // borders
+                  "border-l border-ring/20 group-hover:border-ring",
+                  // focus
+                  stateFocus
+                )}
+                onClick={handleOpenApp}
+                aria-label={`Open ${app.name}`}
+              >
                 <ArrowUpRight
-                  className="size-5 text-muted-foreground"
+                  className={cn(sourceRowActionStyle, "size-7")}
                   aria-hidden
                 />
-              </div>
-            </ActionButton>
+              </button>
+            </div>
           )
         })}
       </div>

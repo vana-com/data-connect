@@ -21,7 +21,8 @@ export interface SourceStackProps extends SourceRowProps {
   trailingSlot?: ReactNode
 }
 
-const chevronStyle = "text-foreground/30 group-hover:text-foreground"
+export const sourceRowActionStyle =
+  "text-foreground/30 group-hover:text-foreground"
 
 export function SourceRow({
   iconName,
@@ -37,9 +38,9 @@ export function SourceRow({
 
   return (
     <>
-      <div className="h-full flex-1 flex items-center gap-1.5">
+      <div className="h-full flex-1 flex items-center gap-3">
         <PlatformIcon iconName={iconName} className={cn(iconClassName)} />
-        <div className="flex items-baseline gap-1.5">
+        <div className="flex items-baseline gap-2">
           {label}
 
           {meta ? (
@@ -50,13 +51,13 @@ export function SourceRow({
         </div>
       </div>
 
-      {/* Bottom or RHS */}
+      {/* RHS */}
       {shouldRenderMetaSection ? (
         <div className="h-full flex items-center gap-3">
           {/* CTA icon */}
           {shouldShowArrow ? (
             <ChevronRightIcon
-              className={cn(chevronStyle, "size-7", arrowClassName)}
+              className={cn(sourceRowActionStyle, "size-7", arrowClassName)}
               aria-hidden
             />
           ) : null}
@@ -127,7 +128,7 @@ export function SourceStack({
             {/* CTA icon */}
             {shouldShowArrow ? (
               <ChevronRightIcon
-                className={cn(chevronStyle, "size-5", arrowClassName)}
+                className={cn(sourceRowActionStyle, "size-5", arrowClassName)}
                 aria-hidden
               />
             ) : null}

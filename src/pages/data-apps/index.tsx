@@ -1,9 +1,11 @@
 import { LearnMoreLink } from "@/components/typography/learn-more-link"
 import { Text } from "@/components/typography/text"
+import { getAppRegistryEntries } from "@/apps/registry"
 import { AppCard } from "./components/AppCard"
-import { mockApps } from "./fixtures"
 
 export function DataApps() {
+  const apps = getAppRegistryEntries()
+
   return (
     <div className="py-w16">
       <div className="space-y-w12">
@@ -23,7 +25,7 @@ export function DataApps() {
 
         <section className="container max-w-wide-width">
           <div className="grid gap-w4 md:grid-cols-2 xl:grid-cols-3">
-            {mockApps.map(app => (
+            {apps.map(app => (
               <AppCard key={app.id} app={app} />
             ))}
           </div>

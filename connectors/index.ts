@@ -1,14 +1,9 @@
 /**
- * Connectors Index - Steel version
+ * Connectors Index
+ *
+ * Re-exports types from connector modules.
+ * The actual connector scripts are plain JS files loaded by the Playwright runner.
  */
-
-// Instagram connector - scripts
-export {
-  instagramScrape,
-  instagramProfileInfo,
-  instagramPosts,
-  instagramLikedPosts,
-} from './instagram/index.js';
 
 // Instagram connector - types and schemas
 export type {
@@ -18,7 +13,3 @@ export type {
   Post,
   LikedPost,
 } from './instagram/index.js';
-
-// ChatGPT connector
-export { chatgptScrape, chatgptConversations } from './chatgpt/index.js';
-export type { ChatGPTScrapeResult, ChatGPTScrapeParams } from './chatgpt/index.js';

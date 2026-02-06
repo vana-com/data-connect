@@ -7,6 +7,7 @@
   "scripts": {
     "start": "node index.cjs",
     "build": "node scripts/build.js",
+    "build:lean": "node scripts/build.js --lean",
     "postinstall": "playwright install chromium"
   },
   "pkg": {

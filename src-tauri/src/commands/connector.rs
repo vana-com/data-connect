@@ -1,8 +1,16 @@
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 use std::fs;
+use std::io::Write;
 use std::path::PathBuf;
 use tauri::{AppHandle, Emitter, Manager, WebviewUrl, WebviewWindowBuilder};
+
+// Chromium download constants
+const CHROMIUM_REVISION: &str = "1200";
+const CHROMIUM_CDN_MIRRORS: &[&str] = &[
+    "https://cdn.playwright.dev",
+    "https://playwright.download.prss.microsoft.com/dbazure/download/playwright",
+];
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
 pub struct ConnectorMetadata {
@@ -382,10 +390,34 @@ fn get_bundled_playwright_runner(app: &AppHandle) -> Option<(PathBuf, Option<Pat
     #[cfg(target_os = "linux")]
     let binary_name = "playwright-runner";
 
+    log::info!("=== Looking for Playwright runner ===");
+    log::info!("Resource directory: {:?}", resource_dir);
+    log::info!("Binary name: {}", binary_name);
+
+    // List contents of resource directory for debugging
+    if let Ok(entries) = std::fs::read_dir(&resource_dir) {
+        let contents: Vec<_> = entries
+            .filter_map(|e| e.ok())
+            .map(|e| e.file_name().to_string_lossy().to_string())
+            .collect();
+        log::info!("Resource dir contents: {:?}", contents);
+    }
+
     // Try playwright-runner/dist path (matches tauri.conf.json resources config)
     let dist_path = resource_dir.join("playwright-runner").join("dist");
     let dist_binary = dist_path.join(binary_name);
     let dist_browsers = dist_path.join("browsers");
+
+    log::info!("Checking path 1: {:?} (exists: {})", dist_binary, dist_binary.exists());
+    if dist_path.exists() {
+        if let Ok(entries) = std::fs::read_dir(&dist_path) {
+            let contents: Vec<_> = entries
+                .filter_map(|e| e.ok())
+                .map(|e| e.file_name().to_string_lossy().to_string())
+                .collect();
+            log::info!("  dist path contents: {:?}", contents);
+        }
+    }
 
     if dist_binary.exists() {
         log::info!("Found bundled Playwright runner at {:?}", dist_binary);
@@ -400,6 +432,8 @@ fn get_bundled_playwright_runner(app: &AppHandle) -> Option<(PathBuf, Option<Pat
     // Try binaries/ path (alternative CI builds layout)
     let binary_path = resource_dir.join("binaries").join(binary_name);
     let browsers_path = resource_dir.join("binaries").join("browsers");
+
+    log::info!("Checking path 2: {:?} (exists: {})", binary_path, binary_path.exists());
 
     if binary_path.exists() {
         log::info!("Found bundled Playwright runner at {:?}", binary_path);
@@ -416,6 +450,17 @@ fn get_bundled_playwright_runner(app: &AppHandle) -> Option<(PathBuf, Option<Pat
     let up_binary = up_path.join(binary_name);
     let up_browsers = up_path.join("browsers");
 
+    log::info!("Checking path 3: {:?} (exists: {})", up_binary, up_binary.exists());
+    if up_path.exists() {
+        if let Ok(entries) = std::fs::read_dir(&up_path) {
+            let contents: Vec<_> = entries
+                .filter_map(|e| e.ok())
+                .map(|e| e.file_name().to_string_lossy().to_string())
+                .collect();
+            log::info!("  _up_ path contents: {:?}", contents);
+        }
+    }
+
     if up_binary.exists() {
         log::info!("Found bundled Playwright runner at {:?}", up_binary);
         let browsers = if up_browsers.exists() {
@@ -426,6 +471,7 @@ fn get_bundled_playwright_runner(app: &AppHandle) -> Option<(PathBuf, Option<Pat
         return Some((up_binary, browsers));
     }
 
+    log::error!("=== Playwright runner NOT FOUND in any location ===");
     None
 }
 
@@ -438,12 +484,34 @@ async fn start_playwright_run(
     company: String,
     name: String,
     connect_url: String,
+    simulate_no_chrome: Option<bool>,
 ) -> Result<(), String> {
     use std::io::{BufRead, BufReader, Write};
     use std::process::{Command, Stdio};
 
     log::info!("Starting Playwright run for {} (platform: {}, company: {}, filename: {})",
         run_id, platform_id, company, filename);
+
+    // Check if browser is available before starting
+    let browser_status = check_browser_available(simulate_no_chrome).await?;
+    if !browser_status.available {
+        log::info!("No browser available, downloading Chromium...");
+        let _ = app.emit("connector-log", serde_json::json!({
+            "runId": run_id,
+            "message": "No browser found. Downloading Chromium (~170MB)...",
+            "timestamp": chrono_timestamp()
+        }));
+
+        // Download using Rust (with progress events)
+        download_chromium_rust(app.clone()).await?;
+
+        log::info!("Chromium download complete, continuing with connector");
+        let _ = app.emit("connector-log", serde_json::json!({
+            "runId": run_id,
+            "message": "Browser download complete. Starting connector...",
+            "timestamp": chrono_timestamp()
+        }));
+    }
 
     // Find the connector script (check user dir first, then bundled)
     let company_lower = company.to_lowercase();
@@ -477,61 +545,55 @@ async fn start_playwright_run(
 
     log::info!("Connector script found at: {:?}, looking for Playwright runner...", connector_path);
 
-    // Try to use bundled binary first (production), fall back to dev mode
-    let mut child = if let Some((binary_path, browsers_path)) = get_bundled_playwright_runner(&app) {
-        log::info!("Found bundled Playwright runner at: {:?}", binary_path);
+    // In debug mode, always use node directly (avoids macOS code signing issues with copied binaries)
+    // In release mode, use the bundled binary
+    #[cfg(debug_assertions)]
+    let use_bundled_binary = false;
+    #[cfg(not(debug_assertions))]
+    let use_bundled_binary = true;
 
-        // Re-sign the binary with adhoc signature (macOS requirement for bundled binaries)
-        #[cfg(target_os = "macos")]
-        {
-            use std::process::Command;
-            log::info!("Re-signing bundled Playwright runner for macOS...");
-            if let Ok(output) = Command::new("codesign")
-                .arg("--force")
-                .arg("--sign")
-                .arg("-")
-                .arg(&binary_path)
-                .output()
-            {
-                if !output.status.success() {
-                    log::warn!("Failed to codesign bundled runner: {}", String::from_utf8_lossy(&output.stderr));
-                } else {
-                    log::info!("Successfully re-signed bundled Playwright runner");
+    let mut child = if use_bundled_binary {
+        if let Some((binary_path, browsers_path)) = get_bundled_playwright_runner(&app) {
+            log::info!("Found bundled Playwright runner at: {:?}", binary_path);
+
+            // Production mode: use bundled binary
+            let mut cmd = Command::new(&binary_path);
+            cmd.stdin(Stdio::piped())
+                .stdout(Stdio::piped())
+                .stderr(Stdio::piped());
+
+            // Set browser path if bundled
+            if let Some(ref browsers) = browsers_path {
+                log::info!("Setting PLAYWRIGHT_BROWSERS_PATH to: {:?}", browsers);
+                cmd.env("PLAYWRIGHT_BROWSERS_PATH", browsers);
+            }
+
+            // Set simulate no chrome flag for testing
+            if simulate_no_chrome.unwrap_or(false) {
+                log::info!("Setting DATABRIDGE_SIMULATE_NO_CHROME=1");
+                cmd.env("DATABRIDGE_SIMULATE_NO_CHROME", "1");
+            }
+
+            log::info!("Spawning Playwright runner...");
+            match cmd.spawn() {
+                Ok(child) => child,
+                Err(e) => {
+                    let err = format!("Failed to spawn bundled Playwright runner: {}", e);
+                    log::error!("{}", err);
+                    let _ = app.emit("connector-log", serde_json::json!({
+                        "runId": run_id,
+                        "message": format!("Error: {}", err),
+                        "timestamp": chrono_timestamp()
+                    }));
+                    return Err(err);
                 }
             }
-        }
-
-        // Production mode: use bundled binary
-        let mut cmd = Command::new(&binary_path);
-        cmd.stdin(Stdio::piped())
-            .stdout(Stdio::piped())
-            .stderr(Stdio::piped());
-
-        // Set browser path if bundled
-        if let Some(ref browsers) = browsers_path {
-            log::info!("Setting PLAYWRIGHT_BROWSERS_PATH to: {:?}", browsers);
-            cmd.env("PLAYWRIGHT_BROWSERS_PATH", browsers);
-        }
-
-        log::info!("Spawning Playwright runner...");
-        match cmd.spawn() {
-            Ok(child) => {
-                log::info!("Playwright runner spawned successfully");
-                child
-            }
-            Err(e) => {
-                let err = format!("Failed to spawn bundled Playwright runner: {}", e);
-                log::error!("{}", err);
-                let _ = app.emit("connector-log", serde_json::json!({
-                    "runId": run_id,
-                    "message": format!("Error: {}", err),
-                    "timestamp": chrono_timestamp()
-                }));
-                return Err(err);
-            }
+        } else {
+            return Err("Bundled Playwright runner not found".to_string());
         }
     } else {
-        // Dev mode: use node index.js
+        // Dev mode: use node index.cjs directly (avoids code signing issues)
+        log::info!("Dev mode: using node index.cjs directly");
         let connectors_dir = get_connectors_dir(&app);
         let runner_dir = connectors_dir.parent()
             .and_then(|p| Some(p.join("playwright-runner")))
@@ -541,15 +603,24 @@ async fn start_playwright_run(
             return Err(format!("Playwright runner not found: {:?}. Run 'npm install' in playwright-runner directory.", runner_dir));
         }
 
-        Command::new("node")
-            .arg("index.cjs")
+        let mut cmd = Command::new("node");
+        cmd.arg("index.cjs")
             .current_dir(&runner_dir)
             .stdin(Stdio::piped())
             .stdout(Stdio::piped())
-            .stderr(Stdio::piped())
-            .spawn()
+            .stderr(Stdio::piped());
+
+        // Set simulate no chrome flag for testing
+        if simulate_no_chrome.unwrap_or(false) {
+            log::info!("Setting DATABRIDGE_SIMULATE_NO_CHROME=1 (dev mode)");
+            cmd.env("DATABRIDGE_SIMULATE_NO_CHROME", "1");
+        }
+
+        cmd.spawn()
             .map_err(|e| format!("Failed to spawn Playwright runner: {}", e))?
     };
+
+    log::info!("Playwright runner spawned successfully");
 
     // Get handles to stdin/stdout
     let stdin = child.stdin.take().ok_or("Failed to get stdin")?;
@@ -683,11 +754,12 @@ pub async fn start_connector_run(
     name: String,
     connect_url: String,
     runtime: Option<String>,
+    simulate_no_chrome: Option<bool>,
 ) -> Result<(), String> {
     // Check if this is a Playwright runtime connector
     if runtime.as_deref() == Some("playwright") {
         return start_playwright_run(
-            app, run_id, platform_id, filename, company, name, connect_url
+            app, run_id, platform_id, filename, company, name, connect_url, simulate_no_chrome
         ).await;
     }
 
@@ -1140,15 +1212,20 @@ pub fn get_user_data_path(app: AppHandle) -> Result<String, String> {
 
 /// Check if a browser is available for automation
 #[tauri::command]
-pub async fn check_browser_available() -> Result<BrowserStatus, String> {
-    // Check for system Chrome/Edge first
-    let system_browser = get_system_browser_path();
-    if system_browser.is_some() {
-        return Ok(BrowserStatus {
-            available: true,
-            browser_type: "system".to_string(),
-            needs_download: false,
-        });
+pub async fn check_browser_available(
+    simulate_no_chrome: Option<bool>,
+) -> Result<BrowserStatus, String> {
+    // Skip system browser check if simulating no Chrome
+    if !simulate_no_chrome.unwrap_or(false) {
+        // Check for system Chrome/Edge first
+        let system_browser = get_system_browser_path();
+        if system_browser.is_some() {
+            return Ok(BrowserStatus {
+                available: true,
+                browser_type: "system".to_string(),
+                needs_download: false,
+            });
+        }
     }
 
     // Check for downloaded Chromium
@@ -1225,48 +1302,12 @@ fn get_system_browser_path() -> Option<PathBuf> {
     None
 }
 
-/// Download Chromium browser using playwright
+/// Download Chromium browser (uses Rust-based download in production)
 #[tauri::command]
 pub async fn download_browser(app: AppHandle) -> Result<(), String> {
-    use std::process::Command;
-
-    let home = std::env::var("HOME")
-        .or_else(|_| std::env::var("USERPROFILE"))
-        .map_err(|_| "Could not determine home directory")?;
-
-    let browsers_dir = PathBuf::from(&home).join(".databridge").join("browsers");
-
-    // Create directory if needed
-    std::fs::create_dir_all(&browsers_dir)
-        .map_err(|e| format!("Failed to create browsers directory: {}", e))?;
-
-    log::info!("Downloading Chromium to {:?}", browsers_dir);
-
-    // Emit progress event
-    let _ = app.emit("browser-download-progress", serde_json::json!({
-        "status": "downloading",
-        "message": "Downloading Chromium browser..."
-    }));
-
-    // Run npx playwright install chromium
-    let output = Command::new("npx")
-        .args(["playwright", "install", "chromium"])
-        .env("PLAYWRIGHT_BROWSERS_PATH", &browsers_dir)
-        .output()
-        .map_err(|e| format!("Failed to run playwright install: {}", e))?;
-
-    if output.status.success() {
-        log::info!("Chromium download complete");
-        let _ = app.emit("browser-download-progress", serde_json::json!({
-            "status": "complete",
-            "message": "Browser download complete"
-        }));
-        Ok(())
-    } else {
-        let stderr = String::from_utf8_lossy(&output.stderr);
-        log::error!("Chromium download failed: {}", stderr);
-        Err(format!("Download failed: {}", stderr))
-    }
+    // Use the Rust-based download which works in production without npx
+    download_chromium_rust(app).await?;
+    Ok(())
 }
 
 /// Test that Node.js runtime is working
@@ -1368,4 +1409,220 @@ fn get_downloaded_chromium_path() -> Option<PathBuf> {
     }
 
     None
+}
+
+/// Get the Chromium download URL for the current platform
+fn get_chromium_download_info() -> Option<(&'static str, &'static str)> {
+    #[cfg(all(target_os = "macos", target_arch = "aarch64"))]
+    {
+        Some(("chromium-mac-arm64.zip", "chrome-mac-arm64/Google Chrome for Testing.app/Contents/MacOS/Google Chrome for Testing"))
+    }
+    #[cfg(all(target_os = "macos", target_arch = "x86_64"))]
+    {
+        Some(("chromium-mac.zip", "chrome-mac-x64/Google Chrome for Testing.app/Contents/MacOS/Google Chrome for Testing"))
+    }
+    #[cfg(target_os = "windows")]
+    {
+        Some(("chromium-win64.zip", "chrome-win64/chrome.exe"))
+    }
+    #[cfg(all(target_os = "linux", target_arch = "x86_64"))]
+    {
+        Some(("chromium-linux.zip", "chrome-linux64/chrome"))
+    }
+    #[cfg(all(target_os = "linux", target_arch = "aarch64"))]
+    {
+        Some(("chromium-linux-arm64.zip", "chrome-linux/chrome"))
+    }
+    #[cfg(not(any(
+        all(target_os = "macos", target_arch = "aarch64"),
+        all(target_os = "macos", target_arch = "x86_64"),
+        target_os = "windows",
+        all(target_os = "linux", target_arch = "x86_64"),
+        all(target_os = "linux", target_arch = "aarch64"),
+    )))]
+    {
+        None
+    }
+}
+
+/// Download Chromium browser using Rust (production-ready)
+#[tauri::command]
+pub async fn download_chromium_rust(app: AppHandle) -> Result<String, String> {
+    use futures_util::StreamExt;
+
+    log::info!("Starting Rust-based Chromium download");
+
+    // Get platform-specific download info
+    let (zip_filename, exe_path) = get_chromium_download_info()
+        .ok_or("Unsupported platform for Chromium download")?;
+
+    // Create browsers directory
+    let home = std::env::var("HOME")
+        .or_else(|_| std::env::var("USERPROFILE"))
+        .map_err(|_| "Could not determine home directory")?;
+
+    let browsers_dir = PathBuf::from(&home).join(".databridge").join("browsers");
+    std::fs::create_dir_all(&browsers_dir)
+        .map_err(|e| format!("Failed to create browsers directory: {}", e))?;
+
+    let chromium_dir = browsers_dir.join(format!("chromium-{}", CHROMIUM_REVISION));
+    let final_exe_path = chromium_dir.join(exe_path);
+
+    // Check if already downloaded
+    if final_exe_path.exists() {
+        log::info!("Chromium already downloaded at {:?}", final_exe_path);
+        return Ok(final_exe_path.to_string_lossy().to_string());
+    }
+
+    // Build download URL - try mirrors in order
+    let mut download_url = String::new();
+    let client = reqwest::Client::new();
+
+    for mirror in CHROMIUM_CDN_MIRRORS {
+        let url = format!("{}/builds/chromium/{}/{}", mirror, CHROMIUM_REVISION, zip_filename);
+        log::info!("Trying mirror: {}", url);
+
+        match client.head(&url).send().await {
+            Ok(resp) if resp.status().is_success() => {
+                download_url = url;
+                break;
+            }
+            Ok(resp) => {
+                log::warn!("Mirror {} returned status: {}", mirror, resp.status());
+            }
+            Err(e) => {
+                log::warn!("Mirror {} failed: {}", mirror, e);
+            }
+        }
+    }
+
+    if download_url.is_empty() {
+        return Err("All Chromium download mirrors failed".to_string());
+    }
+
+    log::info!("Downloading from: {}", download_url);
+
+    // Emit starting progress
+    let _ = app.emit("browser-download-progress", serde_json::json!({
+        "status": "downloading",
+        "message": "Downloading Chromium browser...",
+        "progress": 0
+    }));
+
+    // Download with progress
+    let response = client
+        .get(&download_url)
+        .send()
+        .await
+        .map_err(|e| format!("Download request failed: {}", e))?;
+
+    let total_size = response.content_length().unwrap_or(0);
+    log::info!("Download size: {} bytes", total_size);
+
+    let zip_path = browsers_dir.join(format!("chromium-{}.zip", CHROMIUM_REVISION));
+    let mut file = std::fs::File::create(&zip_path)
+        .map_err(|e| format!("Failed to create zip file: {}", e))?;
+
+    let mut downloaded: u64 = 0;
+    let mut stream = response.bytes_stream();
+    let mut last_progress = 0u64;
+
+    while let Some(chunk) = stream.next().await {
+        let chunk = chunk.map_err(|e| format!("Download stream error: {}", e))?;
+        file.write_all(&chunk)
+            .map_err(|e| format!("Failed to write chunk: {}", e))?;
+
+        downloaded += chunk.len() as u64;
+
+        // Emit progress every 1MB
+        if total_size > 0 && downloaded - last_progress > 1_000_000 {
+            last_progress = downloaded;
+            let progress = (downloaded as f64 / total_size as f64 * 100.0) as u32;
+            let _ = app.emit("browser-download-progress", serde_json::json!({
+                "status": "downloading",
+                "message": format!("Downloading Chromium... {}%", progress),
+                "progress": progress,
+                "downloaded": downloaded,
+                "total": total_size
+            }));
+        }
+    }
+
+    drop(file);
+    log::info!("Download complete, extracting...");
+
+    // Emit extracting progress
+    let _ = app.emit("browser-download-progress", serde_json::json!({
+        "status": "extracting",
+        "message": "Extracting Chromium...",
+        "progress": 100
+    }));
+
+    // Extract zip
+    let zip_file = std::fs::File::open(&zip_path)
+        .map_err(|e| format!("Failed to open zip file: {}", e))?;
+
+    let mut archive = zip::ZipArchive::new(zip_file)
+        .map_err(|e| format!("Failed to read zip archive: {}", e))?;
+
+    // Create extraction directory
+    std::fs::create_dir_all(&chromium_dir)
+        .map_err(|e| format!("Failed to create chromium directory: {}", e))?;
+
+    for i in 0..archive.len() {
+        let mut file = archive.by_index(i)
+            .map_err(|e| format!("Failed to read zip entry: {}", e))?;
+
+        let outpath = chromium_dir.join(file.mangled_name());
+
+        if file.name().ends_with('/') {
+            std::fs::create_dir_all(&outpath)
+                .map_err(|e| format!("Failed to create directory: {}", e))?;
+        } else {
+            if let Some(parent) = outpath.parent() {
+                std::fs::create_dir_all(parent)
+                    .map_err(|e| format!("Failed to create parent directory: {}", e))?;
+            }
+            let mut outfile = std::fs::File::create(&outpath)
+                .map_err(|e| format!("Failed to create file: {}", e))?;
+            std::io::copy(&mut file, &mut outfile)
+                .map_err(|e| format!("Failed to extract file: {}", e))?;
+
+            // Set executable permission on Unix
+            #[cfg(unix)]
+            {
+                use std::os::unix::fs::PermissionsExt;
+                if let Some(mode) = file.unix_mode() {
+                    std::fs::set_permissions(&outpath, std::fs::Permissions::from_mode(mode)).ok();
+                }
+            }
+        }
+    }
+
+    // Clean up zip file
+    std::fs::remove_file(&zip_path).ok();
+
+    // Verify executable exists
+    if !final_exe_path.exists() {
+        return Err(format!("Chromium executable not found after extraction at {:?}", final_exe_path));
+    }
+
+    // Set executable permission on the Chrome binary (macOS/Linux)
+    #[cfg(unix)]
+    {
+        use std::os::unix::fs::PermissionsExt;
+        std::fs::set_permissions(&final_exe_path, std::fs::Permissions::from_mode(0o755))
+            .map_err(|e| format!("Failed to set executable permission: {}", e))?;
+    }
+
+    log::info!("Chromium extraction complete: {:?}", final_exe_path);
+
+    // Emit complete
+    let _ = app.emit("browser-download-progress", serde_json::json!({
+        "status": "complete",
+        "message": "Browser download complete",
+        "path": final_exe_path.to_string_lossy()
+    }));
+
+    Ok(final_exe_path.to_string_lossy().to_string())
 }

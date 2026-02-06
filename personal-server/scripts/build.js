@@ -28,7 +28,7 @@ function exec(cmd, opts = {}) {
 }
 
 function getPkgTarget() {
-  const nodeVersion = 'node20';
+  const nodeVersion = 'node22';
   if (PLATFORM === 'darwin') {
     return ARCH === 'arm64'
       ? `${nodeVersion}-macos-arm64`
@@ -85,19 +85,71 @@ async function build() {
   // Step 1: Bundle with esbuild into a single CJS file
   const bundlePath = join(DIST, 'bundle.cjs');
   log('Bundling with esbuild...');
+
   // Patch require resolution so native addons load from beside the executable
+  // Also provide import.meta.url shim for ESM code bundled to CJS
+  // Must redirect better-sqlite3, bindings, and file-uri-to-path to external node_modules
+  const nativeModulesList = ['better-sqlite3', 'bindings', 'file-uri-to-path'];
   const nativeBanner = [
-    'var _M=require("module"),_P=require("path"),_R=_M._resolveFilename;',
+    'var _M=require("module"),_P=require("path"),_U=require("url"),_R=_M._resolveFilename;',
+    // Shim for import.meta.url
+    'if(typeof globalThis.__importMetaUrl==="undefined"){globalThis.__importMetaUrl=_U.pathToFileURL(__filename).href;}',
+    // Patch require resolution for native modules
+    // _resolveFilename(request, parent, isMain, options) - paths goes in options (4th param)
+    `var _NM=${JSON.stringify(nativeModulesList)};`,
     '_M._resolveFilename=function(r,p,m,o){',
-    'if(r==="better-sqlite3"){try{return _R.call(this,r,Object.assign({},p,',
-    '{paths:[_P.join(_P.dirname(process.execPath),"node_modules")]}),m,o);}catch(e){}}',
+    'if(_NM.includes(r)){var _np=_P.join(_P.dirname(process.execPath),"node_modules");',
+    'try{return _R.call(this,r,p,m,Object.assign({},o||{},{paths:[_np]}));}catch(e){}}',
     'return _R.call(this,r,p,m,o);};',
   ].join('');
-  // Write banner to file to avoid shell quoting issues on Windows
-  const bannerPath = join(DIST, '_banner.js');
-  writeFileSync(bannerPath, nativeBanner);
-  exec(`npx esbuild index.js --bundle --platform=node --format=cjs --outfile="${bundlePath}" --external:better-sqlite3 --banner:js=file:${bannerPath}`);
-  rmSync(bannerPath, { force: true });
+
+  // Create shim file for import.meta.url injection
+  const shimPath = join(DIST, '_shim.js');
+  writeFileSync(shimPath, `
+    const { pathToFileURL } = require('url');
+    globalThis.__importMetaUrl = pathToFileURL(__filename).href;
+  `);
+
+  // Use esbuild JavaScript API for reliable banner injection
+  const esbuild = await import('esbuild');
+
+  // Plugin to make native module requires invisible to pkg's static analysis.
+  // pkg bundles any require() it finds statically. By using eval('require'),
+  // we hide these from pkg so they're loaded from the real filesystem at runtime.
+  const dynamicNativeRequirePlugin = {
+    name: 'dynamic-native-require',
+    setup(build) {
+      // For each native module, intercept the require and replace with dynamic require
+      for (const mod of nativeModulesList) {
+        build.onResolve({ filter: new RegExp(`^${mod}$`) }, args => ({
+          path: mod,
+          namespace: 'dynamic-native',
+        }));
+      }
+      build.onLoad({ filter: /.*/, namespace: 'dynamic-native' }, args => ({
+        // eval('require') hides the require from pkg's static analysis
+        contents: `module.exports = eval('require')(${JSON.stringify(args.path)});`,
+        loader: 'js',
+      }));
+    }
+  };
+
+  await esbuild.build({
+    entryPoints: [join(ROOT, 'index.js')],
+    bundle: true,
+    platform: 'node',
+    format: 'cjs',
+    outfile: bundlePath,
+    plugins: [dynamicNativeRequirePlugin],
+    banner: { js: nativeBanner },
+    inject: [shimPath],
+    define: {
+      'import.meta.url': 'globalThis.__importMetaUrl',
+    },
+  });
+
+  // Clean up shim file
+  rmSync(shimPath, { force: true });
 
   // Step 2: Package with pkg
   const target = getPkgTarget();
@@ -121,6 +173,22 @@ async function build() {
       cpSync(src, dest, { recursive: true });
     } else {
       log(`WARNING: ${mod} not found in node_modules`);
+    }
+  }
+
+  // Re-download the better-sqlite3 prebuilt binary for the pkg target Node version.
+  // The local npm install compiles for the host Node.js, which may differ from the
+  // Node.js version embedded in the pkg binary (e.g. local Node 20 vs pkg Node 22).
+  const pkgNodeMajor = target.match(/node(\d+)/)?.[1];
+  if (pkgNodeMajor) {
+    const bsqlDist = join(DIST, 'node_modules', 'better-sqlite3');
+    if (existsSync(bsqlDist)) {
+      log(`Downloading better-sqlite3 prebuilt for Node ${pkgNodeMajor}...`);
+      try {
+        exec(`npx prebuild-install -r node -t ${pkgNodeMajor}.0.0 --platform ${PLATFORM} --arch ${ARCH}`, { cwd: bsqlDist });
+      } catch (e) {
+        log(`WARNING: prebuild-install failed, falling back to local build: ${e.message}`);
+      }
     }
   }
 

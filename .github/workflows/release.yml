@@ -119,13 +119,6 @@ jobs:
         working-directory: personal-server
         run: npm run build
 
-      - name: Move personal-server native addons out of dist
-        run: |
-          if [ -d "personal-server/dist/node_modules" ]; then
-            mv personal-server/dist/node_modules personal-server/_node_modules_tmp
-          fi
-        shell: bash
-
       - name: Sign personal-server binary (macOS)
         if: matrix.platform == 'macos-latest'
         run: |
@@ -153,27 +146,55 @@ jobs:
           prerelease: false
           args: --target ${{ matrix.target }}
 
-      - name: Copy native addons into bundle and upload
+      - name: Copy native modules and finalize bundles
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
-          # Restore node_modules
-          if [ -d "personal-server/_node_modules_tmp" ]; then
-            mv personal-server/_node_modules_tmp personal-server/dist/node_modules
-          fi
+          set -x  # Enable verbose debugging
 
-          # Copy into macOS .app bundles
-          for app in src-tauri/target/${{ matrix.target }}/release/bundle/macos/*.app; do
-            [ -e "$app" ] || continue
-            dest="$app/Contents/Resources/personal-server/dist/node_modules"
-            if [ -d "$(dirname "$dest")" ]; then
-              cp -R personal-server/dist/node_modules "$dest"
-              echo "Copied node_modules to $dest"
-            fi
-          done
-
-          # Re-sign the .app after modification (macOS)
+          # Copy node_modules into macOS .app bundles (preserving directory structure)
           if [ "${{ matrix.platform }}" = "macos-latest" ]; then
+            # Debug: Show what's in personal-server/dist
+            echo "=== Contents of personal-server/dist ==="
+            ls -la personal-server/dist/ || echo "dist not found"
+            echo "=== Contents of personal-server/dist/node_modules ==="
+            ls -la personal-server/dist/node_modules/ || echo "node_modules not found in dist"
+
+            # Sign all native .node binaries BEFORE copying to app bundle
+            # This is required for Apple notarization to succeed
+            echo "=== Signing native .node binaries ==="
+            find personal-server/dist/node_modules -name "*.node" -type f | while read node_binary; do
+              echo "Signing: $node_binary"
+              codesign --force --options runtime --timestamp \
+                --sign "Developer ID Application: Corsali, Inc (${{ secrets.APPLE_TEAM_ID }})" \
+                "$node_binary"
+            done
+
+            for app in src-tauri/target/${{ matrix.target }}/release/bundle/macos/*.app; do
+              [ -e "$app" ] || { echo "No .app found at $app"; continue; }
+              echo "=== Processing $app ==="
+
+              # Show current state
+              echo "Before copy - Resources contents:"
+              ls -la "$app/Contents/Resources/personal-server/dist/" || echo "personal-server/dist not in Resources"
+
+              dest="$app/Contents/Resources/personal-server/dist/node_modules"
+              mkdir -p "$dest"
+
+              # Copy with verbose output
+              if [ -d "personal-server/dist/node_modules" ]; then
+                cp -Rv personal-server/dist/node_modules/* "$dest/"
+                echo "=== After copy - node_modules contents ==="
+                ls -la "$dest/" || echo "copy failed"
+              else
+                echo "ERROR: personal-server/dist/node_modules does not exist!"
+                exit 1
+              fi
+
+              echo "Copied node_modules to $dest"
+            done
+
+            # Re-sign the .app after modification (--deep signs all nested code)
             for app in src-tauri/target/${{ matrix.target }}/release/bundle/macos/*.app; do
               [ -e "$app" ] || continue
               codesign --force --deep --options runtime --timestamp \
@@ -181,10 +202,8 @@ jobs:
                 "$app"
               echo "Re-signed $app"
             done
-          fi
 
-          # Recreate DMG (macOS)
-          if [ "${{ matrix.platform }}" = "macos-latest" ]; then
+            # Recreate DMG with updated .app (including Applications symlink)
             for app in src-tauri/target/${{ matrix.target }}/release/bundle/macos/*.app; do
               [ -e "$app" ] || continue
               app_name=$(basename "$app" .app)
@@ -192,17 +211,107 @@ jobs:
               arch=$(echo "${{ matrix.target }}" | cut -d- -f1)
               dmg_name="${app_name}_${version}_${arch}.dmg"
               dmg_path="src-tauri/target/${{ matrix.target }}/release/bundle/dmg/${dmg_name}"
-              mkdir -p "$(dirname "$dmg_path")"
-              hdiutil create -volname "$app_name" -srcfolder "$app" -ov -format UDZO "$dmg_path"
+
+              # Create temp folder with app and Applications symlink
+              dmg_temp="dmg_temp_${arch}"
+              rm -rf "$dmg_temp"
+              mkdir -p "$dmg_temp"
+              cp -R "$app" "$dmg_temp/"
+              ln -s /Applications "$dmg_temp/Applications"
+
+              # Verify node_modules is in the temp folder before creating DMG
+              echo "=== Verifying temp folder contents ==="
+              ls -la "$dmg_temp/"
+              ls -la "$dmg_temp/$(basename $app)/Contents/Resources/personal-server/dist/" || echo "WARNING: personal-server dist not found in temp"
+              ls -la "$dmg_temp/$(basename $app)/Contents/Resources/personal-server/dist/node_modules/" || { echo "ERROR: node_modules NOT in temp folder app!"; exit 1; }
+
+              # Create DMG
+              rm -f "$dmg_path"
+              hdiutil create -volname "$app_name" -srcfolder "$dmg_temp" -ov -format UDZO "$dmg_path"
+              rm -rf "$dmg_temp"
               echo "Created $dmg_path"
 
-              # Upload DMG to release
-              gh release upload "${{ github.ref_name }}" "$dmg_path" --clobber
-              echo "Uploaded $dmg_name"
+              # Verify DMG contents by mounting and checking
+              echo "=== Verifying DMG contents ==="
+              mount_point="/tmp/verify_dmg_${arch}"
+              mkdir -p "$mount_point"
+              hdiutil attach "$dmg_path" -mountpoint "$mount_point" -nobrowse -quiet
+              ls -la "$mount_point/"
+              ls -la "$mount_point/DataBridge.app/Contents/Resources/personal-server/dist/" || echo "WARNING: dist not in mounted DMG"
+              ls -la "$mount_point/DataBridge.app/Contents/Resources/personal-server/dist/node_modules/" || { hdiutil detach "$mount_point" -quiet; echo "ERROR: node_modules NOT in final DMG!"; exit 1; }
+              hdiutil detach "$mount_point" -quiet
+              echo "=== DMG verification passed ==="
+
+              # Notarize the DMG using App Store Connect API key
+              echo "=== Notarizing $dmg_path ==="
+              if xcrun notarytool submit "$dmg_path" \
+                --key "${{ env.APPLE_API_KEY_PATH }}" \
+                --key-id "${{ secrets.APPLE_ASC_API_KEY_ID }}" \
+                --issuer "${{ secrets.APPLE_ASC_API_KEY_ISSUER_UUID }}" \
+                --wait 2>&1 | tee /tmp/notarize_${arch}.log; then
+                # Staple the notarization ticket
+                xcrun stapler staple "$dmg_path" && echo "Notarized and stapled $dmg_path"
+              else
+                echo "::error::Notarization FAILED for $dmg_path"
+                cat /tmp/notarize_${arch}.log || true
+                # Get detailed log from Apple
+                submission_id=$(grep -oE '[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}' /tmp/notarize_${arch}.log | head -1)
+                if [ -n "$submission_id" ]; then
+                  echo "=== Fetching notarization log for $submission_id ==="
+                  xcrun notarytool log "$submission_id" \
+                    --key "${{ env.APPLE_API_KEY_PATH }}" \
+                    --key-id "${{ secrets.APPLE_ASC_API_KEY_ID }}" \
+                    --issuer "${{ secrets.APPLE_ASC_API_KEY_ISSUER_UUID }}" || true
+                fi
+                exit 1
+              fi
             done
           fi
 
-          # Upload other artifacts (Linux, Windows)
+          # Copy node_modules for Linux AppImage (extract, modify, repack)
+          if [ "${{ matrix.platform }}" = "ubuntu-22.04" ]; then
+            for appimage in src-tauri/target/${{ matrix.target }}/release/bundle/appimage/*.AppImage; do
+              [ -e "$appimage" ] || continue
+              # Extract AppImage
+              chmod +x "$appimage"
+              "$appimage" --appimage-extract
+              # Copy node_modules
+              dest="squashfs-root/usr/lib/personal-server/dist/node_modules"
+              mkdir -p "$dest"
+              cp -R personal-server/dist/node_modules/* "$dest/"
+              # Repack (requires appimagetool)
+              if command -v appimagetool &> /dev/null; then
+                rm "$appimage"
+                ARCH=x86_64 appimagetool squashfs-root "$appimage"
+              fi
+              rm -rf squashfs-root
+              echo "Updated AppImage with node_modules"
+            done
+          fi
+
+          # Copy node_modules for Windows (into the installation directory structure)
+          if [ "${{ matrix.platform }}" = "windows-latest" ]; then
+            # For NSIS, we need to modify the installer or include in resources
+            # The simpler approach is to ensure node_modules is included in the bundle
+            echo "Windows: node_modules should be handled by resource bundling"
+          fi
+        shell: bash
+
+      - name: Upload release artifacts
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          # Upload macOS DMG
+          if [ "${{ matrix.platform }}" = "macos-latest" ]; then
+            for f in src-tauri/target/${{ matrix.target }}/release/bundle/dmg/*.dmg; do
+              if [ -f "$f" ]; then
+                gh release upload "${{ github.ref_name }}" "$f" --clobber
+                echo "Uploaded $(basename "$f")"
+              fi
+            done
+          fi
+
+          # Upload Linux artifacts
           if [ "${{ matrix.platform }}" = "ubuntu-22.04" ]; then
             for f in src-tauri/target/${{ matrix.target }}/release/bundle/deb/*.deb \
                      src-tauri/target/${{ matrix.target }}/release/bundle/appimage/*.AppImage; do
@@ -213,6 +322,7 @@ jobs:
             done
           fi
 
+          # Upload Windows artifacts
           if [ "${{ matrix.platform }}" = "windows-latest" ]; then
             for f in src-tauri/target/${{ matrix.target }}/release/bundle/nsis/*.exe \
                      src-tauri/target/${{ matrix.target }}/release/bundle/msi/*.msi; do

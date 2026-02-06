@@ -5,19 +5,27 @@
  *
  * This script:
  * 1. Builds the playwright-runner into a standalone binary
- * 2. Builds the Tauri app (connectors fetched via postinstall)
+ * 2. Builds the personal-server into a standalone binary
+ * 3. Builds the Tauri .app bundle
+ * 4. Injects personal-server native addons (node_modules/) into the .app
+ * 5. Creates the DMG from the complete .app
+ *
+ * Tauri's resource glob flattens subdirectories, so we can't include
+ * node_modules/ via tauri.conf.json. Instead we build the .app first,
+ * copy node_modules/ in, then create the DMG ourselves.
  */
 
 import { execSync } from 'child_process';
-import { existsSync, cpSync, readdirSync } from 'fs';
+import { existsSync, cpSync, readdirSync, mkdirSync, readFileSync } from 'fs';
 import { join, dirname } from 'path';
 import { fileURLToPath } from 'url';
-import { platform } from 'os';
+import { platform, arch } from 'os';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const ROOT = join(__dirname, '..');
 const PLAYWRIGHT_RUNNER = join(ROOT, 'playwright-runner');
 const PERSONAL_SERVER = join(ROOT, 'personal-server');
+const PLAT = platform();
 
 function log(msg) {
   console.log(`\n🔨 ${msg}`);
@@ -26,6 +34,39 @@ function log(msg) {
 function exec(cmd, opts = {}) {
   console.log(`   $ ${cmd}`);
   execSync(cmd, { stdio: 'inherit', cwd: ROOT, ...opts });
+}
+
+/** Read the version from tauri.conf.json */
+function getVersion() {
+  const conf = JSON.parse(readFileSync(join(ROOT, 'src-tauri', 'tauri.conf.json'), 'utf8'));
+  return conf.version;
+}
+
+/** Copy personal-server native addons (node_modules/) into .app Resources */
+function copyNativeModulesIntoApp(appPath) {
+  const srcNodeModules = join(PERSONAL_SERVER, 'dist', 'node_modules');
+
+  if (!existsSync(srcNodeModules)) {
+    log('WARNING: personal-server dist/node_modules not found, skipping copy');
+    return;
+  }
+
+  const destNodeModules = join(appPath, 'Contents', 'Resources', 'personal-server', 'dist', 'node_modules');
+  log(`  Copying native addons to ${destNodeModules}`);
+  mkdirSync(dirname(destNodeModules), { recursive: true });
+  cpSync(srcNodeModules, destNodeModules, { recursive: true });
+}
+
+/** Find the .app bundle in the macos bundle directory */
+function findAppBundle() {
+  const macosBundle = join(ROOT, 'src-tauri', 'target', 'release', 'bundle', 'macos');
+  if (!existsSync(macosBundle)) return null;
+  for (const entry of readdirSync(macosBundle)) {
+    if (entry.endsWith('.app')) {
+      return join(macosBundle, entry);
+    }
+  }
+  return null;
 }
 
 async function build() {
@@ -39,7 +80,6 @@ async function build() {
   log('Building playwright-runner binary...');
   exec('npm run build', { cwd: PLAYWRIGHT_RUNNER });
 
-  // Verify the build output exists
   const distDir = join(PLAYWRIGHT_RUNNER, 'dist');
   if (!existsSync(distDir)) {
     throw new Error('playwright-runner build failed - dist directory not found');
@@ -53,70 +93,57 @@ async function build() {
   log('Building personal-server binary...');
   exec('npm run build', { cwd: PERSONAL_SERVER });
 
-  // Verify the build output exists
   const personalServerDist = join(PERSONAL_SERVER, 'dist');
   if (!existsSync(personalServerDist)) {
     throw new Error('personal-server build failed - dist directory not found');
   }
 
-  // 5. Move personal-server native addons out of dist/ temporarily.
-  // Tauri's resource glob can't handle directories, so we move node_modules/
-  // out before the build and copy it into the bundle after.
-  const psDistNodeModules = join(PERSONAL_SERVER, 'dist', 'node_modules');
-  const psTempNodeModules = join(PERSONAL_SERVER, '_node_modules_tmp');
-  if (existsSync(psDistNodeModules)) {
-    log('Temporarily moving personal-server native addons out of dist/...');
-    cpSync(psDistNodeModules, psTempNodeModules, { recursive: true });
-    execSync(`rm -rf "${psDistNodeModules}"`);
-  }
-
-  // 6. Build frontend
+  // 5. Build frontend
   log('Building frontend...');
   exec('npm run build');
 
-  // 7. Build Tauri app
-  log('Building Tauri app...');
-  try {
-    exec('npm run tauri build');
-  } finally {
-    // 8. Always restore node_modules in dist/ even if build fails
-    if (existsSync(psTempNodeModules)) {
-      cpSync(psTempNodeModules, psDistNodeModules, { recursive: true });
-      execSync(`rm -rf "${psTempNodeModules}"`);
-    }
+  // 6. Build the .app bundle only (no DMG).
+  // Tauri's resource glob flattens directory structures, so node_modules/
+  // can't be included via tauri.conf.json. We build .app first, inject
+  // node_modules, then create the DMG ourselves.
+  log('Building Tauri .app bundle...');
+  exec('npx tauri build --bundles app');
+
+  // 7. Inject personal-server native addons into the .app bundle.
+  const appPath = findAppBundle();
+  if (!appPath) {
+    throw new Error('.app bundle not found after build');
   }
+  log(`Injecting native addons into ${appPath}...`);
+  copyNativeModulesIntoApp(appPath);
 
-  // 7. Copy personal-server native addons into the app bundle.
-  // Tauri's resource glob flattens subdirectories, so we copy node_modules/
-  // into the bundle manually after the build.
-  log('Copying personal-server native addons into bundle...');
-  const PLATFORM = platform();
-  const bundleBase = join(ROOT, 'src-tauri', 'target', 'release', 'bundle');
-  let resourceDirs = [];
+  // 8. Create DMG from the complete .app.
+  if (PLAT === 'darwin') {
+    const version = getVersion();
+    const archName = arch() === 'arm64' ? 'aarch64' : 'x64';
+    const dmgName = `DataBridge_${version}_${archName}.dmg`;
+    const dmgDir = join(ROOT, 'src-tauri', 'target', 'release', 'bundle', 'dmg');
+    const dmgPath = join(dmgDir, dmgName);
 
-  if (PLATFORM === 'darwin') {
-    // Find the .app bundle(s)
-    const macosBundle = join(bundleBase, 'macos');
-    if (existsSync(macosBundle)) {
-      for (const entry of readdirSync(macosBundle)) {
-        if (entry.endsWith('.app')) {
-          resourceDirs.push(join(macosBundle, entry, 'Contents', 'Resources'));
-        }
-      }
-    }
-  } else if (PLATFORM === 'win32') {
-    resourceDirs.push(join(bundleBase, 'nsis'));
-  } else {
-    resourceDirs.push(join(bundleBase, 'appimage'));
-  }
+    mkdirSync(dmgDir, { recursive: true });
 
-  const srcNodeModules = join(PERSONAL_SERVER, 'dist', 'node_modules');
-  for (const resDir of resourceDirs) {
-    const destNodeModules = join(resDir, 'personal-server', 'dist', 'node_modules');
-    if (existsSync(srcNodeModules) && existsSync(resDir)) {
-      log(`  Copying to ${destNodeModules}`);
-      cpSync(srcNodeModules, destNodeModules, { recursive: true });
-    }
+    log(`Creating DMG: ${dmgName}...`);
+    const stagingDir = join(dmgDir, '_staging');
+    execSync(`rm -rf "${stagingDir}" "${dmgPath}"`);
+    mkdirSync(stagingDir, { recursive: true });
+
+    // Copy .app and create Applications symlink for drag-to-install
+    execSync(`cp -R "${appPath}" "${stagingDir}/"`);
+    execSync(`ln -s /Applications "${stagingDir}/Applications"`);
+
+    // Create compressed DMG
+    execSync(
+      `hdiutil create -volname "DataBridge" -srcfolder "${stagingDir}" -ov -format UDZO "${dmgPath}"`,
+      { stdio: 'inherit' },
+    );
+
+    execSync(`rm -rf "${stagingDir}"`);
+    log(`DMG created: ${dmgPath}`);
   }
 
   log('Build complete! Check src-tauri/target/release/bundle for the output.');

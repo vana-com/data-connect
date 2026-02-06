@@ -35,12 +35,23 @@ pub async fn start_browser_auth(
 ) -> Result<String, String> {
     log::info!("Starting browser auth flow with Privy app ID: {}", privy_app_id);
 
-    // Find an available port for the callback server
-    let listener = TcpListener::bind("127.0.0.1:0")
-        .map_err(|e| format!("Failed to bind to an available port: {}", e))?;
-    let callback_port = listener.local_addr()
-        .map_err(|e| format!("Failed to get local address: {}", e))?
-        .port();
+    // Try to bind to fixed port 3083 (whitelisted in Privy dashboard)
+    // Fall back to 5173 or random port if unavailable
+    let (listener, callback_port) = if let Ok(l) = TcpListener::bind("127.0.0.1:3083") {
+        log::info!("Bound to preferred port 3083");
+        (l, 3083u16)
+    } else if let Ok(l) = TcpListener::bind("127.0.0.1:5173") {
+        log::info!("Port 3083 unavailable, using fallback port 5173");
+        (l, 5173u16)
+    } else {
+        let l = TcpListener::bind("127.0.0.1:0")
+            .map_err(|e| format!("Failed to bind to any port: {}", e))?;
+        let port = l.local_addr()
+            .map_err(|e| format!("Failed to get local address: {}", e))?
+            .port();
+        log::warn!("Using random port {} - auth may fail if not whitelisted in Privy", port);
+        (l, port)
+    };
 
     log::info!("Auth callback server starting on port {}", callback_port);
 
@@ -253,7 +264,14 @@ pub async fn start_browser_auth(
                                                 log::info!("Gateway register response: {} {}", status, resp_body);
 
                                                 if status == 200 || status == 201 || status == 409 {
-                                                    let _ = app_handle.emit("server-registered", serde_json::json!({ "status": status }));
+                                                    // Extract serverId from response and include in event
+                                                    let server_id = serde_json::from_str::<serde_json::Value>(&resp_body)
+                                                        .ok()
+                                                        .and_then(|v| v["serverId"].as_str().map(|s| s.to_string()));
+                                                    let _ = app_handle.emit("server-registered", serde_json::json!({
+                                                        "status": status,
+                                                        "serverId": server_id
+                                                    }));
                                                 }
 
                                                 let resp_str = format!(

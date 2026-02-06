@@ -44,6 +44,7 @@ export function useGrantFlow(params: GrantFlowParams) {
   const sessionId = params?.sessionId
   const appId = params?.appId
   const scopesKey = params?.scopes?.join("|") ?? ""
+  const hasSuccessOverride = params?.status === "success"
 
   useEffect(() => {
     authTriggered.current = false
@@ -111,6 +112,7 @@ export function useGrantFlow(params: GrantFlowParams) {
   }, [sessionId, appId, scopesKey])
 
   useEffect(() => {
+    if (hasSuccessOverride) return
     if (!flowState.session || authLoading) return
     if (flowState.status === "success" || flowState.status === "error") return
     if (flowState.status === "signing") return
@@ -121,7 +123,13 @@ export function useGrantFlow(params: GrantFlowParams) {
       prev.status === nextStatus ? prev : { ...prev, status: nextStatus }
     )
     setCurrentStep(2)
-  }, [authLoading, flowState.session, flowState.status])
+  }, [authLoading, flowState.session, flowState.status, hasSuccessOverride])
+
+  useEffect(() => {
+    if (!hasSuccessOverride || !flowState.session) return
+    if (flowState.status === "success") return
+    setFlowState(prev => ({ ...prev, status: "success" }))
+  }, [flowState.session, flowState.status, hasSuccessOverride])
 
   const startBrowserAuth = useCallback(async () => {
     if (import.meta.env.DEV && !isTauriRuntime()) {

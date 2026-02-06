@@ -42,6 +42,7 @@ tracked and owned separately. Includes step 1 data-source login + scrape.
 - Reuse grant components where possible (auth-required, consent, success)
 - Ensure external Passport sign-in flow is preserved
 - UI polish + accessibility pass
+- Step 3/4 plan refs: `docs/260206-grant-step3-plan.md`, `docs/260206-grant-step4-plan.md` (includes `status=success` deep-link)
 
 ## External app routing note
 

@@ -146,6 +146,19 @@ describe("useGrantFlow", () => {
     expect(mockSetConnectedApp).toHaveBeenCalled()
   })
 
+  it("forces success when status is success", async () => {
+    const { result } = renderHook(() =>
+      useGrantFlow({
+        sessionId: "grant-session-789",
+        status: "success",
+      })
+    )
+
+    await waitFor(() => {
+      expect(result.current.flowState.status).toBe("success")
+    })
+  })
+
   it("approves real sessions and stores connected app", async () => {
     authState = {
       isAuthenticated: true,

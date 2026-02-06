@@ -23,14 +23,27 @@ export function RickrollMockSignIn() {
     scopes: parsedParams.scopes ?? appEntry?.scopes,
   }
   const search = buildGrantSearchParams(resolvedParams).toString()
+  // Mock success deep link (Step 4) uses `status=success`.
+  const successSearch = buildGrantSearchParams({
+    ...resolvedParams,
+    status: "success",
+  }).toString()
   const backHref = ROUTES.rickrollMockRoot
   const deepLink = search ? `dataconnect://?${search}` : "dataconnect://"
   const connectHref = search ? `${ROUTES.connect}?${search}` : ROUTES.connect
+  const successDeepLink = successSearch
+    ? `dataconnect://?${successSearch}`
+    : "dataconnect://"
+  const successGrantHref = successSearch
+    ? `${ROUTES.grant}?${successSearch}`
+    : ROUTES.grant
 
   const isLocalhost =
     typeof window !== "undefined" && window.location.hostname === "localhost"
   // In dev/localhost, use the connect page; in prod, use the deep link
   const launchHref = import.meta.env.DEV || isLocalhost ? connectHref : deepLink
+  const successHref =
+    import.meta.env.DEV || isLocalhost ? successGrantHref : successDeepLink
 
   return (
     <div className="min-h-screen bg-[#F0F4F8]">
@@ -112,6 +125,13 @@ export function RickrollMockSignIn() {
                 <a href={launchHref}>
                   <DcIcon className="size-[1.5em]!" />
                   Launch Data Connect
+                  <ButtonArrow icon={ArrowRightIcon} className="ms-0" />
+                </a>
+              </Button>
+              <Button asChild size="xl" fullWidth variant="outline">
+                <a href={successHref}>
+                  <DcIcon className="size-[1.5em]!" />
+                  Launch Success (Step 4)
                   <ButtonArrow icon={ArrowRightIcon} className="ms-0" />
                 </a>
               </Button>

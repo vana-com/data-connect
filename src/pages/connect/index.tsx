@@ -176,7 +176,7 @@ export function Connect() {
             className="relative gap-3 group disabled:opacity-100"
           >
             <span aria-hidden="true">
-              <PlatformIcon iconName={dataSourceLabel ?? "Data"} size={32} />
+              <PlatformIcon iconName={dataSourceLabel ?? "Data"} />
             </span>
             <span>{connectCta}</span>
             {!connectPlatform && !isBusy ? (

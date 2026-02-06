@@ -47,11 +47,10 @@ export function GrantConsentState({
             <div className="h-full flex items-center gap-1">
               <PlatformIcon
                 iconName={dataSourceLabel ?? "Data"}
-                size={30}
                 aria-hidden="true"
               />
               <ArrowRightIcon aria-hidden="true" className="size-[1.5em]" />
-              <PlatformIcon iconName={appName} size={30} aria-hidden="true" />
+              <PlatformIcon iconName={appName} aria-hidden="true" />
             </div>
             <Text as="p" intent="button" weight="medium">
               See your {dataLabel}

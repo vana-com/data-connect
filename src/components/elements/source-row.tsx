@@ -38,11 +38,7 @@ export function SourceRow({
   return (
     <>
       <div className="h-full flex-1 flex items-center gap-1.5">
-        <PlatformIcon
-          iconName={iconName}
-          size={30}
-          className={cn(iconClassName)}
-        />
+        <PlatformIcon iconName={iconName} className={cn(iconClassName)} />
         <div className="flex items-baseline gap-1.5">
           {label}
 

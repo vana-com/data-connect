@@ -10,6 +10,8 @@ interface PlatformIconProps {
   iconName: string
   size?: number
   className?: string
+  fallbackLabel?: string
+  fallbackScale?: number
 }
 
 // Default 2px padding to ensure the icon is centered within the wrapper
@@ -21,8 +23,10 @@ const iconWrapper = "flex items-center justify-center rounded-button p-1"
  */
 export function PlatformIcon({
   iconName,
-  size = 24,
+  size = 32,
   className,
+  fallbackLabel,
+  fallbackScale = 0.75,
 }: PlatformIconProps) {
   const Icon = getPlatformIconComponentForName(iconName)
 
@@ -35,7 +39,8 @@ export function PlatformIcon({
   }
 
   // Fallback: show first letter
-  const fontSize = Math.round(size * 0.75)
+  const label = fallbackLabel?.trim() || iconName.charAt(0)
+  const fontSize = Math.round(size * fallbackScale)
   return (
     <div
       className={cn(
@@ -52,7 +57,7 @@ export function PlatformIcon({
           height: `${size}px`,
         }}
       >
-        <span>{iconName.charAt(0)}</span>
+        <span>{label}</span>
       </span>
     </div>
   )

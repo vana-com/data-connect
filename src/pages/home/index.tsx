@@ -111,7 +111,9 @@ export function Home() {
           <ConnectedSourcesList
             platforms={connectedPlatformsList}
             runs={runs}
-            onOpenRuns={() => navigate(ROUTES.runs)}
+            onOpenRuns={(platform) =>
+              navigate(ROUTES.source.replace(":platformId", platform.id))
+            }
           />
           <AvailableSourcesList
             platforms={availablePlatforms}

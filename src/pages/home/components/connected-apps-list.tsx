@@ -96,6 +96,7 @@ export function ConnectedAppsList({ apps }: ConnectedAppsListProps) {
             <div
               key={app.id}
               className={cn(
+                // replication of ActionnButton with split click targets
                 buttonVariants({
                   variant: "outline",
                   size: "xl",
@@ -107,13 +108,9 @@ export function ConnectedAppsList({ apps }: ConnectedAppsListProps) {
               <button
                 type="button"
                 className={cn(
-                  // layout
+                  "cursor-pointer",
                   "flex h-full min-w-0 flex-1 items-center gap-3",
-                  // spacing
-                  "px-4",
-                  // typography
-                  "text-left",
-                  // focus
+                  "px-4 text-left",
                   stateFocus
                 )}
                 onClick={handleOpenApp}
@@ -137,33 +134,21 @@ export function ConnectedAppsList({ apps }: ConnectedAppsListProps) {
               <Link
                 to={ROUTES.settings}
                 className={cn(
-                  // layout
-                  "flex h-full items-center justify-center",
-                  // spacing
-                  "px-4",
-                  // borders
-                  "border-l border-ring/20 group-hover:border-ring",
-                  // focus
-                  stateFocus
+                  "flex h-full items-center justify-center px-3",
+                  stateFocus,
+                  "text-foreground/30 hover:text-foreground"
                 )}
                 aria-label="Account settings"
               >
-                <Settings
-                  className="size-4 text-muted-foreground"
-                  aria-hidden
-                />
+                <Settings className="size-4.5" aria-hidden />
               </Link>
 
               <button
                 type="button"
                 className={cn(
-                  // layout
-                  "flex h-full items-center justify-center",
-                  // spacing
-                  "px-4",
-                  // borders
-                  "border-l border-ring/20 group-hover:border-ring",
-                  // focus
+                  "cursor-pointer",
+                  "flex h-full items-center justify-center pl-0.5 pr-4",
+                  // "border-l border-ring/20 group-hover:border-ring",
                   stateFocus
                 )}
                 onClick={handleOpenApp}

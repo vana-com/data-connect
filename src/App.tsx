@@ -43,6 +43,22 @@ const RickrollMockSignIn = lazy(() =>
     default: m.RickrollMockSignIn,
   }))
 )
+// Demo flow (throwaway — for video recording)
+const DemoIndex = lazy(() =>
+  import("./pages/demo").then(m => ({ default: m.DemoIndex }))
+)
+const DemoConnect = lazy(() =>
+  import("./pages/demo/demo-connect").then(m => ({ default: m.DemoConnect }))
+)
+const DemoAuth = lazy(() =>
+  import("./pages/demo/demo-auth").then(m => ({ default: m.DemoAuth }))
+)
+const DemoConsent = lazy(() =>
+  import("./pages/demo/demo-consent").then(m => ({ default: m.DemoConsent }))
+)
+const DemoSuccess = lazy(() =>
+  import("./pages/demo/demo-success").then(m => ({ default: m.DemoSuccess }))
+)
 
 function AppContent() {
   useEvents()
@@ -106,6 +122,12 @@ function App() {
                   path={ROUTES.rickrollMockSignIn}
                   element={<RickrollMockSignIn />}
                 />
+                {/* Demo flow (throwaway — for video recording) */}
+                <Route path={ROUTES.demo} element={<DemoIndex />} />
+                <Route path={ROUTES.demoConnect} element={<DemoConnect />} />
+                <Route path={ROUTES.demoAuth} element={<DemoAuth />} />
+                <Route path={ROUTES.demoConsent} element={<DemoConsent />} />
+                <Route path={ROUTES.demoSuccess} element={<DemoSuccess />} />
                 <Route path="/*" element={<AppRouter />} />
               </Routes>
             </Suspense>

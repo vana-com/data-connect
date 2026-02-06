@@ -2,11 +2,15 @@
 
 ### What this is
 
-- Standalone browser auth page opened by the Tauri backend when a grant flow
-  needs user sign-in.
+- Standalone browser auth page — a **completely separate Vite application**, not
+  a React Router page.
+- The Tauri backend (`auth.rs`) serves this as static HTML in the user's **real
+  browser** (Chrome/Safari/etc.), not inside the Tauri webview. OAuth redirects
+  (Google, Apple) bounce back to a tiny local HTTP server that `start_browser_auth`
+  spins up.
 - Uses the Privy **JS SDK** (`@privy-io/js-sdk-core`) rather than the React SDK.
-- Posts auth results back to the local auth server via `/auth-callback`, then
-  shows a success message; auto-close is possible but we let the user close it.
+- Posts auth results back to the local auth server via `POST /auth-callback`,
+  then shows a success message; the user closes the tab manually.
 - Creates an embedded wallet, signs the master key, and registers the Personal
   Server when possible.
 - For the full rationale and flow tradeoffs, see
@@ -18,12 +22,50 @@
   required.
 - The Tauri command serves this page and opens it in the user's real browser.
 
+### Build & output
+
+- Builds via `npm run auth:build` → output lands in `src-tauri/auth-page/`.
+- `pretauri:dev` and `pretauri:build` both run `auth:build` automatically, so
+  the auth page is always rebuilt before any Tauri build.
+
+### Config injection
+
+- `index.html` contains `%PRIVY_APP_ID%` / `%PRIVY_CLIENT_ID%` placeholders.
+- **Dev**: the `authHtmlPlaceholders` Vite plugin (in `vite.auth.config.ts`)
+  replaces them with `VITE_PRIVY_*` env vars from `.env.local`.
+- **Production**: Rust injects the real values at serve-time before sending
+  the HTML to the browser.
+- The page reads these via `window.__AUTH_CONFIG__` (declared in `types.ts`).
+
+### Auth result contract
+
+`POST /auth-callback` receives an `AuthResult`:
+
+```ts
+{
+  success: boolean
+  user?: { id: string; email?: string | null }
+  walletAddress?: string | null
+  authToken?: string | null
+  masterKeySignature?: string | null
+  error?: string
+}
+```
+
 ### Files
 
-- `App.tsx`: UI shell and view switching.
+- `index.html`: HTML shell with config placeholders.
+- `main.tsx`: Standalone React entry point (`createRoot`, no router).
+- `App.tsx`: UI shell and view switching (loading → login → success).
 - `auth.ts`: Privy JS SDK logic, wallet setup, server registration, callback.
-- `types.ts`: request/response types and auth view states.
-- `vite.auth.config.ts`: Vite config for the standalone auth build.
+- `types.ts`: `AuthResult`, `AuthConfig`, `AuthView`, `window.__AUTH_CONFIG__`.
+- `styles.css`: Re-exports the main app styles (`@import "../styles/index.css"`).
+
+### Shared component coupling
+
+`App.tsx` imports `Button`, `Input`, `Text`, and icons from `@/components/` via
+the `@` alias configured in `vite.auth.config.ts`. Changes to these shared
+components affect the auth page.
 
 ### Dev usage
 

@@ -4,6 +4,7 @@ export const ROUTES = {
   mcp: "/mcp",
   docs: "/docs",
   runs: "/runs",
+  source: "/sources/:platformId",
   settings: "/settings",
   connect: "/connect",
   grant: "/grant",

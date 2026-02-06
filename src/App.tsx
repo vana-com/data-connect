@@ -21,6 +21,9 @@ const DataApps = lazy(() =>
 const Mcp = lazy(() => import("./pages/mcp").then(m => ({ default: m.Mcp })))
 const Docs = lazy(() => import("./pages/docs").then(m => ({ default: m.Docs })))
 const Runs = lazy(() => import("./pages/runs").then(m => ({ default: m.Runs })))
+const SourceOverview = lazy(() =>
+  import("./pages/source").then(m => ({ default: m.SourceOverview }))
+)
 const Settings = lazy(() =>
   import("./pages/settings").then(m => ({ default: m.Settings }))
 )
@@ -61,6 +64,7 @@ function AppContent() {
               <Route path={ROUTES.mcp} element={<Mcp />} />
               <Route path={ROUTES.docs} element={<Docs />} />
               <Route path={ROUTES.runs} element={<Runs />} />
+              <Route path={ROUTES.source} element={<SourceOverview />} />
               <Route path={ROUTES.settings} element={<Settings />} />
               <Route path={ROUTES.connect} element={<Connect />} />
               <Route path={ROUTES.grant} element={<Grant />} />

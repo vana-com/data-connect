@@ -179,7 +179,7 @@ describe("useAuthPage", () => {
 
     await waitFor(() => {
       expect(result.current.error).toBe(
-        "Failed to return to the app. Please try again."
+        "Couldn't return to the app. Try again."
       )
     })
 

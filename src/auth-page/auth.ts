@@ -46,7 +46,7 @@ type UseAuthPageState = {
 }
 
 const MASTER_KEY_MESSAGE = "vana-master-key-v1"
-const LOGIN_ERROR_MESSAGE = "Failed to initialize authentication."
+const LOGIN_ERROR_MESSAGE = "Auth init failed."
 
 type CloseTabActions = {
   close?: () => void
@@ -98,11 +98,11 @@ const parseAuthConfig = () => {
   const hasPlaceholder = (value: string) => value.includes("%PRIVY_")
 
   if (!privyAppId || hasPlaceholder(privyAppId)) {
-    return { error: "Missing Privy app configuration." }
+    return { error: "Missing Privy app config." }
   }
 
   if (!privyClientId || hasPlaceholder(privyClientId)) {
-    return { error: "Missing Privy client configuration." }
+    return { error: "Missing Privy client config." }
   }
 
   return { config: { privyAppId, privyClientId } satisfies AuthConfig }
@@ -110,7 +110,7 @@ const parseAuthConfig = () => {
 
 export const useAuthPage = (): UseAuthPageState => {
   const [view, setView] = useState<AuthView>("loading")
-  const [loadingText, setLoadingText] = useState("Initializing...")
+  const [loadingText, setLoadingText] = useState("Starting...")
   const [error, setError] = useState<string | null>(null)
   const [email, setEmail] = useState("")
   const [code, setCode] = useState("")
@@ -281,7 +281,7 @@ export const useAuthPage = (): UseAuthPageState => {
       walletAccount: PrivyLinkedAccount
     ) => {
       console.log("[AUTH] registerPersonalServer: starting...")
-      showLoading("Starting your server...")
+      showLoading("Starting server...")
 
       let identity: Record<string, unknown> | null = null
       for (let i = 0; i < 15; i += 1) {
@@ -339,7 +339,7 @@ export const useAuthPage = (): UseAuthPageState => {
         return
       }
 
-      showLoading("Registering your server...")
+      showLoading("Registering server...")
 
       const serverUrl = serverPort
         ? `http://localhost:${serverPort}`
@@ -415,7 +415,7 @@ export const useAuthPage = (): UseAuthPageState => {
       user: PrivyUser,
       session?: PrivySession | null
     ) => {
-      showLoading("Setting up your wallet...")
+      showLoading("Wallet setup...")
 
       let embeddedWallet = (user.linked_accounts || user.linkedAccounts)?.find(
         account =>
@@ -456,7 +456,7 @@ export const useAuthPage = (): UseAuthPageState => {
       let masterKeySignature: string | null = null
       if (walletAddress && embeddedWallet) {
         try {
-          showLoading("Signing master key...")
+          showLoading("Signing key...")
           console.log(
             "[AUTH] Embedded wallet account:",
             JSON.stringify(embeddedWallet)
@@ -506,7 +506,7 @@ export const useAuthPage = (): UseAuthPageState => {
       })
 
       if (!didSend) {
-        showError("Failed to return to the app. Please try again.")
+        showError("Couldn't return to the app. Try again.")
         return
       }
 
@@ -519,7 +519,6 @@ export const useAuthPage = (): UseAuthPageState => {
       }
 
       showSuccess()
-      scheduleCloseTab()
     },
     [
       registerPersonalServer,
@@ -561,7 +560,7 @@ export const useAuthPage = (): UseAuthPageState => {
         showError(
           err instanceof Error
             ? err.message
-            : `Failed to sign in with ${provider === "google" ? "Google" : "Apple"}`
+            : `${provider === "google" ? "Google" : "Apple"} sign-in failed.`
         )
       } finally {
         if (provider === "google") {
@@ -583,7 +582,7 @@ export const useAuthPage = (): UseAuthPageState => {
 
     const nextEmail = email.trim()
     if (!nextEmail) {
-      showError("Please enter your email.")
+      showError("Enter your email.")
       return
     }
 
@@ -596,7 +595,7 @@ export const useAuthPage = (): UseAuthPageState => {
       setCode("")
     } catch (err) {
       console.error("Send code error:", err)
-      showError(err instanceof Error ? err.message : "Failed to send code.")
+      showError(err instanceof Error ? err.message : "Couldn't send code.")
     } finally {
       setIsSendingEmail(false)
     }
@@ -611,7 +610,7 @@ export const useAuthPage = (): UseAuthPageState => {
 
     const trimmedCode = code.trim()
     if (!trimmedCode) {
-      showError("Please enter the verification code.")
+      showError("Enter the code.")
       return
     }
 
@@ -624,7 +623,7 @@ export const useAuthPage = (): UseAuthPageState => {
       await handleAuthenticatedUser(privy, session.user, session)
     } catch (err) {
       console.error("Verify code error:", err)
-      showError(err instanceof Error ? err.message : "Invalid code.")
+      showError(err instanceof Error ? err.message : "Code invalid.")
     } finally {
       setIsVerifyingCode(false)
     }
@@ -670,7 +669,7 @@ export const useAuthPage = (): UseAuthPageState => {
         }
 
         if (oauthCode && oauthState) {
-          showLoading("Completing sign-in...")
+          showLoading("Finishing sign-in...")
           console.log(
             "[AUTH] OAuth callback detected, code:",
             oauthCode.substring(0, 8) + "..."

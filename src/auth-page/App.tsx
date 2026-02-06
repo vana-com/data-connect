@@ -97,10 +97,10 @@ export const App = () => {
                 </svg>
               </div>
               <Text as="h2" intent="heading" weight="semi">
-                You are signed in!
+                Signed in.
               </Text>
               <Text intent="small" color="mutedForeground">
-                You can close this window and return to the app.
+                You may now close this tab.
               </Text>
             </div>
           )}

@@ -12,6 +12,11 @@ const mockNavigate = vi.fn()
 const apps = getAppRegistryEntries()
 const liveApps = apps.filter(app => app.status === "live")
 const comingSoonApps = apps.filter(app => app.status === "coming-soon")
+const mutableFlags = DEV_FLAGS as {
+  useRickrollMock: boolean
+  useTestData: boolean
+}
+const originalFlags = { ...mutableFlags }
 
 vi.mock("@tauri-apps/plugin-shell", () => ({
   open: vi.fn().mockResolvedValue(undefined),
@@ -38,6 +43,7 @@ const renderDataApps = () => {
 
 beforeEach(() => {
   vi.clearAllMocks()
+  Object.assign(mutableFlags, originalFlags)
 })
 
 describe("DataApps", () => {
@@ -89,8 +95,9 @@ describe("DataApps", () => {
     })
   })
 
-  it("opens external app when clicking Open App on live app", async () => {
+  it("uses the rickroll mock when the flag is enabled", async () => {
     const nowSpy = vi.spyOn(Date, "now").mockReturnValue(123)
+    mutableFlags.useRickrollMock = true
     renderDataApps()
 
     const openAppButtons = screen.getAllByRole("button", { name: "Open App" })
@@ -102,9 +109,34 @@ describe("DataApps", () => {
       appId,
       scopes: liveApps[0].scopes,
     })
-    const expectedUrl = DEV_FLAGS.useRickrollMock
-      ? new URL(ROUTES.rickrollMockRoot, window.location.origin)
-      : new URL(liveApps[0].externalUrl, window.location.origin)
+    const expectedUrl = new URL(ROUTES.rickrollMockRoot, window.location.origin)
+    const search = searchParams.toString()
+    if (search) {
+      expectedUrl.search = search
+    }
+
+    const mockOpen = vi.mocked(open)
+    await waitFor(() => {
+      expect(mockOpen).toHaveBeenCalledWith(expectedUrl.toString())
+    })
+    nowSpy.mockRestore()
+  })
+
+  it("uses the external app URL when the flag is disabled", async () => {
+    const nowSpy = vi.spyOn(Date, "now").mockReturnValue(123)
+    mutableFlags.useRickrollMock = false
+    renderDataApps()
+
+    const openAppButtons = screen.getAllByRole("button", { name: "Open App" })
+    fireEvent.click(openAppButtons[0])
+
+    const appId = liveApps[0].id
+    const searchParams = buildGrantSearchParams({
+      sessionId: "grant-session-123",
+      appId,
+      scopes: liveApps[0].scopes,
+    })
+    const expectedUrl = new URL(liveApps[0].externalUrl, window.location.origin)
     const search = searchParams.toString()
     if (search) {
       expectedUrl.search = search

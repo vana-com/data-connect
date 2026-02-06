@@ -13,7 +13,7 @@ tracked and owned separately. Includes step 1 data-source login + scrape.
 ## Ownership
 
 - Frontend/UI + flow orchestration: Callum
-- Backend-heavy items (signing/relay/deep-link events): Colleague
+- Backend-heavy items (signing/relay/deep-link events): Volod
 
 ## Done
 
@@ -23,6 +23,8 @@ tracked and owned separately. Includes step 1 data-source login + scrape.
 - App registry + default app + external app handoff
 - App card handoff opens external app in browser
 - Mock external app routes (`/rickroll` → `/signin`) with dev loop to `/connect`
+- Mock app handoff is opt-in via `VITE_USE_RICKROLL_MOCK`; mock sign-in deep-links
+  back to `/connect` in dev/localhost (`dataconnect://` in prod).
 - Demo session behavior (registry metadata, scopes override)
 - RickRoll connect CTA builds `/grant` URL params
 - Minimal tests for URL params, deep links, app routing, grant flow
@@ -35,8 +37,6 @@ tracked and owned separately. Includes step 1 data-source login + scrape.
 ## Next (Frontend)
 
 - Decide external app URL per app for handoff, stored in the app registry (no single base URL). (dev: Vite web origin; prod: real web URLs, not `tauri://`)
-- Align app handoff with design: open external app, then deep-link back to `/connect` (mock flow should be explicitly gated by a dev flag).
-- Grant cancel/back behavior: cancel routes to `/apps` for now (no `/apps/:appId` route). Revisit once the external app URL/back target is defined.
 - Step-3: Passport auth if not authenticated (external browser via `start_browser_auth`; this means create & test the src/auth-page app and distribute it with the tauri app binary)
 - Step-4: success + return to app
 - Reuse grant components where possible (auth-required, consent, success)
@@ -46,7 +46,8 @@ tracked and owned separately. Includes step 1 data-source login + scrape.
 ## External app routing note
 
 - Data apps always open an external web URL in the user's browser.
-- There is no `/apps/:appId` in-app host route.
+- Grant cancel/back routes to `/apps`.
+- There is no `/apps/:appId` in-app host route and design says there are no plans for one.
 - RickRoll (`/rickroll`) is the only mock external app in dev.
 - App ID design reference: `docs/260205-app-id-design.md`
 

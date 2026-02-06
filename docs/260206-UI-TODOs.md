@@ -4,6 +4,7 @@
 
 - `/your-data` is not in the routes config, not lazy-loaded in `App.tsx`, and nothing links to it.
 - Ask Volod whether it should be removed or repurposed.
+- This was actually a duplication of the home page, so I've deleted it (#5e3cb23)
 
 ## Data source overview page
 

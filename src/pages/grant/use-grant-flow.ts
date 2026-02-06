@@ -24,6 +24,8 @@ import { ROUTES } from "@/config/routes"
 const PRIVY_APP_ID = import.meta.env.VITE_PRIVY_APP_ID
 const PRIVY_CLIENT_ID = import.meta.env.VITE_PRIVY_CLIENT_ID
 const DEV_AUTH_PAGE_URL = "http://localhost:5175"
+const isTauriRuntime = () =>
+  typeof window !== "undefined" && "__TAURI__" in window
 
 export function useGrantFlow(params: GrantFlowParams) {
   const dispatch = useDispatch()
@@ -122,6 +124,11 @@ export function useGrantFlow(params: GrantFlowParams) {
   }, [authLoading, flowState.session, flowState.status])
 
   const startBrowserAuth = useCallback(async () => {
+    if (import.meta.env.DEV && !isTauriRuntime()) {
+      setAuthError(null)
+      setAuthUrl(DEV_AUTH_PAGE_URL)
+      return
+    }
     if (!PRIVY_APP_ID || !PRIVY_CLIENT_ID) {
       setAuthError("Missing VITE_PRIVY_APP_ID or VITE_PRIVY_CLIENT_ID.")
       return
@@ -259,9 +266,7 @@ export function useGrantFlow(params: GrantFlowParams) {
     void handleApprove()
   }, [authPending, handleApprove, isAuthenticated, walletAddress])
 
-  const declineHref = flowState.session?.appId
-    ? ROUTES.app(flowState.session.appId)
-    : ROUTES.home
+  const declineHref = ROUTES.apps
 
   return {
     flowState,

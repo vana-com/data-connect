@@ -16,6 +16,7 @@ let authState = {
 }
 
 let authCompleteHandler: ((event: { payload: any }) => void) | null = null
+const tauriWindow = window as Window & { __TAURI__?: unknown }
 
 vi.mock("@tauri-apps/api/core", () => ({
   invoke: vi.fn(),
@@ -65,6 +66,7 @@ beforeEach(() => {
   mockPrepareGrantMessage.mockImplementation(() => ({}))
   mockSetConnectedApp.mockReset()
   authCompleteHandler = null
+  delete tauriWindow.__TAURI__
   authState = {
     isAuthenticated: false,
     isLoading: false,
@@ -94,6 +96,7 @@ describe("useGrantFlow", () => {
   })
 
   it("starts auth only after approval and auto-approves on auth completion", async () => {
+    tauriWindow.__TAURI__ = {}
     const mockedInvoke = vi.mocked(invoke)
     mockedInvoke.mockResolvedValue("https://auth.vana.test")
 

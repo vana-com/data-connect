@@ -30,8 +30,7 @@ Behavior:
    - If unauthenticated, `useGrantFlow.handleApprove` sets status `auth-required` and triggers `start_browser_auth`.
    - External auth page opens in a new tab.
    - On `auth-complete`, the flow resumes and approval continues.
-4. Clicking **Cancel** goes to the app route (`declineHref`).
-   - Keep this for now but validate in mock flow; first-run users may find `/apps/:appId` confusing.
+4. Clicking **Cancel** returns to **Data Apps** (`/apps`).
 
 Data-source label:
 
@@ -42,7 +41,8 @@ Data-source label:
 Dev flow visibility:
 
 - **Tauri dev:** `start_browser_auth` serves `src-tauri/auth-page` and opens the browser.
-- **Web dev fallback (mock-only):** if Tauri `invoke` fails, open `http://localhost:5175`.
+- **Web dev (mock-only):** the auth page does not auto-open. Click "Open Sign-In Page" or
+  open `http://localhost:5175` manually.
   - Run `npm run auth:dev` to start the auth page dev server.
 
 ## Mocking the Grant URL
@@ -54,7 +54,7 @@ Use these in the browser when testing the grant flow directly:
 - JSON scopes (what `buildGrantSearchParams` generates):
   `http://localhost:5173/grant?sessionId=grant-session-123&appId=rickroll&scopes=%5B%22read:chatgpt-conversations%22%5D`
 
-When you click **Allow** in the browser, switch to the auth page dev server at
+When you click **Allow** in the browser, open the auth page dev server at
 `http://localhost:5175`. Run this first:
 
 ```

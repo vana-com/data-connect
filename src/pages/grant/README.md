@@ -8,6 +8,7 @@ and how it behaves in the grant flow.
 Inputs (canonical):
 
 - `/grant?sessionId&appId&scopes`
+- `status=success` forces Step 4 success state
 - `sessionId` required (`grant-session-*` indicates demo)
 - `appId` optional (defaults if missing)
 - `scopes` JSON array or comma fallback (used to derive data-source label)
@@ -31,6 +32,7 @@ Behavior:
    - External auth page opens in a new tab.
    - On `auth-complete`, the flow resumes and approval continues.
 4. Clicking **Cancel** returns to **Data Apps** (`/apps`).
+5. Deep-link success: `/grant?...&status=success` renders the Step 4 success UI.
 
 Data-source label:
 
@@ -53,6 +55,8 @@ Use these in the browser when testing the grant flow directly:
   `http://localhost:5173/grant?sessionId=grant-session-123&appId=rickroll&scopes=read:chatgpt-conversations`
 - JSON scopes (what `buildGrantSearchParams` generates):
   `http://localhost:5173/grant?sessionId=grant-session-123&appId=rickroll&scopes=%5B%22read:chatgpt-conversations%22%5D`
+- Step 4 success:
+  `http://localhost:5173/grant?sessionId=grant-session-123&appId=rickroll&scopes=%5B%22read:chatgpt-conversations%22%5D&status=success`
 
 When you click **Allow** in the browser, open the auth page dev server at
 `http://localhost:5175`. Run this first:

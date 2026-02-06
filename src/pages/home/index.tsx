@@ -130,6 +130,7 @@ export function Home() {
         </TabsContent>
       </Tabs>
 
+      {/* DEV ONLY SHORTCUT: RickRoll /connect link */}
       {import.meta.env.DEV && (
         <div className="fixed bottom-4 right-4 z-50">
           <div className="rounded-card bg-background p-3 shadow-md">

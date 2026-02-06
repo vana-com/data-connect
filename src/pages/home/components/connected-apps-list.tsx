@@ -1,4 +1,5 @@
 import { ArrowUpRight, Settings } from "lucide-react"
+import { PlatformIcon } from "@/components/icons/platform-icon"
 import {
   ActionButton,
   ActionPanel,
@@ -6,6 +7,9 @@ import {
 import { LearnMoreLink } from "@/components/typography/learn-more-link"
 import { Text } from "@/components/typography/text"
 import { cn } from "@/lib/classes"
+import { ROUTES } from "@/config/routes"
+import { DEV_FLAGS } from "@/config/dev-flags"
+import { mockApps } from "@/pages/data-apps/fixtures"
 import type { ConnectedApp } from "@/types"
 
 interface ConnectedAppsListProps {
@@ -24,23 +28,34 @@ function formatConnectedAt(value: string) {
   })
 }
 
-function DefaultAppIcon({ icon, name }: { icon?: string; name: string }) {
-  const label = icon?.trim() || name.charAt(0).toUpperCase()
-  return (
-    <div
-      data-component="default-app-icon"
-      className={cn(
-        // layout
-        "flex items-center justify-center",
-        // size & shape
-        "size-6 rounded-card",
-        // color
-        "bg-muted text-foreground"
-      )}
-    >
-      <span className="text-xs font-semibold">{label}</span>
-    </div>
-  )
+async function openExternalApp(url: string) {
+  try {
+    const { open } = await import("@tauri-apps/plugin-shell")
+    await open(url)
+    return true
+  } catch {
+    const popup = window.open(url, "_blank", "noopener,noreferrer")
+    return Boolean(popup)
+  }
+}
+
+function getConnectedAppUrl(app: ConnectedApp) {
+  // If VITE_USE_RICKROLL_MOCK=true, then every connected app opens the RickRoll mock.
+  if (DEV_FLAGS.useRickrollMock) {
+    return new URL(ROUTES.rickrollMockRoot, window.location.origin)
+  }
+  if (!DEV_FLAGS.useTestData) {
+    return null
+  }
+  // When using testConnectedApps, rickroll is the only in-app mock.
+  if (app.id === "rickroll") {
+    return new URL(ROUTES.rickrollMockRoot, window.location.origin)
+  }
+  const match = mockApps.find(item => item.id === app.id)
+  // Otherwise, rely on the fixture's externalUrl.
+  return match?.externalUrl
+    ? new URL(match.externalUrl, window.location.origin)
+    : null
 }
 
 const Header = () => {
@@ -70,32 +85,51 @@ export function ConnectedAppsList({ apps }: ConnectedAppsListProps) {
     <section data-component="connected-apps-list" className="space-y-gap">
       <Header />
       <div className="flex flex-col gap-3 action-outset">
-        {apps.map(app => (
-          <ActionButton
-            key={app.id}
-            className={cn("items-start justify-between gap-4 text-left")}
-          >
-            <div className="flex h-full flex-1 items-center gap-3">
-              <DefaultAppIcon icon={app.icon} name={app.name} />
-              <span>{app.name}</span>
-            </div>
-            <div className="flex h-full items-center gap-3">
-              <Text
-                as="span"
-                intent="small"
-                weight="medium"
-                color="mutedForeground"
-              >
-                {formatConnectedAt(app.connectedAt)}
-              </Text>
-              <Settings className="size-4 text-muted-foreground" aria-hidden />
-              <ArrowUpRight
-                className="size-5 text-muted-foreground"
-                aria-hidden
-              />
-            </div>
-          </ActionButton>
-        ))}
+        {apps.map(app => {
+          const appUrl = getConnectedAppUrl(app)
+          return (
+            <ActionButton
+              key={app.id}
+              className={cn("items-start justify-between gap-4 text-left")}
+              onClick={
+                appUrl
+                  ? () => {
+                      void openExternalApp(appUrl.toString())
+                    }
+                  : undefined
+              }
+            >
+              <div className="flex h-full flex-1 items-center gap-3">
+                <PlatformIcon
+                  iconName={app.id}
+                  fallbackScale={0.5}
+                  fallbackLabel={
+                    app.icon?.trim() || app.name.charAt(0).toUpperCase()
+                  }
+                />
+                <span>{app.name}</span>
+              </div>
+              <div className="flex h-full items-center gap-3">
+                <Text
+                  as="span"
+                  intent="small"
+                  weight="medium"
+                  color="mutedForeground"
+                >
+                  {formatConnectedAt(app.connectedAt)}
+                </Text>
+                <Settings
+                  className="size-4 text-muted-foreground"
+                  aria-hidden
+                />
+                <ArrowUpRight
+                  className="size-5 text-muted-foreground"
+                  aria-hidden
+                />
+              </div>
+            </ActionButton>
+          )
+        })}
       </div>
     </section>
   )

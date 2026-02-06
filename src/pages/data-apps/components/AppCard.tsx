@@ -5,6 +5,7 @@ import { cn } from "@/lib/classes"
 import { ROUTES } from "@/config/routes"
 import { getAppRegistryEntry } from "@/apps/registry"
 import { buildGrantSearchParams } from "@/lib/grant-params"
+import { DEV_FLAGS } from "@/config/dev-flags"
 import type { MockApp } from "../types"
 
 async function openExternalApp(url: string) {
@@ -20,6 +21,8 @@ async function openExternalApp(url: string) {
 
 export function AppCard({ app }: { app: MockApp }) {
   const appEntry = getAppRegistryEntry(app.id)
+  // TODO: Design expects opening the app in the user's browser, then deep-linking back to
+  // `/connect?sessionId&appId&scopes`. Current behavior opens the in-app route.
   const handleOpenApp = () => {
     const sessionId = `grant-session-${Date.now()}`
     const searchParams = buildGrantSearchParams({
@@ -27,11 +30,15 @@ export function AppCard({ app }: { app: MockApp }) {
       appId: app.id,
       scopes: appEntry?.scopes,
     })
-    // RickRoll is our mock data app that only launches the deep link back to DataBridge.
-    // All other apps are external web pages that are opened in the user's browser.
-    const appPath =
-      app.id === "rickroll" ? ROUTES.rickrollMockRoot : ROUTES.app(app.id)
-    const appUrl = new URL(appPath, window.location.origin)
+    // Mock routing is explicit and opt-in to avoid internal app mental models.
+    const appUrl = DEV_FLAGS.useRickrollMock
+      ? new URL(ROUTES.rickrollMockRoot, window.location.origin)
+      : app.externalUrl
+        ? new URL(app.externalUrl, window.location.origin)
+        : null
+    if (!appUrl) {
+      throw new Error(`Missing externalUrl for app "${app.id}".`)
+    }
     const search = searchParams.toString()
     if (search) {
       appUrl.search = search
@@ -125,8 +132,6 @@ export function AppCard({ app }: { app: MockApp }) {
           variant="default"
           fullWidth
           className="mt-4"
-          // TODO: Design expects opening the app in the user's browser, then deep-linking back to
-          // `/connect?sessionId&appId&scopes`. Current behavior opens the in-app route.
           onClick={handleOpenApp}
         >
           Open App

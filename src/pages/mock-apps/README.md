@@ -8,6 +8,7 @@ Important:
 
 - Dev-only. Do not ship or rely on these pages in production.
 - The mock app is intentionally minimal; it exists to exercise the handoff flow.
+- Enable explicitly via `VITE_USE_RICKROLL_MOCK=true` (see `src/config/dev-flags.ts`).
 
 Current mock:
 
@@ -16,10 +17,7 @@ Current mock:
   → in dev, Launch Data Connect routes to
   `http://localhost:5173/connect?sessionId&appId&scopes`
   (prod/installed app uses `dataconnect://?sessionId&appId&scopes`)
-- RickRoll host page (in‑app shell):
-  `http://localhost:5173/apps/rickroll`
-  - If `external=1` is added, the Connect button deep‑links to `dataconnect://`
-    instead of navigating to `/grant`. This flag is not used by the mock flow.
+- There is no `/apps/:appId` in-app route for external apps.
 
 Usage:
 

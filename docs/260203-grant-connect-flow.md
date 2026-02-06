@@ -44,9 +44,8 @@ Linear 4-step connect/grant design: `docs/_wip/260202-connect-flow.png`.
 
 - Step 1 (data-source login + scrape) is implemented at `/connect`.
 - `src/pages/grant/*` covers consent/auth/success states only (steps 2-4).
-- Demo app routing: `/apps/:appId` renders a host page (e.g. `src/pages/RickRollApp.tsx`)
-  that handles gating + grant CTA, and then renders the app UI from
-  `src/apps/<appId>/app.tsx` once connected.
+- Data Apps open external web apps in the browser (no in-app `/apps/:appId` route).
+- RickRoll (`/rickroll`) is the only mock external app for dev.
 
 ## Canonical inputs
 

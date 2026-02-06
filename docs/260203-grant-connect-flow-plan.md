@@ -20,7 +20,7 @@ tracked and owned separately. Includes step 1 data-source login + scrape.
 - Connect Flow UI (step 1) matches design and routes into `/grant`
 - Canonical `/grant` URL params (`sessionId`, `appId`, `scopes`)
 - Deep-link normalization to `/connect` with `replace`
-- App registry + default app + `/apps/:appId` routing
+- App registry + default app + external app handoff
 - App card handoff opens external app in browser
 - Mock external app routes (`/rickroll` → `/signin`) with dev loop to `/connect`
 - Demo session behavior (registry metadata, scopes override)
@@ -34,31 +34,25 @@ tracked and owned separately. Includes step 1 data-source login + scrape.
 
 ## Next (Frontend)
 
-- Decide external app base URL for handoff, ie. choose a real, non‑Tauri URL to open when you “Open App” in production. (dev: Vite web origin; prod: not `tauri://`, needs a real web URL or registry value)
-- Grant cancel/back behavior: disable cancel CTA for now in the grant mock flow to avoid routing back to `/apps/:appId` (confusing duplicate of `/connect`). Only re-enable after external app URL/back target is defined.
+- Decide external app URL per app for handoff, stored in the app registry (no single base URL). (dev: Vite web origin; prod: real web URLs, not `tauri://`)
+- Align app handoff with design: open external app, then deep-link back to `/connect` (mock flow should be explicitly gated by a dev flag).
+- Grant cancel/back behavior: cancel routes to `/apps` for now (no `/apps/:appId` route). Revisit once the external app URL/back target is defined.
 - Step-3: Passport auth if not authenticated (external browser via `start_browser_auth`; this means create & test the src/auth-page app and distribute it with the tauri app binary)
 - Step-4: success + return to app
 - Reuse grant components where possible (auth-required, consent, success)
 - Ensure external Passport sign-in flow is preserved
 - UI polish + accessibility pass
 
-## Current app routing note
+## External app routing note
 
-- `/apps/:appId` renders a host page (e.g. `src/pages/RickRollApp.tsx`) that gates
-  access and triggers `/grant`, then renders the app UI from
-  `src/apps/<appId>/app.tsx` once connected.
-- `/apps/:appId` is an internal app detail/host view, not an external app landing
-  page. It should not be the back target for external grant flows.
+- Data apps always open an external web URL in the user's browser.
+- There is no `/apps/:appId` in-app host route.
+- RickRoll (`/rickroll`) is the only mock external app in dev.
 - App ID design reference: `docs/260205-app-id-design.md`
 
-## External app URL decision (pending)
+## External app URLs (current)
 
-We can't lock this yet, but the likely direction is storing the external app URL
-in the app registry. Options to decide later:
-
-- App registry entry per app (preferred/likely)
-- Env base URL + app path convention
-- Backend/remote registry lookup
+- External app URLs are required per app (registry/fixtures), no shared base URL.
 
 ## Next (Backend-heavy / Colleague)
 

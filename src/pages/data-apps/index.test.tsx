@@ -5,6 +5,7 @@ import { open } from "@tauri-apps/plugin-shell"
 import { buildGrantSearchParams } from "@/lib/grant-params"
 import { getAppRegistryEntry } from "@/apps/registry"
 import { ROUTES } from "@/config/routes"
+import { DEV_FLAGS } from "@/config/dev-flags"
 import { DataApps } from "./index"
 import { mockApps } from "./fixtures"
 
@@ -102,9 +103,9 @@ describe("DataApps", () => {
       appId,
       scopes: appEntry?.scopes,
     })
-    const appPath =
-      appId === "rickroll" ? ROUTES.rickrollMockRoot : ROUTES.app(appId)
-    const expectedUrl = new URL(appPath, window.location.origin)
+    const expectedUrl = DEV_FLAGS.useRickrollMock
+      ? new URL(ROUTES.rickrollMockRoot, window.location.origin)
+      : new URL(liveApps[0].externalUrl, window.location.origin)
     const search = searchParams.toString()
     if (search) {
       expectedUrl.search = search

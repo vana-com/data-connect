@@ -36,6 +36,14 @@
 - Shows connector updates panel when ready.
 - Provides source connect cards and connected apps list.
 
+## Mock system (dev)
+
+- `VITE_USE_TEST_DATA=true` swaps in fixture data for connected apps and sources.
+- Connected apps open in the browser using the same rules as Data Apps:
+  - `VITE_USE_RICKROLL_MOCK=true` forces RickRoll for all apps.
+  - Otherwise, fixture apps must define `mockApps[].externalUrl`.
+  - Outside test/mock mode, connected apps do not open a URL.
+
 ## Notes
 
 - Not part of the grant flow.

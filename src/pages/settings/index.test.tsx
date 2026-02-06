@@ -1,6 +1,6 @@
 import { describe, expect, it, beforeEach, vi } from "vitest"
 import { fireEvent, render } from "@testing-library/react"
-import { createMemoryRouter, RouterProvider } from "react-router-dom"
+import { createMemoryRouter, RouterProvider } from "react-router"
 import { ROUTES } from "@/config/routes"
 import { Settings } from "./index"
 

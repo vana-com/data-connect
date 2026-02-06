@@ -6,7 +6,7 @@
   needs user sign-in.
 - Uses the Privy **JS SDK** (`@privy-io/js-sdk-core`) rather than the React SDK.
 - Posts auth results back to the local auth server via `/auth-callback`, then
-  auto-closes the tab.
+  shows a success message; auto-close is possible but we let the user close it.
 - Creates an embedded wallet, signs the master key, and registers the Personal
   Server when possible.
 - For the full rationale and flow tradeoffs, see

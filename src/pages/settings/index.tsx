@@ -1,5 +1,12 @@
-import { DatabaseIcon, InfoIcon, MonitorIcon, ShieldIcon } from "lucide-react"
+import {
+  DatabaseIcon,
+  InfoIcon,
+  MonitorIcon,
+  ShieldIcon,
+  TerminalIcon,
+} from "lucide-react"
 import type { ReactNode } from "react"
+import { Link } from "react-router"
 import { SettingsAbout } from "./components/settings-about"
 import { SettingsAccount } from "./components/settings-account"
 import { SettingsApps } from "./components/settings-apps"
@@ -7,6 +14,7 @@ import { SettingsStorage } from "./components/settings-storage"
 import { Text } from "@/components/typography/text"
 import { Button } from "@/components/ui/button"
 import { cn } from "@/lib/classes"
+import { ROUTES } from "@/config/routes"
 import type { SettingsSection } from "./types"
 import { useSettingsPage } from "./use-settings-page"
 
@@ -81,7 +89,9 @@ export function Settings() {
                 <Button
                   key={section.key}
                   type="button"
-                  variant={activeSection === section.key ? "secondary" : "ghost"}
+                  variant={
+                    activeSection === section.key ? "secondary" : "ghost"
+                  }
                   onClick={() => setActiveSection(section.key)}
                   className={cn(
                     "w-full justify-start gap-3",
@@ -92,6 +102,16 @@ export function Settings() {
                   {section.label}
                 </Button>
               ))}
+              <Button
+                variant="ghost"
+                className="w-full justify-start gap-3"
+                asChild
+              >
+                <Link to={ROUTES.runs}>
+                  <TerminalIcon aria-hidden="true" className="size-4" />
+                  Runs
+                </Link>
+              </Button>
             </nav>
           </aside>
 
@@ -106,7 +126,10 @@ export function Settings() {
             )}
 
             {activeSection === "apps" && (
-              <SettingsApps connectedApps={connectedApps} onRevokeApp={onRevokeApp} />
+              <SettingsApps
+                connectedApps={connectedApps}
+                onRevokeApp={onRevokeApp}
+              />
             )}
 
             {activeSection === "storage" && (

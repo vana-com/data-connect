@@ -1,17 +1,16 @@
-import { NavLink } from "react-router-dom"
+import { DcLogotype } from "@/components/icons/dc-logotype"
+import { IconMcp } from "@/components/icons/icon-mcp"
+import { ROUTES } from "@/config/routes"
+import { cn } from "@/lib/classes"
+import type { LucideIcon } from "lucide-react"
 import {
   BookOpenIcon,
   BoxIcon,
+  HomeIcon,
   // ActivityIcon,
   UserRoundCogIcon,
-  SettingsIcon,
-  HomeIcon,
 } from "lucide-react"
-import { DcLogotype } from "@/components/icons/dc-logotype"
-import { IconMcp } from "@/components/icons/icon-mcp"
-import { cn } from "@/lib/classes"
-import { ROUTES } from "@/config/routes"
-import type { LucideIcon } from "lucide-react"
+import { NavLink } from "react-router-dom"
 
 type NavItem = {
   to: string
@@ -45,8 +44,7 @@ const navItems: NavItem[] = [
   // },
   { to: ROUTES.docs, label: "Docs", Icon: BookOpenIcon },
   // { to: "/activity", label: "Activity", Icon: ActivityIcon },
-  { to: ROUTES.settings, label: "Settings", Icon: SettingsIcon },
-  { to: ROUTES.runs, label: "Account", Icon: UserRoundCogIcon },
+  { to: ROUTES.settings, label: "Settings", Icon: UserRoundCogIcon },
 ]
 
 export function TopNav() {

@@ -169,7 +169,7 @@ describe("useGrantFlow", () => {
     mockGetSessionInfo.mockResolvedValue({
       id: "real-session-1",
       appId: "rickroll",
-      appName: "RickRoll Facts",
+      appName: "RickRoll",
       appIcon: "🎵",
       scopes: ["read:chatgpt-conversations"],
       expiresAt: "2030-01-01T00:00:00.000Z",
@@ -197,7 +197,7 @@ describe("useGrantFlow", () => {
     expect(mockSetConnectedApp).toHaveBeenCalledWith(
       expect.objectContaining({
         id: "rickroll",
-        name: "RickRoll Facts",
+        name: "RickRoll",
       })
     )
     expect(result.current.flowState.status).toBe("success")

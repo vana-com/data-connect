@@ -62,9 +62,7 @@ describe("DataApps", () => {
     renderDataApps()
 
     // Use getAllBy* because StrictMode may render twice
-    expect(screen.getAllByText("RickRoll Facts").length).toBeGreaterThanOrEqual(
-      1
-    )
+    expect(screen.getAllByText("RickRoll").length).toBeGreaterThanOrEqual(1)
     const openAppButtons = screen.getAllByRole("button", { name: "Open App" })
     expect(openAppButtons.length).toBeGreaterThanOrEqual(liveApps.length)
     openAppButtons.forEach(button => {

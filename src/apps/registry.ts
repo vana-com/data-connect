@@ -24,7 +24,7 @@ export type AppRegistryEntry = LiveAppRegistryEntry | ComingSoonAppRegistryEntry
 const APP_REGISTRY_LIST: AppRegistryEntry[] = [
   {
     id: "rickroll",
-    name: "RickRoll Facts",
+    name: "RickRoll",
     description: "Discover fun facts from your ChatGPT conversations",
     icon: "R",
     category: "Demo",

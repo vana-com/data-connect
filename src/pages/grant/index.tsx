@@ -105,7 +105,7 @@ export function Grant() {
     content = (
       <GrantSuccessState
         appName={resolvedFlowState.session?.appName}
-        declineHref={declineHref}
+        scopes={resolvedFlowState.session?.scopes}
       />
     )
   } else {

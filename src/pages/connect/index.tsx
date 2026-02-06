@@ -175,9 +175,7 @@ export function Connect() {
             disabled={!connectPlatform || isBusy}
             className="relative gap-3 group disabled:opacity-100"
           >
-            <span aria-hidden="true">
-              <PlatformIcon iconName={dataSourceLabel ?? "Data"} />
-            </span>
+            <PlatformIcon iconName={dataSourceLabel ?? "Data"} />
             <span>{connectCta}</span>
             {!connectPlatform && !isBusy ? (
               <EyebrowBadge
@@ -193,6 +191,8 @@ export function Connect() {
                 aria-hidden="true"
               />
             )}
+
+            {/* TODO: busy loading state */}
             {isBusy ? (
               <span
                 className={cn(

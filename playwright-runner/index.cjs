@@ -210,6 +210,9 @@ function createPageApi(page, runId) {
     setData: async (key, value) => {
       if (key === 'status') {
         send({ type: 'log', runId, message: value });
+        log(`[status] ${value}`);
+      } else if (key === 'error') {
+        log(`[error] ${value}`);
       }
       send({ type: 'data', runId, key, value });
     },

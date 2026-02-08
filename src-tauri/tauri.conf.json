@@ -41,7 +41,6 @@
     ],
     "resources": {
       "../connectors/*": "connectors/",
-      "../connectors/instagram/**/*": "connectors/instagram/",
       "../connectors/linkedin/**/*": "connectors/linkedin/",
       "../connectors/meta/**/*": "connectors/meta/",
       "../connectors/openai/**/*": "connectors/openai/",

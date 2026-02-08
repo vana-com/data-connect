@@ -15,7 +15,7 @@
     "test": "vitest run",
     "preview": "vite preview",
     "tauri": "tauri",
-    "tauri:dev": "node scripts/ensure-playwright-runner.js && node scripts/ensure-personal-server.js && tauri dev",
+    "tauri:dev": "node scripts/sync-connectors-dev.js && node scripts/ensure-playwright-runner.js && node scripts/ensure-personal-server.js && tauri dev",
     "tauri:build": "node scripts/build-prod.js",
     "skills:sync": "node scripts/sync-skills.js",
     "skills:watch": "node scripts/watch-skills.js",

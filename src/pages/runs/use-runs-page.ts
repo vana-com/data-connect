@@ -44,6 +44,12 @@ export function useRunsPage() {
 
   const serverReady = personalServer.status === "running" && !!serverId
 
+  const activeRuns = useMemo(() => {
+    return [...runs]
+      .filter(run => run.status === "running" || run.status === "pending")
+      .sort((a, b) => new Date(b.startDate).getTime() - new Date(a.startDate).getTime())
+  }, [runs])
+
   const finishedRuns = useMemo(() => {
     return [...runs]
       .filter(run => run.status !== "running" && run.status !== "pending")
@@ -51,6 +57,7 @@ export function useRunsPage() {
   }, [runs])
 
   return {
+    activeRuns,
     finishedRuns,
     stopExport,
     isAuthenticated,

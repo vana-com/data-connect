@@ -4,9 +4,13 @@
  * Runs as a sidecar process, receives commands via stdin, sends results via stdout.
  *
  * Commands:
- * - { type: "run", runId, connectorPath, url }
+ * - { type: "run", runId, connectorPath, url, headless }
  * - { type: "stop", runId }
  * - { type: "quit" }
+ *
+ * Supports two-phase connectors:
+ * - Phase 1 (Browser): Login detection + credential extraction
+ * - Phase 2 (Background): Direct HTTP fetch without browser
  */
 
 const { chromium } = require('playwright');
@@ -153,40 +157,99 @@ function log(...args) {
   console.error('[PlaywrightRunner]', ...args);
 }
 
+// Resolve browser executable path
+function resolveBrowserPath() {
+  let browserPath = null;
+
+  if (!process.env.DATABRIDGE_SIMULATE_NO_CHROME) {
+    browserPath = getSystemChromePath();
+  } else {
+    log('DATABRIDGE_SIMULATE_NO_CHROME is set, skipping system Chrome detection');
+  }
+
+  if (!browserPath) {
+    browserPath = getDownloadedChromiumPath();
+  }
+
+  if (!browserPath) {
+    throw new Error('No browser available. The Rust backend should have downloaded Chromium before starting the connector.');
+  }
+
+  return browserPath;
+}
+
+// Launch a persistent browser context
+async function launchPersistentContext(userDataDir, headless, browserPath) {
+  // Ensure profile directory exists
+  fs.mkdirSync(userDataDir, { recursive: true });
+
+  const launchOptions = {
+    headless,
+    args: ['--disable-blink-features=AutomationControlled'],
+    viewport: { width: 1280, height: 800 },
+    userAgent: 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
+  };
+
+  if (browserPath) {
+    launchOptions.executablePath = browserPath;
+  }
+
+  log(`Launching ${headless ? 'headless' : 'headed'} browser with profile: ${userDataDir}`);
+  const context = await chromium.launchPersistentContext(userDataDir, launchOptions);
+  log('Browser launched successfully');
+  return context;
+}
+
 // Create the page API that connectors use
-function createPageApi(page, runId) {
+function createPageApi(runState, runId) {
   const networkCaptures = new Map();
   const capturedResponses = new Map();
 
-  // Set up network interception
-  page.on('response', async (response) => {
-    const url = response.url();
-
-    for (const [key, config] of networkCaptures.entries()) {
-      if (config.urlPattern && !url.includes(config.urlPattern)) continue;
-
-      try {
-        const request = response.request();
-        const postData = request.postData() || '';
-
-        if (config.bodyPattern) {
-          const patterns = config.bodyPattern.split('|');
-          if (!patterns.some(p => postData.includes(p))) continue;
-        }
-
-        const body = await response.json().catch(() => null);
-        if (body) {
-          capturedResponses.set(key, { url, data: body, timestamp: Date.now() });
-          send({ type: 'network-captured', runId, key, url });
-        }
-      } catch (e) {
-        // Ignore errors for non-JSON responses
-      }
+  // Helper to get current page, throw if browser is closed
+  function requirePage() {
+    if (runState.browserClosed || !runState.page) {
+      throw new Error('Browser is closed. Use page.httpFetch() for HTTP requests or page.showBrowser() to reopen.');
     }
-  });
+    return runState.page;
+  }
+
+  // Set up network interception on current page
+  function setupNetworkCapture(page) {
+    page.on('response', async (response) => {
+      const url = response.url();
+
+      for (const [key, config] of networkCaptures.entries()) {
+        if (config.urlPattern && !url.includes(config.urlPattern)) continue;
+
+        try {
+          const request = response.request();
+          const postData = request.postData() || '';
+
+          if (config.bodyPattern) {
+            const patterns = config.bodyPattern.split('|');
+            if (!patterns.some(p => postData.includes(p))) continue;
+          }
+
+          const body = await response.json().catch(() => null);
+          if (body) {
+            capturedResponses.set(key, { url, data: body, timestamp: Date.now() });
+            send({ type: 'network-captured', runId, key, url });
+          }
+        } catch (e) {
+          // Ignore errors for non-JSON responses
+        }
+      }
+    });
+  }
+
+  // Set up network capture on initial page
+  if (runState.page) {
+    setupNetworkCapture(runState.page);
+  }
 
   return {
     goto: async (url) => {
+      const page = requirePage();
       log(`pageApi.goto called with: ${url}`);
       send({ type: 'log', runId, message: `Navigating to: ${url}` });
       try {
@@ -199,6 +262,7 @@ function createPageApi(page, runId) {
     },
 
     evaluate: async (script) => {
+      const page = requirePage();
       if (typeof script === 'string') {
         return await page.evaluate(script);
       }
@@ -217,6 +281,12 @@ function createPageApi(page, runId) {
       send({ type: 'data', runId, key, value });
     },
 
+    // Structured progress update — drives the frontend progress UI
+    setProgress: async ({ phase, message, count }) => {
+      send({ type: 'status', runId, status: { type: 'COLLECTING', message, phase, count } });
+      if (message) log(`[progress] ${message}`);
+    },
+
     promptUser: async (message, checkFn, interval = 2000) => {
       send({ type: 'log', runId, message });
       send({ type: 'status', runId, status: 'WAITING_FOR_USER' });
@@ -225,8 +295,6 @@ function createPageApi(page, runId) {
       while (true) {
         await new Promise(resolve => setTimeout(resolve, interval));
         try {
-          // checkFn references page.evaluate internally in the connector
-          // We need to evaluate it in the page context
           const result = await checkFn();
           if (result) {
             send({ type: 'log', runId, message: 'User action completed' });
@@ -258,81 +326,278 @@ function createPageApi(page, runId) {
 
     hasCapturedResponse: (key) => {
       return capturedResponses.has(key);
-    }
+    },
+
+    // Close the browser but keep the Node.js process alive for background HTTP work.
+    // Cookies/session persist in the profile directory for next run.
+    closeBrowser: async () => {
+      if (runState.browserClosed) {
+        log('Browser already closed');
+        return;
+      }
+
+      log('Closing browser (connector requested closeBrowser)');
+
+      // Extract cookies before closing so httpFetch can use them
+      if (runState.context) {
+        try {
+          runState.cookies = await runState.context.cookies();
+          log(`Extracted ${runState.cookies.length} cookies for background HTTP requests`);
+        } catch (e) {
+          log('Warning: could not extract cookies:', e.message);
+          runState.cookies = [];
+        }
+      }
+
+      runState.browserClosed = true;
+      runState.browserClosedByConnector = true;
+
+      if (runState.context) {
+        try {
+          await runState.context.close();
+        } catch (e) {
+          log('Error closing context:', e.message);
+        }
+        runState.context = null;
+        runState.page = null;
+      }
+
+      send({ type: 'log', runId, message: 'Browser closed, continuing in background...' });
+      log('Browser closed, process stays alive for background work');
+    },
+
+    // Reopen browser in headed mode (e.g., for login when headless session expired).
+    // Closes any existing browser first, then opens a new headed one.
+    showBrowser: async (url) => {
+      log('showBrowser requested');
+
+      // Close existing browser if open
+      if (runState.context && !runState.browserClosed) {
+        log('Closing existing browser before reopening headed');
+        // Set flag BEFORE closing so the disconnect handler doesn't exit the process
+        runState.browserClosedByConnector = true;
+        try {
+          await runState.context.close();
+        } catch (e) {
+          log('Error closing existing context:', e.message);
+        }
+        runState.context = null;
+        runState.page = null;
+      }
+
+      // Launch new headed browser with persistent context
+      runState.browserClosed = false;
+      runState.browserClosedByConnector = false;
+      runState.headless = false;
+      const context = await launchPersistentContext(runState.userDataDir, false, runState.browserPath);
+      const page = context.pages()[0] || await context.newPage();
+
+      // Set up disconnect handler
+      context.browser().on('disconnected', () => {
+        if (!runState.connectorCompleted && !runState.browserClosedByConnector) {
+          log(`Browser disconnected for run ${runId} (user closed window)`);
+          runState.browserClosed = true;
+          runState.context = null;
+          runState.page = null;
+          activeRuns.delete(runId);
+          send({ type: 'status', runId, status: 'STOPPED' });
+          process.exit(0);
+        }
+      });
+
+      // Update state
+      runState.context = context;
+      runState.page = page;
+
+      // Re-setup network capture on new page
+      setupNetworkCapture(page);
+
+      // Navigate to URL
+      if (url) {
+        await page.goto(url, { waitUntil: 'domcontentloaded' });
+      }
+
+      send({ type: 'log', runId, message: 'Browser opened for user interaction' });
+      log('Headed browser opened');
+    },
+
+    // Switch to headless mode — browser becomes invisible but stays running.
+    // Use this after credentials are captured so the user doesn't see the browser
+    // during data collection, while preserving the TLS fingerprint for Cloudflare.
+    goHeadless: async () => {
+      if (runState.headless && !runState.browserClosed) {
+        log('Already in headless mode');
+        return;
+      }
+
+      log('Switching to headless mode');
+
+      // Close existing headed browser
+      if (runState.context && !runState.browserClosed) {
+        runState.browserClosedByConnector = true;
+        try {
+          await runState.context.close();
+        } catch (e) {
+          log('Error closing headed context:', e.message);
+        }
+        runState.context = null;
+        runState.page = null;
+      }
+
+      // Reopen headless browser with persistent context
+      runState.browserClosed = false;
+      runState.browserClosedByConnector = false;
+      runState.headless = true;
+      const context = await launchPersistentContext(runState.userDataDir, true, runState.browserPath);
+      const page = context.pages()[0] || await context.newPage();
+
+      // Set up disconnect handler
+      context.browser().on('disconnected', () => {
+        if (!runState.connectorCompleted && !runState.browserClosedByConnector) {
+          log(`Browser disconnected for run ${runId}`);
+          runState.browserClosed = true;
+          runState.context = null;
+          runState.page = null;
+          activeRuns.delete(runId);
+          send({ type: 'status', runId, status: 'STOPPED' });
+          process.exit(0);
+        }
+      });
+
+      // Update state
+      runState.context = context;
+      runState.page = page;
+
+      // Re-setup network capture on new page
+      setupNetworkCapture(page);
+
+      // Navigate to establish browser context
+      await page.goto('https://chatgpt.com/', { waitUntil: 'domcontentloaded' });
+
+      send({ type: 'log', runId, message: 'Switched to headless mode for background data collection' });
+      log('Switched to headless mode');
+    },
+
+    // Direct HTTP fetch from Node.js — no browser needed.
+    // Works after closeBrowser() for background data collection.
+    // Automatically includes cookies extracted from the browser session.
+    httpFetch: async (url, options = {}) => {
+      const { timeout = 30000, ...fetchOptions } = options;
+
+      // Auto-include cookies from the closed browser session
+      if (runState.cookies && runState.cookies.length > 0) {
+        try {
+          const urlObj = new URL(url);
+          const relevantCookies = runState.cookies
+            .filter(c => {
+              const cookieDomain = c.domain.startsWith('.') ? c.domain.slice(1) : c.domain;
+              return urlObj.hostname === cookieDomain || urlObj.hostname.endsWith('.' + cookieDomain);
+            })
+            .map(c => `${c.name}=${c.value}`)
+            .join('; ');
+          if (relevantCookies) {
+            fetchOptions.headers = { ...fetchOptions.headers, cookie: relevantCookies };
+          }
+        } catch (e) {
+          // Ignore cookie injection errors
+        }
+      }
+
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), timeout);
+      try {
+        const response = await fetch(url, {
+          ...fetchOptions,
+          signal: controller.signal,
+        });
+        clearTimeout(timeoutId);
+        const text = await response.text();
+        let json = null;
+        try { json = JSON.parse(text); } catch {}
+        if (!response.ok) {
+          log(`[httpFetch] ${response.status} ${response.statusText} for ${url.substring(0, 100)}`);
+          log(`[httpFetch] Response body (first 200 chars): ${text.substring(0, 200)}`);
+        }
+        return {
+          ok: response.ok,
+          status: response.status,
+          headers: Object.fromEntries(response.headers.entries()),
+          text,
+          json,
+          error: null,
+        };
+      } catch (err) {
+        clearTimeout(timeoutId);
+        return {
+          ok: false,
+          status: 0,
+          headers: {},
+          text: '',
+          json: null,
+          error: err.message,
+        };
+      }
+    },
   };
 }
 
 // Run a connector
-async function runConnector(runId, connectorPath, url) {
-  log(`Starting run ${runId} with connector ${connectorPath}`);
+async function runConnector(runId, connectorPath, url, headless = true) {
+  log(`Starting run ${runId} with connector ${connectorPath} (headless: ${headless})`);
+
+  // Derive connector ID for persistent browser profile
+  const connectorFileName = path.basename(connectorPath, path.extname(connectorPath));
+  const home = process.env.HOME || process.env.USERPROFILE || '';
+  const userDataDir = path.join(home, '.databridge', 'browser-profiles', connectorFileName);
+
+  // Mutable state shared with pageApi
+  const runState = {
+    context: null,
+    page: null,
+    browserClosed: false,
+    browserClosedByConnector: false,
+    connectorCompleted: false,
+    headless,
+    userDataDir,
+    browserPath: null,
+  };
 
   try {
     // Read connector script
     const connectorCode = fs.readFileSync(connectorPath, 'utf-8');
 
-    // Launch browser - prefer system Chrome for smaller app size
-    const launchOptions = {
-      headless: false, // User needs to see and interact
-      args: ['--disable-blink-features=AutomationControlled']
-    };
+    // Resolve browser executable
+    runState.browserPath = resolveBrowserPath();
+    log(`Using browser: ${runState.browserPath}`);
 
-    // Try to find a browser in this order:
-    // 1. System Chrome/Edge (unless DATABRIDGE_SIMULATE_NO_CHROME is set)
-    // 2. Previously downloaded Chromium
-    // 3. Download Chromium on-demand
-    let browserPath = null;
+    // Launch browser with persistent context
+    const context = await launchPersistentContext(userDataDir, headless, runState.browserPath);
+    const page = context.pages()[0] || await context.newPage();
 
-    // Skip system Chrome if simulating no Chrome (for testing download flow)
-    if (!process.env.DATABRIDGE_SIMULATE_NO_CHROME) {
-      browserPath = getSystemChromePath();
-    } else {
-      log('DATABRIDGE_SIMULATE_NO_CHROME is set, skipping system Chrome detection');
-    }
-
-    if (browserPath) {
-      log(`Using system browser: ${browserPath}`);
-      launchOptions.executablePath = browserPath;
-    } else {
-      // Check for previously downloaded Chromium
-      browserPath = getDownloadedChromiumPath();
-
-      if (browserPath) {
-        log(`Using downloaded Chromium: ${browserPath}`);
-        launchOptions.executablePath = browserPath;
-      } else {
-        // No browser available - Rust should have downloaded before starting
-        // If we get here, something went wrong
-        throw new Error('No browser available. The Rust backend should have downloaded Chromium before starting the connector.');
-      }
-    }
-
-    const browser = await chromium.launch(launchOptions);
-
-    // Track if connector completed successfully (to avoid sending STOPPED after COMPLETE)
-    let connectorCompleted = false;
+    runState.context = context;
+    runState.page = page;
 
     // Handle browser disconnect (user closed browser window)
-    browser.on('disconnected', () => {
-      if (!connectorCompleted && activeRuns.has(runId)) {
+    context.browser().on('disconnected', () => {
+      if (!runState.connectorCompleted && !runState.browserClosedByConnector && activeRuns.has(runId)) {
         log(`Browser disconnected for run ${runId} (user closed window)`);
+        runState.browserClosed = true;
+        runState.context = null;
+        runState.page = null;
         activeRuns.delete(runId);
         send({ type: 'status', runId, status: 'STOPPED' });
         process.exit(0);
       }
     });
 
-    const context = await browser.newContext({
-      viewport: { width: 1280, height: 800 },
-      userAgent: 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36'
+    // Store for cleanup
+    activeRuns.set(runId, {
+      runState,
+      setCompleted: () => { runState.connectorCompleted = true; },
     });
 
-    const page = await context.newPage();
-
-    // Store for cleanup
-    activeRuns.set(runId, { browser, context, page, setCompleted: () => { connectorCompleted = true; } });
-
     // Create page API
-    const pageApi = createPageApi(page, runId);
+    const pageApi = createPageApi(runState, runId);
 
     // Navigate to starting URL
     log(`Navigating to initial URL: ${url}`);
@@ -375,17 +640,21 @@ async function runConnector(runId, connectorPath, url) {
     send({ type: 'status', runId, status: 'COMPLETE' });
 
     // Mark as completed to prevent disconnect handler from sending STOPPED
-    connectorCompleted = true;
+    runState.connectorCompleted = true;
 
-    // Keep browser open for a bit so user can see result
-    await new Promise(resolve => setTimeout(resolve, 2000));
+    // Close browser if still open
+    if (!runState.browserClosed && runState.context) {
+      await new Promise(resolve => setTimeout(resolve, 2000));
+      try {
+        await runState.context.close();
+      } catch (e) {
+        // Browser may already be closed
+      }
+    }
 
-    // Cleanup
-    await browser.close();
     activeRuns.delete(runId);
 
     // Exit process after successful completion
-    // This ensures Rust receives the end-of-stream and can emit STOPPED if needed
     log('Connector completed successfully, exiting');
     process.exit(0);
 
@@ -395,11 +664,12 @@ async function runConnector(runId, connectorPath, url) {
     send({ type: 'status', runId, status: 'ERROR' });
 
     // Cleanup on error
-    const run = activeRuns.get(runId);
-    if (run) {
-      await run.browser.close().catch(() => {});
-      activeRuns.delete(runId);
+    if (runState.context && !runState.browserClosed) {
+      try {
+        await runState.context.close();
+      } catch (e) {}
     }
+    activeRuns.delete(runId);
 
     // Exit process after error
     log('Connector failed, exiting');
@@ -412,7 +682,9 @@ async function stopRun(runId) {
   const run = activeRuns.get(runId);
   if (run) {
     log(`Stopping run ${runId}`);
-    await run.browser.close().catch(() => {});
+    if (run.runState && run.runState.context && !run.runState.browserClosed) {
+      await run.runState.context.close().catch(() => {});
+    }
     activeRuns.delete(runId);
     send({ type: 'status', runId, status: 'STOPPED' });
   }
@@ -435,7 +707,7 @@ async function main() {
 
       switch (cmd.type) {
         case 'run':
-          runConnector(cmd.runId, cmd.connectorPath, cmd.url);
+          runConnector(cmd.runId, cmd.connectorPath, cmd.url, cmd.headless !== false);
           break;
 
         case 'stop':
@@ -444,9 +716,10 @@ async function main() {
 
         case 'quit':
           log('Quitting...');
-          // Close all active runs
           for (const [runId, run] of activeRuns) {
-            await run.browser.close().catch(() => {});
+            if (run.runState && run.runState.context && !run.runState.browserClosed) {
+              await run.runState.context.close().catch(() => {});
+            }
           }
           process.exit(0);
           break;

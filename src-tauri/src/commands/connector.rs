@@ -660,7 +660,8 @@ async fn start_playwright_run(
         "type": "run",
         "runId": run_id,
         "connectorPath": connector_path.to_string_lossy(),
-        "url": connect_url
+        "url": connect_url,
+        "headless": true
     });
 
     std::thread::spawn(move || {
@@ -694,10 +695,18 @@ async fn start_playwright_run(
                         }
                     }
                     "status" => {
-                        if let Some(status) = msg.get("status").and_then(|v| v.as_str()) {
+                        if let Some(status_str) = msg.get("status").and_then(|v| v.as_str()) {
+                            // Simple string status (e.g., "RUNNING", "COMPLETE")
                             let _ = app_clone.emit("connector-status", serde_json::json!({
                                 "runId": run_id_for_stdout,
-                                "status": { "type": status },
+                                "status": { "type": status_str },
+                                "timestamp": chrono_timestamp()
+                            }));
+                        } else if let Some(status_obj) = msg.get("status") {
+                            // Structured status object (e.g., { type: "COLLECTING", message, phase, count })
+                            let _ = app_clone.emit("connector-status", serde_json::json!({
+                                "runId": run_id_for_stdout,
+                                "status": status_obj,
                                 "timestamp": chrono_timestamp()
                             }));
                         }
@@ -722,6 +731,17 @@ async fn start_playwright_run(
                                 "timestamp": chrono_timestamp()
                             }));
                         }
+                    }
+                    "data" => {
+                        // Forward connector data events to frontend
+                        let key = msg.get("key").and_then(|v| v.as_str()).unwrap_or("");
+                        let value = msg.get("value");
+                        let _ = app_clone.emit("connector-data", serde_json::json!({
+                            "runId": run_id_for_stdout,
+                            "key": key,
+                            "value": value,
+                            "timestamp": chrono_timestamp()
+                        }));
                     }
                     _ => {}
                 }
@@ -1443,6 +1463,117 @@ fn get_chromium_download_info() -> Option<(&'static str, &'static str)> {
     {
         None
     }
+}
+
+/// Browser session info returned to the frontend
+#[derive(Debug, Serialize, Deserialize)]
+pub struct BrowserSessionInfo {
+    #[serde(rename = "connectorId")]
+    pub connector_id: String,
+    pub path: String,
+    #[serde(rename = "sizeBytes")]
+    pub size_bytes: u64,
+    #[serde(rename = "lastModified")]
+    pub last_modified: String,
+}
+
+/// Recursively compute directory size in bytes
+fn dir_size(path: &std::path::Path) -> u64 {
+    walkdir::WalkDir::new(path)
+        .into_iter()
+        .filter_map(|e| e.ok())
+        .filter(|e| e.file_type().is_file())
+        .filter_map(|e| e.metadata().ok())
+        .map(|m| m.len())
+        .sum()
+}
+
+/// List all stored browser sessions (profiles)
+#[tauri::command]
+pub async fn list_browser_sessions() -> Result<Vec<BrowserSessionInfo>, String> {
+    let home = std::env::var("HOME")
+        .or_else(|_| std::env::var("USERPROFILE"))
+        .map_err(|_| "Could not determine home directory".to_string())?;
+
+    let profiles_dir = PathBuf::from(&home)
+        .join(".databridge")
+        .join("browser-profiles");
+
+    if !profiles_dir.exists() {
+        return Ok(Vec::new());
+    }
+
+    let mut sessions = Vec::new();
+
+    let entries = fs::read_dir(&profiles_dir)
+        .map_err(|e| format!("Failed to read browser-profiles directory: {}", e))?;
+
+    for entry in entries.flatten() {
+        if !entry.path().is_dir() {
+            continue;
+        }
+
+        let connector_id = entry.file_name().to_string_lossy().to_string();
+        let path = entry.path();
+        let size_bytes = dir_size(&path);
+
+        let last_modified = entry
+            .metadata()
+            .ok()
+            .and_then(|m| m.modified().ok())
+            .map(|t| {
+                let duration = t
+                    .duration_since(std::time::UNIX_EPOCH)
+                    .unwrap_or_default();
+                // Return as ISO-ish timestamp (milliseconds since epoch)
+                let secs = duration.as_secs();
+                // Format as ISO 8601 manually
+                let dt = chrono::DateTime::from_timestamp(secs as i64, 0)
+                    .unwrap_or_default();
+                dt.to_rfc3339()
+            })
+            .unwrap_or_default();
+
+        sessions.push(BrowserSessionInfo {
+            connector_id,
+            path: path.to_string_lossy().to_string(),
+            size_bytes,
+            last_modified,
+        });
+    }
+
+    Ok(sessions)
+}
+
+/// Clear (delete) a stored browser session for a given connector
+#[tauri::command]
+pub async fn clear_browser_session(connector_id: String) -> Result<(), String> {
+    let home = std::env::var("HOME")
+        .or_else(|_| std::env::var("USERPROFILE"))
+        .map_err(|_| "Could not determine home directory".to_string())?;
+
+    let profile_dir = PathBuf::from(&home)
+        .join(".databridge")
+        .join("browser-profiles")
+        .join(&connector_id);
+
+    if !profile_dir.exists() {
+        return Ok(());
+    }
+
+    // Verify the path is within browser-profiles to prevent directory traversal
+    let profiles_parent = PathBuf::from(&home)
+        .join(".databridge")
+        .join("browser-profiles");
+    if !profile_dir.starts_with(&profiles_parent) {
+        return Err("Invalid connector ID".to_string());
+    }
+
+    fs::remove_dir_all(&profile_dir)
+        .map_err(|e| format!("Failed to delete browser profile: {}", e))?;
+
+    log::info!("Cleared browser session for connector: {}", connector_id);
+    Ok(())
 }
 
 /// Download Chromium browser using Rust (production-ready)

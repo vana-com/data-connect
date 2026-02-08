@@ -10,7 +10,7 @@ import {
   removeConnectedApp,
   subscribeConnectedApps,
 } from "@/lib/storage"
-import type { BrowserStatus, NodeJsTestResult, SettingsSection } from "./types"
+import type { BrowserSession, BrowserStatus, NodeJsTestResult, SettingsSection } from "./types"
 
 export function useSettingsPage() {
   const navigate = useNavigate()
@@ -27,6 +27,7 @@ export function useSettingsPage() {
   const [nodeTestError, setNodeTestError] = useState<string | null>(null)
   const [pathsDebug, setPathsDebug] = useState<Record<string, unknown> | null>(null)
   const [browserStatus, setBrowserStatus] = useState<BrowserStatus | null>(null)
+  const [browserSessions, setBrowserSessions] = useState<BrowserSession[]>([])
   const [simulateNoChrome, setSimulateNoChrome] = useState<boolean>(() => {
     return localStorage.getItem("databridge_simulate_no_chrome") === "true"
   })
@@ -122,6 +123,28 @@ export function useSettingsPage() {
     }
   }, [simulateNoChrome])
 
+  const loadBrowserSessions = useCallback(async () => {
+    try {
+      const sessions = await invoke<BrowserSession[]>("list_browser_sessions")
+      setBrowserSessions(sessions)
+    } catch (error) {
+      console.error("Failed to load browser sessions:", error)
+    }
+  }, [])
+
+  useEffect(() => {
+    loadBrowserSessions()
+  }, [loadBrowserSessions])
+
+  const handleClearSession = useCallback(async (connectorId: string) => {
+    try {
+      await invoke("clear_browser_session", { connectorId })
+      await loadBrowserSessions()
+    } catch (error) {
+      console.error("Failed to clear browser session:", error)
+    }
+  }, [loadBrowserSessions])
+
   const checkBrowserStatus = useCallback(async () => {
     try {
       const result = await invoke<BrowserStatus & { needs_download: boolean }>(
@@ -158,6 +181,7 @@ export function useSettingsPage() {
     pathsDebug,
     browserStatus,
     simulateNoChrome,
+    browserSessions,
     connectedApps,
     personalServer,
     user,
@@ -168,6 +192,7 @@ export function useSettingsPage() {
     onDebugPaths: debugPaths,
     onCheckBrowserStatus: checkBrowserStatus,
     onSimulateNoChromeChange: setSimulateNoChrome,
+    onClearBrowserSession: handleClearSession,
     onRevokeApp: handleRevokeApp,
     onLogout: handleLogout,
     onSignIn: handleSignIn,

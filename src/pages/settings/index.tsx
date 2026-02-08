@@ -1,8 +1,9 @@
-import { DatabaseIcon, InfoIcon, MonitorIcon, ShieldIcon } from "lucide-react"
+import { DatabaseIcon, InfoIcon, KeyIcon, MonitorIcon, ShieldIcon } from "lucide-react"
 import type { ReactNode } from "react"
 import { SettingsAbout } from "./components/settings-about"
 import { SettingsAccount } from "./components/settings-account"
 import { SettingsApps } from "./components/settings-apps"
+import { SettingsCredentials } from "./components/settings-credentials"
 import { SettingsStorage } from "./components/settings-storage"
 import { Text } from "@/components/typography/text"
 import { Button } from "@/components/ui/button"
@@ -24,6 +25,11 @@ const settingsSections: Array<{
     key: "apps",
     label: "Authorised Apps",
     icon: <ShieldIcon aria-hidden="true" className="size-4" />,
+  },
+  {
+    key: "credentials",
+    label: "Credentials",
+    icon: <KeyIcon aria-hidden="true" className="size-4" />,
   },
   {
     key: "storage",
@@ -49,6 +55,7 @@ export function Settings() {
     pathsDebug,
     browserStatus,
     simulateNoChrome,
+    browserSessions,
     connectedApps,
     personalServer,
     user,
@@ -59,6 +66,7 @@ export function Settings() {
     onDebugPaths,
     onCheckBrowserStatus,
     onSimulateNoChromeChange,
+    onClearBrowserSession,
     onRevokeApp,
     onLogout,
     onSignIn,
@@ -109,6 +117,13 @@ export function Settings() {
 
             {activeSection === "apps" && (
               <SettingsApps connectedApps={connectedApps} onRevokeApp={onRevokeApp} />
+            )}
+
+            {activeSection === "credentials" && (
+              <SettingsCredentials
+                sessions={browserSessions}
+                onClearSession={onClearBrowserSession}
+              />
             )}
 
             {activeSection === "storage" && (

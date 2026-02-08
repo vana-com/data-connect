@@ -23,6 +23,15 @@ export function AvailableSourcesList({
   )
   const isInstagramAvailable = Boolean(instagramPlatform)
 
+  const linkedinPlatform = platforms.find(
+    platform =>
+      platform.id === "linkedin-playwright" ||
+      platform.id === "linkedin" ||
+      platform.name.toLowerCase().includes("linkedin") ||
+      platform.company.toLowerCase().includes("linkedin")
+  )
+  const isLinkedinAvailable = Boolean(linkedinPlatform)
+
   const chatgptPlatform = platforms.find(
     platform =>
       platform.id === "chatgpt-playwright" ||
@@ -51,7 +60,11 @@ export function AvailableSourcesList({
           {
             label: "Connect LinkedIn",
             Icon: PlatformLinkedinIcon,
-            state: "comingSoon" as ConnectSourceCardVariant,
+            state: (isLinkedinAvailable ? "available" : "comingSoon") as ConnectSourceCardVariant,
+            onClick:
+              isLinkedinAvailable && linkedinPlatform
+                ? () => onExport(linkedinPlatform)
+                : undefined,
           },
           {
             label: "Connect Spotify",

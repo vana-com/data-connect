@@ -6,6 +6,7 @@ import { useRunsPage } from "./use-runs-page"
 
 export function Runs() {
   const {
+    activeRuns,
     finishedRuns,
     stopExport,
     isAuthenticated,
@@ -32,7 +33,21 @@ export function Runs() {
           serverId={serverId}
         />
 
-        {finishedRuns.length === 0 ? (
+        {activeRuns.length > 0 && (
+          <div className="space-y-3">
+            {activeRuns.map(run => (
+              <RunItem
+                key={run.id}
+                run={run}
+                onStop={stopExport}
+                serverPort={personalServer.port}
+                serverReady={serverReady}
+              />
+            ))}
+          </div>
+        )}
+
+        {finishedRuns.length === 0 && activeRuns.length === 0 ? (
           <div className="rounded-card border border-border bg-background p-12 text-center">
             <div className="mx-auto mb-4 flex size-16 items-center justify-center rounded-card bg-muted">
               <ActivityIcon aria-hidden="true" className="size-8 text-muted-foreground" />
@@ -44,7 +59,7 @@ export function Runs() {
               Start an export from the Data Sources page.
             </Text>
           </div>
-        ) : (
+        ) : finishedRuns.length > 0 ? (
           <div className="space-y-3">
             {finishedRuns.map(run => (
               <RunItem
@@ -56,7 +71,7 @@ export function Runs() {
               />
             ))}
           </div>
-        )}
+        ) : null}
       </div>
     </div>
   )

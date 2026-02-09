@@ -1,4 +1,11 @@
-export type SettingsSection = "account" | "apps" | "storage" | "about"
+export type SettingsSection = "account" | "apps" | "credentials" | "storage" | "about"
+
+export interface BrowserSession {
+  connectorId: string
+  path: string
+  sizeBytes: number
+  lastModified: string
+}
 
 export interface NodeJsTestResult {
   nodejs: string

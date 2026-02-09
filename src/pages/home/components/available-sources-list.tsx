@@ -23,6 +23,15 @@ export function AvailableSourcesList({
   )
   const isInstagramAvailable = Boolean(instagramPlatform)
 
+  const linkedinPlatform = platforms.find(
+    platform =>
+      platform.id === "linkedin-playwright" ||
+      platform.id === "linkedin" ||
+      platform.name.toLowerCase().includes("linkedin") ||
+      platform.company.toLowerCase().includes("linkedin")
+  )
+  const isLinkedinAvailable = Boolean(linkedinPlatform)
+
   const chatgptPlatform = platforms.find(
     platform =>
       platform.id === "chatgpt-playwright" ||
@@ -31,6 +40,15 @@ export function AvailableSourcesList({
       platform.company.toLowerCase().includes("openai")
   )
   const isChatGPTAvailable = Boolean(chatgptPlatform)
+
+  const spotifyPlatform = platforms.find(
+    platform =>
+      platform.id === "spotify-playwright" ||
+      platform.id === "spotify" ||
+      platform.name.toLowerCase().includes("spotify") ||
+      platform.company.toLowerCase().includes("spotify")
+  )
+  const isSpotifyAvailable = Boolean(spotifyPlatform)
 
   return (
     <section className="space-y-4">
@@ -51,12 +69,20 @@ export function AvailableSourcesList({
           {
             label: "Connect LinkedIn",
             Icon: PlatformLinkedinIcon,
-            state: "comingSoon" as ConnectSourceCardVariant,
+            state: (isLinkedinAvailable ? "available" : "comingSoon") as ConnectSourceCardVariant,
+            onClick:
+              isLinkedinAvailable && linkedinPlatform
+                ? () => onExport(linkedinPlatform)
+                : undefined,
           },
           {
             label: "Connect Spotify",
             Icon: PlatformSpotifyIcon,
-            state: "comingSoon" as ConnectSourceCardVariant,
+            state: (isSpotifyAvailable ? "available" : "comingSoon") as ConnectSourceCardVariant,
+            onClick:
+              isSpotifyAvailable && spotifyPlatform
+                ? () => onExport(spotifyPlatform)
+                : undefined,
           },
           {
             label: "Connect ChatGPT",

@@ -288,6 +288,14 @@ pub async fn start_personal_server(
                                     serde_json::json!({ "message": message }),
                                 );
                             }
+                            "tunnel" => {
+                                let url = msg.get("url").and_then(|u| u.as_str()).unwrap_or("");
+                                log::info!("Personal server tunnel: {}", url);
+                                let _ = app_handle.emit(
+                                    "personal-server-tunnel",
+                                    serde_json::json!({ "url": url }),
+                                );
+                            }
                             "log" => {
                                 let message = msg.get("message").and_then(|m| m.as_str()).unwrap_or("");
                                 log::info!("Personal server: {}", message);

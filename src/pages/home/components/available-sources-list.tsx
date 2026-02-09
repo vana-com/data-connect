@@ -41,6 +41,15 @@ export function AvailableSourcesList({
   )
   const isChatGPTAvailable = Boolean(chatgptPlatform)
 
+  const spotifyPlatform = platforms.find(
+    platform =>
+      platform.id === "spotify-playwright" ||
+      platform.id === "spotify" ||
+      platform.name.toLowerCase().includes("spotify") ||
+      platform.company.toLowerCase().includes("spotify")
+  )
+  const isSpotifyAvailable = Boolean(spotifyPlatform)
+
   return (
     <section className="space-y-4">
       <Text as="h2" intent="body">
@@ -69,7 +78,11 @@ export function AvailableSourcesList({
           {
             label: "Connect Spotify",
             Icon: PlatformSpotifyIcon,
-            state: "comingSoon" as ConnectSourceCardVariant,
+            state: (isSpotifyAvailable ? "available" : "comingSoon") as ConnectSourceCardVariant,
+            onClick:
+              isSpotifyAvailable && spotifyPlatform
+                ? () => onExport(spotifyPlatform)
+                : undefined,
           },
           {
             label: "Connect ChatGPT",

@@ -44,6 +44,7 @@
       "../connectors/linkedin/**/*": "connectors/linkedin/",
       "../connectors/meta/**/*": "connectors/meta/",
       "../connectors/openai/**/*": "connectors/openai/",
+      "../connectors/spotify/**/*": "connectors/spotify/",
       "../connectors/types/**/*": "connectors/types/",
       "../playwright-runner/dist/*": "playwright-runner/dist/",
       "../personal-server/dist/personal-server*": "personal-server/dist/"

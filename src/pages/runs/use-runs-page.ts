@@ -18,18 +18,28 @@ export function useRunsPage() {
   const { isAuthenticated } = useAuth()
   const personalServer = usePersonalServer()
   const [serverId, setServerId] = useState<string | null>(null)
+  // Bumped when the HTTP server is actually ready (not just spawned)
+  const [readyTick, setReadyTick] = useState(0)
 
   // Listen for server-registered event from auth flow
+  // and personal-server-ready (HTTP server actually listening)
   useEffect(() => {
-    const unlisten = listen<ServerRegisteredPayload>("server-registered", (event) => {
+    const unlisteners: (() => void)[] = []
+
+    listen<ServerRegisteredPayload>("server-registered", (event) => {
       if (event.payload.serverId) {
         setServerId(event.payload.serverId)
       }
-    })
-    return () => { unlisten.then(fn => fn()) }
+    }).then((fn) => unlisteners.push(fn))
+
+    listen<{ port: number }>("personal-server-ready", () => {
+      setReadyTick((t) => t + 1)
+    }).then((fn) => unlisteners.push(fn))
+
+    return () => { unlisteners.forEach((fn) => fn()) }
   }, [])
 
-  // Also try to fetch serverId from health endpoint (for already registered servers)
+  // Fetch serverId from health endpoint when server is running and ready
   useEffect(() => {
     if (personalServer.status === "running" && personalServer.port && !serverId) {
       fetchServerIdentity(personalServer.port)
@@ -40,7 +50,7 @@ export function useRunsPage() {
     } else if (personalServer.status !== "running") {
       setServerId(null)
     }
-  }, [personalServer.status, personalServer.port, serverId])
+  }, [personalServer.status, personalServer.port, serverId, readyTick])
 
   const serverReady = personalServer.status === "running" && !!serverId
 

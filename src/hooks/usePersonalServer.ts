@@ -9,12 +9,17 @@ interface PersonalServerStatus {
   port: number | null;
 }
 
+// Module-level state shared across all hook instances so the tunnel URL
+// survives component remounts (e.g. navigating away from the runs page).
+let _sharedTunnelUrl: string | null = null;
+
 export function usePersonalServer() {
   const { walletAddress, masterKeySignature } = useSelector(
     (state: RootState) => state.app.auth
   );
   const [status, setStatus] = useState<'stopped' | 'starting' | 'running' | 'error'>('stopped');
   const [port, setPort] = useState<number | null>(null);
+  const [tunnelUrl, setTunnelUrl] = useState<string | null>(_sharedTunnelUrl);
   const [error, setError] = useState<string | null>(null);
   const running = useRef(false);
 
@@ -53,6 +58,8 @@ export function usePersonalServer() {
       running.current = false;
       setStatus('stopped');
       setPort(null);
+      _sharedTunnelUrl = null;
+      setTunnelUrl(null);
     } catch (err) {
       console.error('[PersonalServer] Failed to stop:', err);
     }
@@ -74,6 +81,12 @@ export function usePersonalServer() {
       setError(event.payload.message);
     }).then((fn) => unlisteners.push(fn));
 
+    listen<{ url: string }>('personal-server-tunnel', (event) => {
+      console.log('[PersonalServer] Tunnel:', event.payload.url);
+      _sharedTunnelUrl = event.payload.url;
+      setTunnelUrl(event.payload.url);
+    }).then((fn) => unlisteners.push(fn));
+
     listen<{ message: string }>('personal-server-log', (event) => {
       console.log('[PersonalServer]', event.payload.message);
     }).then((fn) => unlisteners.push(fn));
@@ -90,5 +103,5 @@ export function usePersonalServer() {
     startServer(walletAddress);
   }, [walletAddress, startServer]);
 
-  return { status, port, error, startServer, stopServer };
+  return { status, port, tunnelUrl, error, startServer, stopServer };
 }

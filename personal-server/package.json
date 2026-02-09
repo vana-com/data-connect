@@ -26,9 +26,9 @@
     "outputPath": "dist"
   },
   "dependencies": {
-    "@opendatalabs/personal-server-ts-core": "canary",
-    "@opendatalabs/personal-server-ts-server": "canary",
     "@hono/node-server": "^1.13.7",
+    "@opendatalabs/personal-server-ts-core": "^0.0.1-canary.e647e76",
+    "@opendatalabs/personal-server-ts-server": "^0.0.1-canary.e647e76",
     "better-sqlite3": "^12.6.2"
   },
   "devDependencies": {

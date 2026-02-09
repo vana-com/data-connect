@@ -1,6 +1,8 @@
 import { useNavigate } from "react-router"
+import { open } from "@tauri-apps/plugin-shell"
 import {
   CheckCircleIcon,
+  ExternalLinkIcon,
   Loader2Icon,
   LogInIcon,
   ServerIcon,
@@ -107,6 +109,22 @@ export function PersonalServerCard({
                   ? personalServer.error || "Failed to start"
                   : "Stopped"}
           </Text>
+          {isRunning && personalServer.tunnelUrl && (
+            <button
+              type="button"
+              onClick={() => open(`${personalServer.tunnelUrl}/health`)}
+              className="mt-0.5 flex items-center gap-1 text-left"
+              title={`${personalServer.tunnelUrl}/health`}
+            >
+              <Text as="span" intent="fine" color="accent" className="hover:underline">
+                {personalServer.tunnelUrl.replace(
+                  /(0x[a-fA-F0-9]{6})[a-fA-F0-9]+([a-fA-F0-9]{6})/,
+                  "$1...$2"
+                )}/health
+              </Text>
+              <ExternalLinkIcon aria-hidden="true" className="size-3 shrink-0 text-accent" />
+            </button>
+          )}
         </div>
         {isRunning && (
           <CheckCircleIcon aria-hidden="true" className="size-5 text-success" />

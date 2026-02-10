@@ -1,54 +1,75 @@
-import { PlatformChatGPTIcon } from "./platform-chatgpt"
-import { PlatformInstagramGlyphIcon } from "./platform-instagram-glyph"
-import { PlatformLinkedinIcon } from "./platform-linkedin"
-import { PlatformSpotifyIcon } from "./platform-spotify"
+import type { ComponentProps } from "react"
+import { getPlatformIconComponentForName } from "@/lib/platform/icons"
+import { cn } from "@/lib/utils"
 
 /**
  * Shared platform icon utilities for displaying connector icons.
  * Used by Home.tsx and ConnectorUpdates.tsx.
  */
 
-function getPlatformIconComponent(platformName: string) {
-  const name = platformName.toLowerCase()
-  if (name.includes("chatgpt")) return PlatformChatGPTIcon
-  if (name.includes("instagram")) return PlatformInstagramGlyphIcon
-  if (name.includes("linkedin")) return PlatformLinkedinIcon
-  if (name.includes("spotify")) return PlatformSpotifyIcon
-  return null
+interface PlatformIconProps extends Omit<ComponentProps<"div">, "children"> {
+  iconName: string
+  size?: number
+  fallbackLabel?: string
+  fallbackScale?: number
+  ariaHidden?: boolean
 }
 
-interface PlatformIconProps {
-  /** Platform name to display icon for */
-  name: string
-  /** Icon size in pixels (default: 24) */
-  size?: number
-  className?: string
-}
+// Default 2px padding to ensure the icon is centered within the wrapper
+const iconWrapper = "flex items-center justify-center rounded-button p-1"
 
 /**
- * Platform icon component that displays a platform logo or first-letter fallback.
+ * Platform icon component
+ * Displays a platform logo or first-letter fallback
  */
-export function PlatformIcon({ name, size = 24, className }: PlatformIconProps) {
-  const Icon = getPlatformIconComponent(name)
+export function PlatformIcon({
+  iconName,
+  size = 32,
+  className,
+  fallbackLabel,
+  fallbackScale = 0.75,
+  ariaHidden,
+  "aria-hidden": ariaHiddenProp,
+  ...props
+}: PlatformIconProps) {
+  const Icon = getPlatformIconComponentForName(iconName)
+  const resolvedAriaHidden = ariaHidden ?? ariaHiddenProp ?? true
 
   if (Icon) {
     return (
-      <Icon
-        className={className}
-        style={{ width: `${size}px`, height: `${size}px` }}
-        aria-hidden
-      />
+      <div
+        className={cn(iconWrapper, className)}
+        aria-hidden={resolvedAriaHidden}
+        {...props}
+      >
+        <Icon style={{ width: `${size}px`, height: `${size}px` }} aria-hidden />
+      </div>
     )
   }
 
   // Fallback: show first letter
-  const fontSize = Math.round(size * 0.75)
+  const label = fallbackLabel?.trim() || iconName.charAt(0)
+  const fontSize = Math.round(size * fallbackScale)
   return (
-    <span
-      className={className}
-      style={{ fontSize: `${fontSize}px`, fontWeight: 600, color: "#6b7280" }}
+    <div
+      className={cn(
+        iconWrapper,
+        "text-background bg-foreground font-semi",
+        className
+      )}
+      aria-hidden={resolvedAriaHidden}
+      {...props}
     >
-      {name.charAt(0)}
-    </span>
+      <span
+        className={cn("flex items-center justify-center")}
+        style={{
+          fontSize: `${fontSize}px`,
+          width: `${size}px`,
+          height: `${size}px`,
+        }}
+      >
+        <span>{label}</span>
+      </span>
+    </div>
   )
 }

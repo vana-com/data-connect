@@ -1,18 +1,16 @@
-import { NavLink } from "react-router-dom"
+import { DcLogotype } from "@/components/icons/dc-logotype"
+import { IconMcp } from "@/components/icons/icon-mcp"
+import { ROUTES } from "@/config/routes"
+import { cn } from "@/lib/classes"
+import type { LucideIcon } from "lucide-react"
 import {
   BookOpenIcon,
   BoxIcon,
+  HomeIcon,
   // ActivityIcon,
   UserRoundCogIcon,
-  SettingsIcon,
-  HomeIcon,
 } from "lucide-react"
-// import { DcIcon } from "@/components/icons/dc-icon"
-import { DcLogotype } from "@/components/icons/dc-logotype"
-import { IconMcp } from "@/components/icons/icon-mcp"
-import { cn } from "@/lib/classes"
-import { ROUTES } from "@/config/routes"
-import type { LucideIcon } from "lucide-react"
+import { NavLink } from "react-router-dom"
 
 type NavItem = {
   to: string
@@ -46,73 +44,81 @@ const navItems: NavItem[] = [
   // },
   { to: ROUTES.docs, label: "Docs", Icon: BookOpenIcon },
   // { to: "/activity", label: "Activity", Icon: ActivityIcon },
-  { to: ROUTES.settings, label: "Settings", Icon: SettingsIcon },
-  { to: ROUTES.runs, label: "Account", Icon: UserRoundCogIcon },
+  { to: ROUTES.settings, label: "Settings", Icon: UserRoundCogIcon },
 ]
 
 export function TopNav() {
   return (
-    <header
-      data-tauri-drag-region
-      className={cn(
-        "h-[48px] px-inset",
-        "backdrop-blur-sm flex items-center justify-between",
-        // set the nav under the macOS traffic lights bar
-        "mt-[28px]"
-      )}
-    >
-      {/* Logo/Brand */}
-      <NavLink
-        to={ROUTES.home}
-        className="flex items-center gap-2"
-        aria-label="Data Connect"
+    <div className="relative z-20 w-full">
+      {/* spacer covering the dot pattern, sets the nav under the macOS traffic lights bar */}
+      <div className="h-[28px] bg-muted"></div>
+      <header
+        data-tauri-drag-region
+        className={cn(
+          "h-[48px] px-inset",
+          "backdrop-blur-sm flex items-center justify-between",
+          "border-t"
+        )}
       >
-        {/* <DcIcon height={16} aria-hidden /> */}
-        <DcLogotype height={13} aria-hidden />
-      </NavLink>
+        {/* Logo/Brand */}
+        <NavLink
+          to={ROUTES.home}
+          className="flex items-center gap-2"
+          aria-label="Data Connect"
+        >
+          {/* <DcIcon height={16} aria-hidden /> */}
+          <DcLogotype height={13} aria-hidden />
+        </NavLink>
 
-      {/* Navigation Icons */}
-      <nav className="flex items-center gap-[3px]">
-        {navItems.map(({ to, label, Icon, external }) => {
-          if (external) {
+        {/* Navigation Icons */}
+        <nav className="flex items-center gap-[3px]">
+          {navItems.map(({ to, label, Icon, external }) => {
+            if (external) {
+              return (
+                <a
+                  key={to}
+                  href={to}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  title={label}
+                  aria-label={label}
+                  className={cn(navItemBaseClasses, navItemInactiveClasses)}
+                >
+                  <Icon className={navIconClasses} aria-hidden />
+                  <span className="sr-only">{label}</span>
+                </a>
+              )
+            }
             return (
-              <a
+              <NavLink
                 key={to}
-                href={to}
-                target="_blank"
-                rel="noopener noreferrer"
+                to={to}
                 title={label}
                 aria-label={label}
-                className={cn(navItemBaseClasses, navItemInactiveClasses)}
+                className={({ isActive }) =>
+                  cn(
+                    navItemBaseClasses,
+                    isActive ? navItemActiveClasses : navItemInactiveClasses
+                  )
+                }
               >
-                <Icon className={navIconClasses} aria-hidden />
+                {Icon === IconMcp ? (
+                  <IconMcp boxSize="18px" aria-hidden />
+                ) : (
+                  <Icon className={navIconClasses} aria-hidden />
+                )}
                 <span className="sr-only">{label}</span>
-              </a>
+              </NavLink>
             )
-          }
-          return (
-            <NavLink
-              key={to}
-              to={to}
-              title={label}
-              aria-label={label}
-              className={({ isActive }) =>
-                cn(
-                  navItemBaseClasses,
-                  isActive ? navItemActiveClasses : navItemInactiveClasses
-                )
-              }
-            >
-              {Icon === IconMcp ? (
-                <IconMcp boxSize="18px" aria-hidden />
-              ) : (
-                <Icon className={navIconClasses} aria-hidden />
-              )}
-              <span className="sr-only">{label}</span>
-            </NavLink>
-          )
-        })}
-      </nav>
-    </header>
+          })}
+        </nav>
+      </header>
+
+      {/* Gradient fade below nav */}
+      <div
+        className="pointer-events-none absolute left-0 right-0 top-full h-20 bg-gradient-to-b from-muted to-transparent"
+        aria-hidden="true"
+      />
+    </div>
   )
 }

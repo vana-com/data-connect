@@ -19,6 +19,11 @@
   @apply max-w-desktop-width;
 }
 
+@utility action-outset {
+  /* extend action content blocks outside the container */
+  margin-inline: calc(var(--radius-squish) * -1);
+}
+
 /* These are iOS-specific (and take no effect in any other env). We set them here to @apply them in Tailwind classes for ease of application, eg. compose singularly in .viewport-wrapper */
 @utility safe-area-top {
   padding-top: env(safe-area-inset-top);
@@ -37,8 +42,8 @@
 }
 
 @utility safe-area-inset {
-  padding: env(safe-area-inset-top) env(safe-area-inset-right) env(safe-area-inset-bottom)
-    env(safe-area-inset-left);
+  padding: env(safe-area-inset-top) env(safe-area-inset-right)
+    env(safe-area-inset-bottom) env(safe-area-inset-left);
 }
 
 /* 
@@ -127,14 +132,30 @@
   .json-editor {
     /* JSON syntax highlighting would go here - for now just ensure monospace */
     font-family:
-      ui-monospace, SFMono-Regular, "SF Mono", Consolas, "Liberation Mono", Menlo,
-      monospace;
+      ui-monospace, SFMono-Regular, "SF Mono", Consolas, "Liberation Mono",
+      Menlo, monospace;
   }
 
   .markdown-editor {
     /* Markdown syntax highlighting would go here - for now just ensure monospace */
     font-family:
-      ui-monospace, SFMono-Regular, "SF Mono", Consolas, "Liberation Mono", Menlo,
-      monospace;
+      ui-monospace, SFMono-Regular, "SF Mono", Consolas, "Liberation Mono",
+      Menlo, monospace;
   }
 }
+
+/* Custom scrollbar */
+/* ::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+::-webkit-scrollbar-thumb {
+  background: #d1d5db;
+  border-radius: 3px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: #9ca3af;
+} */

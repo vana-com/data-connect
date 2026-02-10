@@ -1,8 +1,16 @@
-import { ArrowUpRight, Settings } from "lucide-react"
-import { ActionButton, ActionPanel } from "@/components/typography/action-button"
+import { Link } from "react-router-dom"
+import { sourceRowActionStyle } from "@/components/elements/source-row"
+import { PlatformIcon } from "@/components/icons/platform-icon"
+import { ActionPanel } from "@/components/typography/action-button"
+import { stateFocus } from "@/components/typography/field"
 import { Text } from "@/components/typography/text"
+import { buttonVariants } from "@/components/ui/button"
+import { DEV_FLAGS } from "@/config/dev-flags"
+import { ROUTES } from "@/config/routes"
 import { cn } from "@/lib/classes"
+import { getAppRegistryEntry } from "@/apps/registry"
 import type { ConnectedApp } from "@/types"
+import { ArrowUpRight, Settings } from "lucide-react"
 
 interface ConnectedAppsListProps {
   apps: ConnectedApp[]
@@ -20,80 +28,140 @@ function formatConnectedAt(value: string) {
   })
 }
 
-function AppIcon({ icon, name }: { icon?: string; name: string }) {
-  const label = icon?.trim() || name.charAt(0).toUpperCase()
-  return (
-    <div
-      className={cn(
-        // layout
-        "flex items-center justify-center",
-        // size & shape
-        "size-6 rounded-card",
-        // color
-        "bg-muted text-foreground"
-      )}
-    >
-      <span className="text-xs font-semibold">{label}</span>
-    </div>
-  )
+async function openExternalApp(url: string) {
+  try {
+    const { open } = await import("@tauri-apps/plugin-shell")
+    await open(url)
+    return true
+  } catch {
+    const popup = window.open(url, "_blank", "noopener,noreferrer")
+    return Boolean(popup)
+  }
+}
+
+function getConnectedAppUrl(app: ConnectedApp) {
+  // If VITE_USE_RICKROLL_MOCK=true, then every connected app opens the RickRoll mock.
+  if (DEV_FLAGS.useRickrollMock) {
+    return new URL(ROUTES.rickrollMockRoot, window.location.origin)
+  }
+  if (!DEV_FLAGS.useTestData) {
+    return null
+  }
+  // When using testConnectedApps, rickroll is the only in-app mock.
+  if (app.id === "rickroll") {
+    return new URL(ROUTES.rickrollMockRoot, window.location.origin)
+  }
+  const entry = getAppRegistryEntry(app.id)
+  // Otherwise, rely on the registry's externalUrl.
+  return entry?.status === "live"
+    ? new URL(entry.externalUrl, window.location.origin)
+    : null
 }
 
 const Header = () => {
   return (
-    <div className="flex items-center gap-2">
-      <Text as="h2" intent="body">
-        Apps using your data.&nbsp;
-        <Text
-          as="a"
-          color="mutedForeground"
-          className="link"
-          href="https://www.google.com/search?q=apps+using+your+data"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          Learn more.
-        </Text>
-      </Text>
-    </div>
+    <Text as="h2" weight="medium">
+      Apps using your data
+    </Text>
   )
 }
 
 export function ConnectedAppsList({ apps }: ConnectedAppsListProps) {
   if (apps.length === 0) {
     return (
-      <section className="space-y-4">
+      <section data-component="connected-apps-list" className="space-y-gap">
         <Header />
-        <ActionPanel>
-          <Text as="p" intent="small" color="mutedForeground">
-            No apps yet.
-          </Text>
-        </ActionPanel>
+        <div className="action-outset">
+          <ActionPanel>
+            <Text muted>No apps yet</Text>
+          </ActionPanel>
+        </div>
       </section>
     )
   }
 
   return (
-    <section className="space-y-4">
+    <section data-component="connected-apps-list" className="space-y-gap">
       <Header />
-      <div className="flex flex-col gap-3">
-        {apps.map(app => (
-          <ActionButton
-            key={app.id}
-            className={cn("items-start justify-between gap-4", "text-left")}
-          >
-            <div className="flex h-full flex-1 items-center gap-3">
-              <AppIcon icon={app.icon} name={app.name} />
-              <span>{app.name}</span>
+      <div className="flex flex-col gap-3 action-outset">
+        {apps.map(app => {
+          const appUrl = getConnectedAppUrl(app)
+          const handleOpenApp = appUrl
+            ? () => {
+                void openExternalApp(appUrl.toString())
+              }
+            : undefined
+
+          return (
+            <div
+              key={app.id}
+              className={cn(
+                // replication of ActionnButton with split click targets
+                buttonVariants({
+                  variant: "outline",
+                  size: "xl",
+                  fullWidth: true,
+                }),
+                "gap-0 items-stretch px-0"
+              )}
+            >
+              <button
+                type="button"
+                className={cn(
+                  "cursor-pointer",
+                  "flex h-full min-w-0 flex-1 items-center gap-3",
+                  "px-4 text-left",
+                  stateFocus
+                )}
+                onClick={handleOpenApp}
+              >
+                {/* Duplicated SourceRow LHS; RHS is different! */}
+                <PlatformIcon
+                  iconName={app.id}
+                  fallbackLabel={
+                    app.icon?.trim() || app.name.charAt(0).toUpperCase()
+                  }
+                />
+                <div className="flex items-baseline gap-2">
+                  {app.name}
+
+                  <Text as="span" intent="small" muted>
+                    {formatConnectedAt(app.connectedAt)}
+                  </Text>
+                </div>
+              </button>
+
+              <Link
+                to={ROUTES.settings}
+                className={cn(
+                  "flex h-full items-center justify-center px-3",
+                  stateFocus,
+                  "text-foreground/30 hover:text-foreground"
+                )}
+                aria-label="Account settings"
+              >
+                <Settings className="size-4.5" aria-hidden />
+              </Link>
+
+              <button
+                type="button"
+                className={cn(
+                  "cursor-pointer",
+                  "flex h-full items-center justify-center pl-0.5 pr-4",
+                  // "border-l border-ring/20 group-hover:border-ring",
+                  stateFocus
+                )}
+                onClick={handleOpenApp}
+                aria-label={`Open ${app.name}`}
+              >
+                <ArrowUpRight
+                  className={cn(sourceRowActionStyle, "size-7")}
+                  aria-hidden
+                />
+              </button>
             </div>
-            <div className="flex h-full items-center gap-3">
-              <Text as="span" intent="small" weight="medium" color="mutedForeground">
-                {formatConnectedAt(app.connectedAt)}
-              </Text>
-              <Settings className="size-4 text-muted-foreground" aria-hidden />
-              <ArrowUpRight className="size-5 text-muted-foreground" aria-hidden />
-            </div>
-          </ActionButton>
-        ))}
+          )
+        })}
       </div>
     </section>
   )

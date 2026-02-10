@@ -9,7 +9,13 @@ export interface GrantSession {
 
 export interface GrantFlowState {
   sessionId: string
-  status: "loading" | "auth-required" | "consent" | "signing" | "success" | "error"
+  status:
+    | "loading"
+    | "auth-required"
+    | "consent"
+    | "signing"
+    | "success"
+    | "error"
   error?: string
   session?: GrantSession
 }
@@ -20,4 +26,5 @@ export interface GrantFlowParams {
   sessionId?: string
   appId?: string
   scopes?: string[]
+  status?: "success"
 }

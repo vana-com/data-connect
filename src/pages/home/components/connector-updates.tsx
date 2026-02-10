@@ -142,8 +142,16 @@ const ConnectorUpdateItem = memo(function ConnectorUpdateItem({
   onDownload,
   isDownloading,
 }: ConnectorUpdateItemProps) {
-  const badgeVariant = update.isNew ? "new" : update.hasUpdate ? "update" : "current"
-  const badgeLabel = update.isNew ? "New" : update.hasUpdate ? "Update" : "Current"
+  const badgeVariant = update.isNew
+    ? "new"
+    : update.hasUpdate
+      ? "update"
+      : "current"
+  const badgeLabel = update.isNew
+    ? "New"
+    : update.hasUpdate
+      ? "Update"
+      : "Current"
   const versionLabel =
     update.isNew || !update.currentVersion
       ? `v${update.latestVersion}`
@@ -153,7 +161,7 @@ const ConnectorUpdateItem = memo(function ConnectorUpdateItem({
     <div className={updateItemClassName}>
       {/* Icon */}
       <div className={updateIconWrapperClassName}>
-        <PlatformIcon name={update.name} size={20} />
+        <PlatformIcon iconName={update.name} />
       </div>
 
       {/* Info */}
@@ -313,7 +321,11 @@ export function ConnectorUpdatesBadge({ onClick }: ConnectorUpdatesBadgeProps) {
   }
 
   return (
-    <button type="button" onClick={onClick} className={updatesBadgeButtonClassName}>
+    <button
+      type="button"
+      onClick={onClick}
+      className={updatesBadgeButtonClassName}
+    >
       {isCheckingUpdates ? (
         <>
           <Loader2Icon

@@ -1,35 +1,53 @@
 import { Link } from "react-router-dom"
-import { CheckCircleIcon } from "lucide-react"
+import { CheckIcon, UserRoundCogIcon } from "lucide-react"
+import { PlatformIcon } from "@/components/icons/platform-icon"
+import { ActionPanel } from "@/components/typography/action-button"
 import { Text } from "@/components/typography/text"
-import { Button } from "@/components/ui/button"
+import { getPrimaryDataSourceLabel } from "@/lib/scope-labels"
 
 interface GrantSuccessStateProps {
   appName?: string
-  declineHref: string
+  scopes?: string[]
 }
 
-export function GrantSuccessState({ appName, declineHref }: GrantSuccessStateProps) {
+export function GrantSuccessState({ appName, scopes }: GrantSuccessStateProps) {
+  const resolvedAppName = appName ?? "the app"
+  const dataSourceLabel = getPrimaryDataSourceLabel(scopes)
+  const dataLabel = dataSourceLabel ? `${dataSourceLabel} data` : "data"
+
   return (
-    <div className="grid min-h-screen place-items-center bg-muted p-6">
-      <div className="w-full max-w-[440px] rounded-card bg-background p-10 shadow-md">
-        <div className="flex flex-col items-center space-y-6 text-center">
-          <CheckCircleIcon aria-hidden="true" className="size-16 text-success" />
-          <div className="space-y-2">
-            <Text as="h1" intent="heading" weight="semi">
-              Access Granted
-            </Text>
-            <Text as="p" intent="body" color="mutedForeground">
-              You've successfully granted <strong>{appName || "the app"}</strong> access
-              to your data.
-            </Text>
-            <Text as="p" intent="small" color="mutedForeground">
-              You can manage this connection in Settings anytime.
-            </Text>
+    <div className="container py-w24">
+      <div className="space-y-w6">
+        <Text as="h1" intent="title" className="relative">
+          <div className="absolute left-[-1.3em] top-[0.05em]">
+            <CheckIcon
+              className="size-9 text-success"
+              aria-hidden="true"
+              strokeWidth={2.5}
+            />
           </div>
-          <Button asChild variant="accent">
-            <Link to={declineHref}>Done</Link>
-          </Button>
+          {resolvedAppName} has your {dataLabel}
+        </Text>
+
+        <Text as="p">
+          You can{" "}
+          <Text as={Link} to="/settings" link="default">
+            revoke this permission
+          </Text>{" "}
+          at any time.
+        </Text>
+
+        <div className="action-outset">
+          <ActionPanel className="gap-3 justify-start">
+            <PlatformIcon iconName={appName ?? "App"} />
+            Return to {resolvedAppName} to continue
+          </ActionPanel>
         </div>
+
+        <Text as={Link} to="/settings" dim withIcon link="default">
+          <UserRoundCogIcon aria-hidden="true" className="size-[1.1em]" />
+          Manage your account
+        </Text>
       </div>
     </div>
   )

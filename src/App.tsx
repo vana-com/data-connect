@@ -11,6 +11,7 @@ import { BrowserLogin } from "./pages/browser-login"
 import { useDeepLink } from "./hooks/use-deep-link"
 import { usePersonalServer } from "./hooks/usePersonalServer"
 import { ROUTES } from "@/config/routes"
+import { dotPatternStyle } from "@/components/elements/dot-pattern"
 
 // Lazy-loaded pages for reduced initial bundle size
 const Home = lazy(() => import("./pages/home").then(m => ({ default: m.Home })))
@@ -19,12 +20,45 @@ const DataApps = lazy(() =>
 )
 const Mcp = lazy(() => import("./pages/mcp").then(m => ({ default: m.Mcp })))
 const Docs = lazy(() => import("./pages/docs").then(m => ({ default: m.Docs })))
-const AppPage = lazy(() => import("./pages/app-page").then(m => ({ default: m.AppPage })))
 const Runs = lazy(() => import("./pages/runs").then(m => ({ default: m.Runs })))
+const SourceOverview = lazy(() =>
+  import("./pages/source").then(m => ({ default: m.SourceOverview }))
+)
 const Settings = lazy(() =>
   import("./pages/settings").then(m => ({ default: m.Settings }))
 )
-const Grant = lazy(() => import("./pages/grant").then(m => ({ default: m.Grant })))
+const Grant = lazy(() =>
+  import("./pages/grant").then(m => ({ default: m.Grant }))
+)
+const Connect = lazy(() =>
+  import("./pages/connect").then(m => ({ default: m.Connect }))
+)
+const RickrollMockRoot = lazy(() =>
+  import("./pages/mock-apps/rickroll").then(m => ({
+    default: m.RickrollMockRoot,
+  }))
+)
+const RickrollMockSignIn = lazy(() =>
+  import("./pages/mock-apps/rickroll/signin").then(m => ({
+    default: m.RickrollMockSignIn,
+  }))
+)
+// Demo flow (throwaway — for video recording)
+const DemoIndex = lazy(() =>
+  import("./pages/demo").then(m => ({ default: m.DemoIndex }))
+)
+const DemoConnect = lazy(() =>
+  import("./pages/demo/demo-connect").then(m => ({ default: m.DemoConnect }))
+)
+const DemoAuth = lazy(() =>
+  import("./pages/demo/demo-auth").then(m => ({ default: m.DemoAuth }))
+)
+const DemoConsent = lazy(() =>
+  import("./pages/demo/demo-consent").then(m => ({ default: m.DemoConsent }))
+)
+const DemoSuccess = lazy(() =>
+  import("./pages/demo/demo-success").then(m => ({ default: m.DemoSuccess }))
+)
 
 function AppContent() {
   useEvents()
@@ -43,11 +77,12 @@ function AppContent() {
             <Routes>
               <Route path={ROUTES.home} element={<Home />} />
               <Route path={ROUTES.apps} element={<DataApps />} />
-              <Route path={ROUTES.appRoute} element={<AppPage />} />
               <Route path={ROUTES.mcp} element={<Mcp />} />
               <Route path={ROUTES.docs} element={<Docs />} />
               <Route path={ROUTES.runs} element={<Runs />} />
+              <Route path={ROUTES.source} element={<SourceOverview />} />
               <Route path={ROUTES.settings} element={<Settings />} />
+              <Route path={ROUTES.connect} element={<Connect />} />
               <Route path={ROUTES.grant} element={<Grant />} />
               <Route path={ROUTES.login} element={<InlineLogin />} />
             </Routes>
@@ -74,12 +109,30 @@ function App() {
   return (
     <Provider store={store}>
       <PrivyProvider>
-        <BrowserRouter>
-          <Routes>
-            <Route path={ROUTES.browserLogin} element={<BrowserLogin />} />
-            <Route path="/*" element={<AppRouter />} />
-          </Routes>
-        </BrowserRouter>
+        <div style={dotPatternStyle} className="min-h-screen">
+          <BrowserRouter>
+            <Suspense fallback={<div className="p-8">Loading...</div>}>
+              <Routes>
+                <Route path={ROUTES.browserLogin} element={<BrowserLogin />} />
+                <Route
+                  path={ROUTES.rickrollMockRoot}
+                  element={<RickrollMockRoot />}
+                />
+                <Route
+                  path={ROUTES.rickrollMockSignIn}
+                  element={<RickrollMockSignIn />}
+                />
+                {/* Demo flow (throwaway — for video recording) */}
+                <Route path={ROUTES.demo} element={<DemoIndex />} />
+                <Route path={ROUTES.demoConnect} element={<DemoConnect />} />
+                <Route path={ROUTES.demoAuth} element={<DemoAuth />} />
+                <Route path={ROUTES.demoConsent} element={<DemoConsent />} />
+                <Route path={ROUTES.demoSuccess} element={<DemoSuccess />} />
+                <Route path="/*" element={<AppRouter />} />
+              </Routes>
+            </Suspense>
+          </BrowserRouter>
+        </div>
       </PrivyProvider>
     </Provider>
   )

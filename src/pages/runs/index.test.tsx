@@ -14,6 +14,7 @@ vi.mock("react-router", async () => {
 
 vi.mock("./use-runs-page", () => ({
   useRunsPage: () => ({
+    activeRuns: [],
     finishedRuns: [],
     stopExport: vi.fn(),
     isAuthenticated: false,

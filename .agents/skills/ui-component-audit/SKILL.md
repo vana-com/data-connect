@@ -20,16 +20,25 @@ Use this skill to audit or refactor React components to align with:
 3. List violations by file with terse bullets.
 4. If asked to fix, apply minimal diff.
 
+## Primary principle
+
+**Read the component source, understand its API, then apply it correctly.**
+Before using any project component (`Text`, `Button`, etc.), read its source
+to learn its props, variants, and default values. Do not hard-code assumptions
+about component internals — verify them. Do not pass props that match defaults.
+
 ## UI Implementation Rules (must enforce)
 
-- All text uses `Text` (`src/components/typography/text.tsx`), except button labels inside `Button`.
+- All user-visible text should use `Text` (`src/components/typography/text.tsx`) where appropriate. Exceptions include button labels inside `Button`, form labels, and aria-only content. When unsure, read the `Text` source to check if it fits.
 - Buttons must use `Button`; do not add custom focus rings.
-- Use `intent` to express the type size/role (e.g. `title`, `heading`, `body`, `subtitle`, `eyebrow`).
+- `Text` uses `intent` for type size/role (e.g. `title`, `heading`, `subtitle`, `eyebrow`). Read the component source to check default prop values and do not pass props that match the default (e.g. if `intent` defaults to `"body"`, omit it for body text).
 - Use `as` to keep semantic HTML (`h1`, `p`, `li`, etc.).
+- Prefer `muted`/`dim` boolean props on `Text` for muted/dim copy; avoid verbose `color="mutedForeground"` unless a specific semantic color token is required.
+- `Text` has props for icon layout (`withIcon`) and link styling (`link`). Read the component source to understand how they work before using them — do not guess at prop values or manually replicate behavior the component already handles.
 - For links, use `Text as="a"` and pass link props (`href`, `target`, `rel`) directly; do not wrap `Text` in an `<a>`.
-- Do not set `weight` unless the UI markup explicitly specifies it.
+- Do not set `weight` unless the Figma design explicitly shows non-normal weight. Models tend to over-apply `font-medium` and `font-bold` — normal weight is almost always correct.
 - No inline styles; use Tailwind classes + tokens.
-- Use `cn` only when class names are dynamic, need conditional logic, or when grouping many classes (per Tailwind sort rule). For short static classes, use a string literal `className="..."`.
+- **Do not introduce `cn` as a formatting tool.** Use `cn` only when class names are dynamic or need conditional logic. For static classes (even 5-7 of them), prefer a plain string literal `className="..."`. Only group into `cn(...)` arrays when the element has 8+ classes (per Tailwind sort rule) or when classes are extracted into a reusable constant.
 - Use tokenized colors (`text-foreground`, `bg-muted`, etc.), not hex.
 - No raw colors anywhere outside `src/styles/vars.css` (no hex/rgb/hsl/oklch in components or CSS).
 - No palette classes like `text-gray-*`, `bg-slate-*`, etc. Use tokens only.
@@ -49,24 +58,24 @@ Use this skill to audit or refactor React components to align with:
 - When introducing new theme tokens (spacing, text, color, radius), update the custom Tailwind merge in `src/lib/classes.ts` so `cn` handles them correctly.
 - Lucide stroke width is globally set to `1.5` via `.lucide` in `src/styles/index.css`.
 
-## React + Composition Rules (apply where relevant)
+## React + Composition Rules
 
-- Avoid barrel imports for bundle size (import direct paths).
-- Extract repeated UI variants into explicit components/variants.
-- Memoize heavy list items (`React.memo`) when parent re-renders.
-- Avoid inline `<style>` in render; use classes.
-- Use reduced-motion friendly animations (`motion-reduce:animate-none`).
+For React architecture, composition patterns, and performance (memoization,
+barrel imports, etc.), defer to the **vercel-react-best-practices** and
+**vercel-composition-patterns** skills when available. This skill focuses on
+UI implementation correctness, not general React guidance.
 
 ## Fix Workflow (when asked to refactor)
 
 1. Convert inline styles → Tailwind classes + tokens.
 2. Replace raw text nodes with `Text` (skip button labels inside `Button`).
 3. Convert raw `<button>` to `Button` and drop custom focus rings.
-4. Rename file to kebab-case and update imports if needed.
+4. If a file is not kebab-case, flag it and suggest the new name — do not rename automatically. Wait for confirmation before renaming and updating imports.
 5. Enforce icon suffix and direct imports.
-6. Add `type="button"` to non-submit buttons.
-7. Verify null-safe rendering for optional fields.
-8. Run lints for touched files.
+6. For icon + text rows, use `Text` with `withIcon`; remove manual layout classes where possible.
+7. Add `type="button"` to non-submit buttons.
+8. Verify null-safe rendering for optional fields.
+9. Run lints for touched files.
 
 ## Output Format
 

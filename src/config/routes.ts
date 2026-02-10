@@ -1,15 +1,23 @@
 export const ROUTES = {
   home: "/",
   apps: "/apps",
-  appRoute: "/apps/:appId",
-  app: (appId: string) => `/apps/${appId}` as const,
   mcp: "/mcp",
   docs: "/docs",
   runs: "/runs",
+  source: "/sources/:platformId",
   settings: "/settings",
+  connect: "/connect",
   grant: "/grant",
   login: "/login",
   browserLogin: "/browser-login",
+  rickrollMockRoot: "/rickroll",
+  rickrollMockSignIn: "/rickroll/signin",
+  // Demo flow (throwaway — for video recording)
+  demo: "/demo",
+  demoConnect: "/demo/connect",
+  demoAuth: "/demo/auth",
+  demoConsent: "/demo/consent",
+  demoSuccess: "/demo/success",
 } as const
 
-export type StaticRoute = (typeof ROUTES)[Exclude<keyof typeof ROUTES, "app">]
+export type StaticRoute = keyof typeof ROUTES

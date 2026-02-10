@@ -9,27 +9,33 @@
 ### Files
 
 - `index.tsx`: page shell, filters apps by status, renders sections and call-to-action.
-- `types.ts`: `MockApp` interface with status union type.
-- `fixtures.ts`: mock data array with 7 sample apps.
+- `src/apps/registry.ts`: app registry with catalog + grant metadata.
 - `components/AppCard.tsx`: card component displaying app details with conditional styling.
 
 ### Data flow
 
-- `index.tsx` imports `mockApps` from fixtures and filters into `liveApps` and `comingSoonApps`.
-- `AppCard` receives a `MockApp` prop and renders status-aware UI (disabled button for coming-soon).
-- Live apps navigate to `/apps/{appId}` on click.
+- `index.tsx` reads from the app registry and renders all entries.
+- `AppCard` receives an app registry entry and renders status-aware UI (disabled button for coming-soon).
+- Live apps open an external URL in the browser (Tauri shell open or `window.open`).
 
 ### App integration
 
 - Route: `/apps` is lazy-loaded in `src/App.tsx`.
-- Navigation: `AppCard` uses `useNavigate` for routing to individual app pages.
+- Navigation: `AppCard` opens external URLs; there is no `/apps/:appId`.
 
 ### Behavior
 
 - Apps are displayed in a responsive grid (2-3 columns).
 - Coming-soon apps show a disabled "Connect" button and reduced opacity.
-- Live apps show an "Open App" button that navigates to the app page.
+- Live apps show an "Open App" button that opens the external app URL.
 - Call-to-action section links to Vana documentation for developers.
+
+### Mock system (dev)
+
+- RickRoll is the only mock external app (`/rickroll`).
+- `VITE_USE_RICKROLL_MOCK=true` forces **all** app cards to open the RickRoll mock.
+- Otherwise, live apps must define `externalUrl` in the app registry.
+- Missing `externalUrl` throws on click to enforce external URLs.
 
 ### Notes
 

@@ -1,13 +1,29 @@
 ---
 name: tailwind-sort
-description: Sort Tailwind classes for legibility. Use when a JSX element or cva has more
-  than five Tailwind classes.
+description:
+  Sort Tailwind classes for legibility. Use when a JSX element or cva has more
+  than eight Tailwind classes, or when classes are extracted into a reusable constant/array.
 ---
 
 # Sort Tailwind classes on a JSX element or a CVA object
 
-**Only group/sort when there are 5+ Tailwind class names.** For 1-4 classes,
-leave them as-is on a single line without grouping or comments.
+## When to group
+
+**Inline `className`:** Only group/sort when there are **8+ Tailwind class
+names** on a single element. For 1-7 classes, leave them as a plain string
+(`className="..."`) — do not wrap in `cn(...)` just for formatting.
+
+**Extracted constants / reusable arrays:** When classes are pulled into a
+named variable (e.g. `const navItemBaseClasses = [...]`) or a `cva` base,
+grouping with comments is appropriate at any length because the variable
+exists specifically to document a shared style contract.
+
+**`cn` is not a formatting tool.** Only use `cn(...)` when you need
+conditional/dynamic class merging, or when an element genuinely has 8+
+static classes that benefit from grouping. A short static `className` string
+is always preferred over a `cn(...)` call with no conditions.
+
+## Group labels
 
 **Group labels are allowed when they materially improve readability.**
 As a rule of thumb:
@@ -15,9 +31,6 @@ As a rule of thumb:
 - 1 group: no labels.
 - 2-3 groups: labels are allowed if they clarify intent.
 - 4+ groups: labels are recommended.
-
-To make styles legible, please sort the classes on a JSX element or within a
-`cva` definition by using `cn` as shown below.
 
 Remember: only label groups if there are more than 3 groups.
 

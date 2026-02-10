@@ -5,6 +5,7 @@
 - Authentication page for the embedded browser during connector runs.
 - Supports Google OAuth and email code verification via Privy.
 - Communicates authentication result back to the Tauri app via callback port.
+- For the full rationale and flow tradeoffs, see `docs/_archive/spike-privy-auth-architecture.md`.
 
 ### Files
 

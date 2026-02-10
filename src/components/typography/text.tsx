@@ -3,7 +3,8 @@ import type { ComponentPropsWithoutRef, ElementType, ReactNode } from "react"
 import type { VariantProps } from "class-variance-authority"
 import { cva } from "class-variance-authority"
 
-const eyebrowStyle = "subpixel-antialiased uppercase leading-none tracking-[0.05em]"
+const eyebrowStyle =
+  "subpixel-antialiased uppercase leading-none tracking-[0.05em]"
 
 export const textVariants = cva(
   [
@@ -75,7 +76,7 @@ export const textVariants = cva(
         true: "text-foreground-dim",
       },
       muted: {
-        true: "text-muted-foreground",
+        true: "text-foreground-muted",
       },
       caps: {
         true: "uppercase",
@@ -136,6 +137,11 @@ export const textVariants = cva(
       },
       {
         withIcon: true,
+        intent: ["button"],
+        className: "gap-2",
+      },
+      {
+        withIcon: true,
         intent: ["pill", "fine"],
         className: "gap-1",
       },
@@ -157,7 +163,9 @@ export const textVariants = cva(
 type TextIntent = NonNullable<VariantProps<typeof textVariants>["intent"]>
 const displayIntents = new Set<TextIntent>(["title", "display", "hero"])
 
-export type TextProps<T extends ElementType = "div"> = VariantProps<typeof textVariants> &
+export type TextProps<T extends ElementType = "div"> = VariantProps<
+  typeof textVariants
+> &
   Omit<ComponentPropsWithoutRef<T>, "color"> & {
     as?: T
     children: ReactNode
@@ -178,6 +186,7 @@ export const Text = <T extends ElementType = "div">({
   truncate,
   bullet,
   pre,
+  link,
   dim,
   muted,
   withIcon,
@@ -210,6 +219,7 @@ export const Text = <T extends ElementType = "div">({
           truncate,
           pre: preProp,
           bullet: bulletProp,
+          link,
           withIcon,
           dim,
           muted,

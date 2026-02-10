@@ -1,13 +1,48 @@
 import { LockIcon, ClockIcon } from "lucide-react"
-import { useNavigate } from "react-router"
 import { Text } from "@/components/typography/text"
 import { Button } from "@/components/ui/button"
 import { cn } from "@/lib/classes"
 import { ROUTES } from "@/config/routes"
-import type { MockApp } from "../types"
+import type { AppRegistryEntry } from "@/apps/registry"
+import { buildGrantSearchParams } from "@/lib/grant-params"
+import { DEV_FLAGS } from "@/config/dev-flags"
 
-export function AppCard({ app }: { app: MockApp }) {
-  const navigate = useNavigate()
+async function openExternalApp(url: string) {
+  try {
+    const { open } = await import("@tauri-apps/plugin-shell")
+    await open(url)
+    return true
+  } catch {
+    const popup = window.open(url, "_blank", "noopener,noreferrer")
+    return Boolean(popup)
+  }
+}
+
+export function AppCard({ app }: { app: AppRegistryEntry }) {
+  // TODO: Design expects opening the app in the user's browser, then deep-linking back to
+  // `/connect?sessionId&appId&scopes`. Current behavior opens the in-app route.
+  const handleOpenApp = () => {
+    const sessionId = `grant-session-${Date.now()}`
+    const searchParams = buildGrantSearchParams({
+      sessionId,
+      appId: app.id,
+      scopes: app.scopes,
+    })
+    // Mock routing is explicit and opt-in to avoid internal app mental models.
+    const appUrl = DEV_FLAGS.useRickrollMock
+      ? new URL(ROUTES.rickrollMockRoot, window.location.origin)
+      : app.externalUrl
+        ? new URL(app.externalUrl, window.location.origin)
+        : null
+    if (!appUrl) {
+      throw new Error(`Missing externalUrl for app "${app.id}".`)
+    }
+    const search = searchParams.toString()
+    if (search) {
+      appUrl.search = search
+    }
+    void openExternalApp(appUrl.toString())
+  }
 
   return (
     <div
@@ -56,7 +91,10 @@ export function AppCard({ app }: { app: MockApp }) {
 
       <div className="mt-4 space-y-3 border-t border-border pt-4">
         <div className="flex items-center gap-2">
-          <LockIcon aria-hidden="true" className="size-4 text-muted-foreground" />
+          <LockIcon
+            aria-hidden="true"
+            className="size-4 text-muted-foreground"
+          />
           <Text as="span" intent="fine" weight="medium" color="mutedForeground">
             Data required:
           </Text>
@@ -77,7 +115,13 @@ export function AppCard({ app }: { app: MockApp }) {
       </div>
 
       {app.status === "coming-soon" ? (
-        <Button type="button" variant="outline" fullWidth className="mt-4" disabled>
+        <Button
+          type="button"
+          variant="outline"
+          fullWidth
+          className="mt-4"
+          disabled
+        >
           Connect
         </Button>
       ) : (
@@ -86,7 +130,7 @@ export function AppCard({ app }: { app: MockApp }) {
           variant="default"
           fullWidth
           className="mt-4"
-          onClick={() => navigate(ROUTES.app(app.id))}
+          onClick={handleOpenApp}
         >
           Open App
         </Button>

@@ -2,13 +2,18 @@ export type GrantParams = {
   sessionId?: string
   appId?: string
   scopes?: string[]
+  status?: GrantStatusParam
 }
+
+export type GrantStatusParam = "success"
 
 function isValidScopes(value: unknown): value is string[] {
   return Array.isArray(value) && value.every(item => typeof item === "string")
 }
 
-export function parseScopesParam(scopesParam: string | null): string[] | undefined {
+export function parseScopesParam(
+  scopesParam: string | null
+): string[] | undefined {
   if (!scopesParam) return undefined
 
   try {
@@ -44,11 +49,14 @@ export function getGrantParamsFromSearchParams(
   const sessionId = searchParams.get("sessionId") || undefined
   const appId = searchParams.get("appId") || undefined
   const scopes = parseScopesParam(searchParams.get("scopes"))
+  const status =
+    searchParams.get("status") === "success" ? ("success" as const) : undefined
 
   return {
     sessionId,
     appId,
     scopes,
+    status,
   }
 }
 
@@ -65,6 +73,10 @@ export function buildGrantSearchParams(params: GrantParams): URLSearchParams {
 
   if (params.scopes && params.scopes.length > 0) {
     searchParams.set("scopes", JSON.stringify(params.scopes))
+  }
+
+  if (params.status) {
+    searchParams.set("status", params.status)
   }
 
   return searchParams

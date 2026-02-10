@@ -1,6 +1,8 @@
 import type { ConnectedApp, Platform } from "@/types"
+import { DEV_FLAGS } from "@/config/dev-flags"
 
-export const USE_TEST_DATA = true
+// Controlled via VITE_USE_TEST_DATA.
+export const USE_TEST_DATA = DEV_FLAGS.useTestData
 
 export const testPlatforms: Platform[] = [
   {
@@ -83,6 +85,7 @@ export const testConnectedPlatforms: Platform[] = [
   },
 ]
 
+// If VITE_USE_TEST_DATA=true, then Connected Apps list uses testConnectedApps
 export const testConnectedApps: ConnectedApp[] = [
   {
     id: "rickroll",

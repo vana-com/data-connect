@@ -1,114 +1,123 @@
+import { useMemo } from "react"
+import { LoaderIcon } from "lucide-react"
+import { ActionButton } from "@/components/typography/action-button"
+import { EyebrowBadge } from "@/components/typography/eyebrow-badge"
 import { Text } from "@/components/typography/text"
-import { ConnectSourceCard, type ConnectSourceCardVariant } from "@/components/connect-source-card"
-import { PlatformChatGPTIcon } from "@/components/icons/platform-chatgpt"
-import { PlatformInstagramGlyphIcon } from "@/components/icons/platform-instagram-glyph"
-import { PlatformLinkedinIcon } from "@/components/icons/platform-linkedin"
-import { PlatformSpotifyIcon } from "@/components/icons/platform-spotify"
-import type { Platform } from "@/types"
+import { SourceStack } from "@/components/elements/source-row"
+import { cn } from "@/lib/classes"
+import type { Platform, Run } from "@/types"
+import {
+  getConnectSourceEntries,
+  getConnectSourceState,
+  resolvePlatformForEntry,
+} from "@/lib/platform/utils"
+import { getPlatformPrimaryColor } from "@/lib/platform/ui"
 
 interface AvailableSourcesListProps {
   platforms: Platform[]
+  runs: Run[]
   onExport: (platform: Platform) => void
 }
 
 export function AvailableSourcesList({
   platforms,
+  runs,
   onExport,
 }: AvailableSourcesListProps) {
-  const instagramPlatform = platforms.find(
-    platform =>
-      platform.id === "instagram" ||
-      platform.name.toLowerCase().includes("instagram") ||
-      platform.company.toLowerCase().includes("instagram")
+  const connectEntries = getConnectSourceEntries()
+  const connectingPlatformIds = useMemo(
+    () =>
+      new Set(
+        runs.filter(run => run.status === "running").map(run => run.platformId)
+      ),
+    [runs]
   )
-  const isInstagramAvailable = Boolean(instagramPlatform)
-
-  const linkedinPlatform = platforms.find(
-    platform =>
-      platform.id === "linkedin-playwright" ||
-      platform.id === "linkedin" ||
-      platform.name.toLowerCase().includes("linkedin") ||
-      platform.company.toLowerCase().includes("linkedin")
-  )
-  const isLinkedinAvailable = Boolean(linkedinPlatform)
-
-  const chatgptPlatform = platforms.find(
-    platform =>
-      platform.id === "chatgpt-playwright" ||
-      platform.id === "chatgpt" ||
-      platform.name.toLowerCase().includes("chatgpt") ||
-      platform.company.toLowerCase().includes("openai")
-  )
-  const isChatGPTAvailable = Boolean(chatgptPlatform)
-
-  const spotifyPlatform = platforms.find(
-    platform =>
-      platform.id === "spotify-playwright" ||
-      platform.id === "spotify" ||
-      platform.name.toLowerCase().includes("spotify") ||
-      platform.company.toLowerCase().includes("spotify")
-  )
-  const isSpotifyAvailable = Boolean(spotifyPlatform)
 
   return (
-    <section className="space-y-4">
-      <Text as="h2" intent="body">
-        Connect sources (more coming soon)
+    <section className="space-y-gap">
+      <Text as="h2" weight="medium">
+        Connect sources
       </Text>
-      <div className="grid grid-cols-2 gap-4">
-        {([
-          {
-            label: "Connect Instagram",
-            Icon: PlatformInstagramGlyphIcon,
-            state: (isInstagramAvailable ? "available" : "comingSoon") as ConnectSourceCardVariant,
-            onClick:
-              isInstagramAvailable && instagramPlatform
-                ? () => onExport(instagramPlatform)
-                : undefined,
-          },
-          {
-            label: "Connect LinkedIn",
-            Icon: PlatformLinkedinIcon,
-            state: (isLinkedinAvailable ? "available" : "comingSoon") as ConnectSourceCardVariant,
-            onClick:
-              isLinkedinAvailable && linkedinPlatform
-                ? () => onExport(linkedinPlatform)
-                : undefined,
-          },
-          {
-            label: "Connect Spotify",
-            Icon: PlatformSpotifyIcon,
-            state: (isSpotifyAvailable ? "available" : "comingSoon") as ConnectSourceCardVariant,
-            onClick:
-              isSpotifyAvailable && spotifyPlatform
-                ? () => onExport(spotifyPlatform)
-                : undefined,
-          },
-          {
-            label: "Connect ChatGPT",
-            Icon: PlatformChatGPTIcon,
-            state: (isChatGPTAvailable ? "available" : "comingSoon") as ConnectSourceCardVariant,
-            onClick:
-              isChatGPTAvailable && chatgptPlatform
-                ? () => onExport(chatgptPlatform)
-                : undefined,
-          },
-        ])
+      <div className="grid grid-cols-2 gap-2 action-outset">
+        {connectEntries
+          .map(entry => {
+            const platform = resolvePlatformForEntry(platforms, entry)
+            const state = getConnectSourceState(entry, platform)
+            return {
+              iconName: entry.displayName,
+              label: `Connect ${entry.displayName}`,
+              stackPrimaryColor: getPlatformPrimaryColor(entry),
+              isAvailable: state === "available",
+              isConnecting: platform
+                ? connectingPlatformIds.has(platform.id)
+                : false,
+              onClick:
+                state === "available" && platform
+                  ? () => onExport(platform)
+                  : undefined,
+            }
+          })
           .map((card, index) => ({
             ...card,
             index,
-            priority: card.state === "available" ? 0 : 1,
+            priority: card.isAvailable ? 0 : 1,
           }))
           .sort((a, b) => a.priority - b.priority || a.index - b.index)
-          .map(({ label, Icon, state, onClick }) => (
-            <ConnectSourceCard
-              key={label}
-              label={label}
-              Icon={Icon}
-              state={state}
-              onClick={onClick}
-            />
-          ))}
+          .map(
+            ({
+              iconName,
+              label,
+              stackPrimaryColor,
+              isAvailable,
+              isConnecting,
+              onClick,
+            }) => (
+              <ActionButton
+                key={label}
+                onClick={onClick}
+                disabled={!isAvailable || isConnecting}
+                size="xl"
+                className={cn(
+                  "relative h-auto overflow-hidden p-0 disabled:opacity-100"
+                )}
+                aria-busy={isConnecting}
+              >
+                <SourceStack
+                  iconName={iconName}
+                  label={label}
+                  stackPrimaryColor={stackPrimaryColor}
+                  showArrow={isAvailable}
+                  trailingSlot={
+                    isAvailable ? null : (
+                      <EyebrowBadge
+                        variant="outline"
+                        className="text-foreground-muted"
+                      >
+                        soon
+                      </EyebrowBadge>
+                    )
+                  }
+                  labelColor={isAvailable ? "foreground" : "mutedForeground"}
+                />
+                {isConnecting ? (
+                  <div
+                    className={cn(
+                      "absolute inset-0 flex items-center justify-center",
+                      "bg-background/70"
+                    )}
+                  >
+                    <span className="flex items-center gap-2 text-sm font-medium text-foreground">
+                      <LoaderIcon
+                        className="size-4 animate-spin motion-reduce:animate-none"
+                        aria-hidden="true"
+                      />
+                      Opening browser…
+                    </span>
+                  </div>
+                ) : null}
+              </ActionButton>
+            )
+          )}
       </div>
     </section>
   )

@@ -15,8 +15,8 @@ function authHtmlPlaceholders(): Plugin {
       order: "pre",
       handler(html) {
         return html
-          .replace("%PRIVY_APP_ID%", process.env.VITE_PRIVY_APP_ID ?? "")
-          .replace("%PRIVY_CLIENT_ID%", process.env.VITE_PRIVY_CLIENT_ID ?? "")
+          .replace("%PRIVY_APP_ID%", process.env.VITE_PRIVY_APP_ID || "%PRIVY_APP_ID%")
+          .replace("%PRIVY_CLIENT_ID%", process.env.VITE_PRIVY_CLIENT_ID || "%PRIVY_CLIENT_ID%")
       },
     },
   }

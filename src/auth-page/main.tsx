@@ -1,3 +1,6 @@
+import { Buffer } from "buffer"
+;(globalThis as Record<string, unknown>).Buffer = Buffer
+
 import React from "react"
 import { createRoot } from "react-dom/client"
 import { App } from "./App"

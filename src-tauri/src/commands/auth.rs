@@ -110,7 +110,7 @@ pub async fn start_browser_auth(
                                         .replace("%PRIVY_APP_ID%", &privy_app_id_clone)
                                         .replace("%PRIVY_CLIENT_ID%", &privy_client_id_clone);
                                     let response = format!(
-                                        "HTTP/1.1 200 OK\r\nContent-Type: text/html; charset=utf-8\r\nContent-Length: {}\r\n\r\n{}",
+                                        "HTTP/1.1 200 OK\r\nContent-Type: text/html; charset=utf-8\r\nCache-Control: no-store\r\nContent-Length: {}\r\n\r\n{}",
                                         resolved_html.len(),
                                         resolved_html
                                     );
@@ -137,7 +137,7 @@ pub async fn start_browser_auth(
                                     let mime =
                                         mime_guess::from_path(&asset_path).first_or_octet_stream();
                                     let header = format!(
-                                        "HTTP/1.1 200 OK\r\nContent-Type: {}\r\nContent-Length: {}\r\n\r\n",
+                                        "HTTP/1.1 200 OK\r\nContent-Type: {}\r\nCache-Control: no-store\r\nContent-Length: {}\r\n\r\n",
                                         mime,
                                         bytes.len()
                                     );

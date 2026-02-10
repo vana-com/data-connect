@@ -125,6 +125,7 @@ export const useAuthPage = (): UseAuthPageState => {
   const privyRef = useRef<PrivyClient | null>(null)
   const currentEmailRef = useRef("")
   const walletIframeRef = useRef<HTMLIFrameElement>(null)
+  const messageHandlerInstalledRef = useRef(false)
 
   const setWalletMessagePoster = useCallback(
     (privy: PrivyClient | null) => {
@@ -207,14 +208,6 @@ export const useAuthPage = (): UseAuthPageState => {
     async (privy: PrivyClient) => {
       try {
         console.log("[AUTH] setupWalletIframe: starting...")
-        console.log(
-          "[AUTH] privy.embeddedWallet methods:",
-          Object.keys(privy.embeddedWallet || {})
-        )
-        console.log(
-          "[AUTH] privy methods:",
-          Object.getOwnPropertyNames(Object.getPrototypeOf(privy))
-        )
 
         const iframeUrl = privy.embeddedWallet.getURL()
         console.log("[AUTH] iframe URL:", iframeUrl)
@@ -239,6 +232,26 @@ export const useAuthPage = (): UseAuthPageState => {
             if (!iframe) {
               requestAnimationFrame(attachListeners)
               return
+            }
+
+            // Install a single message forwarder synchronously so it's
+            // ready before getProvider() is called. React useEffect runs
+            // after commit and may miss early messages from the iframe.
+            if (!messageHandlerInstalledRef.current) {
+              messageHandlerInstalledRef.current = true
+              console.log("[AUTH] Installing message forwarder")
+              window.addEventListener("message", (event: MessageEvent) => {
+                const currentIframe = walletIframeRef.current
+                if (!currentIframe?.contentWindow) return
+                if (event.source !== currentIframe.contentWindow) return
+                const p = privyRef.current
+                if (!p) return
+                try {
+                  p.embeddedWallet.onMessage(event.data)
+                } catch (err) {
+                  console.warn("[AUTH] onMessage error:", err)
+                }
+              })
             }
 
             const handleLoad = () => {
@@ -417,30 +430,87 @@ export const useAuthPage = (): UseAuthPageState => {
     ) => {
       showLoading("Wallet setup...")
 
-      let embeddedWallet = (user.linked_accounts || user.linkedAccounts)?.find(
-        account =>
-          account.type === "wallet" &&
-          (account.walletClientType === "privy" ||
-            account.wallet_client_type === "privy")
+      const accounts = user.linked_accounts || user.linkedAccounts || []
+      console.log(
+        "[AUTH] linked_accounts (" + accounts.length + "):",
+        JSON.stringify(
+          accounts.map(a => ({
+            type: a.type,
+            address: a.address,
+            wallet_client_type: a.wallet_client_type,
+            walletClientType: a.walletClientType,
+            connector_type: (a as Record<string, unknown>).connector_type,
+          }))
+        )
       )
+
+      const findEmbeddedWallet = (accts: PrivyLinkedAccount[]) =>
+        accts.find(
+          account =>
+            account.type === "wallet" &&
+            (account.walletClientType === "privy" ||
+              account.wallet_client_type === "privy")
+        )
+
+      let embeddedWallet = findEmbeddedWallet(accounts)
       let walletAddress = embeddedWallet?.address ?? null
+      console.log(
+        "[AUTH] Initial find - walletAddress:",
+        walletAddress,
+        "embeddedWallet:",
+        embeddedWallet ? "found" : "null"
+      )
 
       if (!walletAddress) {
         try {
+          console.log("[AUTH] No wallet found, setting up iframe for create...")
           await setupWalletIframe(privy)
+          console.log("[AUTH] Calling embeddedWallet.create()...")
           const result = await privy.embeddedWallet.create({})
-          const createdUser = result.user as PrivyUser
-          embeddedWallet = (
-            createdUser.linked_accounts || createdUser.linkedAccounts
-          )?.find(
-            account =>
-              account.type === "wallet" &&
-              (account.walletClientType === "privy" ||
-                account.wallet_client_type === "privy")
+          console.log(
+            "[AUTH] create() returned, keys:",
+            Object.keys(result || {})
           )
+          const createdUser = (result as { user?: PrivyUser }).user
+          if (createdUser) {
+            const createdAccounts =
+              createdUser.linked_accounts || createdUser.linkedAccounts || []
+            console.log(
+              "[AUTH] create() user linked_accounts (" +
+                createdAccounts.length +
+                "):",
+              JSON.stringify(
+                createdAccounts.map(a => ({
+                  type: a.type,
+                  address: a.address,
+                  wallet_client_type: a.wallet_client_type,
+                  connector_type: (a as Record<string, unknown>).connector_type,
+                }))
+              )
+            )
+            embeddedWallet = findEmbeddedWallet(createdAccounts)
+          } else {
+            // create() might return user at root level (not nested)
+            console.log(
+              "[AUTH] create() result has no .user, checking root:",
+              JSON.stringify(result).substring(0, 300)
+            )
+            const rootUser = result as unknown as PrivyUser
+            const rootAccounts =
+              rootUser?.linked_accounts || rootUser?.linkedAccounts || []
+            if (rootAccounts.length > 0) {
+              embeddedWallet = findEmbeddedWallet(rootAccounts)
+            }
+          }
           walletAddress = embeddedWallet?.address ?? null
+          console.log(
+            "[AUTH] After create - walletAddress:",
+            walletAddress,
+            "embeddedWallet:",
+            embeddedWallet ? "found" : "null"
+          )
         } catch (err) {
-          console.error("Failed to create embedded wallet:", err)
+          console.error("[AUTH] Failed to create embedded wallet:", err)
         }
       }
 
@@ -454,6 +524,12 @@ export const useAuthPage = (): UseAuthPageState => {
       }
 
       let masterKeySignature: string | null = null
+      console.log(
+        "[AUTH] Pre-signing check - walletAddress:",
+        walletAddress,
+        "embeddedWallet truthy:",
+        !!embeddedWallet
+      )
       if (walletAddress && embeddedWallet) {
         try {
           showLoading("Signing key...")
@@ -481,6 +557,13 @@ export const useAuthPage = (): UseAuthPageState => {
         } catch (err) {
           console.error("[AUTH] Master key signing failed:", err)
         }
+      } else {
+        console.warn(
+          "[AUTH] Skipping signing - walletAddress:",
+          walletAddress,
+          "embeddedWallet:",
+          embeddedWallet
+        )
       }
 
       const didSend = await sendAuthResult({
@@ -722,32 +805,9 @@ export const useAuthPage = (): UseAuthPageState => {
     showLoginForm,
   ])
 
-  useEffect(() => {
-    const privy = privyRef.current
-    const iframe = walletIframeRef.current
-    if (!privy || !iframe || !walletIframeLoaded) return
-
-    const handleMessage = (event: MessageEvent) => {
-      const contentWindow = iframe.contentWindow
-      if (!contentWindow || event.source !== contentWindow) return
-      try {
-        privy.embeddedWallet.onMessage(event.data)
-      } catch (err) {
-        console.warn("[AUTH] onMessage error:", err)
-      }
-    }
-
-    if (!iframe.contentWindow) return
-    window.addEventListener("message", handleMessage)
-
-    return () => {
-      window.removeEventListener("message", handleMessage)
-    }
-  }, [walletIframeLoaded])
-
-  useEffect(() => {
-    setWalletIframeLoaded(false)
-  }, [walletIframeUrl])
+  // Message forwarding is handled by the single handler installed in
+  // setupWalletIframe (via messageHandlerInstalledRef) to avoid race
+  // conditions with React's async effect scheduling.
 
   return {
     view,

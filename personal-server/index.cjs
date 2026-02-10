@@ -96,7 +96,7 @@ async function main() {
       config.server.address = ownerAddress;
     }
 
-    const { app, devToken, tunnelUrl, tunnelManager, cleanup } = await createServer(config, { configDir });
+    const { app, devToken, tunnelUrl, tunnelManager, cleanup } = await createServer(config, { rootPath: configDir });
 
     // Fix stale proxy name collision on FRP server
     const { homedir } = require('node:os');

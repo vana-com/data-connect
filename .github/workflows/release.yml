@@ -146,6 +146,23 @@ jobs:
           prerelease: false
           args: --target ${{ matrix.target }}
 
+      - name: Free disk space before finalization
+        run: |
+          echo "=== Disk usage before cleanup ==="
+          df -h / || true
+          # Remove Rust build artifacts (no longer needed after Tauri build)
+          rm -rf src-tauri/target/${{ matrix.target }}/release/deps
+          rm -rf src-tauri/target/${{ matrix.target }}/release/build
+          rm -rf src-tauri/target/${{ matrix.target }}/release/.fingerprint
+          rm -rf src-tauri/target/${{ matrix.target }}/release/incremental
+          # Remove npm caches no longer needed
+          rm -rf node_modules
+          rm -rf playwright-runner/node_modules
+          rm -rf ~/.cargo/registry/cache
+          echo "=== Disk usage after cleanup ==="
+          df -h / || true
+        shell: bash
+
       - name: Copy native modules and finalize bundles
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

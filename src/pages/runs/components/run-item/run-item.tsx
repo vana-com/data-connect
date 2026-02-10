@@ -1,6 +1,6 @@
 import { ChevronDownIcon, ChevronUpIcon, FolderOpenIcon } from "lucide-react"
 import type { Run } from "@/types"
-import { PlatformChatGPTIcon } from "@/components/icons/platform-chatgpt"
+import { PlatformIcon } from "@/components/icons/platform-icon"
 import { Text } from "@/components/typography/text"
 import { Button } from "@/components/ui/button"
 import { cn } from "@/lib/classes"
@@ -33,9 +33,7 @@ export function RunItem({ run, onStop, serverPort, serverReady }: RunItemProps) 
   return (
     <div className="rounded-card border border-border bg-background">
       <div className="flex items-center gap-4 p-4">
-        <div className="flex size-10 items-center justify-center rounded-button bg-foreground text-background">
-          <PlatformChatGPTIcon className="size-6" aria-hidden="true" />
-        </div>
+        <PlatformIcon iconName={run.platformId} size={24} aria-hidden="true" />
 
         <div className="min-w-0 flex-1 space-y-1">
           <div className="flex items-center gap-2">

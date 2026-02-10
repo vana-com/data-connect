@@ -91,7 +91,7 @@ const toHexMessage = (value: string) => {
     .join("")}`
 }
 
-const parseAuthConfig = () => {
+const parseAuthConfig = (): { error: string } | { config: AuthConfig } => {
   const config = window.__AUTH_CONFIG__
   const privyAppId = (config?.privyAppId ?? "").trim()
   const privyClientId = (config?.privyClientId ?? "").trim()
@@ -120,11 +120,10 @@ export const useAuthPage = (): UseAuthPageState => {
   const [isGoogleLoading, setIsGoogleLoading] = useState(false)
   const [isAppleLoading, setIsAppleLoading] = useState(false)
   const [walletIframeUrl, setWalletIframeUrl] = useState<string | null>(null)
-  const [walletIframeLoaded, setWalletIframeLoaded] = useState(false)
 
   const privyRef = useRef<PrivyClient | null>(null)
   const currentEmailRef = useRef("")
-  const walletIframeRef = useRef<HTMLIFrameElement>(null)
+  const walletIframeRef = useRef<HTMLIFrameElement>(null!)
   const messageHandlerInstalledRef = useRef(false)
 
   const setWalletMessagePoster = useCallback(
@@ -133,15 +132,18 @@ export const useAuthPage = (): UseAuthPageState => {
       const iframe = walletIframeRef.current
       if (!iframe?.contentWindow) return false
       try {
-        privy.setMessagePoster(iframe.contentWindow)
-        setWalletIframeLoaded(true)
+        privy.setMessagePoster(
+          iframe.contentWindow as unknown as Parameters<
+            typeof privy.setMessagePoster
+          >[0]
+        )
         return true
       } catch (err) {
         console.warn("[AUTH] setMessagePoster error:", err)
         return false
       }
     },
-    [setWalletIframeLoaded]
+    []
   )
 
   const showLoading = useCallback((message: string) => {
@@ -390,7 +392,8 @@ export const useAuthPage = (): UseAuthPageState => {
       }
 
       await setupWalletIframe(privy)
-      const provider = await privy.embeddedWallet.getProvider(walletAccount)
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any -- PrivyLinkedAccount is a subset of the SDK's full type
+      const provider = await privy.embeddedWallet.getProvider(walletAccount as any)
       const signature = await provider.request({
         method: "eth_signTypedData_v4",
         params: [walletAddress, JSON.stringify(typedData)],
@@ -542,8 +545,9 @@ export const useAuthPage = (): UseAuthPageState => {
             "[AUTH] Getting provider for wallet:",
             embeddedWallet.address
           )
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any -- PrivyLinkedAccount is a subset of the SDK's full type
           const provider =
-            await privy.embeddedWallet.getProvider(embeddedWallet)
+            await privy.embeddedWallet.getProvider(embeddedWallet as any)
           console.log("[AUTH] Provider obtained:", provider ? "ok" : "null")
           console.log("[AUTH] Requesting personal_sign...")
           masterKeySignature = await provider.request({
@@ -636,7 +640,10 @@ export const useAuthPage = (): UseAuthPageState => {
 
         const redirectURI = `${window.location.origin}${window.location.pathname}`
         const result = await privy.auth.oauth.generateURL(provider, redirectURI)
-        const url = typeof result === "string" ? result : result.url || result
+        const url =
+          typeof result === "string"
+            ? result
+            : (result as { url?: string }).url ?? String(result)
         window.location.href = url
       } catch (err) {
         console.error(`${provider} login error:`, err)
@@ -723,7 +730,7 @@ export const useAuthPage = (): UseAuthPageState => {
   useEffect(() => {
     const init = async () => {
       const configResult = parseAuthConfig()
-      if ("error" in configResult) {
+      if (!("config" in configResult)) {
         showLoginForm()
         showError(configResult.error)
         return

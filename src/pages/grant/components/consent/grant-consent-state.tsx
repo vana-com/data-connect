@@ -28,8 +28,6 @@ export function GrantConsentState({
   const dataSourceLabel = getPrimaryDataSourceLabel(session?.scopes)
   const dataLabel = dataSourceLabel ? `${dataSourceLabel} data` : "data"
   const appName = session?.appName ?? "this app"
-  const appIcon = session?.appIcon ?? "🔗"
-
   return (
     // {cn("grid min-h-screen place-items-center bg-muted p-6")}
     <div className="container py-w24">

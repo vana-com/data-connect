@@ -143,13 +143,6 @@ export function Connect() {
     setConnectRunId(runId)
   }
 
-  const handleDebugDeepLink = () => {
-    const connectHref = grantSearch
-      ? `${ROUTES.connect}?${grantSearch}`
-      : ROUTES.connect
-    window.location.assign(connectHref)
-  }
-
   const handleDebugGrant = () => {
     const grantHref = grantSearch
       ? `${ROUTES.grant}?${grantSearch}`

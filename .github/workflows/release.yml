@@ -242,10 +242,16 @@ jobs:
               ls -la "$dmg_temp/$(basename $app)/Contents/Resources/personal-server/dist/" || echo "WARNING: personal-server dist not found in temp"
               ls -la "$dmg_temp/$(basename $app)/Contents/Resources/personal-server/dist/node_modules/" || { echo "ERROR: node_modules NOT in temp folder app!"; exit 1; }
 
-              # Create DMG
+              # Create DMG (two-step: writable image with padding, then convert to compressed)
+              # Single-step -srcfolder -format UDZO can underestimate temp volume size
               rm -f "$dmg_path"
-              hdiutil create -volname "$app_name" -srcfolder "$dmg_temp" -ov -format UDZO "$dmg_path"
+              folder_size_mb=$(du -sm "$dmg_temp" | cut -f1)
+              image_size_mb=$(( folder_size_mb + 50 ))
+              echo "Source folder: ${folder_size_mb}MB, image size: ${image_size_mb}MB"
+              hdiutil create -volname "$app_name" -srcfolder "$dmg_temp" -ov -format UDRW -size "${image_size_mb}m" "${dmg_path}.rw.dmg"
               rm -rf "$dmg_temp"
+              hdiutil convert "${dmg_path}.rw.dmg" -format UDZO -o "$dmg_path"
+              rm -f "${dmg_path}.rw.dmg"
               echo "Created $dmg_path"
 
               # Verify DMG contents by mounting and checking

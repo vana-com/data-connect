@@ -68,7 +68,7 @@ export function Home() {
     )
     try {
       await startExport(platform)
-      // No navigation - stay on this page
+      navigate(ROUTES.runs)
     } catch (error) {
       console.error("Export failed:", error)
     }

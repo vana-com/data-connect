@@ -40,6 +40,16 @@ Validate new behavior without overengineering; run the smallest test set that pr
 - Prefer `getByRole`/`getByText`; use `*AllBy*` only when multiples are expected.
 - Avoid snapshots and brittle DOM structure checks.
 
+## URL state coverage gate
+
+If a change introduces URL-backed UI state (for example `useSearchParams`, `location.search`, or `URLSearchParams`), require at least one non-mocked behavior test that covers:
+
+- query param -> derived state
+- invalid query value -> fallback behavior
+- state change action -> query param write/remove
+
+Do not treat a page test that mocks the page hook as sufficient coverage for URL state logic.
+
 ## Reporting
 
 - Always state which tests ran and their result.

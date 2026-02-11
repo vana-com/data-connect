@@ -3,7 +3,7 @@ import { Button } from "@/components/ui/button"
 import { PlatformIcon } from "@/components/icons/platform-icon"
 import { Text } from "@/components/typography/text"
 import { cn } from "@/lib/classes"
-import { getPrimaryDataSourceLabel } from "@/lib/scope-labels"
+import { formatScopeLabel, getPrimaryDataSourceLabel } from "@/lib/scope-labels"
 import type { BuilderManifest, GrantSession } from "../../types"
 import { GrantWarning } from "./grant-warning"
 import { ActionPanel } from "@/components/typography/action-button"
@@ -113,7 +113,7 @@ export function GrantConsentState({
             <ul className="list-disc pl-5 space-y-0.5">
               {session.scopes.map(scope => (
                 <Text as="li" key={scope} intent="small">
-                  {formatScope(scope)}
+                  {formatScopeLabel(scope)}
                 </Text>
               ))}
             </ul>
@@ -211,11 +211,3 @@ export function GrantConsentState({
   )
 }
 
-/** Turn scope strings like "chatgpt.conversations" into readable labels. */
-function formatScope(scope: string): string {
-  // Split on dots/colons/hyphens and title-case each part
-  return scope
-    .split(/[.:\-_]/)
-    .map(part => part.charAt(0).toUpperCase() + part.slice(1))
-    .join(" ")
-}

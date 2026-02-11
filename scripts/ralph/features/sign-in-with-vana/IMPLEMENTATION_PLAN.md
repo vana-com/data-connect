@@ -44,6 +44,11 @@ All P0, P1, and P2 items have been implemented, tested, and verified.
 
 31. **Scope format parsing fix** — `getPrimaryScopeToken()` in `src/lib/scope-labels.ts` only handled the legacy `"read:chatgpt-conversations"` format (split on `:` then `-`). The protocol spec uses dot-separated scopes like `"chatgpt.conversations"`. The old parser returned `"chatgpt.conversations"` as a single token, which failed to match any platform registry entry (id `"chatgpt"`), producing broken labels like `"Chatgpt.conversations"` and failing platform resolution on the connect page. Fixed: parser now handles both formats — splits on `:` for legacy, splits on `.` for protocol format. Added 15 tests covering both scope formats, edge cases, and label generation.
 
+32. **Scope label formatting consolidation** — The consent screen (`grant-consent-state.tsx`) had a local `formatScope` function that produced labels like "Chatgpt Conversations" (wrong casing). Created `formatScopeLabel()` in `src/lib/scope-labels.ts` that uses the platform display name registry for proper casing (e.g., "ChatGPT Conversations", "Spotify History"). Consent screen now imports from `scope-labels.ts` — single source of truth for scope display formatting. (8 new tests in scope-labels.test.ts)
+
+33. **Connected apps name derivation from scopes** — `useConnectedApps.grantToConnectedApp()` previously showed truncated addresses ("App 0xabcd…7890") for all grants fetched from Gateway on app restart — the builder's display name was lost because `GET /v1/grants` doesn't include builder metadata. Fixed: derives display name from the grant's scopes using `getPrimaryDataSourceLabel()` (e.g., "ChatGPT access", "Spotify access"). Falls back to truncated address only when scopes don't map to a known platform. (2 new tests in useConnectedApps.test.ts)
+
+
 ### Architecture notes
 
 - The spec's `exporting` state was removed from `GrantFlowState` type — data export happens on the `/connect` route (Screen 1-2), not the `/grant` route (Screen 3-5). The grant page starts at `consent` after receiving pre-fetched data from the connect page.
@@ -55,7 +60,7 @@ All P0, P1, and P2 items have been implemented, tested, and verified.
 ## Validation
 
 - `npx tsc -b` — zero type errors
-- `npm run test` — 150 tests passing across 19 test files
+- `npm run test` — 160 tests passing across 19 test files
 - Test environment: happy-dom (jsdom broken by html-encoding-sniffer@6.0.0 ESM issue)
 
 ## Known non-blocking TODOs (outside this feature scope)

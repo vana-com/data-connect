@@ -2,6 +2,7 @@ import { useCallback } from "react"
 import { useDispatch, useSelector } from "react-redux"
 import { setConnectedApps, addConnectedApp, removeConnectedApp as removeConnectedAppAction } from "../state/store"
 import { listGrants, revokeGrant } from "../services/personalServer"
+import { getPrimaryDataSourceLabel } from "../lib/scope-labels"
 import type { Grant } from "../services/personalServer"
 import type { ConnectedApp, RootState } from "../types"
 
@@ -9,11 +10,18 @@ import type { ConnectedApp, RootState } from "../types"
  * Converts a Grant (from the Personal Server / Gateway) into a ConnectedApp
  * for display in the UI. The grant is the source of truth; we derive display
  * fields from its data.
+ *
+ * Uses the scope's platform label (e.g., "ChatGPT") to produce a meaningful
+ * name when the builder's display name isn't available from the grant data.
  */
 function grantToConnectedApp(grant: Grant): ConnectedApp {
+  const platformLabel = getPrimaryDataSourceLabel(grant.scopes)
+  const name = platformLabel
+    ? `${platformLabel} access`
+    : `App ${grant.granteeAddress.slice(0, 6)}…${grant.granteeAddress.slice(-4)}`
   return {
     id: grant.grantId,
-    name: `App ${grant.granteeAddress.slice(0, 6)}…${grant.granteeAddress.slice(-4)}`,
+    name,
     permissions: grant.scopes,
     connectedAt: grant.createdAt,
   }

@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest"
-import { getPrimaryScopeToken, getPrimaryDataSourceLabel } from "./scope-labels"
+import { formatScopeLabel, getPrimaryScopeToken, getPrimaryDataSourceLabel } from "./scope-labels"
 
 describe("getPrimaryScopeToken", () => {
   it("returns null for undefined scopes", () => {
@@ -66,5 +66,43 @@ describe("getPrimaryDataSourceLabel", () => {
 
   it("title-cases unknown platforms", () => {
     expect(getPrimaryDataSourceLabel(["notion.pages"])).toBe("Notion")
+  })
+})
+
+describe("formatScopeLabel", () => {
+  // Protocol format
+  it('formats "chatgpt.conversations" with proper casing', () => {
+    expect(formatScopeLabel("chatgpt.conversations")).toBe("ChatGPT Conversations")
+  })
+
+  it('formats "spotify.history" with proper casing', () => {
+    expect(formatScopeLabel("spotify.history")).toBe("Spotify History")
+  })
+
+  it('formats "instagram.posts" with proper casing', () => {
+    expect(formatScopeLabel("instagram.posts")).toBe("Instagram Posts")
+  })
+
+  it("title-cases unknown platforms", () => {
+    expect(formatScopeLabel("notion.pages")).toBe("Notion Pages")
+  })
+
+  // Legacy format
+  it('formats "read:chatgpt-conversations" with proper casing', () => {
+    expect(formatScopeLabel("read:chatgpt-conversations")).toBe("ChatGPT Conversations")
+  })
+
+  it('formats "read:spotify-history" with proper casing', () => {
+    expect(formatScopeLabel("read:spotify-history")).toBe("Spotify History")
+  })
+
+  // Bare platform token
+  it("returns platform label for a bare token", () => {
+    expect(formatScopeLabel("chatgpt")).toBe("ChatGPT")
+  })
+
+  // Multi-word data types
+  it("handles hyphenated data types", () => {
+    expect(formatScopeLabel("chatgpt.saved-conversations")).toBe("ChatGPT Saved Conversations")
   })
 })

@@ -64,7 +64,7 @@ describe("useConnectedApps", () => {
         payload: [
           {
             id: "grant-1",
-            name: "App 0xabcd…7890",
+            name: "ChatGPT access",
             permissions: ["chatgpt.conversations"],
             connectedAt: "2025-01-01T00:00:00.000Z",
           },
@@ -99,6 +99,54 @@ describe("useConnectedApps", () => {
         type: "app/setConnectedApps",
         payload: [
           expect.objectContaining({ id: "active-grant" }),
+        ],
+      })
+    })
+
+    it("derives name from scope platform label", async () => {
+      mockListGrants.mockResolvedValue([
+        {
+          grantId: "grant-spotify",
+          granteeAddress: "0x1111112222223333",
+          scopes: ["spotify.history"],
+          createdAt: "2025-02-01T00:00:00.000Z",
+        },
+      ])
+
+      const { result } = renderHook(() => useConnectedApps())
+
+      await act(async () => {
+        await result.current.fetchConnectedApps(8080)
+      })
+
+      expect(mockDispatch).toHaveBeenCalledWith({
+        type: "app/setConnectedApps",
+        payload: [
+          expect.objectContaining({ name: "Spotify access" }),
+        ],
+      })
+    })
+
+    it("falls back to truncated address for unknown scopes", async () => {
+      mockListGrants.mockResolvedValue([
+        {
+          grantId: "grant-unknown",
+          granteeAddress: "0xabcdef1234567890",
+          scopes: [],
+          createdAt: "2025-03-01T00:00:00.000Z",
+        },
+      ])
+
+      const { result } = renderHook(() => useConnectedApps())
+
+      await act(async () => {
+        await result.current.fetchConnectedApps(8080)
+      })
+
+      expect(mockDispatch).toHaveBeenCalledWith({
+        type: "app/setConnectedApps",
+        payload: [
+          expect.objectContaining({ name: "App 0xabcd…7890" }),
         ],
       })
     })

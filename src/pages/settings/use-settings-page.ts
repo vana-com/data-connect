@@ -5,6 +5,8 @@ import { useNavigate } from "react-router"
 import { useAuth } from "@/hooks/useAuth"
 import { usePersonalServer } from "@/hooks/usePersonalServer"
 import { ROUTES } from "@/config/routes"
+import { openLocalPath } from "@/lib/open-resource"
+import { getUserDataPath } from "@/lib/tauri-paths"
 import {
   getAllConnectedApps,
   removeConnectedApp,
@@ -37,7 +39,7 @@ export function useSettingsPage() {
 
     const loadSettings = async () => {
       const [dataPathResult, versionResult] = await Promise.allSettled([
-        invoke<string>("get_user_data_path"),
+        getUserDataPath(),
         getVersion(),
       ])
 
@@ -64,11 +66,8 @@ export function useSettingsPage() {
   }, [])
 
   const openDataFolder = useCallback(async () => {
-    try {
-      await invoke("open_folder", { path: dataPath })
-    } catch (error) {
-      console.error("Failed to open folder:", error)
-    }
+    if (!dataPath) return
+    await openLocalPath(dataPath)
   }, [dataPath])
 
   const testNodeJs = useCallback(async () => {

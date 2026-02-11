@@ -8,6 +8,7 @@ import { buttonVariants } from "@/components/ui/button"
 import { DEV_FLAGS } from "@/config/dev-flags"
 import { ROUTES } from "@/config/routes"
 import { cn } from "@/lib/classes"
+import { openExternalUrl } from "@/lib/open-resource"
 import { getAppRegistryEntry } from "@/apps/registry"
 import type { ConnectedApp } from "@/types"
 import { ArrowUpRight, Settings } from "lucide-react"
@@ -29,14 +30,7 @@ function formatConnectedAt(value: string) {
 }
 
 async function openExternalApp(url: string) {
-  try {
-    const { open } = await import("@tauri-apps/plugin-shell")
-    await open(url)
-    return true
-  } catch {
-    const popup = window.open(url, "_blank", "noopener,noreferrer")
-    return Boolean(popup)
-  }
+  return openExternalUrl(url)
 }
 
 function getConnectedAppUrl(app: ConnectedApp) {

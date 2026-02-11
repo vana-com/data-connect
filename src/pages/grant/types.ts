@@ -50,8 +50,10 @@ export interface GrantFlowParams {
   status?: "success"
 }
 
-/** Pre-fetched session + builder data passed via navigation state from the connect page. */
+/** Pre-fetched session + builder data passed via navigation state from the connect page.
+ *  builderManifest is optional — if builder verification failed during pre-fetch,
+ *  only the session is passed so the grant flow can skip re-claiming. */
 export interface PrefetchedGrantData {
   session: GrantSession
-  builderManifest: BuilderManifest
+  builderManifest?: BuilderManifest
 }

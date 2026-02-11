@@ -20,9 +20,11 @@ const BUILDER_ADDRESS = "0x1234567890abcdef1234567890abcdef12345678";
 const BUILDER_APP_URL = "https://builder-app.example.com";
 
 const gatewayResponse = {
-  id: "builder-1",
-  appUrl: BUILDER_APP_URL,
-  publicKey: "0xpubkey",
+  data: {
+    id: "builder-1",
+    appUrl: BUILDER_APP_URL,
+    publicKey: "0xpubkey",
+  },
 };
 
 const appHtml = `
@@ -65,15 +67,24 @@ function textResponse(text: string, status = 200): Response {
     ok: status >= 200 && status < 300,
     status,
     text: () => Promise.resolve(text),
+    json: () => Promise.reject(new SyntaxError("Unexpected token")),
   } as Response;
 }
 
-// Arrange the 3-call chain: gateway → app HTML → manifest JSON
+// Arrange the 2-call chain: gateway → direct manifest JSON (Phase 1 succeeds)
 function mockHappyPath() {
   fetchSpy
     .mockResolvedValueOnce(jsonResponse(gatewayResponse)) // Gateway lookup
+    .mockResolvedValueOnce(jsonResponse(manifestJson)); // Direct /manifest.json
+}
+
+// Arrange the 4-call chain: gateway → direct 404 → app HTML → manifest JSON
+function mockFallbackPath() {
+  fetchSpy
+    .mockResolvedValueOnce(jsonResponse(gatewayResponse)) // Gateway lookup
+    .mockResolvedValueOnce(jsonResponse({}, 404)) // Direct /manifest.json → 404
     .mockResolvedValueOnce(textResponse(appHtml)) // App HTML
-    .mockResolvedValueOnce(jsonResponse(manifestJson)); // Manifest JSON
+    .mockResolvedValueOnce(jsonResponse(manifestJson)); // Manifest JSON from link tag
 }
 
 beforeEach(() => {
@@ -122,29 +133,22 @@ describe("verifyBuilder — happy path", () => {
     expect(gatewayCall[0]).toContain(`/v1/builders/${BUILDER_ADDRESS}`);
   });
 
-  it("fetches the app URL returned by Gateway", async () => {
+  it("fetches /manifest.json directly from builder appUrl", async () => {
     mockHappyPath();
     await verifyBuilder(BUILDER_ADDRESS);
 
-    const appCall = fetchSpy.mock.calls[1];
-    expect(appCall[0]).toBe(BUILDER_APP_URL);
-  });
-
-  it("fetches manifest from link tag href resolved against appUrl", async () => {
-    mockHappyPath();
-    await verifyBuilder(BUILDER_ADDRESS);
-
-    const manifestCall = fetchSpy.mock.calls[2];
-    expect(manifestCall[0]).toBe(
+    const directCall = fetchSpy.mock.calls[1];
+    expect(directCall[0]).toBe(
       "https://builder-app.example.com/manifest.json"
     );
+    // Only 2 fetches — no HTML scraping needed
+    expect(fetchSpy).toHaveBeenCalledTimes(2);
   });
 
   it("uses short_name when name is absent", async () => {
     const noNameManifest = { ...manifestJson, name: undefined };
     fetchSpy
       .mockResolvedValueOnce(jsonResponse(gatewayResponse))
-      .mockResolvedValueOnce(textResponse(appHtml))
       .mockResolvedValueOnce(jsonResponse(noNameManifest));
 
     const result = await verifyBuilder(BUILDER_ADDRESS);
@@ -157,10 +161,8 @@ describe("verifyBuilder — happy path", () => {
       name: undefined,
       short_name: undefined,
     };
-    // Still has vana block, so it won't throw for missing vana
     fetchSpy
       .mockResolvedValueOnce(jsonResponse(gatewayResponse))
-      .mockResolvedValueOnce(textResponse(appHtml))
       .mockResolvedValueOnce(jsonResponse(noNamesManifest));
 
     // Will throw because both name and short_name are missing
@@ -173,7 +175,6 @@ describe("verifyBuilder — happy path", () => {
     const noIconsManifest = { ...manifestJson, icons: [] };
     fetchSpy
       .mockResolvedValueOnce(jsonResponse(gatewayResponse))
-      .mockResolvedValueOnce(textResponse(appHtml))
       .mockResolvedValueOnce(jsonResponse(noIconsManifest));
 
     const result = await verifyBuilder(BUILDER_ADDRESS);
@@ -187,7 +188,6 @@ describe("verifyBuilder — happy path", () => {
     };
     fetchSpy
       .mockResolvedValueOnce(jsonResponse(gatewayResponse))
-      .mockResolvedValueOnce(textResponse(appHtml))
       .mockResolvedValueOnce(jsonResponse(withDescription));
 
     const result = await verifyBuilder(BUILDER_ADDRESS);
@@ -204,7 +204,6 @@ describe("verifyBuilder — happy path", () => {
     };
     fetchSpy
       .mockResolvedValueOnce(jsonResponse(gatewayResponse))
-      .mockResolvedValueOnce(textResponse(appHtml))
       .mockResolvedValueOnce(jsonResponse(noVanaAppUrl));
 
     await expect(verifyBuilder(BUILDER_ADDRESS)).rejects.toThrow(
@@ -219,7 +218,6 @@ describe("verifyBuilder — happy path", () => {
     };
     fetchSpy
       .mockResolvedValueOnce(jsonResponse(gatewayResponse))
-      .mockResolvedValueOnce(textResponse(appHtml))
       .mockResolvedValueOnce(jsonResponse(mismatchedAppUrl));
 
     await expect(verifyBuilder(BUILDER_ADDRESS)).rejects.toThrow(
@@ -230,17 +228,18 @@ describe("verifyBuilder — happy path", () => {
 
 // --- Manifest link parsing ---
 
-describe("verifyBuilder — manifest link parsing", () => {
+describe("verifyBuilder — manifest link parsing (fallback)", () => {
   it("handles href before rel attribute order", async () => {
     const altHtml = `<html><head><link href="/alt-manifest.json" rel="manifest"></head></html>`;
     fetchSpy
       .mockResolvedValueOnce(jsonResponse(gatewayResponse))
+      .mockResolvedValueOnce(jsonResponse({}, 404)) // direct 404
       .mockResolvedValueOnce(textResponse(altHtml))
       .mockResolvedValueOnce(jsonResponse(manifestJson));
 
     await verifyBuilder(BUILDER_ADDRESS);
 
-    const manifestCall = fetchSpy.mock.calls[2];
+    const manifestCall = fetchSpy.mock.calls[3];
     expect(manifestCall[0]).toBe(
       "https://builder-app.example.com/alt-manifest.json"
     );
@@ -250,12 +249,13 @@ describe("verifyBuilder — manifest link parsing", () => {
     const relativeHtml = `<html><head><link rel="manifest" href="./deep/manifest.json"></head></html>`;
     fetchSpy
       .mockResolvedValueOnce(jsonResponse(gatewayResponse))
+      .mockResolvedValueOnce(jsonResponse({}, 404)) // direct 404
       .mockResolvedValueOnce(textResponse(relativeHtml))
       .mockResolvedValueOnce(jsonResponse(manifestJson));
 
     await verifyBuilder(BUILDER_ADDRESS);
 
-    const manifestCall = fetchSpy.mock.calls[2];
+    const manifestCall = fetchSpy.mock.calls[3];
     expect(manifestCall[0]).toBe(
       "https://builder-app.example.com/deep/manifest.json"
     );
@@ -286,14 +286,25 @@ describe("verifyBuilder — Gateway errors", () => {
 
     await expect(verifyBuilder(BUILDER_ADDRESS)).rejects.toThrow("HTTP 500");
   });
+
+  it("throws when Gateway returns empty appUrl", async () => {
+    fetchSpy.mockResolvedValueOnce(
+      jsonResponse({ data: { id: "builder-1", appUrl: "", publicKey: "0xpubkey" } })
+    );
+
+    await expect(verifyBuilder(BUILDER_ADDRESS)).rejects.toThrow(
+      "Builder registration incomplete: no appUrl returned by Gateway"
+    );
+  });
 });
 
 // --- App HTML errors ---
 
-describe("verifyBuilder — app HTML errors", () => {
+describe("verifyBuilder — app HTML errors (fallback path)", () => {
   it("throws when app is unreachable", async () => {
     fetchSpy
       .mockResolvedValueOnce(jsonResponse(gatewayResponse))
+      .mockResolvedValueOnce(jsonResponse({}, 404)) // direct 404
       .mockRejectedValueOnce(new TypeError("Failed to fetch"));
 
     await expect(verifyBuilder(BUILDER_ADDRESS)).rejects.toThrow(
@@ -304,6 +315,7 @@ describe("verifyBuilder — app HTML errors", () => {
   it("throws when app returns non-200", async () => {
     fetchSpy
       .mockResolvedValueOnce(jsonResponse(gatewayResponse))
+      .mockResolvedValueOnce(jsonResponse({}, 404)) // direct 404
       .mockResolvedValueOnce(textResponse("", 503));
 
     await expect(verifyBuilder(BUILDER_ADDRESS)).rejects.toThrow("HTTP 503");
@@ -312,6 +324,7 @@ describe("verifyBuilder — app HTML errors", () => {
   it("throws when HTML has no manifest link", async () => {
     fetchSpy
       .mockResolvedValueOnce(jsonResponse(gatewayResponse))
+      .mockResolvedValueOnce(jsonResponse({}, 404)) // direct 404
       .mockResolvedValueOnce(
         textResponse("<html><head></head><body></body></html>")
       );
@@ -325,6 +338,7 @@ describe("verifyBuilder — app HTML errors", () => {
     const crossOriginHtml = `<html><head><link rel="manifest" href="https://evil.com/manifest.json"></head></html>`;
     fetchSpy
       .mockResolvedValueOnce(jsonResponse(gatewayResponse))
+      .mockResolvedValueOnce(jsonResponse({}, 404)) // direct 404
       .mockResolvedValueOnce(textResponse(crossOriginHtml));
 
     await expect(verifyBuilder(BUILDER_ADDRESS)).rejects.toThrow(
@@ -335,10 +349,11 @@ describe("verifyBuilder — app HTML errors", () => {
 
 // --- Manifest JSON errors ---
 
-describe("verifyBuilder — manifest errors", () => {
+describe("verifyBuilder — manifest errors (fallback path)", () => {
   it("throws when manifest is unreachable", async () => {
     fetchSpy
       .mockResolvedValueOnce(jsonResponse(gatewayResponse))
+      .mockResolvedValueOnce(jsonResponse({}, 404)) // direct 404
       .mockResolvedValueOnce(textResponse(appHtml))
       .mockRejectedValueOnce(new TypeError("Failed to fetch"));
 
@@ -350,6 +365,7 @@ describe("verifyBuilder — manifest errors", () => {
   it("throws when manifest returns non-200", async () => {
     fetchSpy
       .mockResolvedValueOnce(jsonResponse(gatewayResponse))
+      .mockResolvedValueOnce(jsonResponse({}, 404)) // direct 404
       .mockResolvedValueOnce(textResponse(appHtml))
       .mockResolvedValueOnce(jsonResponse({}, 404));
 
@@ -359,6 +375,7 @@ describe("verifyBuilder — manifest errors", () => {
   it("throws when manifest has no name or short_name", async () => {
     fetchSpy
       .mockResolvedValueOnce(jsonResponse(gatewayResponse))
+      .mockResolvedValueOnce(jsonResponse({}, 404)) // direct 404
       .mockResolvedValueOnce(textResponse(appHtml))
       .mockResolvedValueOnce(
         jsonResponse({ vana: { signature: "0x" } })
@@ -372,6 +389,7 @@ describe("verifyBuilder — manifest errors", () => {
   it("throws when manifest has no vana block", async () => {
     fetchSpy
       .mockResolvedValueOnce(jsonResponse(gatewayResponse))
+      .mockResolvedValueOnce(jsonResponse({}, 404)) // direct 404
       .mockResolvedValueOnce(textResponse(appHtml))
       .mockResolvedValueOnce(jsonResponse({ name: "App" }));
 
@@ -387,6 +405,7 @@ describe("verifyBuilder — manifest errors", () => {
     };
     fetchSpy
       .mockResolvedValueOnce(jsonResponse(gatewayResponse))
+      .mockResolvedValueOnce(jsonResponse({}, 404)) // direct 404
       .mockResolvedValueOnce(textResponse(appHtml))
       .mockResolvedValueOnce(jsonResponse(noSigManifest));
 
@@ -424,7 +443,6 @@ describe("verifyBuilder — signature verification", () => {
     verifyMessageMock.mockResolvedValue(false);
     fetchSpy
       .mockResolvedValueOnce(jsonResponse(gatewayResponse))
-      .mockResolvedValueOnce(textResponse(appHtml))
       .mockResolvedValueOnce(jsonResponse(manifestJson));
 
     await expect(verifyBuilder(BUILDER_ADDRESS)).rejects.toThrow(
@@ -439,7 +457,6 @@ describe("verifyBuilder — signature verification", () => {
     };
     fetchSpy
       .mockResolvedValueOnce(jsonResponse(gatewayResponse))
-      .mockResolvedValueOnce(textResponse(appHtml))
       .mockResolvedValueOnce(jsonResponse(withWebhook));
 
     const result = await verifyBuilder(
@@ -456,7 +473,6 @@ describe("verifyBuilder — signature verification", () => {
     };
     fetchSpy
       .mockResolvedValueOnce(jsonResponse(gatewayResponse))
-      .mockResolvedValueOnce(textResponse(appHtml))
       .mockResolvedValueOnce(jsonResponse(withWebhook));
 
     await expect(
@@ -482,7 +498,6 @@ describe("verifyBuilder — signature verification", () => {
     };
     fetchSpy
       .mockResolvedValueOnce(jsonResponse(gatewayResponse))
-      .mockResolvedValueOnce(textResponse(appHtml))
       .mockResolvedValueOnce(jsonResponse(minimalVana));
 
     await verifyBuilder(BUILDER_ADDRESS);
@@ -490,5 +505,71 @@ describe("verifyBuilder — signature verification", () => {
     const call = verifyMessageMock.mock.calls[0][0];
     const parsed = JSON.parse(call.message);
     expect(Object.keys(parsed)).toEqual(["appUrl"]);
+  });
+});
+
+// --- Direct manifest fetch ---
+
+describe("verifyBuilder — direct manifest fetch", () => {
+  it("fetches /manifest.json directly before HTML scraping", async () => {
+    mockHappyPath();
+    await verifyBuilder(BUILDER_ADDRESS);
+
+    // Call 0: Gateway, Call 1: direct /manifest.json
+    expect(fetchSpy).toHaveBeenCalledTimes(2);
+    expect(fetchSpy.mock.calls[1][0]).toBe(
+      "https://builder-app.example.com/manifest.json"
+    );
+  });
+
+  it("falls back to HTML scraping on 404", async () => {
+    mockFallbackPath();
+    await verifyBuilder(BUILDER_ADDRESS);
+
+    // Call 0: Gateway, Call 1: direct 404, Call 2: HTML, Call 3: manifest from link
+    expect(fetchSpy).toHaveBeenCalledTimes(4);
+    expect(fetchSpy.mock.calls[1][0]).toBe(
+      "https://builder-app.example.com/manifest.json"
+    );
+    expect(fetchSpy.mock.calls[2][0]).toBe(BUILDER_APP_URL);
+  });
+
+  it("falls back to HTML scraping on network error", async () => {
+    fetchSpy
+      .mockResolvedValueOnce(jsonResponse(gatewayResponse))
+      .mockRejectedValueOnce(new TypeError("Failed to fetch")) // direct network error
+      .mockResolvedValueOnce(textResponse(appHtml))
+      .mockResolvedValueOnce(jsonResponse(manifestJson));
+
+    const result = await verifyBuilder(BUILDER_ADDRESS);
+
+    expect(fetchSpy).toHaveBeenCalledTimes(4);
+    expect(result.verified).toBe(true);
+  });
+
+  it("falls back to HTML scraping on non-JSON 200 response", async () => {
+    fetchSpy
+      .mockResolvedValueOnce(jsonResponse(gatewayResponse))
+      .mockResolvedValueOnce(textResponse("<html>not json</html>")) // direct returns HTML (json() rejects)
+      .mockResolvedValueOnce(textResponse(appHtml))
+      .mockResolvedValueOnce(jsonResponse(manifestJson));
+
+    const result = await verifyBuilder(BUILDER_ADDRESS);
+
+    expect(fetchSpy).toHaveBeenCalledTimes(4);
+    expect(result.verified).toBe(true);
+  });
+
+  it("throws when both direct fetch and HTML scraping fail", async () => {
+    fetchSpy
+      .mockResolvedValueOnce(jsonResponse(gatewayResponse))
+      .mockResolvedValueOnce(jsonResponse({}, 404)) // direct 404
+      .mockResolvedValueOnce(
+        textResponse("<html><head></head><body></body></html>") // HTML with no manifest link
+      );
+
+    await expect(verifyBuilder(BUILDER_ADDRESS)).rejects.toThrow(
+      'does not contain a <link rel="manifest">'
+    );
   });
 });

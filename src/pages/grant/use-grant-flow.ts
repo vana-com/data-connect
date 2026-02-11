@@ -103,6 +103,14 @@ export function useGrantFlow(params: GrantFlowParams, prefetched?: PrefetchedGra
     }
 
     const runFlow = async () => {
+      console.log("[GrantFlow] runFlow starting", {
+        sessionId,
+        hasSecret: Boolean(secret),
+        hasPrefetched: Boolean(prefetched),
+        prefetchedSessionId: prefetched?.session?.id,
+        prefetchedHasBuilder: Boolean(prefetched?.builderManifest),
+        isDemoSession: isDemoSession(sessionId),
+      });
       setFlowState({ sessionId, secret, status: "loading" })
 
       // --- Demo mode ---
@@ -121,12 +129,50 @@ export function useGrantFlow(params: GrantFlowParams, prefetched?: PrefetchedGra
 
       // --- Pre-fetched path: connect page already claimed + verified in background ---
       if (prefetched?.session && prefetched?.builderManifest) {
+        console.log("[GrantFlow] Using pre-fetched data (skipping claim + verify)", {
+          sessionId: prefetched.session.id,
+          builderName: prefetched.builderManifest.name,
+        });
         setFlowState(prev => ({
           ...prev,
           status: "consent",
           session: prefetched.session,
           builderManifest: prefetched.builderManifest,
         }))
+
+        return
+      }
+
+      // --- Pre-fetched session only: claim done, builder verification still needed ---
+      if (prefetched?.session) {
+        console.log("[GrantFlow] Using pre-fetched session (skipping claim, verifying builder)", {
+          sessionId: prefetched.session.id,
+        });
+        setFlowState(prev => ({ ...prev, session: prefetched.session }))
+
+        try {
+          setFlowState(prev => ({ ...prev, status: "verifying-builder" }))
+          const builderManifest = await verifyBuilder(
+            prefetched.session.granteeAddress,
+            prefetched.session.webhookUrl,
+          )
+          setFlowState(prev => ({ ...prev, builderManifest }))
+          setFlowState(prev => ({ ...prev, status: "consent" }))
+        } catch (error) {
+          console.error("[GrantFlow] Builder verification failed (pre-fetched session)", {
+            sessionId: prefetched.session.id,
+            message: error instanceof Error ? error.message : String(error),
+          });
+          setFlowState({
+            sessionId,
+            secret,
+            status: "error",
+            error:
+              error instanceof BuilderVerificationError
+                ? error.message
+                : "Failed to verify builder",
+          })
+        }
 
         return
       }
@@ -144,6 +190,7 @@ export function useGrantFlow(params: GrantFlowParams, prefetched?: PrefetchedGra
 
       // Step 1: Claim session
       try {
+        console.log("[GrantFlow] Falling back to fresh claim (no pre-fetched data)", { sessionId });
         setFlowState(prev => ({ ...prev, status: "claiming" }))
         const claimed = await claimSession({ sessionId, secret })
         const session: GrantSession = {
@@ -154,6 +201,11 @@ export function useGrantFlow(params: GrantFlowParams, prefetched?: PrefetchedGra
           webhookUrl: claimed.webhookUrl,
           appUserId: claimed.appUserId,
         }
+        console.log("[GrantFlow] Claim succeeded", {
+          sessionId,
+          granteeAddress: claimed.granteeAddress,
+          scopes: claimed.scopes,
+        });
         setFlowState(prev => ({ ...prev, session }))
 
         // Step 2: Verify builder
@@ -170,6 +222,15 @@ export function useGrantFlow(params: GrantFlowParams, prefetched?: PrefetchedGra
         setFlowState(prev => ({ ...prev, status: "consent" }))
 
       } catch (error) {
+        console.error("[GrantFlow] Flow error", {
+          sessionId,
+          errorType: error instanceof SessionRelayError ? "SessionRelayError" : error instanceof BuilderVerificationError ? "BuilderVerificationError" : "unknown",
+          message: error instanceof Error ? error.message : String(error),
+          ...(error instanceof SessionRelayError && {
+            errorCode: error.errorCode,
+            statusCode: error.statusCode,
+          }),
+        });
         setFlowState({
           sessionId,
           secret,

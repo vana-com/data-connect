@@ -102,6 +102,7 @@ async function relayFetch<T>(
   }
 
   if (!response.ok) {
+    console.error("[SessionRelay] Non-OK response", { url, status: response.status, body: data });
     const errBody = parseErrorBody(data);
     if (errBody) {
       throw new SessionRelayError(
@@ -123,6 +124,7 @@ async function relayFetch<T>(
 export async function claimSession(
   request: ClaimSessionRequest
 ): Promise<ClaimSessionResponse> {
+  console.log("[SessionRelay] claimSession called", { sessionId: request.sessionId });
   return relayFetch<ClaimSessionResponse>(
     `${SESSION_RELAY_URL}/v1/session/claim`,
     {

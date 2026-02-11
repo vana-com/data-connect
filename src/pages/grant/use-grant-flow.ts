@@ -169,7 +169,7 @@ export function useGrantFlow(params: GrantFlowParams, prefetched?: PrefetchedGra
         }
         setFlowState(prev => ({ ...prev, builderManifest }))
 
-        // Advance to consent (exporting step is handled by the connect page)
+        // Advance to consent (data export already completed on the connect page)
         setFlowState(prev => ({ ...prev, status: "consent" }))
         setCurrentStep(3)
       } catch (error) {

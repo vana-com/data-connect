@@ -27,7 +27,6 @@ export interface GrantFlowState {
     | "loading"
     | "claiming"
     | "verifying-builder"
-    | "exporting"
     | "consent"
     | "auth-required"
     | "creating-grant"

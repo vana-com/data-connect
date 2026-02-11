@@ -12,6 +12,9 @@ interface PersonalServerStatus {
 // Module-level state shared across all hook instances so the tunnel URL
 // survives component remounts (e.g. navigating away from the runs page).
 let _sharedTunnelUrl: string | null = null;
+const isTauriRuntime = () =>
+  typeof window !== 'undefined' &&
+  ('__TAURI__' in window || '__TAURI_INTERNALS__' in window);
 
 export function usePersonalServer() {
   const { walletAddress, masterKeySignature } = useSelector(
@@ -24,6 +27,7 @@ export function usePersonalServer() {
   const running = useRef(false);
 
   const startServer = useCallback(async (wallet?: string | null) => {
+    if (!isTauriRuntime()) return;
     if (running.current) return;
     running.current = true;
     setStatus('starting');
@@ -53,6 +57,7 @@ export function usePersonalServer() {
   }, [walletAddress, masterKeySignature]);
 
   const stopServer = useCallback(async () => {
+    if (!isTauriRuntime()) return;
     try {
       await invoke('stop_personal_server');
       running.current = false;
@@ -67,6 +72,7 @@ export function usePersonalServer() {
 
   // Listen for server events
   useEffect(() => {
+    if (!isTauriRuntime()) return;
     const unlisteners: (() => void)[] = [];
 
     listen<{ port: number }>('personal-server-ready', (event) => {

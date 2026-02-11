@@ -42,6 +42,8 @@ All P0, P1, and P2 items have been implemented, tested, and verified.
     - **(d) `webhookUrl` validation added**: Protocol spec step 4 requires "Ensure requested `webhookUrl` matches `vana.webhookUrl`". `verifyBuilder()` now accepts an optional `sessionWebhookUrl` parameter; if the session has a webhookUrl, it must match the manifest's `vana.webhookUrl`.
     - **(e) Required `vana` fields validated**: `appUrl` and `signature` are now checked before proceeding to signature verification. (30 tests in builder.test.ts, 15 tests in use-grant-flow.test.tsx)
 
+31. **Scope format parsing fix** — `getPrimaryScopeToken()` in `src/lib/scope-labels.ts` only handled the legacy `"read:chatgpt-conversations"` format (split on `:` then `-`). The protocol spec uses dot-separated scopes like `"chatgpt.conversations"`. The old parser returned `"chatgpt.conversations"` as a single token, which failed to match any platform registry entry (id `"chatgpt"`), producing broken labels like `"Chatgpt.conversations"` and failing platform resolution on the connect page. Fixed: parser now handles both formats — splits on `:` for legacy, splits on `.` for protocol format. Added 15 tests covering both scope formats, edge cases, and label generation.
+
 ### Architecture notes
 
 - The spec's `exporting` state was removed from `GrantFlowState` type — data export happens on the `/connect` route (Screen 1-2), not the `/grant` route (Screen 3-5). The grant page starts at `consent` after receiving pre-fetched data from the connect page.
@@ -53,7 +55,7 @@ All P0, P1, and P2 items have been implemented, tested, and verified.
 ## Validation
 
 - `npx tsc -b` — zero type errors
-- `npm run test` — 135 tests passing across 18 test files
+- `npm run test` — 150 tests passing across 19 test files
 - Test environment: happy-dom (jsdom broken by html-encoding-sniffer@6.0.0 ESM issue)
 
 ## Known non-blocking TODOs (outside this feature scope)

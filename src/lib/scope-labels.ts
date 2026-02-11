@@ -15,10 +15,16 @@ const DATA_SOURCE_LABELS: Record<string, string> = {
 export function getPrimaryScopeToken(scopes?: string[]) {
   if (!scopes || scopes.length === 0) return null
   const scopeToken = scopes
-    .map(scope => scope.split(":")[1] ?? scope)
+    .map(scope => {
+      // Handle "read:chatgpt-conversations" → "chatgpt"
+      const afterColon = scope.split(":")[1]
+      if (afterColon) return afterColon.split("-")[0]
+      // Handle "chatgpt.conversations" → "chatgpt"
+      return scope.split(".")[0]
+    })
     .find(Boolean)
   if (!scopeToken) return null
-  return scopeToken.split("-")[0]?.toLowerCase() ?? null
+  return scopeToken.toLowerCase()
 }
 
 export function getPrimaryDataSourceLabel(scopes?: string[]) {

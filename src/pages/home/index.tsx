@@ -15,6 +15,7 @@ import { ConnectorUpdates } from "@/pages/home/components/connector-updates"
 import { Text } from "@/components/typography/text"
 import { Button } from "@/components/ui/button"
 import { ROUTES } from "@/config/routes"
+import { getPlatformRegistryEntry } from "@/lib/platform/utils"
 import {
   USE_TEST_DATA,
   testConnectedApps,
@@ -114,13 +115,19 @@ export function Home() {
             platforms={connectedPlatformsList}
             runs={runs}
             onOpenRuns={platform =>
-              navigate(ROUTES.source.replace(":platformId", platform.id))
+              navigate(
+                ROUTES.source.replace(
+                  ":platformId",
+                  getPlatformRegistryEntry(platform)?.id ?? platform.id
+                )
+              )
             }
           />
           <AvailableSourcesList
             platforms={availablePlatforms}
             runs={runs}
             onExport={handleExport}
+            connectedPlatformIds={connectedPlatformsList.map(p => p.id)}
           />
         </TabsContent>
 

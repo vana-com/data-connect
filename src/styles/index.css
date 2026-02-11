@@ -26,6 +26,22 @@
   src: url("/fonts/InterVariable-Italic.ttf") format("truetype-variations");
 }
 
+@font-face {
+  font-family: "GT America Mono";
+  font-style: normal;
+  font-weight: 400;
+  font-display: swap;
+  src: url("/fonts/GT-America-Mono-Regular.woff2") format("woff2");
+}
+
+@font-face {
+  font-family: "GT America Mono";
+  font-style: normal;
+  font-weight: 500;
+  font-display: swap;
+  src: url("/fonts/GT-America-Mono-Medium.woff2") format("woff2");
+}
+
 /* https://tailwindcss.com/docs/adding-custom-styles#adding-custom-variants */
 @custom-variant dark (&:is(.dark *));
 
@@ -53,7 +69,10 @@
 
 @theme inline {
   --font-sans: "Inter Variable", sans-serif;
-  /* --font-weight-medium: 450; */
+  --font-mono:
+    /* "GT America Mono", */
+    ui-monospace, "SFMono-Regular", Menlo, Monaco, Consolas, "Liberation Mono",
+    "Courier New", monospace;
 
   /* text sizes */
   /* --text-* is a theme variable namespace that controls text-* utilities, and Tailwind only registers those when they’re defined via @theme. inline is explicitly required when a theme variable references another variable, which your alias lines do (e.g. --text-sm: var(--text-small)). */

@@ -1,5 +1,4 @@
 import { useNavigate } from "react-router"
-import { open } from "@tauri-apps/plugin-shell"
 import {
   CheckCircleIcon,
   ExternalLinkIcon,
@@ -12,6 +11,7 @@ import type { usePersonalServer } from "../../../hooks/usePersonalServer"
 import { Text } from "@/components/typography/text"
 import { Button } from "@/components/ui/button"
 import { cn } from "@/lib/classes"
+import { openExternalUrl } from "@/lib/open-resource"
 import { ROUTES } from "@/config/routes"
 
 export interface PersonalServerCardProps {
@@ -112,7 +112,7 @@ export function PersonalServerCard({
           {isRunning && personalServer.tunnelUrl && (
             <button
               type="button"
-              onClick={() => open(`${personalServer.tunnelUrl}/health`)}
+              onClick={() => void openExternalUrl(`${personalServer.tunnelUrl}/health`)}
               className="mt-0.5 flex items-center gap-1 text-left"
               title={`${personalServer.tunnelUrl}/health`}
             >

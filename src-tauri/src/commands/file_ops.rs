@@ -1,6 +1,7 @@
 use serde::{Deserialize, Serialize};
-use std::fs;
-use std::path::PathBuf;
+use std::fs::{self, File};
+use std::io::Read;
+use std::path::{Path, PathBuf};
 use tauri::{AppHandle, Manager};
 use dirs::home_dir;
 
@@ -18,6 +19,115 @@ pub struct RunData {
     pub run_id: String,
     pub timestamp: u64,
     pub content: serde_json::Value,
+}
+
+#[derive(Debug, Serialize, Deserialize)]
+pub struct SourceExportPreview {
+    #[serde(rename = "previewJson")]
+    pub preview_json: String,
+    #[serde(rename = "isTruncated")]
+    pub is_truncated: bool,
+    #[serde(rename = "filePath")]
+    pub file_path: String,
+    #[serde(rename = "fileSizeBytes")]
+    pub file_size_bytes: u64,
+    #[serde(rename = "exportedAt")]
+    pub exported_at: String,
+}
+
+fn parse_export_timestamp(path: &Path) -> Option<u64> {
+    let filename = path.file_stem()?.to_string_lossy();
+    let ts_str = filename.split('_').last()?;
+    ts_str.parse::<u64>().ok()
+}
+
+fn find_latest_export_json(platform_dir: &Path) -> Result<Option<(PathBuf, u64)>, String> {
+    if !platform_dir.exists() {
+        return Ok(None);
+    }
+
+    let mut latest_json: Option<(PathBuf, u64)> = None;
+
+    for run_entry in fs::read_dir(platform_dir).map_err(|e| e.to_string())?.flatten() {
+        if !run_entry.path().is_dir() {
+            continue;
+        }
+        for file_entry in fs::read_dir(run_entry.path()).map_err(|e| e.to_string())?.flatten() {
+            let path = file_entry.path();
+            if path.extension().map_or(false, |ext| ext == "json") {
+                if let Some(ts) = parse_export_timestamp(&path) {
+                    if latest_json.as_ref().map_or(true, |(_, prev_ts)| ts > *prev_ts) {
+                        latest_json = Some((path, ts));
+                    }
+                }
+            }
+        }
+    }
+
+    Ok(latest_json)
+}
+
+fn read_export_content(path: &Path) -> Result<serde_json::Value, String> {
+    let content = fs::read_to_string(path)
+        .map_err(|e| format!("Failed to read export file: {}", e))?;
+    let data = serde_json::from_str::<serde_json::Value>(&content)
+        .map_err(|e| format!("Failed to parse export file: {}", e))?;
+    Ok(data.get("content").cloned().unwrap_or(data))
+}
+
+fn truncate_utf8_by_bytes(input: &str, max_bytes: usize) -> (String, bool) {
+    if input.len() <= max_bytes {
+        return (input.to_string(), false);
+    }
+    if max_bytes == 0 {
+        return (String::new(), true);
+    }
+
+    let mut end = 0usize;
+    for (idx, ch) in input.char_indices() {
+        let next = idx + ch.len_utf8();
+        if next > max_bytes {
+            break;
+        }
+        end = next;
+    }
+
+    (input[..end].to_string(), true)
+}
+
+fn read_raw_export_preview(path: &Path, max_bytes: usize) -> Result<(String, bool), String> {
+    let mut file = File::open(path)
+        .map_err(|e| format!("Failed to open export file for preview: {}", e))?;
+    let mut buffer = vec![0u8; max_bytes.saturating_add(1)];
+    let bytes_read = file
+        .read(&mut buffer)
+        .map_err(|e| format!("Failed to read export file preview: {}", e))?;
+
+    let is_truncated = bytes_read > max_bytes;
+    let slice = &buffer[..bytes_read.min(max_bytes)];
+
+    let mut end = slice.len();
+    while end > 0 && std::str::from_utf8(&slice[..end]).is_err() {
+        end -= 1;
+    }
+
+    Ok((String::from_utf8_lossy(&slice[..end]).to_string(), is_truncated))
+}
+
+fn build_source_export_preview(
+    json_path: &Path,
+    byte_limit: usize,
+    file_size_bytes: u64,
+) -> Result<(String, bool), String> {
+    let large_file_threshold = (byte_limit as u64).saturating_mul(4);
+    if file_size_bytes > large_file_threshold {
+        return read_raw_export_preview(json_path, byte_limit);
+    }
+
+    let content = read_export_content(json_path)?;
+    let full_json = serde_json::to_string_pretty(&content)
+        .map_err(|e| format!("Failed to serialize preview JSON: {}", e))?;
+    Ok(truncate_utf8_by_bytes(&full_json, byte_limit))
 }
 
 /// Get all JSON files from an export path
@@ -330,6 +440,69 @@ pub async fn load_run_export_data(_run_id: String, export_path: String) -> Resul
     Err("Failed to load export data".to_string())
 }
 
+/// Load a truncated JSON preview for the latest source export.
+#[tauri::command]
+pub async fn load_latest_source_export_preview(
+    app: AppHandle,
+    company: String,
+    name: String,
+    max_bytes: Option<usize>,
+) -> Result<Option<SourceExportPreview>, String> {
+    let platform_dir = app
+        .path()
+        .app_data_dir()
+        .map_err(|e| format!("Failed to get app data dir: {}", e))?
+        .join("exported_data")
+        .join(&company)
+        .join(&name);
+
+    let Some((json_path, timestamp)) = find_latest_export_json(&platform_dir)? else {
+        return Ok(None);
+    };
+
+    let byte_limit = max_bytes.unwrap_or(262_144);
+    let file_size_bytes = fs::metadata(&json_path).map(|m| m.len()).unwrap_or(0);
+    let (preview_json, is_truncated) =
+        build_source_export_preview(&json_path, byte_limit, file_size_bytes)?;
+
+    let exported_at = chrono::DateTime::from_timestamp(timestamp as i64, 0)
+        .map(|dt| dt.to_rfc3339())
+        .unwrap_or_else(|| chrono::Utc::now().to_rfc3339());
+
+    Ok(Some(SourceExportPreview {
+        preview_json,
+        is_truncated,
+        file_path: json_path.to_string_lossy().to_string(),
+        file_size_bytes,
+        exported_at,
+    }))
+}
+
+/// Load full JSON for the latest source export.
+#[tauri::command]
+pub async fn load_latest_source_export_full(
+    app: AppHandle,
+    company: String,
+    name: String,
+) -> Result<Option<String>, String> {
+    let platform_dir = app
+        .path()
+        .app_data_dir()
+        .map_err(|e| format!("Failed to get app data dir: {}", e))?
+        .join("exported_data")
+        .join(&company)
+        .join(&name);
+
+    let Some((json_path, _)) = find_latest_export_json(&platform_dir)? else {
+        return Ok(None);
+    };
+
+    let content = read_export_content(&json_path)?;
+    let full_json = serde_json::to_string_pretty(&content)
+        .map_err(|e| format!("Failed to serialize full JSON: {}", e))?;
+    Ok(Some(full_json))
+}
+
 /// Open the platform export folder
 #[tauri::command]
 pub async fn open_platform_export_folder(
@@ -416,4 +589,63 @@ pub async fn set_app_config(config: AppConfig) -> Result<(), String> {
 
     log::info!("App config saved to: {:?}", config_path);
     Ok(())
+}
+
+#[cfg(test)]
+mod tests {
+    use super::build_source_export_preview;
+    use std::fs;
+    use std::path::PathBuf;
+    use std::time::{SystemTime, UNIX_EPOCH};
+
+    fn unique_temp_file(prefix: &str) -> PathBuf {
+        let nanos = SystemTime::now()
+            .duration_since(UNIX_EPOCH)
+            .expect("clock should be after unix epoch")
+            .as_nanos();
+        std::env::temp_dir().join(format!("{}_{}.json", prefix, nanos))
+    }
+
+    #[test]
+    fn build_source_export_preview_uses_raw_path_for_large_invalid_json() {
+        let path = unique_temp_file("source_preview_large_invalid");
+        let invalid_json = "{not-json".repeat(40);
+        fs::write(&path, &invalid_json).expect("should write temp file");
+
+        let byte_limit = 16;
+        let file_size = fs::metadata(&path).expect("should read metadata").len();
+        let result = build_source_export_preview(&path, byte_limit, file_size);
+
+        fs::remove_file(&path).expect("should clean up temp file");
+
+        let (preview, is_truncated) = result.expect("large preview should bypass JSON parse");
+        assert!(is_truncated, "large preview should be truncated");
+        assert!(
+            preview.len() <= byte_limit,
+            "preview must not exceed byte limit"
+        );
+        assert!(
+            preview.starts_with("{not-json"),
+            "raw preview should preserve source bytes"
+        );
+    }
+
+    #[test]
+    fn build_source_export_preview_errors_for_small_invalid_json() {
+        let path = unique_temp_file("source_preview_small_invalid");
+        fs::write(&path, "{not-json").expect("should write temp file");
+
+        let byte_limit = 64;
+        let file_size = fs::metadata(&path).expect("should read metadata").len();
+        let result = build_source_export_preview(&path, byte_limit, file_size);
+
+        fs::remove_file(&path).expect("should clean up temp file");
+
+        let error = result.expect_err("small preview should still parse JSON");
+        assert!(
+            error.contains("Failed to parse export file"),
+            "expected parse failure, got: {}",
+            error
+        );
+    }
 }

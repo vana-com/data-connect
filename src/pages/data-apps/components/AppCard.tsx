@@ -5,17 +5,11 @@ import { cn } from "@/lib/classes"
 import { ROUTES } from "@/config/routes"
 import type { AppRegistryEntry } from "@/apps/registry"
 import { buildGrantSearchParams } from "@/lib/grant-params"
+import { openExternalUrl } from "@/lib/open-resource"
 import { DEV_FLAGS } from "@/config/dev-flags"
 
 async function openExternalApp(url: string) {
-  try {
-    const { open } = await import("@tauri-apps/plugin-shell")
-    await open(url)
-    return true
-  } catch {
-    const popup = window.open(url, "_blank", "noopener,noreferrer")
-    return Boolean(popup)
-  }
+  return openExternalUrl(url)
 }
 
 export function AppCard({ app }: { app: AppRegistryEntry }) {

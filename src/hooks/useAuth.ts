@@ -27,6 +27,8 @@ export function useAuth() {
     isLoading: auth.isLoading,
     user: auth.user,
     walletAddress: auth.walletAddress,
+    accountRole: auth.accountRole,
+    canAccessDebugRuns: auth.accountRole === 'debug',
     privyEnabled,
     logout,
   };

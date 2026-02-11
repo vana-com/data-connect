@@ -45,7 +45,8 @@ That can miss regressions in real hook behavior:
 
 ## Validation run
 
-- [ ] `bun run check:all`
+- [ ] `npm run lint`
+- [ ] `npm run test`
 - [x] `npx vitest run src/pages/runs`
 - [x] Lint checks on touched runs test file
 

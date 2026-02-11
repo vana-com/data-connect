@@ -27,6 +27,10 @@
 - Builds via `npm run auth:build` → output lands in `src-tauri/auth-page/`.
 - `pretauri:dev` and `pretauri:build` both run `auth:build` automatically, so
   the auth page is always rebuilt before any Tauri build.
+- Commit policy: treat `src-tauri/auth-page/*` as generated output. Do not commit
+  hash-only updates in `src-tauri/auth-page/index.html` unless the matching built
+  assets in `src-tauri/auth-page/assets/*` (and related generated files) are
+  committed together and validated.
 
 ### Config injection
 

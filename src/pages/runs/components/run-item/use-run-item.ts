@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useMemo, useState } from "react"
 import { invoke } from "@tauri-apps/api/core"
 import { getScopeForPlatform, ingestData } from "@/services/personalServerIngest"
+import { openLocalPath } from "@/lib/open-resource"
 import type { Run } from "@/types"
 import {
   buildExportData,
@@ -79,11 +80,7 @@ export function useRunItem({ run, serverPort, serverReady }: UseRunItemProps) {
 
   const openFolder = useCallback(async () => {
     if (run.exportPath) {
-      try {
-        await invoke("open_folder", { path: run.exportPath })
-      } catch (error) {
-        console.error("Failed to open folder:", error)
-      }
+      await openLocalPath(run.exportPath)
     }
   }, [run.exportPath])
 

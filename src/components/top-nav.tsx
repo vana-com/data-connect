@@ -49,7 +49,7 @@ const navItems: NavItem[] = [
 
 export function TopNav() {
   return (
-    <div className="relative z-20 w-full">
+    <div data-component="top-nav" className="relative z-20 w-full">
       {/* spacer covering the dot pattern, sets the nav under the macOS traffic lights bar */}
       <div className="h-[28px] bg-muted"></div>
       <header

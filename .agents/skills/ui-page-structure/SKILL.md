@@ -16,6 +16,7 @@ Keep route-level code predictable: entry files, page-only components (and hooks)
 - **Page-only UI + hooks**: `src/pages/<route>/components/*` (hooks live with related components; no standalone `hooks/` dir).
 - **Types + utils**: colocate in the route folder (`types.ts`, `utils.ts`, etc.).
 - **Logic vs JSX**: keep logic in hooks/logic files, JSX in components (details below).
+- **Extraction trigger**: if route `index.tsx` has more than one `useEffect` or includes direct IPC/file-system/network orchestration, extract a single page-local orchestration hook before adding more behavior.
 - **Tests**: add enough to give confidence the page works; keep scope tight (no over-engineering).
 - **Shared UI**: only in `src/components` (cross-page only).
 - **Avoid “sections” folders**: page sections are just components.
@@ -72,6 +73,7 @@ src/pages/runs/
 
 - `index.test.tsx` covering critical wiring and one or two key UI states.
 - Add hook/component tests where behavior is non-trivial or risk-prone.
+- If runtime capability changes behavior (for example desktop/Tauri vs browser), include at least one test for each branch.
 - Avoid snapshots; assert behavior and side effects.
 - Follow `react-testing` for test scope, commands, and reporting.
 

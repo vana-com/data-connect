@@ -22,6 +22,32 @@ const readIndex = (): string[] | null => {
   return JSON.parse(raw) as string[];
 };
 
+/**
+ * Helper: intercept localStorage.setItem with a custom gate function.
+ * Spies on the instance method (not Storage.prototype) to work around
+ * happy-dom's ClassMethodBinder caching bound methods on the instance.
+ * Returns a restore function that MUST be called before the test ends.
+ */
+function interceptSetItem(
+  gate: (key: string, value: string) => 'throw' | 'passthrough'
+) {
+  const originalSetItem = localStorage.setItem.bind(localStorage);
+  const spy = vi.spyOn(localStorage, 'setItem').mockImplementation(
+    (key: string, value: string) => {
+      if (gate(key, value) === 'throw') {
+        throw new Error('boom');
+      }
+      return originalSetItem(key, value);
+    }
+  );
+  return {
+    spy,
+    restore() {
+      spy.mockRestore();
+    },
+  };
+}
+
 beforeEach(async () => {
   localStorage.clear();
   vi.resetModules();
@@ -47,17 +73,14 @@ describe('setConnectedApp', () => {
     const warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {});
     const listener = vi.fn();
     const unsubscribe = storage.subscribeConnectedApps(listener);
-    const originalSetItem = Storage.prototype.setItem;
 
-    vi.spyOn(Storage.prototype, 'setItem').mockImplementation(function (this: Storage, key, value) {
-      if (key === appKey(baseApp.id)) {
-        throw new Error('boom');
-      }
-      return originalSetItem.call(this, key, value);
-    });
+    const { restore } = interceptSetItem((key) =>
+      key === appKey(baseApp.id) ? 'throw' : 'passthrough'
+    );
 
     storage.setConnectedApp(baseApp);
     unsubscribe();
+    restore();
 
     expect(warnSpy).toHaveBeenCalled();
     expect(listener).not.toHaveBeenCalled();
@@ -69,17 +92,14 @@ describe('setConnectedApp', () => {
     const warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {});
     const listener = vi.fn();
     const unsubscribe = storage.subscribeConnectedApps(listener);
-    const originalSetItem = Storage.prototype.setItem;
 
-    vi.spyOn(Storage.prototype, 'setItem').mockImplementation(function (this: Storage, key, value) {
-      if (key === indexKey) {
-        throw new Error('boom');
-      }
-      return originalSetItem.call(this, key, value);
-    });
+    const { restore } = interceptSetItem((key) =>
+      key === indexKey ? 'throw' : 'passthrough'
+    );
 
     storage.setConnectedApp(baseApp);
     unsubscribe();
+    restore();
 
     expect(warnSpy).toHaveBeenCalled();
     expect(listener).not.toHaveBeenCalled();
@@ -134,19 +154,16 @@ describe('migrateConnectedAppsStorage', () => {
     );
     localStorage.setItem(appKey('existing'), JSON.stringify(existingApp));
 
-    const originalSetItem = Storage.prototype.setItem;
-    vi.spyOn(Storage.prototype, 'setItem').mockImplementation(function (this: Storage, key, value) {
-      if (key === appKey('legacy-2')) {
-        throw new Error('boom');
-      }
-      return originalSetItem.call(this, key, value);
-    });
+    const { restore } = interceptSetItem((key) =>
+      key === appKey('legacy-2') ? 'throw' : 'passthrough'
+    );
 
     const listener = vi.fn();
     const unsubscribe = storage.subscribeConnectedApps(listener);
 
     storage.migrateConnectedAppsStorage();
     unsubscribe();
+    restore();
 
     expect(localStorage.getItem(legacyKey('legacy-1'))).toBeNull();
     expect(localStorage.getItem(appKey('legacy-1'))).not.toBeNull();

@@ -39,13 +39,32 @@ vi.mock("@/hooks/useConnectorUpdates", () => ({
   }),
 }))
 
+vi.mock("@/hooks/useConnectedApps", () => ({
+  useConnectedApps: () => ({
+    connectedApps: [],
+    fetchConnectedApps: vi.fn(),
+    removeApp: vi.fn(),
+  }),
+}))
+
+vi.mock("@/hooks/usePersonalServer", () => ({
+  usePersonalServer: () => ({
+    status: "stopped",
+    port: null,
+    tunnelUrl: null,
+    error: null,
+    startServer: vi.fn(),
+    stopServer: vi.fn(),
+  }),
+}))
+
 vi.mock("react-redux", async () => {
   const actual = await vi.importActual<object>("react-redux")
   return {
     ...actual,
     useSelector: (
-      selector: (state: { app: { runs: []; connectedApps: [] } }) => unknown
-    ) => selector({ app: { runs: [], connectedApps: [] } }),
+      selector: (state: { app: { runs: [] } }) => unknown
+    ) => selector({ app: { runs: [] } }),
   }
 })
 

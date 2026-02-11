@@ -1,24 +1,20 @@
 import { getVersion } from "@tauri-apps/api/app"
 import { invoke } from "@tauri-apps/api/core"
-import { useCallback, useEffect, useState, useSyncExternalStore } from "react"
+import { useCallback, useEffect, useState } from "react"
 import { useNavigate } from "react-router"
 import { useAuth } from "@/hooks/useAuth"
 import { usePersonalServer } from "@/hooks/usePersonalServer"
+import { useConnectedApps } from "@/hooks/useConnectedApps"
 import { ROUTES } from "@/config/routes"
 import { openLocalPath } from "@/lib/open-resource"
 import { getUserDataPath } from "@/lib/tauri-paths"
-import {
-  getAllConnectedApps,
-  removeConnectedApp,
-  subscribeConnectedApps,
-} from "@/lib/storage"
 import type { BrowserSession, BrowserStatus, NodeJsTestResult, SettingsSection } from "./types"
 
 export function useSettingsPage() {
   const navigate = useNavigate()
   const { user, logout, isAuthenticated, walletAddress } = useAuth()
   const personalServer = usePersonalServer()
-  const connectedApps = useSyncExternalStore(subscribeConnectedApps, getAllConnectedApps)
+  const { connectedApps, fetchConnectedApps, removeApp } = useConnectedApps()
   const [activeSection, setActiveSection] = useState<SettingsSection>("account")
   const [dataPath, setDataPath] = useState<string>("")
   const [appVersion, setAppVersion] = useState<string>("")
@@ -93,6 +89,13 @@ export function useSettingsPage() {
     }
   }, [])
 
+  // Fetch connected apps from Personal Server when available
+  useEffect(() => {
+    if (personalServer.port && personalServer.status === "running") {
+      fetchConnectedApps(personalServer.port)
+    }
+  }, [personalServer.port, personalServer.status, fetchConnectedApps])
+
   // Persist simulateNoChrome to localStorage
   useEffect(() => {
     localStorage.setItem("databridge_simulate_no_chrome", String(simulateNoChrome))
@@ -157,8 +160,8 @@ export function useSettingsPage() {
   }, [simulateNoChrome])
 
   const handleRevokeApp = useCallback((appId: string) => {
-    removeConnectedApp(appId)
-  }, [])
+    removeApp(appId)
+  }, [removeApp])
 
   const handleLogout = useCallback(async () => {
     await logout()

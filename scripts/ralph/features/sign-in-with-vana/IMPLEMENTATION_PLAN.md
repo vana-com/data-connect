@@ -45,12 +45,24 @@
 
 - **[DONE]** Deny flow already fully wired: `handleDeny` passed as `onDeny` to `GrantConsentState`, Cancel button calls `onDeny()` which fires `denySession()` API call and transitions state to `denied`. Test coverage confirms the flow works end-to-end.
 
+### P1 Connected Apps Migration (DONE)
+- **[DONE]** Created `src/hooks/useConnectedApps.ts` — hook that fetches grants from Personal Server `GET /v1/grants`, converts `Grant` objects to `ConnectedApp` format (using grantId as id, truncated granteeAddress as name, scopes as permissions), filters revoked grants, and dispatches to Redux. Replaces the old localStorage-based storage approach with Gateway as the single source of truth.
+
+- **[DONE]** Updated `src/pages/grant/use-grant-flow.ts` — after successful grant creation and session approval, dispatches `addConnectedApp` to Redux with builder manifest name, icon, scopes, and grantId. This ensures the home page updates immediately without requiring a server round-trip.
+
+- **[DONE]** Updated `src/pages/home/index.tsx` — uses `useConnectedApps` hook and `usePersonalServer` to fetch connected apps when the Personal Server is running. Replaces the raw Redux selector.
+
+- **[DONE]** Updated `src/pages/settings/use-settings-page.ts` — replaced `useSyncExternalStore(subscribeConnectedApps, getAllConnectedApps)` with `useConnectedApps` hook. Revoke handler now uses `removeApp` from the hook (optimistic Redux removal).
+
+- **[DONE]** Updated `src/pages/settings/index.test.tsx` and `src/pages/home/index.test.tsx` — added mocks for `useConnectedApps` hook. Removed obsolete `@/lib/storage` mocks from settings test.
+
+- **[DONE]** Fixed `src/lib/storage.test.ts` — 4 tests were failing due to happy-dom's `ClassMethodBinder` caching bound methods on the localStorage instance, causing `vi.spyOn(Storage.prototype, 'setItem')` to not intercept calls. Fixed by spying on `localStorage.setItem` (instance level) instead of `Storage.prototype.setItem`, with an `interceptSetItem` helper that uses a gate function pattern. All 9 storage tests now pass.
+
 ## TODO
 
-### P1 Remaining Items
-- **[P1]** Update connected apps to use Gateway as source of truth. Replace `setConnectedApp()` / `getConnectedApps()` in `src/lib/storage.ts` with calls to Personal Server `GET /v1/grants` (via `personalServer.listGrants()`). The connected apps page should fetch live grant data (grantId, grantee, scopes, revocation status) instead of reading localStorage.
-
 ### P2 Future Enhancements
+- **[P2]** Implement revoke via Personal Server API — currently the revoke handler only removes from Redux optimistically. Need to call `DELETE /v1/grants/{grantId}` to propagate revocation to Gateway.
+
 - **[P2]** Add Tauri deep-link plugin for native `vana://connect` URL scheme. Add `tauri-plugin-deep-link` to `Cargo.toml` and `tauri.conf.json`. Register `vana` scheme. Listen for `onOpenUrl` events in `src/hooks/use-deep-link.ts` and parse `sessionId` + `secret` from the URL. This replaces URL query param routing for production but current URL param approach works for dev/testing.
 
 - **[P2]** Error recovery for split failure — if `POST /v1/grants` succeeds but `POST /v1/session/{id}/approve` fails (session expired, network error), the grant exists on Gateway but builder never learns about it. Store pending `{ sessionId, grantId, secret }` in localStorage. On next app open, retry the approve call. Clear on success.
@@ -61,14 +73,10 @@
 
 - **[P2]** Add unit tests for `personalServer.ts` — mock fetch, verify Web3Signed header construction (canonical JSON, base64url encoding, signature), verify request/response shapes for createGrant and listGrants.
 
-## Known Issues
-
-- **storage.test.ts**: 4 tests fail with happy-dom (localStorage mock compatibility). Pre-existing issue unmasked by switching test environment from jsdom to happy-dom. The jsdom environment was completely broken (html-encoding-sniffer@6.0.0 ESM incompatibility).
-
 ## Validation
 
 - `npm run typecheck` — no type errors after all changes.
 - `npm run build` — clean production build.
-- `npm run test` — all existing + new tests pass (except pre-existing storage.test.ts failures).
+- `npm run test` — all 55 tests passing across 13 test files. No pre-existing failures.
 - Manual: open `vana://connect?sessionId=test&secret=abc` (or URL param equivalent in dev), verify full flow: claim → builder verify → consent → auth (if needed) → grant creation → session approve → success.
 - Manual: click Cancel on consent screen, verify deny call fires and app navigates home.

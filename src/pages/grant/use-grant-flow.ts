@@ -3,7 +3,7 @@ import { invoke } from "@tauri-apps/api/core"
 import { listen } from "@tauri-apps/api/event"
 import { useDispatch } from "react-redux"
 import { useAuth } from "../../hooks/useAuth"
-import { setAuthenticated } from "../../state/store"
+import { setAuthenticated, addConnectedApp } from "../../state/store"
 import {
   claimSession,
   approveSession,
@@ -298,6 +298,20 @@ export function useGrantFlow(params: GrantFlowParams) {
         })
       }
 
+      // Persist as connected app in Redux for immediate UI update
+      dispatch(
+        addConnectedApp({
+          id: grantId,
+          name:
+            flowState.builderManifest?.name ??
+            flowState.session?.appName ??
+            `App ${flowState.session.granteeAddress.slice(0, 6)}…${flowState.session.granteeAddress.slice(-4)}`,
+          icon: flowState.builderManifest?.icons?.[0]?.src,
+          permissions: flowState.session.scopes,
+          connectedAt: new Date().toISOString(),
+        })
+      )
+
       setFlowState(prev => ({ ...prev, status: "success" }))
       setCurrentStep(5)
     } catch (error) {
@@ -318,9 +332,11 @@ export function useGrantFlow(params: GrantFlowParams) {
     flowState.session,
     flowState.sessionId,
     flowState.secret,
+    flowState.builderManifest,
     isAuthenticated,
     walletAddress,
     personalServer.port,
+    dispatch,
   ])
 
   // Auto-approve after auth completes (if user had clicked Allow before auth)

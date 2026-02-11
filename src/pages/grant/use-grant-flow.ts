@@ -5,15 +5,19 @@ import { useDispatch } from "react-redux"
 import { useAuth } from "../../hooks/useAuth"
 import { setAuthenticated } from "../../state/store"
 import {
+  claimSession,
   approveSession,
-  getSessionInfo,
+  denySession,
   SessionRelayError,
 } from "../../services/sessionRelay"
-import { prepareGrantMessage } from "../../services/grantSigning"
-import { setConnectedApp } from "../../lib/storage"
-import type { ConnectedApp } from "../../types"
-import { DEFAULT_APP_ID, getAppRegistryEntry } from "../../apps/registry"
+import { verifyBuilder } from "../../services/builder"
+import {
+  createGrant,
+  PersonalServerError,
+} from "../../services/personalServer"
+import { usePersonalServer } from "../../hooks/usePersonalServer"
 import type {
+  BuilderManifest,
   GrantFlowParams,
   GrantFlowState,
   GrantSession,
@@ -27,9 +31,35 @@ const DEV_AUTH_PAGE_URL = "http://localhost:5175"
 const isTauriRuntime = () =>
   typeof window !== "undefined" && "__TAURI__" in window
 
+// Demo mode: sessions starting with "grant-session-" use mock data (dev only)
+function isDemoSession(sessionId: string): boolean {
+  return import.meta.env.DEV && sessionId.startsWith("grant-session-")
+}
+
+function createDemoSession(sessionId: string): GrantSession {
+  return {
+    id: sessionId,
+    granteeAddress: "0x0000000000000000000000000000000000000000",
+    scopes: ["chatgpt.conversations"],
+    expiresAt: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString(),
+    appName: "Demo App",
+    appIcon: "🔗",
+  }
+}
+
+function createDemoBuilderManifest(): BuilderManifest {
+  return {
+    name: "Demo App",
+    appUrl: "https://example.com",
+    privacyPolicyUrl: "https://example.com/privacy",
+    termsUrl: "https://example.com/terms",
+  }
+}
+
 export function useGrantFlow(params: GrantFlowParams) {
   const dispatch = useDispatch()
   const { isAuthenticated, isLoading: authLoading, walletAddress } = useAuth()
+  const personalServer = usePersonalServer()
   const [flowState, setFlowState] = useState<GrantFlowState>({
     sessionId: "",
     status: "loading",
@@ -42,10 +72,10 @@ export function useGrantFlow(params: GrantFlowParams) {
   const [authError, setAuthError] = useState<string | null>(null)
 
   const sessionId = params?.sessionId
-  const appId = params?.appId
-  const scopesKey = params?.scopes?.join("|") ?? ""
+  const secret = params?.secret
   const hasSuccessOverride = params?.status === "success"
 
+  // Reset auth state when sessionId changes
   useEffect(() => {
     authTriggered.current = false
     setAuthUrl(null)
@@ -53,6 +83,7 @@ export function useGrantFlow(params: GrantFlowParams) {
     setAuthPending(false)
   }, [sessionId])
 
+  // --- Main flow: load → claim → verify builder → consent ---
   useEffect(() => {
     if (!sessionId) {
       setFlowState({
@@ -63,42 +94,71 @@ export function useGrantFlow(params: GrantFlowParams) {
       return
     }
 
-    const loadSession = async () => {
-      try {
-        setFlowState({ sessionId, status: "loading" })
+    const runFlow = async () => {
+      setFlowState({ sessionId, secret, status: "loading" })
 
-        // Check if this is a local demo app (sessionId starts with 'grant-session-')
-        // For demo apps, use mock session data instead of fetching from relay
-        let session: GrantSession
-        if (sessionId.startsWith("grant-session-")) {
-          // Mock session data for local demo apps
-          const resolvedAppId = appId || DEFAULT_APP_ID
-          const appInfo = getAppRegistryEntry(resolvedAppId)
-          const scopes =
-            params.scopes && params.scopes.length > 0
-              ? params.scopes
-              : appInfo?.scopes || ["read:data"]
-          session = {
-            id: sessionId,
-            appId: resolvedAppId,
-            appName: appInfo?.name || resolvedAppId,
-            appIcon: appInfo?.icon || "🔗",
-            scopes,
-            expiresAt: new Date(
-              Date.now() + 30 * 24 * 60 * 60 * 1000
-            ).toISOString(), // 30 days
-          }
-        } else {
-          const fetchedSession = await getSessionInfo(sessionId)
-          if (!fetchedSession) {
-            throw new Error("Session not found")
-          }
-          session = fetchedSession
+      // --- Demo mode ---
+      if (isDemoSession(sessionId)) {
+        const session = createDemoSession(sessionId)
+        const builderManifest = createDemoBuilderManifest()
+        setFlowState(prev => ({
+          ...prev,
+          status: "consent",
+          session,
+          builderManifest,
+        }))
+        setCurrentStep(3)
+        return
+      }
+
+      // --- Real flow ---
+      if (!secret) {
+        setFlowState({
+          sessionId,
+          status: "error",
+          error:
+            "No secret provided. The deep link URL is missing the secret parameter.",
+        })
+        return
+      }
+
+      // Step 1: Claim session
+      try {
+        setFlowState(prev => ({ ...prev, status: "claiming" }))
+        const claimed = await claimSession({ sessionId, secret })
+        const session: GrantSession = {
+          id: sessionId,
+          granteeAddress: claimed.granteeAddress,
+          scopes: claimed.scopes,
+          expiresAt: claimed.expiresAt,
+          webhookUrl: claimed.webhookUrl,
+          appUserId: claimed.appUserId,
         }
-        setFlowState(prev => ({ ...prev, session, sessionId }))
+        setFlowState(prev => ({ ...prev, session }))
+
+        // Step 2: Verify builder
+        setFlowState(prev => ({ ...prev, status: "verifying-builder" }))
+        setCurrentStep(1)
+        let builderManifest: BuilderManifest
+        try {
+          builderManifest = await verifyBuilder(claimed.granteeAddress)
+        } catch (err) {
+          // Builder verification is non-fatal — use fallback metadata
+          console.warn("[GrantFlow] Builder verification failed:", err)
+          builderManifest = {
+            name: `App ${claimed.granteeAddress.slice(0, 8)}…`,
+            appUrl: "",
+          }
+        }
+        setFlowState(prev => ({ ...prev, builderManifest }))
+
+        // Advance to consent (exporting step is handled by the connect page)
+        setFlowState(prev => ({ ...prev, status: "consent" }))
+        setCurrentStep(3)
       } catch (error) {
         setFlowState({
           sessionId,
+          secret,
           status: "error",
           error:
             error instanceof SessionRelayError
@@ -108,29 +168,17 @@ export function useGrantFlow(params: GrantFlowParams) {
       }
     }
 
-    loadSession()
-  }, [sessionId, appId, scopesKey])
+    runFlow()
+  }, [sessionId, secret])
 
-  useEffect(() => {
-    if (hasSuccessOverride) return
-    if (!flowState.session || authLoading) return
-    if (flowState.status === "success" || flowState.status === "error") return
-    if (flowState.status === "signing") return
-
-    if (flowState.status === "auth-required") return
-    const nextStatus = "consent"
-    setFlowState(prev =>
-      prev.status === nextStatus ? prev : { ...prev, status: nextStatus }
-    )
-    setCurrentStep(2)
-  }, [authLoading, flowState.session, flowState.status, hasSuccessOverride])
-
+  // Handle success override (when returning from connect page)
   useEffect(() => {
     if (!hasSuccessOverride || !flowState.session) return
     if (flowState.status === "success") return
     setFlowState(prev => ({ ...prev, status: "success" }))
   }, [flowState.session, flowState.status, hasSuccessOverride])
 
+  // --- Auth ---
   const startBrowserAuth = useCallback(async () => {
     if (import.meta.env.DEV && !isTauriRuntime()) {
       setAuthError(null)
@@ -199,8 +247,11 @@ export function useGrantFlow(params: GrantFlowParams) {
     }
   }, [dispatch])
 
+  // --- Approve flow ---
   const handleApprove = useCallback(async () => {
     if (!flowState.session) return
+
+    // If not authenticated, defer to auth
     if (!isAuthenticated || !walletAddress) {
       setAuthPending(true)
       setFlowState(prev => ({ ...prev, status: "auth-required" }))
@@ -208,71 +259,98 @@ export function useGrantFlow(params: GrantFlowParams) {
     }
 
     setIsApproving(true)
-    setFlowState(prev => ({ ...prev, status: "signing" }))
-    setCurrentStep(3)
+    setCurrentStep(4)
 
     try {
-      const grantData = {
-        sessionId: flowState.session.id,
-        appId: flowState.session.appId,
-        scopes: flowState.session.scopes,
-        expiresAt: flowState.session.expiresAt,
-        walletAddress,
+      // Skip grant creation + session approval for demo sessions
+      if (isDemoSession(flowState.sessionId)) {
+        setFlowState(prev => ({ ...prev, status: "success" }))
+        setCurrentStep(5)
+        return
       }
 
-      // Prepare the grant message
-      const typedData = prepareGrantMessage(grantData)
+      // Step: Create grant via Personal Server
+      setFlowState(prev => ({ ...prev, status: "creating-grant" }))
 
-      // For now, we'll use a placeholder signature
-      // In production, this would use the Privy wallet to sign
-      const typedDataString = JSON.stringify(typedData)
-      const mockSignature =
-        `0x${typedDataString}${"0".repeat(Math.max(0, 130 - typedDataString.length))}`.slice(
-          0,
-          132
+      if (!personalServer.port) {
+        throw new PersonalServerError(
+          "Personal Server is not running. Please wait for it to start."
         )
+      }
 
-      // Skip relay call for local demo sessions
-      if (!flowState.sessionId.startsWith("grant-session-")) {
-        await approveSession({
-          sessionId: flowState.sessionId,
-          walletAddress,
-          grantSignature: mockSignature,
+      const { grantId } = await createGrant(personalServer.port, {
+        granteeAddress: flowState.session.granteeAddress,
+        scopes: flowState.session.scopes,
+        expiresAt: flowState.session.expiresAt,
+      })
+
+      setFlowState(prev => ({ ...prev, grantId }))
+
+      // Step: Approve session via Session Relay
+      setFlowState(prev => ({ ...prev, status: "approving" }))
+
+      if (flowState.secret) {
+        await approveSession(flowState.sessionId, {
+          secret: flowState.secret,
+          grantId,
+          userAddress: walletAddress,
+          scopes: flowState.session.scopes,
         })
       }
 
       setFlowState(prev => ({ ...prev, status: "success" }))
-
-      // Add to connected apps (this would normally come from the backend)
-      const newApp: ConnectedApp = {
-        id: flowState.session.appId,
-        name: flowState.session.appName,
-        icon: flowState.session.appIcon,
-        permissions: flowState.session.scopes,
-        connectedAt: new Date().toISOString(),
-      }
-
-      // Store in versioned storage
-      setConnectedApp(newApp)
+      setCurrentStep(5)
     } catch (error) {
-      setFlowState({
-        sessionId: flowState.sessionId,
+      console.error("[GrantFlow] Approve failed:", error)
+      setFlowState(prev => ({
+        ...prev,
         status: "error",
         error:
-          error instanceof SessionRelayError
+          error instanceof SessionRelayError ||
+          error instanceof PersonalServerError
             ? error.message
-            : "Failed to approve session",
-      })
+            : "Failed to complete the grant flow",
+      }))
     } finally {
       setIsApproving(false)
     }
-  }, [flowState.session, flowState.sessionId, isAuthenticated, walletAddress])
+  }, [
+    flowState.session,
+    flowState.sessionId,
+    flowState.secret,
+    isAuthenticated,
+    walletAddress,
+    personalServer.port,
+  ])
 
+  // Auto-approve after auth completes (if user had clicked Allow before auth)
   useEffect(() => {
     if (!authPending || !isAuthenticated || !walletAddress) return
     setAuthPending(false)
     void handleApprove()
   }, [authPending, handleApprove, isAuthenticated, walletAddress])
+
+  // --- Deny flow ---
+  const handleDeny = useCallback(async () => {
+    if (!flowState.sessionId || !flowState.secret) return
+    if (isDemoSession(flowState.sessionId)) return
+
+    try {
+      await denySession(flowState.sessionId, {
+        secret: flowState.secret,
+        reason: "User declined",
+      })
+    } catch (error) {
+      // Deny failure is non-fatal — still navigate away
+      console.warn("[GrantFlow] Deny call failed:", error)
+    }
+
+    setFlowState(prev => ({ ...prev, status: "denied" }))
+  }, [flowState.sessionId, flowState.secret])
+
+  // Helper to get display name from builder manifest or session legacy fields
+  const builderName =
+    flowState.builderManifest?.name ?? flowState.session?.appName ?? undefined
 
   const declineHref = ROUTES.apps
 
@@ -284,8 +362,10 @@ export function useGrantFlow(params: GrantFlowParams) {
     authError,
     startBrowserAuth,
     handleApprove,
+    handleDeny,
     declineHref,
     authLoading,
     walletAddress,
+    builderName,
   }
 }

@@ -1,5 +1,6 @@
 export type GrantParams = {
   sessionId?: string
+  secret?: string
   appId?: string
   scopes?: string[]
   status?: GrantStatusParam
@@ -47,6 +48,7 @@ export function getGrantParamsFromSearchParams(
   searchParams: URLSearchParams
 ): GrantParams {
   const sessionId = searchParams.get("sessionId") || undefined
+  const secret = searchParams.get("secret") || undefined
   const appId = searchParams.get("appId") || undefined
   const scopes = parseScopesParam(searchParams.get("scopes"))
   const status =
@@ -54,6 +56,7 @@ export function getGrantParamsFromSearchParams(
 
   return {
     sessionId,
+    secret,
     appId,
     scopes,
     status,
@@ -65,6 +68,10 @@ export function buildGrantSearchParams(params: GrantParams): URLSearchParams {
 
   if (params.sessionId) {
     searchParams.set("sessionId", params.sessionId)
+  }
+
+  if (params.secret) {
+    searchParams.set("secret", params.secret)
   }
 
   if (params.appId) {

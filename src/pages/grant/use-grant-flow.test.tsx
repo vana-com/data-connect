@@ -1,18 +1,27 @@
 import { beforeEach, describe, expect, it, vi } from "vitest"
 import { act, renderHook, waitFor } from "@testing-library/react"
 import { invoke } from "@tauri-apps/api/core"
-import { DEFAULT_APP_ID, getDefaultAppEntry } from "../../apps/registry"
 import { useGrantFlow } from "./use-grant-flow"
 
+const mockClaimSession = vi.fn()
 const mockApproveSession = vi.fn()
-const mockGetSessionInfo = vi.fn()
-const mockPrepareGrantMessage = vi.fn(() => ({}))
-const mockSetConnectedApp = vi.fn()
+const mockDenySession = vi.fn()
+const mockVerifyBuilder = vi.fn()
+const mockCreateGrant = vi.fn()
 
 let authState = {
   isAuthenticated: false,
   isLoading: false,
   walletAddress: null as string | null,
+}
+
+let personalServerState = {
+  status: "stopped" as string,
+  port: null as number | null,
+  tunnelUrl: null as string | null,
+  error: null as string | null,
+  startServer: vi.fn(),
+  stopServer: vi.fn(),
 }
 
 let authCompleteHandler: ((event: { payload: any }) => void) | null = null
@@ -41,30 +50,37 @@ vi.mock("../../hooks/useAuth", () => ({
   useAuth: () => authState,
 }))
 
+vi.mock("../../hooks/usePersonalServer", () => ({
+  usePersonalServer: () => personalServerState,
+}))
+
 vi.mock("../../services/sessionRelay", () => ({
+  claimSession: (...args: unknown[]) =>
+    mockClaimSession.apply(null, args as []),
   approveSession: (...args: unknown[]) =>
     mockApproveSession.apply(null, args as []),
-  getSessionInfo: (...args: unknown[]) =>
-    mockGetSessionInfo.apply(null, args as []),
+  denySession: (...args: unknown[]) =>
+    mockDenySession.apply(null, args as []),
   SessionRelayError: class SessionRelayError extends Error {},
 }))
 
-vi.mock("../../services/grantSigning", () => ({
-  prepareGrantMessage: (...args: unknown[]) =>
-    mockPrepareGrantMessage.apply(null, args as []),
+vi.mock("../../services/builder", () => ({
+  verifyBuilder: (...args: unknown[]) =>
+    mockVerifyBuilder.apply(null, args as []),
 }))
 
-vi.mock("../../lib/storage", () => ({
-  setConnectedApp: (...args: unknown[]) =>
-    mockSetConnectedApp.apply(null, args as []),
+vi.mock("../../services/personalServer", () => ({
+  createGrant: (...args: unknown[]) =>
+    mockCreateGrant.apply(null, args as []),
+  PersonalServerError: class PersonalServerError extends Error {},
 }))
 
 beforeEach(() => {
+  mockClaimSession.mockReset()
   mockApproveSession.mockReset()
-  mockGetSessionInfo.mockReset()
-  mockPrepareGrantMessage.mockReset()
-  mockPrepareGrantMessage.mockImplementation(() => ({}))
-  mockSetConnectedApp.mockReset()
+  mockDenySession.mockReset()
+  mockVerifyBuilder.mockReset()
+  mockCreateGrant.mockReset()
   authCompleteHandler = null
   delete tauriWindow.__TAURI__
   authState = {
@@ -72,14 +88,21 @@ beforeEach(() => {
     isLoading: false,
     walletAddress: null,
   }
+  personalServerState = {
+    status: "running",
+    port: 8080,
+    tunnelUrl: null,
+    error: null,
+    startServer: vi.fn(),
+    stopServer: vi.fn(),
+  }
 })
 
 describe("useGrantFlow", () => {
-  it("uses registry defaults for demo sessions and respects scopes override", async () => {
+  it("uses demo session data for grant-session-* IDs", async () => {
     const { result } = renderHook(() =>
       useGrantFlow({
         sessionId: "grant-session-123",
-        scopes: ["read:custom"],
       })
     )
 
@@ -88,11 +111,13 @@ describe("useGrantFlow", () => {
     })
 
     const session = result.current.flowState.session
-    expect(session?.appId).toBe(DEFAULT_APP_ID)
-    expect(session?.appName).toBe(getDefaultAppEntry().name)
-    expect(session?.scopes).toEqual(["read:custom"])
+    expect(session?.granteeAddress).toBe(
+      "0x0000000000000000000000000000000000000000"
+    )
+    expect(session?.scopes).toEqual(["chatgpt.conversations"])
     expect(result.current.flowState.status).toBe("consent")
-    expect(result.current.currentStep).toBe(2)
+    expect(result.current.builderName).toBe("Demo App")
+    expect(result.current.currentStep).toBe(3)
   })
 
   it("starts auth only after approval and auto-approves on auth completion", async () => {
@@ -110,6 +135,7 @@ describe("useGrantFlow", () => {
       expect(result.current.flowState.status).toBe("consent")
     })
 
+    // Click Allow while not authenticated → should go to auth-required
     await act(async () => {
       await result.current.handleApprove()
     })
@@ -117,12 +143,12 @@ describe("useGrantFlow", () => {
     await waitFor(() => {
       expect(result.current.flowState.status).toBe("auth-required")
     })
-    expect(mockPrepareGrantMessage).not.toHaveBeenCalled()
     expect(mockedInvoke).toHaveBeenCalledWith("start_browser_auth", {
       privyAppId: expect.any(String),
       privyClientId: expect.any(String),
     })
 
+    // Simulate auth completion
     await act(async () => {
       authState = {
         isAuthenticated: true,
@@ -139,14 +165,13 @@ describe("useGrantFlow", () => {
       rerender()
     })
 
+    // Demo sessions skip grant creation → go straight to success
     await waitFor(() => {
       expect(result.current.flowState.status).toBe("success")
     })
-    expect(mockPrepareGrantMessage).toHaveBeenCalled()
-    expect(mockSetConnectedApp).toHaveBeenCalled()
   })
 
-  it("forces success when status is success", async () => {
+  it("forces success when status param is success", async () => {
     const { result } = renderHook(() =>
       useGrantFlow({
         sessionId: "grant-session-789",
@@ -159,25 +184,65 @@ describe("useGrantFlow", () => {
     })
   })
 
-  it("approves real sessions and stores connected app", async () => {
-    authState = {
-      isAuthenticated: true,
-      isLoading: false,
-      walletAddress: "0xabc",
-    }
-
-    mockGetSessionInfo.mockResolvedValue({
-      id: "real-session-1",
-      appId: "rickroll",
-      appName: "RickRoll",
-      appIcon: "🎵",
-      scopes: ["read:chatgpt-conversations"],
+  it("claims and verifies builder for real sessions", async () => {
+    mockClaimSession.mockResolvedValue({
+      sessionId: "real-session-1",
+      granteeAddress: "0xbuilder",
+      scopes: ["chatgpt.conversations"],
       expiresAt: "2030-01-01T00:00:00.000Z",
+    })
+    mockVerifyBuilder.mockResolvedValue({
+      name: "RickRoll Facts",
+      appUrl: "https://rickroll.example.com",
+      privacyPolicyUrl: "https://rickroll.example.com/privacy",
     })
 
     const { result } = renderHook(() =>
       useGrantFlow({
         sessionId: "real-session-1",
+        secret: "test-secret",
+      })
+    )
+
+    await waitFor(() => {
+      expect(result.current.flowState.status).toBe("consent")
+    })
+
+    expect(mockClaimSession).toHaveBeenCalledWith({
+      sessionId: "real-session-1",
+      secret: "test-secret",
+    })
+    expect(mockVerifyBuilder).toHaveBeenCalledWith("0xbuilder")
+
+    const session = result.current.flowState.session
+    expect(session?.granteeAddress).toBe("0xbuilder")
+    expect(session?.scopes).toEqual(["chatgpt.conversations"])
+    expect(result.current.builderName).toBe("RickRoll Facts")
+  })
+
+  it("creates grant and approves real sessions", async () => {
+    authState = {
+      isAuthenticated: true,
+      isLoading: false,
+      walletAddress: "0xuser",
+    }
+
+    mockClaimSession.mockResolvedValue({
+      sessionId: "real-session-2",
+      granteeAddress: "0xbuilder",
+      scopes: ["chatgpt.conversations"],
+      expiresAt: "2030-01-01T00:00:00.000Z",
+    })
+    mockVerifyBuilder.mockResolvedValue({
+      name: "Test Builder",
+      appUrl: "https://test.example.com",
+    })
+    mockCreateGrant.mockResolvedValue({ grantId: "grant-123" })
+
+    const { result } = renderHook(() =>
+      useGrantFlow({
+        sessionId: "real-session-2",
+        secret: "test-secret",
       })
     )
 
@@ -189,17 +254,68 @@ describe("useGrantFlow", () => {
       await result.current.handleApprove()
     })
 
-    expect(mockApproveSession).toHaveBeenCalledWith({
-      sessionId: "real-session-1",
-      walletAddress: "0xabc",
-      grantSignature: expect.any(String),
+    await waitFor(() => {
+      expect(result.current.flowState.status).toBe("success")
     })
-    expect(mockSetConnectedApp).toHaveBeenCalledWith(
-      expect.objectContaining({
-        id: "rickroll",
-        name: "RickRoll",
+
+    expect(mockCreateGrant).toHaveBeenCalledWith(8080, {
+      granteeAddress: "0xbuilder",
+      scopes: ["chatgpt.conversations"],
+      expiresAt: "2030-01-01T00:00:00.000Z",
+    })
+    expect(mockApproveSession).toHaveBeenCalledWith("real-session-2", {
+      secret: "test-secret",
+      grantId: "grant-123",
+      userAddress: "0xuser",
+      scopes: ["chatgpt.conversations"],
+    })
+  })
+
+  it("errors when no secret is provided for non-demo session", async () => {
+    const { result } = renderHook(() =>
+      useGrantFlow({
+        sessionId: "real-session-3",
+        // no secret
       })
     )
-    expect(result.current.flowState.status).toBe("success")
+
+    await waitFor(() => {
+      expect(result.current.flowState.status).toBe("error")
+    })
+    expect(result.current.flowState.error).toContain("No secret provided")
+  })
+
+  it("handles deny flow", async () => {
+    mockClaimSession.mockResolvedValue({
+      sessionId: "deny-session-1",
+      granteeAddress: "0xbuilder",
+      scopes: ["chatgpt.conversations"],
+      expiresAt: "2030-01-01T00:00:00.000Z",
+    })
+    mockVerifyBuilder.mockResolvedValue({
+      name: "Test Builder",
+      appUrl: "https://test.example.com",
+    })
+
+    const { result } = renderHook(() =>
+      useGrantFlow({
+        sessionId: "deny-session-1",
+        secret: "deny-secret",
+      })
+    )
+
+    await waitFor(() => {
+      expect(result.current.flowState.status).toBe("consent")
+    })
+
+    await act(async () => {
+      await result.current.handleDeny()
+    })
+
+    expect(mockDenySession).toHaveBeenCalledWith("deny-session-1", {
+      secret: "deny-secret",
+      reason: "User declined",
+    })
+    expect(result.current.flowState.status).toBe("denied")
   })
 })

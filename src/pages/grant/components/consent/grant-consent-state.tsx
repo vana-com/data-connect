@@ -9,27 +9,41 @@ import type { GrantSession } from "../../types"
 import { GrantWarning } from "./grant-warning"
 import { ActionPanel } from "@/components/typography/action-button"
 
-// Note: `isApproving` maps to the "signing" state from `useGrantFlow`.
-// `useGrantFlow.handleApprove()` sets status "signing" + `isApproving=true`,
-// so this consent screen stays visible while the Allow button shows loading.
+// Note: `isApproving` maps to the "creating-grant" / "approving" states.
+// The consent screen stays visible while the Allow button shows a loading spinner.
 interface GrantConsentStateProps {
   session?: GrantSession
+  builderName?: string
   isApproving: boolean
   declineHref: string
   onApprove: () => void
+  onDeny?: () => void
 }
 
 export function GrantConsentState({
   session,
+  builderName,
   isApproving,
   declineHref,
   onApprove,
+  onDeny,
 }: GrantConsentStateProps) {
   const dataSourceLabel = getPrimaryDataSourceLabel(session?.scopes)
   const dataLabel = dataSourceLabel ? `${dataSourceLabel} data` : "data"
-  const appName = session?.appName ?? "this app"
+  const appName = builderName ?? session?.appName ?? "this app"
+
+  const handleCancel = (event: React.MouseEvent) => {
+    if (isApproving) {
+      event.preventDefault()
+      return
+    }
+    if (onDeny) {
+      event.preventDefault()
+      onDeny()
+    }
+  }
+
   return (
-    // {cn("grid min-h-screen place-items-center bg-muted p-6")}
     <div className="container py-w24">
       <div className="space-y-w6">
         <Text as="h1" intent="title">
@@ -41,7 +55,6 @@ export function GrantConsentState({
 
         <div className="action-outsetx">
           <ActionPanel className="justify-start gap-w4">
-            {/* same layout as SourceRow */}
             <div className="h-full flex items-center gap-1">
               <PlatformIcon
                 iconName={dataSourceLabel ?? "Data"}
@@ -69,11 +82,7 @@ export function GrantConsentState({
             <Link
               to={declineHref}
               aria-disabled={isApproving}
-              onClick={event => {
-                if (isApproving) {
-                  event.preventDefault()
-                }
-              }}
+              onClick={handleCancel}
             >
               Cancel
             </Link>

@@ -22,6 +22,7 @@ DataConnect is the protocol client: it runs connectors, orchestrates grants, and
 - Don’t overwrite comments; don’t change styles/classes unless asked.
 - When I report a bug, don't start by trying to fix it. Instead, start by writing a test that reproduces the bug. Then, have subagents try to fix the bug and prove it with a passing test.
 - Commit only when asked; never push; stage explicit paths only (no `git add .`, `-A`, `-u`, `git commit -a`); run relevant tests before commit.
+- For links/actions that open URLs or local file/folder paths, use shared helpers in `src/lib/open-resource.ts` and `src/lib/tauri-paths.ts`; avoid inline runtime/OS branching in page components.
 
 ### Skills (JIT only)
 
@@ -34,6 +35,7 @@ Use skills only when the task matches; explore the code first.
 - ShadCN import: invoke tailwind-shadcn-adaptation for primitives.
 - ShadCN semantics: invoke shadcn-primitives-wrappers for product wrappers.
 - UI audit: invoke ui-component-audit when asked to audit/fix UI implementation.
+- Text usage edits: when changing usage of `src/components/typography/text.tsx`, read ui-component-audit first (soft default; use judgment).
 - Testing: invoke react-testing when writing/running tests or before commit.
 - Linear: invoke linear skill when asked to create/update tickets or statuses.
 - Committing: invoke committing skill only when user explicitly asks to commit.

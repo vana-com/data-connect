@@ -54,9 +54,11 @@ function createDemoSession(sessionId: string): GrantSession {
 function createDemoBuilderManifest(): BuilderManifest {
   return {
     name: "Demo App",
+    description: "A demo application for testing the grant flow.",
     appUrl: "https://example.com",
     privacyPolicyUrl: "https://example.com/privacy",
     termsUrl: "https://example.com/terms",
+    verified: true,
   }
 }
 
@@ -162,6 +164,7 @@ export function useGrantFlow(params: GrantFlowParams, prefetched?: PrefetchedGra
           builderManifest = {
             name: `App ${claimed.granteeAddress.slice(0, 8)}…`,
             appUrl: "",
+            verified: false,
           }
         }
         setFlowState(prev => ({ ...prev, builderManifest }))

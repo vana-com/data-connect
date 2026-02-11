@@ -93,6 +93,7 @@ describe("verifyBuilder — happy path", () => {
 
     expect(result).toEqual({
       name: "My Builder App",
+      description: undefined,
       icons: [
         {
           src: "https://builder-app.example.com/icon-192.png",
@@ -109,6 +110,7 @@ describe("verifyBuilder — happy path", () => {
       privacyPolicyUrl: "https://builder-app.example.com/privacy",
       termsUrl: "https://builder-app.example.com/terms",
       supportUrl: "https://builder-app.example.com/support",
+      verified: true,
     });
   });
 
@@ -176,6 +178,23 @@ describe("verifyBuilder — happy path", () => {
 
     const result = await verifyBuilder(BUILDER_ADDRESS);
     expect(result.icons).toBeUndefined();
+  });
+
+  it("extracts description from manifest", async () => {
+    const withDescription = {
+      ...manifestJson,
+      description: "Analyzes your conversations for fun facts",
+    };
+    fetchSpy
+      .mockResolvedValueOnce(jsonResponse(gatewayResponse))
+      .mockResolvedValueOnce(textResponse(appHtml))
+      .mockResolvedValueOnce(jsonResponse(withDescription));
+
+    const result = await verifyBuilder(BUILDER_ADDRESS);
+    expect(result.description).toBe(
+      "Analyzes your conversations for fun facts"
+    );
+    expect(result.verified).toBe(true);
   });
 
   it("uses builder.appUrl from Gateway when vana.appUrl is absent", async () => {

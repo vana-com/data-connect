@@ -1,5 +1,5 @@
 import { Link } from "react-router-dom"
-import { ArrowRightIcon, ExternalLinkIcon, LoaderIcon } from "lucide-react"
+import { AlertTriangleIcon, ArrowRightIcon, ExternalLinkIcon, LoaderIcon } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { PlatformIcon } from "@/components/icons/platform-icon"
 import { Text } from "@/components/typography/text"
@@ -67,6 +67,21 @@ export function GrantConsentState({
           This will allow <strong>{appName}</strong> to:
         </Text>
 
+        {builderManifest?.description && (
+          <Text as="p" intent="small" color="mutedForeground">
+            {builderManifest.description}
+          </Text>
+        )}
+
+        {builderManifest?.verified === false && (
+          <div className="flex items-center gap-2 rounded-md border border-yellow-500/30 bg-yellow-500/10 px-3 py-2">
+            <AlertTriangleIcon className="size-4 shrink-0 text-yellow-500" aria-hidden="true" />
+            <Text as="p" intent="small">
+              This app could not be verified. Proceed with caution.
+            </Text>
+          </div>
+        )}
+
         <div className="action-outsetx">
           <ActionPanel className="justify-start gap-w4">
             <div className="h-full flex items-center gap-1">
@@ -112,9 +127,9 @@ export function GrantConsentState({
           </div>
         )}
 
-        {/* Builder links (privacy policy, terms) */}
-        {(builderManifest?.privacyPolicyUrl || builderManifest?.termsUrl) && (
-          <div className="flex items-center gap-3">
+        {/* Builder links (privacy policy, terms, support) */}
+        {(builderManifest?.privacyPolicyUrl || builderManifest?.termsUrl || builderManifest?.supportUrl) && (
+          <div className="flex items-center gap-3 flex-wrap">
             {builderManifest.privacyPolicyUrl && (
               <Text
                 as="a"
@@ -140,6 +155,20 @@ export function GrantConsentState({
                 withIcon
               >
                 Terms of Service
+                <ExternalLinkIcon aria-hidden="true" />
+              </Text>
+            )}
+            {builderManifest.supportUrl && (
+              <Text
+                as="a"
+                href={builderManifest.supportUrl}
+                target="_blank"
+                rel="noopener noreferrer"
+                intent="small"
+                link="default"
+                withIcon
+              >
+                Support
                 <ExternalLinkIcon aria-hidden="true" />
               </Text>
             )}

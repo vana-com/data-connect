@@ -1,10 +1,13 @@
 export interface BuilderManifest {
   name: string
+  description?: string
   icons?: Array<{ src: string; sizes?: string; type?: string }>
   appUrl: string
   privacyPolicyUrl?: string
   termsUrl?: string
   supportUrl?: string
+  /** false when builder verification failed and fallback metadata is used */
+  verified?: boolean
 }
 
 export interface GrantSession {

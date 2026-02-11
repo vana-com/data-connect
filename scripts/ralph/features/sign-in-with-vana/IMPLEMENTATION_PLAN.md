@@ -21,6 +21,9 @@ All P0, P1, and P2 items have been implemented, tested, and verified.
 13. **Dev token plumbing** — Personal Server emits `dev-token` on stdout → Rust handler in `server.rs` forwards via `personal-server-dev-token` Tauri event → `usePersonalServer` hook captures and exposes `devToken` → threaded to `listGrants()` as `Authorization: Bearer` header (required by library's Web3Auth middleware on GET /v1/grants)
 14. **listGrants envelope fix** — library returns `{ grants: Grant[] }` not `Grant[]`; client now unwraps both formats
 15. **revokeGrant 204 handling** — DELETE route returns 204 No Content; client no longer tries to parse JSON body on success
+16. **Builder description field** — added `description` field to `BuilderManifest` type, extracted from W3C manifest `description`, displayed in consent UI below the "allow" message (26 tests in builder.test.ts)
+17. **Support URL link** — `supportUrl` was already extracted from manifest but not displayed; now shown as a link in consent UI alongside Privacy Policy and Terms of Service
+18. **Unverified app warning** — added `verified` boolean to `BuilderManifest`; set to `true` by `verifyBuilder()`, `false` in fallback paths when verification fails; consent UI shows yellow warning banner "This app could not be verified. Proceed with caution." when `verified === false`
 
 ### Architecture notes
 
@@ -33,7 +36,7 @@ All P0, P1, and P2 items have been implemented, tested, and verified.
 ## Validation
 
 - `npx tsc -b` — zero type errors
-- `npm run test` — 124 tests passing across 17 test files
+- `npm run test` — 125 tests passing across 17 test files
 - Test environment: happy-dom (jsdom broken by html-encoding-sniffer@6.0.0 ESM issue)
 
 ## Known non-blocking TODOs (outside this feature scope)

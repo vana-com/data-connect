@@ -89,6 +89,7 @@ export function Connect() {
           builderManifest = {
             name: `App ${claimed.granteeAddress.slice(0, 8)}…`,
             appUrl: "",
+            verified: false,
           }
         }
 

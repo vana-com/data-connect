@@ -28,6 +28,7 @@ interface VanaManifestBlock {
 interface W3CManifest {
   name?: string;
   short_name?: string;
+  description?: string;
   icons?: Array<{ src: string; sizes?: string; type?: string }>;
   vana?: VanaManifestBlock;
 }
@@ -214,10 +215,12 @@ export async function verifyBuilder(
 
   return {
     name: manifest.name || manifest.short_name || granteeAddress,
+    description: manifest.description,
     icons: icons.length > 0 ? icons : undefined,
     appUrl: vana.appUrl || builder.appUrl,
     privacyPolicyUrl: vana.privacyPolicyUrl,
     termsUrl: vana.termsUrl,
     supportUrl: vana.supportUrl,
+    verified: true,
   };
 }

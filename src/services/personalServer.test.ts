@@ -2,6 +2,7 @@ import { describe, it, expect, vi, beforeEach } from "vitest";
 import {
   createGrant,
   listGrants,
+  revokeGrant,
   PersonalServerError,
 } from "./personalServer";
 
@@ -172,6 +173,49 @@ describe("listGrants", () => {
     await expect(listGrants(3100)).rejects.toMatchObject({
       message: "Unauthorized",
       statusCode: 401,
+    });
+  });
+});
+
+// --- revokeGrant ---
+
+describe("revokeGrant", () => {
+  it("sends DELETE to /v1/grants/{grantId} on the correct port", async () => {
+    tauriFetchSpy.mockResolvedValueOnce(jsonResponse({ success: true }));
+
+    await revokeGrant(3100, "grant-abc");
+
+    expect(tauriFetchSpy).toHaveBeenCalledOnce();
+    const [url, init] = tauriFetchSpy.mock.calls[0];
+    expect(url).toBe("http://localhost:3100/v1/grants/grant-abc");
+    expect(init.method).toBe("DELETE");
+  });
+
+  it("URL-encodes the grantId", async () => {
+    tauriFetchSpy.mockResolvedValueOnce(jsonResponse({ success: true }));
+
+    await revokeGrant(3100, "grant/with spaces");
+
+    const [url] = tauriFetchSpy.mock.calls[0];
+    expect(url).toBe("http://localhost:3100/v1/grants/grant%2Fwith%20spaces");
+  });
+
+  it("throws PersonalServerError on network failure", async () => {
+    tauriFetchSpy.mockRejectedValueOnce(new TypeError("Connection refused"));
+
+    await expect(revokeGrant(3100, "grant-abc")).rejects.toThrow(
+      "Failed to connect"
+    );
+  });
+
+  it("throws PersonalServerError with server error message", async () => {
+    tauriFetchSpy.mockResolvedValueOnce(
+      jsonResponse({ error: "Grant not found" }, 404)
+    );
+
+    await expect(revokeGrant(3100, "grant-abc")).rejects.toMatchObject({
+      message: "Grant not found",
+      statusCode: 404,
     });
   });
 });

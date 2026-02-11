@@ -91,3 +91,17 @@ export async function listGrants(port: number): Promise<Grant[]> {
     headers: { "Content-Type": "application/json" },
   });
 }
+
+export async function revokeGrant(
+  port: number,
+  grantId: string
+): Promise<void> {
+  await serverFetch<{ success: boolean }>(
+    port,
+    `/v1/grants/${encodeURIComponent(grantId)}`,
+    {
+      method: "DELETE",
+      headers: { "Content-Type": "application/json" },
+    }
+  );
+}

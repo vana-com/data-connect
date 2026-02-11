@@ -160,8 +160,8 @@ export function useSettingsPage() {
   }, [simulateNoChrome])
 
   const handleRevokeApp = useCallback((appId: string) => {
-    removeApp(appId)
-  }, [removeApp])
+    removeApp(appId, personalServer.port)
+  }, [removeApp, personalServer.port])
 
   const handleLogout = useCallback(async () => {
     await logout()

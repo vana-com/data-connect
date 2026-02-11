@@ -25,6 +25,7 @@
     "fs:allow-appdata-write-recursive",
     "shell:default",
     "shell:allow-open",
+    "deep-link:default",
     "http:default",
     {
       "identifier": "http:allow-fetch",

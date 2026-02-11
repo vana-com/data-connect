@@ -74,17 +74,28 @@
 
 - **[DONE]** Added unit tests for `personalServer.ts` (14 tests) — mocks `@tauri-apps/plugin-http` dynamic import, verifies createGrant, listGrants, and revokeGrant request shapes (URL, method, headers, body), correct port in URL, optional fields (expiresAt, nonce), network failure errors, non-JSON responses, structured error messages with statusCode, and empty grant lists. File: `src/services/personalServer.test.ts`.
 
+- **[DONE]** Add Tauri deep-link plugin for native `vana://connect` URL scheme.
+  - Added `tauri-plugin-deep-link = "2"` to `src-tauri/Cargo.toml`.
+  - Registered plugin in `src-tauri/src/lib.rs` via `.plugin(tauri_plugin_deep_link::init())`.
+  - Configured `vana` scheme in `src-tauri/tauri.conf.json` under `plugins.deep-link.desktop.schemes`.
+  - Added `deep-link:default` permission to `src-tauri/capabilities/default.json`.
+  - Added `@tauri-apps/plugin-deep-link` npm dependency.
+  - Updated `src/hooks/use-deep-link.ts`: dynamic import of Tauri deep-link plugin, `getCurrent()` on mount for cold-start deep links, `onOpenUrl()` listener for runtime deep links, `parseDeepLinkUrl()` for `vana://connect?sessionId=...&secret=...` parsing. URL query param fallback preserved for dev mode.
+  - Updated `src/pages/mock-apps/rickroll/signin.tsx`: changed `dataconnect://` to `vana://connect` to match registered scheme.
+  - Added 3 new tests (5 total) in `src/hooks/use-deep-link.test.tsx`: cold-start via `getCurrent()`, runtime via `onOpenUrl()` callback, invalid URL filtering.
+  - Note: macOS deep links can only be tested on bundled app installed in `/Applications`. Dev mode continues using URL query params.
+
 ## TODO
 
 ### P2 Future Enhancements
-- **[P2]** Add Tauri deep-link plugin for native `vana://connect` URL scheme. Add `tauri-plugin-deep-link` to `Cargo.toml` and `tauri.conf.json`. Register `vana` scheme. Listen for `onOpenUrl` events in `src/hooks/use-deep-link.ts` and parse `sessionId` + `secret` from the URL. This replaces URL query param routing for production but current URL param approach works for dev/testing.
 
 - **[P2]** Error recovery for split failure — if `POST /v1/grants` succeeds but `POST /v1/session/{id}/approve` fails (session expired, network error), the grant exists on Gateway but builder never learns about it. Store pending `{ sessionId, grantId, secret }` in localStorage. On next app open, retry the approve call. Clear on success.
 
 ## Validation
 
-- `npm run typecheck` — no type errors after all changes.
-- `npm run build` — clean production build.
-- `npm run test` — all 109 tests passing across 16 test files. No pre-existing failures.
+- `npx tsc -b` — no type errors after all changes.
+- `cargo check` — Rust compilation clean with deep-link plugin.
+- `npm run test` — all 112 tests passing across 16 test files. No pre-existing failures.
 - Manual: open `vana://connect?sessionId=test&secret=abc` (or URL param equivalent in dev), verify full flow: claim → builder verify → consent → auth (if needed) → grant creation → session approve → success.
 - Manual: click Cancel on consent screen, verify deny call fires and app navigates home.
+- Manual: deep link testing requires bundled app installed in `/Applications` (macOS limitation).

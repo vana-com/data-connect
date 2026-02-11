@@ -73,6 +73,15 @@ beforeEach(() => {
 })
 
 describe("SourceOverview", () => {
+  it("shows 404 when source route id is unknown", () => {
+    renderSourcePage("/sources/not-a-source")
+
+    expect(screen.getByText("404")).toBeTruthy()
+    expect(
+      screen.getByText("Source not found for route: not-a-source")
+    ).toBeTruthy()
+  })
+
   it("shows fallback preview in browser when tauri preview loading fails", async () => {
     mockLoadLatestSourceExportPreview.mockRejectedValue(new Error("IPC unavailable"))
 
@@ -151,6 +160,44 @@ describe("SourceOverview", () => {
         value: originalClipboard,
       })
       document.execCommand = originalExecCommand
+    }
+  })
+
+  it("shows copied when clipboard write succeeds", async () => {
+    mockLoadLatestSourceExportPreview.mockResolvedValue({
+      previewJson: "{\n  \"ok\": true\n}",
+      isTruncated: false,
+      filePath: "/tmp/databridge/exported_data/OpenAI/ChatGPT/chatgpt.json",
+      fileSizeBytes: 2048,
+      exportedAt: "2026-02-11T10:00:00.000Z",
+    })
+    mockLoadLatestSourceExportFull.mockResolvedValue("{\"ok\":true}")
+
+    const originalClipboard = navigator.clipboard
+    Object.defineProperty(navigator, "clipboard", {
+      configurable: true,
+      value: {
+        writeText: vi.fn().mockResolvedValue(undefined),
+      },
+    })
+
+    try {
+      renderSourcePage()
+      const [copyButton] = await screen.findAllByRole("button", {
+        name: "Copy full JSON",
+      })
+      fireEvent.click(copyButton)
+
+      await waitFor(() => {
+        expect(
+          screen.getAllByRole("button", { name: "Copied" }).length
+        ).toBeTruthy()
+      })
+    } finally {
+      Object.defineProperty(navigator, "clipboard", {
+        configurable: true,
+        value: originalClipboard,
+      })
     }
   })
 })

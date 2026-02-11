@@ -54,59 +54,90 @@ export function SourceSidebar({
           </Text>
         </div>
 
-        <div className="space-y-3">
-          <SourceLinkRow
-            href={openSourceHref}
-            icon={<FolderIcon aria-hidden />}
-            onClick={event => {
-              event.preventDefault()
-              void onOpenSourcePath()
-            }}
-          >
-            {sourceStoragePath}
-          </SourceLinkRow>
-          <SourceLinkRow href="#" icon={<ActivityIcon aria-hidden />}>
-            Last used yesterday
-          </SourceLinkRow>
-          <SourceLinkRow to={ROUTES.runs} icon={<RefreshCcwIcon aria-hidden />}>
-            Last synced yesterday
-          </SourceLinkRow>
+        <div className="flex flex-wrap items-start gap-small lg:gap-w6 lg:flex-col">
+          <SourceActivityLinks
+            openSourceHref={openSourceHref}
+            sourceStoragePath={sourceStoragePath}
+            onOpenSourcePath={onOpenSourcePath}
+          />
+          <hr className="w-full hidden lg:block" />
+          <SourceActionLinks canAccessDebugRuns={canAccessDebugRuns} />
         </div>
       </div>
-      <hr />
-
-      <nav className="space-y-3">
-        <SourceLinkRow
-          href="#"
-          muted
-          trailingIcon={<ArrowUpRightIcon aria-hidden />}
-        >
-          Build on Vana
-        </SourceLinkRow>
-        <SourceLinkRow
-          href="#"
-          muted
-          trailingIcon={<ArrowUpRightIcon aria-hidden />}
-        >
-          Connect to Claude
-        </SourceLinkRow>
-        <SourceLinkRow
-          href="#"
-          muted
-          trailingIcon={<ArrowUpRightIcon aria-hidden />}
-        >
-          Connect to ChatGPT
-        </SourceLinkRow>
-        {canAccessDebugRuns ? (
-          <SourceLinkRow
-            to={ROUTES.runs}
-            muted
-            trailingIcon={<ArrowUpRightIcon aria-hidden />}
-          >
-            Debug runs
-          </SourceLinkRow>
-        ) : null}
-      </nav>
     </aside>
+  )
+}
+
+interface SourceActivityLinksProps {
+  openSourceHref: string
+  sourceStoragePath: string
+  onOpenSourcePath: () => Promise<void>
+}
+
+function SourceActivityLinks({
+  openSourceHref,
+  sourceStoragePath,
+  onOpenSourcePath,
+}: SourceActivityLinksProps) {
+  return (
+    <div className="space-y-3">
+      <SourceLinkRow
+        href={openSourceHref}
+        icon={<FolderIcon aria-hidden />}
+        onClick={event => {
+          event.preventDefault()
+          void onOpenSourcePath()
+        }}
+      >
+        {sourceStoragePath}
+      </SourceLinkRow>
+      <SourceLinkRow href="#" icon={<ActivityIcon aria-hidden />}>
+        Last used yesterday
+      </SourceLinkRow>
+      <SourceLinkRow to={ROUTES.runs} icon={<RefreshCcwIcon aria-hidden />}>
+        Last synced yesterday
+      </SourceLinkRow>
+    </div>
+  )
+}
+
+interface SourceActionLinksProps {
+  canAccessDebugRuns: boolean
+}
+
+function SourceActionLinks({ canAccessDebugRuns }: SourceActionLinksProps) {
+  return (
+    <nav className="space-y-3">
+      <SourceLinkRow
+        href="#"
+        muted
+        trailingIcon={<ArrowUpRightIcon aria-hidden />}
+      >
+        Build on Vana
+      </SourceLinkRow>
+      <SourceLinkRow
+        href="#"
+        muted
+        trailingIcon={<ArrowUpRightIcon aria-hidden />}
+      >
+        Connect to Claude
+      </SourceLinkRow>
+      <SourceLinkRow
+        href="#"
+        muted
+        trailingIcon={<ArrowUpRightIcon aria-hidden />}
+      >
+        Connect to ChatGPT
+      </SourceLinkRow>
+      {canAccessDebugRuns ? (
+        <SourceLinkRow
+          to={ROUTES.runs}
+          muted
+          trailingIcon={<ArrowUpRightIcon aria-hidden />}
+        >
+          Debug runs
+        </SourceLinkRow>
+      ) : null}
+    </nav>
   )
 }

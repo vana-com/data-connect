@@ -15,7 +15,7 @@ export function SourceOverviewLayout({
       data-component="source-overview"
       className={cn(
         "flex flex-1 w-full h-full",
-        "py-w16 px-inset",
+        "pt-w16 px-inset pb-inset",
         // condense the width
         "lg:px-w24"
       )}

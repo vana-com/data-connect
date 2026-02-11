@@ -36,7 +36,9 @@ export function SourcePreviewCard({
           size="xs"
           variant="outline"
           onClick={() => void onCopyFullJson()}
-          disabled={!sourcePlatform || isPreviewLoading || copyStatus === "copying"}
+          disabled={
+            !sourcePlatform || isPreviewLoading || copyStatus === "copying"
+          }
         >
           {copyStatus === "copying"
             ? "Copying..."
@@ -70,11 +72,11 @@ export function SourcePreviewCard({
             {previewError}
           </Text>
         ) : preview ? (
-          <pre className="text-sm leading-6 text-foreground/80">
+          <pre className="font-mono text-sm leading-6 text-foreground/80">
             {preview.previewJson}
           </pre>
         ) : (
-          <pre className="text-sm leading-6 text-foreground/80">
+          <pre className="font-mono text-sm leading-6 text-foreground/80">
             {fallbackPreviewJson}
           </pre>
         )}

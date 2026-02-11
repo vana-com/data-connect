@@ -1,6 +1,7 @@
 ---
 title: Grant + Connect Flow
 date: 2026-02-03
+updated: 2026-02-10
 ---
 
 # Grant + Connect Flow
@@ -14,85 +15,110 @@ fit together so the system is predictable, debuggable, and easy to extend.
 
 ```mermaid
 flowchart TD
-  A["Connect CTA"] --> B[Step 1: data-source login + scrape]
-  B -->|connector run completes| C["/grant?sessionId&appId&scopes"]
-  X[Deep link: dataconnect://?sessionId&appId&scopes] --> D[useDeepLink]
-  D -->|normalize + replace| E["/connect?sessionId&appId&scopes"]
-  E --> B
-  C --> F[GrantFlow orchestrator]
-  F -->|auth required| G[Launch auth page (start_browser_auth)]
-  G -->|/auth-callback| H[AuthResult -> auth-complete event]
-  H --> F
-  F -->|Approve| I[grantSigning + approveSession]
-  I -->|success| J["setConnectedApp (localStorage)"]
-  J --> K[Success UI + return to app]
+  A["Deep link: vana://connect?sessionId&secret"] --> B[useDeepLink]
+  B -->|normalize + replace| C["/connect?sessionId&secret&scopes"]
+  C --> D["Step 1: claim session + verify builder (background)"]
+  D --> E["Step 2: data-source login + scrape"]
+  E -->|connector run completes| F["/grant?sessionId&secret&scopes"]
+  F --> G[GrantFlow orchestrator]
+  G -->|consent| H["Step 3: Allow/Cancel consent screen"]
+  H -->|Allow + not authenticated| I["Step 4: Launch auth page (start_browser_auth)"]
+  H -->|Allow + already authenticated| J
+  I -->|auth-complete event| J["Step 5: createGrant (Personal Server) + approveSession (Session Relay)"]
+  J -->|success| K["Success UI + Done button"]
+  H -->|Cancel| L["denySession (Session Relay) → navigate to /apps"]
 ```
 
-## UI design reference
+## Key architectural principle: consent before sign-in
 
-Linear 4-step connect/grant design: `docs/_wip/260202-connect-flow.png`.
+Session claim data (`granteeAddress`, `scopes`, builder manifest) is held in app
+state throughout the flow. The user sees what data will be shared and consents
+**before** being asked to sign in. Sign-in is deferred until grant creation time —
+the only step that actually requires a wallet and the Personal Server's derived
+keypair. If the user is already signed in, the auth screen is skipped automatically.
+
+## Screen flow
+
+```
+Screen 1: "Connect your ChatGPT"     ← deep link landing, background claim + verify
+Screen 2: Browser scraping            ← user exports their data
+Screen 3: "Allow access" (consent)    ← user approves scopes
+Screen 4: "Sign in" (deferred auth)   ← only if not already signed in
+Screen 5: "Connected" (success)       ← grant creation + session approve + confirmation
+```
 
 ## Responsibilities
 
-- Connect Flow UI: `/connect` step 1, starts data-source login/scrape, then
-  routes into the grant flow.
-- Data-source login/scrape: connector run launched from step 1.
-- Grant Flow: owns consent/auth/signing states and persists the connected app.
-- Auth page: `src/auth-page`, launched via Tauri, posts `/auth-callback`.
-- Deep links: normalize to canonical params, then route to `/connect` with `replace`.
-- App registry: defines available apps, default app, and scopes for demo usage.
-
-## Current implementation status
-
-- Step 1 (data-source login + scrape) is implemented at `/connect`.
-- `src/pages/grant/*` covers consent/auth/success states only (steps 2-4).
-- Data Apps open external web apps in the browser (no in-app `/apps/:appId` route).
-- RickRoll (`/rickroll`) is the only mock external app for dev.
+- **Connect page** (`/connect`): Parses deep link params, runs background session
+  claim + builder verification (pre-fetch), starts data-source login/scrape, then
+  navigates to `/grant` with pre-fetched data in `location.state`.
+- **Grant page** (`/grant`): Owns consent/auth/grant-creation/success states. Receives
+  pre-fetched session + builder manifest via navigation state to skip re-fetching.
+- **Session Relay**: Coordinates between builder app and dataConnect. Endpoints:
+  `POST /v1/session/claim`, `POST /v1/session/{id}/approve`, `POST /v1/session/{id}/deny`.
+- **Personal Server**: Signs and submits grants to Gateway. `POST /v1/grants` creates
+  an EIP-712 signed grant; `GET /v1/grants` lists grants; `DELETE /v1/grants/{grantId}` revokes.
+- **Builder verification**: Gateway lookup (`GET /v1/builders/{address}`) + W3C manifest
+  fetch + EIP-191 signature verification. Fatal on failure per protocol spec.
+- **Auth page**: `src/auth-page`, launched via Tauri, posts `/auth-callback`.
+- **Deep links**: Normalize `vana://connect` URLs to canonical params, route to `/connect`.
 
 ## Canonical inputs
 
 Grant flow inputs are canonical in the URL:
 
-- `sessionId`
-- `appId`
+- `sessionId` — session identifier from Session Relay
+- `secret` — authorization secret from deep link (threaded through claim/approve/deny)
 - `scopes` (JSON array or comma-delimited fallback)
-- `status` (optional, `success` forces Step 4 UI)
+- `status` (optional, `success` forces success UI)
 
-Do not use `location.state` for these values.
+Pre-fetched data (`session` + `builderManifest`) is passed via `location.state`
+from `/connect` to `/grant` as an optimization — not a canonical input.
 
-## React state stability
+## State machine
 
-- In `useGrantFlow`, the `scopes` dependency uses a stable key (`scopes.join("|")`) to
-  avoid re-running effects on new array identities.
+```
+loading → claiming → verifying-builder → consent → auth-required → creating-grant → approving → success
+                                                        │
+                                                   (skipped if
+                                                    already
+                                                    signed in)
+```
+
+The `exporting` phase happens on the `/connect` route (Screen 1-2), not in the
+grant flow state machine. The grant page starts at `consent` when pre-fetched
+data is available.
+
+## Connected apps
+
+Gateway is the source of truth for connected apps. `useConnectedApps` fetches
+grants from Personal Server `GET /v1/grants` (which proxies Gateway), filters
+out revoked grants, and derives display names from scope labels. Revocation calls
+`DELETE /v1/grants/{grantId}` with optimistic Redux update + rollback on failure.
+
+## Split-failure recovery
+
+If `POST /v1/grants` succeeds but `POST /v1/session/{id}/approve` fails, the
+grant exists on Gateway but the builder never learns about it. `usePendingApproval`
+persists the pending approval in localStorage and retries once on next app startup.
 
 ## Demo behavior (local)
 
-Demo sessions (`sessionId` starts with `grant-session-`) use registry metadata and
-skip relay calls. If `appId` is missing, the default app is used.
-
-## External app handoff
-
-Data Apps open an external web app in the user's default browser. That app does
-not live inside the Tauri shell; it only needs to launch the deep link back into
-DataBridge (`dataconnect://?sessionId&appId&scopes`). In development we can use
-the Vite web origin. In production, the external app URL must be a real web URL
-or a registry value — `tauri://` origins are not valid in a normal browser.
-
-## Post-auth (non-fatal)
-
-- After auth, the app may attempt personal server registration.
-- Failure to register does not block success UI or grant completion.
-- Endpoints:
-  - `POST /auth-callback` (auth page -> Tauri, emits `auth-complete`)
-  - `GET /server-identity` (proxies personal server health)
-  - `POST /register-server` (gateway registration, `200/201/409` treated as OK)
+Demo sessions (`sessionId` starts with `grant-session-`) use mock metadata and
+skip relay/builder/personal-server calls. Gated behind `import.meta.env.DEV`.
 
 ## Where to look
 
 - URL parsing/building: `src/lib/grant-params.ts`
-- Deep links: `src/hooks/useDeepLink.ts`
+- Deep links: `src/hooks/use-deep-link.ts`
 - Grant flow state machine: `src/pages/grant/use-grant-flow.ts`
 - Grant flow UI: `src/pages/grant/*`
-- Step 1 route: `src/pages/connect/index.tsx`
-- App registry + default: `src/apps/registry.ts`
-- Connector run entrypoint: `src/hooks/useConnector.ts` + `start_connector_run`
+- Consent screen: `src/pages/grant/components/consent/grant-consent-state.tsx`
+- Connect page (step 1): `src/pages/connect/index.tsx`
+- Session Relay client: `src/services/sessionRelay.ts`
+- Personal Server client: `src/services/personalServer.ts`
+- Builder verification: `src/services/builder.ts`
+- Connected apps: `src/hooks/useConnectedApps.ts`
+- Pending approval recovery: `src/hooks/usePendingApproval.ts`
+- Scope labels: `src/lib/scope-labels.ts`
+- Storage (pending approvals only): `src/lib/storage.ts`

@@ -1,109 +1,162 @@
-interface SessionClaimRequest {
+// Session Relay v1 API client
+// Endpoints: claim, approve, deny
+// All calls require `secret` from deep link for authorization
+
+const SESSION_RELAY_URL =
+  import.meta.env.VITE_SESSION_RELAY_URL || "https://session-relay.vana.org";
+
+// --- Request/Response types ---
+
+export interface ClaimSessionRequest {
   sessionId: string;
-  walletAddress: string;
-  signature?: string;
+  secret: string;
 }
 
-interface SessionClaimResponse {
-  success: boolean;
-  session?: {
-    id: string;
-    appId: string;
-    appName: string;
-    appIcon?: string;
-    scopes: string[];
-    expiresAt: string;
+export interface ClaimSessionResponse {
+  sessionId: string;
+  granteeAddress: string;
+  scopes: string[];
+  expiresAt: string;
+  webhookUrl?: string;
+  appUserId?: string;
+}
+
+export interface ApproveSessionRequest {
+  secret: string;
+  grantId: string;
+  userAddress: string;
+  scopes: string[];
+}
+
+export interface DenySessionRequest {
+  secret: string;
+  reason?: string;
+}
+
+// --- Error types ---
+
+export type SessionRelayErrorCode =
+  | "SESSION_NOT_FOUND"
+  | "SESSION_EXPIRED"
+  | "INVALID_SESSION_STATE"
+  | "INVALID_CLAIM_SECRET"
+  | "VALIDATION_ERROR";
+
+interface SessionRelayErrorBody {
+  error: {
+    code: number;
+    errorCode: SessionRelayErrorCode;
+    message: string;
+    details?: unknown;
   };
-  error?: string;
 }
-
-interface SessionApprovalRequest {
-  sessionId: string;
-  walletAddress: string;
-  grantSignature: string;
-}
-
-interface SessionApprovalResponse {
-  success: boolean;
-  error?: string;
-}
-
-const SESSION_RELAY_URL = import.meta.env.VITE_SESSION_RELAY_URL || 'https://relay.vana.org/api';
 
 export class SessionRelayError extends Error {
-  code?: string;
-  constructor(message: string, code?: string) {
+  errorCode?: SessionRelayErrorCode;
+  statusCode?: number;
+
+  constructor(
+    message: string,
+    errorCode?: SessionRelayErrorCode,
+    statusCode?: number
+  ) {
     super(message);
-    this.name = 'SessionRelayError';
-    this.code = code;
+    this.name = "SessionRelayError";
+    this.errorCode = errorCode;
+    this.statusCode = statusCode;
   }
 }
 
-export async function claimSession(request: SessionClaimRequest): Promise<SessionClaimResponse> {
+// --- Helpers ---
+
+function parseErrorBody(data: unknown): SessionRelayErrorBody["error"] | null {
+  if (
+    typeof data === "object" &&
+    data !== null &&
+    "error" in data &&
+    typeof (data as SessionRelayErrorBody).error === "object"
+  ) {
+    return (data as SessionRelayErrorBody).error;
+  }
+  return null;
+}
+
+async function relayFetch<T>(
+  url: string,
+  init: RequestInit
+): Promise<T> {
+  let response: Response;
   try {
-    const response = await fetch(`${SESSION_RELAY_URL}/sessions/claim`, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-      },
+    response = await fetch(url, init);
+  } catch {
+    throw new SessionRelayError("Network error communicating with Session Relay");
+  }
+
+  let data: unknown;
+  try {
+    data = await response.json();
+  } catch {
+    throw new SessionRelayError(
+      `Session Relay returned non-JSON response (HTTP ${response.status})`
+    );
+  }
+
+  if (!response.ok) {
+    const errBody = parseErrorBody(data);
+    if (errBody) {
+      throw new SessionRelayError(
+        errBody.message,
+        errBody.errorCode,
+        errBody.code
+      );
+    }
+    throw new SessionRelayError(
+      `Session Relay request failed (HTTP ${response.status})`
+    );
+  }
+
+  return data as T;
+}
+
+// --- API functions ---
+
+export async function claimSession(
+  request: ClaimSessionRequest
+): Promise<ClaimSessionResponse> {
+  return relayFetch<ClaimSessionResponse>(
+    `${SESSION_RELAY_URL}/v1/session/claim`,
+    {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
       body: JSON.stringify(request),
-    });
-
-    const data = (await response.json()) as SessionClaimResponse & { code?: string };
-
-    if (!response.ok || !data.success) {
-      throw new SessionRelayError(data.error || 'Failed to claim session', (data as { code?: string }).code);
     }
-
-    return data;
-  } catch (error) {
-    if (error instanceof SessionRelayError) {
-      throw error;
-    }
-    throw new SessionRelayError('Network error while claiming session');
-  }
+  );
 }
 
-export async function approveSession(request: SessionApprovalRequest): Promise<SessionApprovalResponse> {
-  try {
-    const response = await fetch(`${SESSION_RELAY_URL}/sessions/approve`, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-      },
+export async function approveSession(
+  sessionId: string,
+  request: ApproveSessionRequest
+): Promise<void> {
+  await relayFetch<unknown>(
+    `${SESSION_RELAY_URL}/v1/session/${encodeURIComponent(sessionId)}/approve`,
+    {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
       body: JSON.stringify(request),
-    });
-
-    const data = (await response.json()) as SessionApprovalResponse & { code?: string };
-
-    if (!response.ok || !data.success) {
-      throw new SessionRelayError(data.error || 'Failed to approve session', (data as { code?: string }).code);
     }
-
-    return data;
-  } catch (error) {
-    if (error instanceof SessionRelayError) {
-      throw error;
-    }
-    throw new SessionRelayError('Network error while approving session');
-  }
+  );
 }
 
-export async function getSessionInfo(sessionId: string): Promise<SessionClaimResponse['session']> {
-  try {
-    const response = await fetch(`${SESSION_RELAY_URL}/sessions/${sessionId}`);
-
-    const data = (await response.json()) as { success: boolean; session?: SessionClaimResponse['session']; error?: string; code?: string };
-
-    if (!response.ok || !data.success) {
-      throw new SessionRelayError(data.error || 'Failed to get session info', data.code);
+export async function denySession(
+  sessionId: string,
+  request: DenySessionRequest
+): Promise<void> {
+  await relayFetch<unknown>(
+    `${SESSION_RELAY_URL}/v1/session/${encodeURIComponent(sessionId)}/deny`,
+    {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(request),
     }
-
-    return data.session!;
-  } catch (error) {
-    if (error instanceof SessionRelayError) {
-      throw error;
-    }
-    throw new SessionRelayError('Network error while fetching session info');
-  }
+  );
 }

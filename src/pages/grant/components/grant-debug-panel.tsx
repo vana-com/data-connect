@@ -4,15 +4,19 @@ import type { GrantFlowState, GrantSession } from "../types"
 
 const DEBUG_STATUSES: GrantFlowState["status"][] = [
   "loading",
-  "auth-required",
+  "claiming",
+  "verifying-builder",
   "consent",
-  "signing",
+  "auth-required",
+  "creating-grant",
+  "approving",
   "success",
   "error",
 ]
 
 interface GrantDebugPanelProps {
   activeStatus: GrantFlowState["status"] | null
+  debugBuilderName: string
   session: GrantSession
   walletConnected: boolean
   onChangeStatus: (status: GrantFlowState["status"] | null) => void
@@ -21,6 +25,7 @@ interface GrantDebugPanelProps {
 
 export function GrantDebugPanel({
   activeStatus,
+  debugBuilderName,
   session,
   walletConnected,
   onChangeStatus,
@@ -44,7 +49,7 @@ export function GrantDebugPanel({
           </Button>
         </div>
         <Text intent="fine" color="mutedForeground" className="mt-2">
-          {session.appName} · {session.scopes.join(", ")}
+          {debugBuilderName} · {session.scopes.join(", ")}
         </Text>
         <div className="mt-3 flex flex-wrap gap-2">
           {DEBUG_STATUSES.map(status => (

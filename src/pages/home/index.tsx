@@ -5,6 +5,8 @@ import { useSelector } from "react-redux"
 import { usePlatforms } from "@/hooks/usePlatforms"
 import { useConnector } from "@/hooks/useConnector"
 import { useConnectorUpdates } from "@/hooks/useConnectorUpdates"
+import { useConnectedApps } from "@/hooks/useConnectedApps"
+import { usePersonalServer } from "@/hooks/usePersonalServer"
 import type { Platform, RootState } from "@/types"
 import { SlidingTabs } from "@/components/elements/sliding-tabs"
 import { Tabs, TabsContent } from "@/components/ui/tabs"
@@ -28,10 +30,9 @@ export function Home() {
   const { platforms, isPlatformConnected, loadPlatforms } = usePlatforms()
   const { startExport } = useConnector()
   const { checkForUpdates } = useConnectorUpdates()
+  const { connectedApps, fetchConnectedApps } = useConnectedApps()
+  const personalServer = usePersonalServer()
   const runs = useSelector((state: RootState) => state.app.runs)
-  const connectedApps = useSelector(
-    (state: RootState) => state.app.connectedApps
-  )
   const [activeTab, setActiveTab] = useState("sources")
   const [enableTabMotion, setEnableTabMotion] = useState(false)
 
@@ -48,6 +49,13 @@ export function Home() {
       : USE_TEST_DATA
         ? testConnectedApps
         : []
+
+  // Fetch connected apps from Personal Server when it becomes available
+  useEffect(() => {
+    if (personalServer.port && personalServer.status === "running") {
+      fetchConnectedApps(personalServer.port, personalServer.devToken)
+    }
+  }, [personalServer.port, personalServer.status, personalServer.devToken, fetchConnectedApps])
 
   // Derived state: recently completed platform IDs (memoized, not effect-stored)
   useEffect(() => {

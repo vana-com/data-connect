@@ -35,11 +35,11 @@ export function RickrollMockSignIn() {
     status: "success",
   }).toString()
   const backHref = ROUTES.rickrollMockRoot
-  const deepLink = search ? `dataconnect://?${search}` : "dataconnect://"
+  const deepLink = search ? `vana://connect?${search}` : "vana://connect"
   const connectHref = search ? `${ROUTES.connect}?${search}` : ROUTES.connect
   const successDeepLink = successSearch
-    ? `dataconnect://?${successSearch}`
-    : "dataconnect://"
+    ? `vana://connect?${successSearch}`
+    : "vana://connect"
   const successGrantHref = successSearch
     ? `${ROUTES.grant}?${successSearch}`
     : ROUTES.grant

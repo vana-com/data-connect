@@ -107,7 +107,46 @@ async function main() {
       config.server.address = ownerAddress;
     }
 
-    const { app, devToken, tunnelUrl, tunnelManager, cleanup } = await createServer(config, { rootPath: configDir });
+    const { app, devToken, tunnelUrl, tunnelManager, cleanup, gatewayClient, serverSigner } = await createServer(config, { rootPath: configDir });
+
+    // --- Grant management routes ---
+    // The library ships POST /v1/grants (create) with Web3Auth middleware and
+    // GET /v1/grants (list). The desktop client authenticates via the devToken
+    // bypass in Web3Auth middleware (Bearer token). We only add DELETE here
+    // because the library doesn't expose a revoke endpoint.
+
+    app.delete('/v1/grants/:grantId', async (c) => {
+      if (!serverSigner) {
+        return c.json({ error: 'Server not configured for signing (no master key)' }, 500);
+      }
+      if (!gatewayClient) {
+        return c.json({ error: 'Gateway client not initialized' }, 500);
+      }
+
+      const grantId = c.req.param('grantId');
+      const ownerAddress = config.server.address;
+
+      try {
+        // Sign the EIP-712 GrantRevocation message
+        const signature = await serverSigner.signGrantRevocation({
+          grantorAddress: ownerAddress,
+          grantId,
+        });
+
+        // Submit to Gateway
+        await gatewayClient.revokeGrant({
+          grantId,
+          grantorAddress: ownerAddress,
+          signature,
+        });
+
+        return c.body(null, 204);
+      } catch (err) {
+        const message = err?.message || String(err);
+        send({ type: 'log', message: `[DELETE /v1/grants/${grantId}] Error: ${message}` });
+        return c.json({ error: message }, 500);
+      }
+    });
 
     // Fix stale proxy name collision on FRP server
     const storageRoot = configDir || join(

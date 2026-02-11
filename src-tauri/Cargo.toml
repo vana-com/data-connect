@@ -24,6 +24,7 @@ tauri-plugin-log = "2"
 tauri-plugin-fs = "2"
 tauri-plugin-shell = "2"
 tauri-plugin-http = "2"
+tauri-plugin-deep-link = "2"
 tokio = { version = "1", features = ["full"] }
 reqwest = { version = "0.11", features = ["json", "stream", "blocking"] }
 zip = "0.6"

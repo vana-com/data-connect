@@ -16,7 +16,7 @@ export default defineConfig({
     },
   },
   test: {
-    environment: "jsdom",
+    environment: "happy-dom",
   },
   define: {
     __COMMIT_HASH__: JSON.stringify(commitHash),

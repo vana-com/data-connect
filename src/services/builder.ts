@@ -179,9 +179,10 @@ export async function verifyBuilder(
   // The signature proves the manifest was published by the builder address.
   // Canonical message: JSON of the vana block with keys sorted alphabetically,
   // excluding the "signature" field itself.
+  let signatureVerified = false;
   if (!vana.signature) {
     console.warn(
-      "[Builder] Manifest vana block has no signature — skipping verification"
+      "[Builder] Manifest vana block has no signature — marking as unverified"
     );
   } else {
     const canonicalPayload = Object.keys(vana)
@@ -204,6 +205,7 @@ export async function verifyBuilder(
         "Manifest vana block signature is invalid — signer does not match builder address"
       );
     }
+    signatureVerified = true;
   }
 
   // 4. Build result from manifest + vana block
@@ -221,6 +223,6 @@ export async function verifyBuilder(
     privacyPolicyUrl: vana.privacyPolicyUrl,
     termsUrl: vana.termsUrl,
     supportUrl: vana.supportUrl,
-    verified: true,
+    verified: signatureVerified,
   };
 }

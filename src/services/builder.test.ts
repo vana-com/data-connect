@@ -364,7 +364,7 @@ describe("verifyBuilder — manifest errors", () => {
     );
   });
 
-  it("warns but does not throw when vana.signature is absent", async () => {
+  it("returns verified=false when vana.signature is absent", async () => {
     const warnSpy = vi.spyOn(console, "warn").mockImplementation(() => {});
     const noSigManifest = {
       ...manifestJson,
@@ -377,6 +377,7 @@ describe("verifyBuilder — manifest errors", () => {
 
     const result = await verifyBuilder(BUILDER_ADDRESS);
     expect(result.name).toBe("My Builder App");
+    expect(result.verified).toBe(false);
     expect(warnSpy).toHaveBeenCalledWith(
       expect.stringContaining("no signature")
     );

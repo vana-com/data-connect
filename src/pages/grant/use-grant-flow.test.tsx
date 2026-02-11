@@ -488,6 +488,52 @@ describe("useGrantFlow", () => {
     expect(mockNavigate).toHaveBeenCalledWith("/apps")
   })
 
+  it("errors when secret is missing during approve for non-demo session", async () => {
+    authState = {
+      isAuthenticated: true,
+      isLoading: false,
+      walletAddress: "0xuser",
+    }
+
+    // Use pre-fetched data to bypass the initial claim (which would error on missing secret)
+    const prefetched = {
+      session: {
+        id: "no-secret-session",
+        granteeAddress: "0xbuilder",
+        scopes: ["chatgpt.conversations"],
+        expiresAt: "2030-01-01T00:00:00.000Z",
+      },
+      builderManifest: {
+        name: "Test Builder",
+        appUrl: "https://test.example.com",
+      },
+    }
+    mockCreateGrant.mockResolvedValue({ grantId: "grant-999" })
+
+    const { result } = renderHook(() =>
+      useGrantFlow(
+        {
+          sessionId: "no-secret-session",
+          // no secret
+        },
+        prefetched
+      )
+    )
+
+    await waitFor(() => {
+      expect(result.current.flowState.status).toBe("consent")
+    })
+
+    await act(async () => {
+      await result.current.handleApprove()
+    })
+
+    await waitFor(() => {
+      expect(result.current.flowState.status).toBe("error")
+    })
+    expect(result.current.flowState.error).toContain("secret is missing")
+  })
+
   it("shows error when Personal Server is not running", async () => {
     authState = {
       isAuthenticated: true,

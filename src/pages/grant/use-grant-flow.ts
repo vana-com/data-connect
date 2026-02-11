@@ -307,28 +307,33 @@ export function useGrantFlow(params: GrantFlowParams, prefetched?: PrefetchedGra
       // Step: Approve session via Session Relay
       setFlowState(prev => ({ ...prev, status: "approving" }))
 
-      if (flowState.secret) {
-        // Persist pending approval so we can retry if approve fails.
-        // Without this, a split failure leaves the grant on Gateway
-        // but the builder never learns about it.
-        savePendingApproval({
-          sessionId: flowState.sessionId,
-          grantId,
-          secret: flowState.secret,
-          userAddress: walletAddress,
-          scopes: flowState.session.scopes,
-          createdAt: new Date().toISOString(),
-        })
-
-        await approveSession(flowState.sessionId, {
-          secret: flowState.secret,
-          grantId,
-          userAddress: walletAddress,
-          scopes: flowState.session.scopes,
-        })
-
-        clearPendingApproval()
+      if (!flowState.secret) {
+        throw new SessionRelayError(
+          "Cannot approve session: secret is missing from the flow state. " +
+          "The builder will not be notified of this grant.",
+        )
       }
+
+      // Persist pending approval so we can retry if approve fails.
+      // Without this, a split failure leaves the grant on Gateway
+      // but the builder never learns about it.
+      savePendingApproval({
+        sessionId: flowState.sessionId,
+        grantId,
+        secret: flowState.secret,
+        userAddress: walletAddress,
+        scopes: flowState.session.scopes,
+        createdAt: new Date().toISOString(),
+      })
+
+      await approveSession(flowState.sessionId, {
+        secret: flowState.secret,
+        grantId,
+        userAddress: walletAddress,
+        scopes: flowState.session.scopes,
+      })
+
+      clearPendingApproval()
 
       // Persist as connected app in Redux for immediate UI update
       dispatch(

@@ -27,6 +27,8 @@ All P0, P1, and P2 items have been implemented, tested, and verified.
 19. **Dead localStorage cleanup** — removed connected apps CRUD functions (`setConnectedApp`, `getConnectedApp`, `removeConnectedApp`, `getAllConnectedApps`, `subscribeConnectedApps`, `isAppConnected`, `migrateConnectedAppsStorage`) and their 9 tests from `src/lib/storage.ts`. Gateway via Personal Server `GET /v1/grants` is the single source of truth; nothing read the localStorage data anymore.
 20. **Deny flow navigation fix** — Cancel button previously set a `"denied"` status that rendered an error screen ("Access was denied.") instead of navigating away. Fixed: `handleDeny` now calls `navigate(ROUTES.apps)` after the deny API call, matching the spec's "cancel → navigate away" requirement. Removed dead `"denied"` status from `GrantFlowState` type, debug panel, and grant page rendering. Cancel button changed from `<Link>` to plain `<Button>` since navigation is now handled programmatically.
 21. **Error scenario test coverage** — added 5 tests to `use-grant-flow.test.tsx`: session claim failure (SessionRelayError), builder verification fallback (uses truncated address + `verified: false`), grant creation failure (PersonalServerError), deny API failure (navigates away regardless), and Personal Server not running.
+22. **Signature verification security fix** — `verifyBuilder()` previously returned `verified: true` even when the manifest's `vana.signature` field was missing, bypassing EIP-191 verification entirely. Fixed: missing signature now correctly sets `verified: false`, causing the consent UI to show the "unverified app" warning banner. A builder must provide a valid EIP-191 signature to be marked as verified. (26 tests in builder.test.ts)
+23. **Missing secret guard during approve** — `handleApprove()` previously silently skipped the `POST /v1/session/{id}/approve` call when `secret` was undefined, creating a split failure where the grant exists on Gateway but the builder never learns about it (no error shown to user). Fixed: now throws `SessionRelayError` so the error is surfaced to the user. (14 tests in use-grant-flow.test.tsx)
 
 ### Architecture notes
 
@@ -39,7 +41,7 @@ All P0, P1, and P2 items have been implemented, tested, and verified.
 ## Validation
 
 - `npx tsc -b` — zero type errors
-- `npm run test` — 121 tests passing across 17 test files
+- `npm run test` — 122 tests passing across 17 test files
 - Test environment: happy-dom (jsdom broken by html-encoding-sniffer@6.0.0 ESM issue)
 
 ## Known non-blocking TODOs (outside this feature scope)

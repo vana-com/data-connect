@@ -58,6 +58,15 @@ All P0, P1, and P2 items have been implemented, tested, and verified.
 
 38. **Documentation alignment** — `docs/260203-grant-connect-flow.md` and `docs/architecture.md` were outdated: they described the old flow (wrong deep link scheme `dataconnect://`, wrong state machine order `loading → auth-required → consent → signing → success`, localStorage for connected apps, mock grant signing). Updated both to match the current implementation: `vana://connect` deep links with `secret`, consent-before-auth flow, correct state machine (`loading → claiming → verifying-builder → consent → auth-required → creating-grant → approving → success`), Gateway as source of truth for connected apps, Personal Server EIP-712 signing, split-failure recovery, pre-fetch optimization.
 
+39. **Connect page test coverage** — `src/pages/connect/index.test.tsx` previously had only 2 tests (missing connector message, secret in debug link). The connect page is the critical bridge between deep-link entry and the grant flow — it handles background pre-fetch (session claim + builder verification), platform resolution from scopes, connector execution, and navigation state passing to the grant page. Added 22 new tests in 6 groups:
+    - **Title and copy** (3 tests): scope-driven title ("Connect your ChatGPT"), fallback to default app scopes, "(again)" suffix for already-connected platforms
+    - **Platform resolution** (5 tests): missing connector message, unknown scope error, platform load error, loading state (spinner + "Checking connectors…"), enabled button when platform is available
+    - **Background pre-fetch** (5 tests): claim+verify called with correct params for real sessions, skipped when secret missing, skipped when sessionId missing, skipped for demo sessions, non-fatal on failure (logs warning, UI stays functional), deduplication across re-renders (ref keyed on sessionId)
+    - **Connector execution and navigation** (5 tests): startExport called on click, navigation to grant page with prefetched data on success, reset on error, reset on stopped, navigation without prefetched state when pre-fetch failed (grant page retries)
+    - **Grant URL construction** (3 tests): secret, appId, and scopes all threaded correctly to grant URL
+    - **Dev mode behavior** (1 test): skip-to-grant link shown when connector missing
+    - **Discovery**: `Text` component's `formatText()` converts straight apostrophes to curly quotes (U+2019), causing regex mismatches — tests now use character classes to match both forms
+
 ### Architecture notes
 
 - The spec's `exporting` state was removed from `GrantFlowState` type — data export happens on the `/connect` route (Screen 1-2), not the `/grant` route (Screen 3-5). The grant page starts at `consent` after receiving pre-fetched data from the connect page.
@@ -69,7 +78,7 @@ All P0, P1, and P2 items have been implemented, tested, and verified.
 ## Validation
 
 - `npx tsc -b` — zero type errors
-- `npm run test` — 162 tests passing across 19 test files
+- `npm run test` — 184 tests passing across 19 test files
 - Last updated: 2026-02-10
 - Test environment: happy-dom (jsdom broken by html-encoding-sniffer@6.0.0 ESM issue)
 

@@ -224,18 +224,24 @@ export function SourceOverview() {
         "lg:px-w24"
       )}
     >
-      {/* <Link
-        to={ROUTES.home}
-        className="inline-flex items-center gap-1.5 text-sm text-muted-foreground hover:text-foreground"
-      >
-        <ArrowLeftIcon className="size-4" />
-        Back
-      </Link> */}
-
       <section className="w-full grid gap-small lg:grid-cols-[250px_minmax(0,1fr)]">
-        <aside className="space-y-6">
+        <aside className="space-y-6 relative">
+          {/* <Text
+            as={Link}
+            to={ROUTES.home}
+            intent="small"
+            withIcon
+            weight="medium"
+            className={cn(
+              "absolute left-0 top-[-2.5em]",
+              "hover:text-foreground gap-1!"
+            )}
+          >
+            <ArrowLeftIcon className="size-[1.1em]!" />
+            Back
+          </Text> */}
           <div className="space-y-5">
-            <div className="flex items-center gap-1.5 ml-[-0.375em] pt-3">
+            <div className="flex items-center gap-1.5 ml-[-0.375em] pt-2">
               <PlatformIcon
                 iconName={sourceEntry.id}
                 fallbackLabel={sourceName.charAt(0).toUpperCase()}
@@ -260,8 +266,11 @@ export function SourceOverview() {
               <SourceLinkRow href="#" icon={<ActivityIcon aria-hidden />}>
                 Last used yesterday
               </SourceLinkRow>
-              <SourceLinkRow href="#" icon={<RefreshCcwIcon aria-hidden />}>
-                Last synced
+              <SourceLinkRow
+                to={ROUTES.runs}
+                icon={<RefreshCcwIcon aria-hidden />}
+              >
+                Last synced yesterday
               </SourceLinkRow>
             </div>
           </div>

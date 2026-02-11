@@ -10,7 +10,7 @@ import { GrantErrorState } from "./components/grant-error-state"
 import { GrantSuccessState } from "./components/grant-success-state"
 import { GrantConsentState } from "./components/consent/grant-consent-state"
 import { GrantDebugPanel } from "./components/grant-debug-panel.tsx"
-import type { GrantFlowState, GrantSession } from "./types"
+import type { BuilderManifest, GrantFlowState, GrantSession } from "./types"
 
 const DEBUG_SESSION_ID = "grant-session-debug"
 function getDebugSession(): GrantSession {
@@ -73,6 +73,9 @@ export function Grant() {
   const resolvedBuilderName = isDebugging
     ? debugSession.appName
     : builderName
+  const resolvedBuilderManifest: BuilderManifest | undefined = isDebugging
+    ? { name: debugSession.appName ?? "Debug App", appUrl: "https://example.com" }
+    : flowState.builderManifest
 
   // States that show loading spinner
   const isLoadingState =
@@ -125,6 +128,7 @@ export function Grant() {
     content = (
       <GrantConsentState
         session={resolvedFlowState.session}
+        builderManifest={resolvedBuilderManifest}
         builderName={resolvedBuilderName}
         isApproving={resolvedIsApproving}
         declineHref={declineHref}

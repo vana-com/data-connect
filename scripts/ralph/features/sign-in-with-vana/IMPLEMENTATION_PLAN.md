@@ -41,14 +41,14 @@
 
 - **[DONE]** Handle demo mode — `sessionId.startsWith("grant-session-")` check gated behind `import.meta.env.DEV` so it doesn't ship to production. Demo mode bypasses relay claim and uses mock builder metadata.
 
+- **[DONE]** Updated `src/pages/grant/components/consent/grant-consent-state.tsx` to display builder metadata from manifest. Component now receives `builderManifest` prop and displays: builder icon from manifest (with fallback to PlatformIcon), human-readable scope labels, and privacy policy/terms links from the manifest's vana block. Updated `src/pages/grant/index.tsx` to pass `builderManifest` through to the consent component.
+
+- **[DONE]** Deny flow already fully wired: `handleDeny` passed as `onDeny` to `GrantConsentState`, Cancel button calls `onDeny()` which fires `denySession()` API call and transitions state to `denied`. Test coverage confirms the flow works end-to-end.
+
 ## TODO
 
 ### P1 Remaining Items
-- **[P1]** Update `src/pages/grant/components/consent/grant-consent-state.tsx` to display builder metadata from manifest (name, icon, description, privacy/terms links, requested scopes) instead of hardcoded app registry data. The consent component should receive builder manifest data from the state machine, not look it up from `src/apps/registry.ts`.
-
 - **[P1]** Update connected apps to use Gateway as source of truth. Replace `setConnectedApp()` / `getConnectedApps()` in `src/lib/storage.ts` with calls to Personal Server `GET /v1/grants` (via `personalServer.listGrants()`). The connected apps page should fetch live grant data (grantId, grantee, scopes, revocation status) instead of reading localStorage.
-
-- **[P1]** Add deny flow wiring to consent screen Cancel button. The `handleDeny` function is implemented in the state machine, but needs to be wired to the Cancel/Decline button in the consent UI to trigger the `consent` → `denied` transition.
 
 ### P2 Future Enhancements
 - **[P2]** Add Tauri deep-link plugin for native `vana://connect` URL scheme. Add `tauri-plugin-deep-link` to `Cargo.toml` and `tauri.conf.json`. Register `vana` scheme. Listen for `onOpenUrl` events in `src/hooks/use-deep-link.ts` and parse `sessionId` + `secret` from the URL. This replaces URL query param routing for production but current URL param approach works for dev/testing.

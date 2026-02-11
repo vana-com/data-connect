@@ -1,6 +1,7 @@
 // Builder verification service
 // Verifies builder identity via Gateway lookup + manifest fetch + EIP-191 signature check.
 
+import { verifyMessage } from "viem/utils";
 import type { BuilderManifest } from "@/pages/grant/types";
 
 const GATEWAY_URL =
@@ -175,12 +176,33 @@ export async function verifyBuilder(
 
   // 3. Verify EIP-191 signature of the vana block
   // The signature proves the manifest was published by the builder address.
-  // For now, we verify the signature field exists. Full EIP-191 recovery
-  // requires ethers.js which will be added when the dependency is available.
+  // Canonical message: JSON of the vana block with keys sorted alphabetically,
+  // excluding the "signature" field itself.
   if (!vana.signature) {
     console.warn(
       "[Builder] Manifest vana block has no signature — skipping verification"
     );
+  } else {
+    const canonicalPayload = Object.keys(vana)
+      .filter((k) => k !== "signature")
+      .sort()
+      .reduce<Record<string, unknown>>((obj, k) => {
+        obj[k] = vana[k as keyof VanaManifestBlock];
+        return obj;
+      }, {});
+    const canonicalMessage = JSON.stringify(canonicalPayload);
+
+    const isValid = await verifyMessage({
+      address: granteeAddress as `0x${string}`,
+      message: canonicalMessage,
+      signature: vana.signature as `0x${string}`,
+    });
+
+    if (!isValid) {
+      throw new BuilderVerificationError(
+        "Manifest vana block signature is invalid — signer does not match builder address"
+      );
+    }
   }
 
   // 4. Build result from manifest + vana block

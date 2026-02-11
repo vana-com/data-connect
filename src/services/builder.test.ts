@@ -1,5 +1,15 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
-import { verifyBuilder, BuilderVerificationError } from "./builder";
+
+// Mock viem/utils before importing builder — vi.hoisted ensures the fn
+// is available when vi.mock's factory runs (vi.mock is hoisted above imports).
+const { verifyMessageMock } = vi.hoisted(() => ({
+  verifyMessageMock: vi.fn(),
+}));
+vi.mock("viem/utils", () => ({
+  verifyMessage: verifyMessageMock,
+}));
+
+import { verifyBuilder } from "./builder";
 
 const fetchSpy = vi.fn();
 vi.stubGlobal("fetch", fetchSpy);
@@ -68,6 +78,9 @@ function mockHappyPath() {
 
 beforeEach(() => {
   fetchSpy.mockReset();
+  verifyMessageMock.mockReset();
+  // Default: signature verification passes
+  verifyMessageMock.mockResolvedValue(true);
 });
 
 // --- Happy path ---
@@ -348,6 +361,63 @@ describe("verifyBuilder — manifest errors", () => {
     expect(warnSpy).toHaveBeenCalledWith(
       expect.stringContaining("no signature")
     );
+    expect(verifyMessageMock).not.toHaveBeenCalled();
     warnSpy.mockRestore();
+  });
+});
+
+// --- EIP-191 signature verification ---
+
+describe("verifyBuilder — signature verification", () => {
+  it("calls verifyMessage with canonical JSON (sorted keys, no signature field)", async () => {
+    mockHappyPath();
+    await verifyBuilder(BUILDER_ADDRESS);
+
+    expect(verifyMessageMock).toHaveBeenCalledOnce();
+    const call = verifyMessageMock.mock.calls[0][0];
+    expect(call.address).toBe(BUILDER_ADDRESS);
+    expect(call.signature).toBe("0xsig123");
+
+    // Canonical JSON: sorted keys, signature excluded
+    const parsed = JSON.parse(call.message);
+    const keys = Object.keys(parsed);
+    expect(keys).toEqual([...keys].sort());
+    expect(keys).not.toContain("signature");
+    expect(parsed.appUrl).toBe("https://builder-app.example.com");
+    expect(parsed.privacyPolicyUrl).toBe(
+      "https://builder-app.example.com/privacy"
+    );
+  });
+
+  it("throws when signature verification fails", async () => {
+    verifyMessageMock.mockResolvedValue(false);
+    fetchSpy
+      .mockResolvedValueOnce(jsonResponse(gatewayResponse))
+      .mockResolvedValueOnce(textResponse(appHtml))
+      .mockResolvedValueOnce(jsonResponse(manifestJson));
+
+    await expect(verifyBuilder(BUILDER_ADDRESS)).rejects.toThrow(
+      "signature is invalid"
+    );
+  });
+
+  it("excludes undefined vana fields from canonical JSON", async () => {
+    const minimalVana = {
+      ...manifestJson,
+      vana: {
+        appUrl: "https://builder-app.example.com",
+        signature: "0xsig456",
+      },
+    };
+    fetchSpy
+      .mockResolvedValueOnce(jsonResponse(gatewayResponse))
+      .mockResolvedValueOnce(textResponse(appHtml))
+      .mockResolvedValueOnce(jsonResponse(minimalVana));
+
+    await verifyBuilder(BUILDER_ADDRESS);
+
+    const call = verifyMessageMock.mock.calls[0][0];
+    const parsed = JSON.parse(call.message);
+    expect(Object.keys(parsed)).toEqual(["appUrl"]);
   });
 });

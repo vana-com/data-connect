@@ -25,7 +25,6 @@ import type {
   GrantFlowParams,
   GrantFlowState,
   GrantSession,
-  GrantStep,
   PrefetchedGrantData,
 } from "./types"
 import { ROUTES } from "@/config/routes"
@@ -69,7 +68,6 @@ export function useGrantFlow(params: GrantFlowParams, prefetched?: PrefetchedGra
     sessionId: "",
     status: "loading",
   })
-  const [currentStep, setCurrentStep] = useState<GrantStep>(1)
   const authTriggered = useRef(false)
   const [isApproving, setIsApproving] = useState(false)
   const [authPending, setAuthPending] = useState(false)
@@ -112,7 +110,7 @@ export function useGrantFlow(params: GrantFlowParams, prefetched?: PrefetchedGra
           session,
           builderManifest,
         }))
-        setCurrentStep(3)
+
         return
       }
 
@@ -124,7 +122,7 @@ export function useGrantFlow(params: GrantFlowParams, prefetched?: PrefetchedGra
           session: prefetched.session,
           builderManifest: prefetched.builderManifest,
         }))
-        setCurrentStep(3)
+
         return
       }
 
@@ -155,7 +153,6 @@ export function useGrantFlow(params: GrantFlowParams, prefetched?: PrefetchedGra
 
         // Step 2: Verify builder
         setFlowState(prev => ({ ...prev, status: "verifying-builder" }))
-        setCurrentStep(1)
         let builderManifest: BuilderManifest
         try {
           builderManifest = await verifyBuilder(claimed.granteeAddress)
@@ -171,7 +168,7 @@ export function useGrantFlow(params: GrantFlowParams, prefetched?: PrefetchedGra
 
         // Advance to consent (data export already completed on the connect page)
         setFlowState(prev => ({ ...prev, status: "consent" }))
-        setCurrentStep(3)
+
       } catch (error) {
         setFlowState({
           sessionId,
@@ -277,13 +274,11 @@ export function useGrantFlow(params: GrantFlowParams, prefetched?: PrefetchedGra
     }
 
     setIsApproving(true)
-    setCurrentStep(4)
 
     try {
       // Skip grant creation + session approval for demo sessions
       if (isDemoSession(flowState.sessionId)) {
         setFlowState(prev => ({ ...prev, status: "success" }))
-        setCurrentStep(5)
         return
       }
 
@@ -345,7 +340,6 @@ export function useGrantFlow(params: GrantFlowParams, prefetched?: PrefetchedGra
       )
 
       setFlowState(prev => ({ ...prev, status: "success" }))
-      setCurrentStep(5)
     } catch (error) {
       console.error("[GrantFlow] Approve failed:", error)
       setFlowState(prev => ({
@@ -404,7 +398,6 @@ export function useGrantFlow(params: GrantFlowParams, prefetched?: PrefetchedGra
 
   return {
     flowState,
-    currentStep,
     isApproving,
     authUrl,
     authError,

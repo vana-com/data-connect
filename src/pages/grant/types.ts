@@ -40,8 +40,6 @@ export interface GrantFlowState {
   grantId?: string
 }
 
-export type GrantStep = 1 | 2 | 3 | 4 | 5
-
 export interface GrantFlowParams {
   sessionId?: string
   secret?: string

@@ -117,7 +117,6 @@ describe("useGrantFlow", () => {
     expect(session?.scopes).toEqual(["chatgpt.conversations"])
     expect(result.current.flowState.status).toBe("consent")
     expect(result.current.builderName).toBe("Demo App")
-    expect(result.current.currentStep).toBe(3)
   })
 
   it("starts auth only after approval and auto-approves on auth completion", async () => {
@@ -323,7 +322,6 @@ describe("useGrantFlow", () => {
     // Pre-fetched data should be in state
     expect(result.current.flowState.session?.granteeAddress).toBe("0xprefetchbuilder")
     expect(result.current.builderName).toBe("Pre-fetched Builder")
-    expect(result.current.currentStep).toBe(3)
   })
 
   it("handles deny flow", async () => {

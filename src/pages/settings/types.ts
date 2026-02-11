@@ -1,4 +1,10 @@
-export type SettingsSection = "account" | "apps" | "credentials" | "storage" | "about"
+export type SettingsSection =
+  | "account"
+  | "apps"
+  | "credentials"
+  | "storage"
+  | "about"
+  | "runs"
 
 export interface BrowserSession {
   connectorId: string

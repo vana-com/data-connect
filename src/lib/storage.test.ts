@@ -1,5 +1,6 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import type { ConnectedApp } from '../types';
+import type { PendingApproval } from './storage';
 
 type StorageModule = typeof import('./storage');
 
@@ -211,5 +212,50 @@ describe('getAllConnectedApps', () => {
       baseApp.id,
       'app-2',
     ]);
+  });
+});
+
+const pendingApprovalKey = 'v1_pending_approval';
+
+const basePending: PendingApproval = {
+  sessionId: 'sess-123',
+  grantId: 'grant-456',
+  secret: 'secret-abc',
+  userAddress: '0x1234567890abcdef1234567890abcdef12345678',
+  scopes: ['chatgpt.conversations'],
+  createdAt: '2025-01-15T12:00:00Z',
+};
+
+describe('pendingApproval', () => {
+  it('saves and retrieves a pending approval', () => {
+    storage.savePendingApproval(basePending);
+
+    const retrieved = storage.getPendingApproval();
+    expect(retrieved).toEqual(basePending);
+  });
+
+  it('returns null when no pending approval exists', () => {
+    expect(storage.getPendingApproval()).toBeNull();
+  });
+
+  it('clears the pending approval', () => {
+    storage.savePendingApproval(basePending);
+    expect(storage.getPendingApproval()).not.toBeNull();
+
+    storage.clearPendingApproval();
+    expect(storage.getPendingApproval()).toBeNull();
+  });
+
+  it('returns null for corrupt stored data', () => {
+    localStorage.setItem(pendingApprovalKey, '{not json');
+    expect(storage.getPendingApproval()).toBeNull();
+  });
+
+  it('returns null for data that fails schema validation', () => {
+    localStorage.setItem(
+      pendingApprovalKey,
+      JSON.stringify({ sessionId: '', grantId: '' })
+    );
+    expect(storage.getPendingApproval()).toBeNull();
   });
 });

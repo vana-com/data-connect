@@ -10,6 +10,7 @@ import { InlineLogin } from "./components/auth/InlineLogin"
 import { BrowserLogin } from "./pages/browser-login"
 import { useDeepLink } from "./hooks/use-deep-link"
 import { usePersonalServer } from "./hooks/usePersonalServer"
+import { usePendingApprovalRetry } from "./hooks/usePendingApproval"
 import { ROUTES } from "@/config/routes"
 import { dotPatternStyle } from "@/components/elements/dot-pattern"
 
@@ -65,6 +66,7 @@ function AppContent() {
   useInitialize()
   useDeepLink()
   usePersonalServer()
+  usePendingApprovalRetry()
 
   return (
     <div className="flex h-screen">

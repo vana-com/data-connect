@@ -85,17 +85,23 @@
   - Added 3 new tests (5 total) in `src/hooks/use-deep-link.test.tsx`: cold-start via `getCurrent()`, runtime via `onOpenUrl()` callback, invalid URL filtering.
   - Note: macOS deep links can only be tested on bundled app installed in `/Applications`. Dev mode continues using URL query params.
 
+- **[DONE]** Error recovery for split failure — if `POST /v1/grants` succeeds but `POST /v1/session/{id}/approve` fails (session expired, network error), the grant exists on Gateway but builder never learns about it.
+  - Added `PendingApproval` type and `savePendingApproval`/`getPendingApproval`/`clearPendingApproval` to `src/lib/storage.ts`. Uses Zod schema validation and versioned localStorage key (`v1_pending_approval`).
+  - Updated `src/pages/grant/use-grant-flow.ts`: after `createGrant` succeeds, `savePendingApproval()` persists `{ sessionId, grantId, secret, userAddress, scopes }`. After `approveSession` succeeds, `clearPendingApproval()` removes it. If approve fails, the pending record survives for retry.
+  - Created `src/hooks/usePendingApproval.ts`: `usePendingApprovalRetry()` hook runs once on app startup. Checks for pending approval, retries the `approveSession` call, clears the record regardless of outcome (prevents infinite retry loops on expired sessions).
+  - Wired `usePendingApprovalRetry()` into `AppContent` in `src/App.tsx`.
+  - Added 5 tests for pending approval storage in `src/lib/storage.test.ts`: save/retrieve, null when empty, clear, corrupt data, schema validation failure.
+  - Added 3 tests in `src/hooks/usePendingApproval.test.ts`: no-op when empty, retry + clear on success, retry + clear on failure (no infinite loop).
+
 ## TODO
 
-### P2 Future Enhancements
-
-- **[P2]** Error recovery for split failure — if `POST /v1/grants` succeeds but `POST /v1/session/{id}/approve` fails (session expired, network error), the grant exists on Gateway but builder never learns about it. Store pending `{ sessionId, grantId, secret }` in localStorage. On next app open, retry the approve call. Clear on success.
+All P0, P1, and P2 items are complete. No remaining work items.
 
 ## Validation
 
 - `npx tsc -b` — no type errors after all changes.
 - `cargo check` — Rust compilation clean with deep-link plugin.
-- `npm run test` — all 112 tests passing across 16 test files. No pre-existing failures.
+- `npm run test` — all 120 tests passing across 17 test files. No pre-existing failures.
 - Manual: open `vana://connect?sessionId=test&secret=abc` (or URL param equivalent in dev), verify full flow: claim → builder verify → consent → auth (if needed) → grant creation → session approve → success.
 - Manual: click Cancel on consent screen, verify deny call fires and app navigates home.
 - Manual: deep link testing requires bundled app installed in `/Applications` (macOS limitation).

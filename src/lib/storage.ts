@@ -272,3 +272,48 @@ export function subscribeConnectedApps(callback: () => void): () => void {
 export function isAppConnected(appId: string): boolean {
   return getConnectedApp(appId) !== null;
 }
+
+// --- Pending approval recovery ---
+// When grant creation succeeds but session approval fails, we persist the
+// pending approval so it can be retried on next app open. Without this,
+// the grant exists on Gateway but the builder never learns about it.
+
+const PENDING_APPROVAL_KEY = `${STORAGE_VERSION}_pending_approval`;
+
+export interface PendingApproval {
+  sessionId: string;
+  grantId: string;
+  secret: string;
+  userAddress: string;
+  scopes: string[];
+  createdAt: string;
+}
+
+const PendingApprovalSchema = z.object({
+  sessionId: z.string().min(1),
+  grantId: z.string().min(1),
+  secret: z.string().min(1),
+  userAddress: z.string().min(1),
+  scopes: z.array(z.string()),
+  createdAt: z.string(),
+});
+
+export function savePendingApproval(approval: PendingApproval): void {
+  safeSetItem(PENDING_APPROVAL_KEY, JSON.stringify(approval));
+}
+
+export function getPendingApproval(): PendingApproval | null {
+  const raw = localStorage.getItem(PENDING_APPROVAL_KEY);
+  if (!raw) return null;
+  try {
+    const parsed = JSON.parse(raw);
+    const result = PendingApprovalSchema.safeParse(parsed);
+    return result.success ? result.data : null;
+  } catch {
+    return null;
+  }
+}
+
+export function clearPendingApproval(): void {
+  localStorage.removeItem(PENDING_APPROVAL_KEY);
+}

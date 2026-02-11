@@ -3,6 +3,7 @@
 
 import { verifyMessage } from "viem/utils";
 import type { BuilderManifest } from "@/pages/grant/types";
+import { corsFetch } from "@/lib/cors-fetch";
 
 const GATEWAY_URL =
   import.meta.env.VITE_GATEWAY_URL ||
@@ -14,6 +15,12 @@ interface GatewayBuilderResponse {
   id: string;
   appUrl: string;
   publicKey: string;
+}
+
+/** All Gateway responses wrap payload in { data, proof } (protocol spec §4.2.5). */
+interface GatewayEnvelope<T> {
+  data: T;
+  proof?: unknown;
 }
 
 interface VanaManifestBlock {
@@ -66,7 +73,7 @@ async function fetchGatewayBuilder(
   const url = `${GATEWAY_URL}/v1/builders/${encodeURIComponent(granteeAddress)}`;
   let response: Response;
   try {
-    response = await fetch(url);
+    response = await corsFetch(url);
   } catch {
     throw new BuilderVerificationError(
       "Failed to reach Gateway for builder lookup"
@@ -84,7 +91,10 @@ async function fetchGatewayBuilder(
     );
   }
 
-  return (await response.json()) as GatewayBuilderResponse;
+  const envelope = (await response.json()) as GatewayEnvelope<GatewayBuilderResponse>;
+  const builder = envelope.data;
+  console.warn("[builder-verify] Gateway builder:", JSON.stringify(builder));
+  return builder;
 }
 
 function extractManifestUrl(html: string, baseUrl: string): string | null {
@@ -106,10 +116,23 @@ function extractManifestUrl(html: string, baseUrl: string): string | null {
 async function fetchManifest(
   appUrl: string
 ): Promise<{ manifest: W3CManifest; manifestUrl: string }> {
-  // Fetch the app HTML page
+  console.warn("[builder-verify] fetchManifest called with appUrl:", JSON.stringify(appUrl));
+  // Phase 1: Try the conventional W3C manifest location directly.
+  try {
+    const directUrl = resolveUrl(appUrl, "/manifest.json");
+    const directResponse = await corsFetch(directUrl);
+    if (directResponse.ok) {
+      const manifest = (await directResponse.json()) as W3CManifest;
+      return { manifest, manifestUrl: directUrl };
+    }
+  } catch {
+    // Direct fetch failed — fall through to HTML scraping
+  }
+
+  // Phase 2: Fall back to HTML-based manifest discovery.
   let htmlResponse: Response;
   try {
-    htmlResponse = await fetch(appUrl);
+    htmlResponse = await corsFetch(appUrl);
   } catch {
     throw new BuilderVerificationError(
       `Builder app at ${appUrl} is unreachable`
@@ -140,7 +163,7 @@ async function fetchManifest(
   // Fetch the manifest JSON
   let manifestResponse: Response;
   try {
-    manifestResponse = await fetch(manifestUrl);
+    manifestResponse = await corsFetch(manifestUrl);
   } catch {
     throw new BuilderVerificationError(
       `Manifest at ${manifestUrl} is unreachable`
@@ -165,6 +188,13 @@ export async function verifyBuilder(
 ): Promise<BuilderManifest> {
   // 1. Look up builder on Gateway
   const builder = await fetchGatewayBuilder(granteeAddress);
+  console.warn("[builder-verify] appUrl from Gateway:", JSON.stringify(builder.appUrl));
+
+  if (!builder.appUrl) {
+    throw new BuilderVerificationError(
+      "Builder registration incomplete: no appUrl returned by Gateway"
+    );
+  }
 
   // 2. Fetch builder's web page and parse manifest link
   const { manifest } = await fetchManifest(builder.appUrl);

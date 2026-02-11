@@ -31,7 +31,7 @@
       "identifier": "http:allow-fetch",
       "allow": [
         { "url": "http://localhost:*" },
-        { "url": "https://data-gateway-env-dev-opendatalabs.vercel.app/*" }
+        { "url": "https://*" }
       ]
     }
   ]

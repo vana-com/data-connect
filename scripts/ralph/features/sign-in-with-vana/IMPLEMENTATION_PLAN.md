@@ -8,7 +8,7 @@ All P0, P1, and P2 items have been implemented, tested, and verified.
 
 1. **Session Relay v1 client** (`src/services/sessionRelay.ts`) — claim/approve/deny with secret threading, structured error handling (13 tests)
 2. **Personal Server grant client** (`src/services/personalServer.ts`) — createGrant/listGrants/revokeGrant via Tauri HTTP plugin (18 tests)
-3. **Builder verification service** (`src/services/builder.ts`) — Gateway lookup + W3C manifest fetch + EIP-191 signature verification (25 tests)
+3. **Builder verification service** (`src/services/builder.ts`) — Gateway lookup + W3C manifest fetch + EIP-191 signature verification + required field validation + appUrl/webhookUrl checks (30 tests)
 4. **Grant flow state machine** (`src/pages/grant/use-grant-flow.ts`) — `loading → claiming → verifying-builder → consent → [auth-required] → creating-grant → approving → success` with demo mode, pre-fetch support, and deferred auth (13 tests)
 5. **Deep link plugin** — Tauri deep-link plugin for `vana://connect` URL scheme with cold-start/runtime listeners (5 tests)
 6. **Connected apps** (`src/hooks/useConnectedApps.ts`) — fetches from Personal Server `GET /v1/grants`, revokes via `DELETE /v1/grants/{grantId}`, replaces localStorage
@@ -27,7 +27,7 @@ All P0, P1, and P2 items have been implemented, tested, and verified.
 19. **Dead localStorage cleanup** — removed connected apps CRUD functions (`setConnectedApp`, `getConnectedApp`, `removeConnectedApp`, `getAllConnectedApps`, `subscribeConnectedApps`, `isAppConnected`, `migrateConnectedAppsStorage`) and their 9 tests from `src/lib/storage.ts`. Gateway via Personal Server `GET /v1/grants` is the single source of truth; nothing read the localStorage data anymore.
 20. **Deny flow navigation fix** — Cancel button previously set a `"denied"` status that rendered an error screen ("Access was denied.") instead of navigating away. Fixed: `handleDeny` now calls `navigate(ROUTES.apps)` after the deny API call, matching the spec's "cancel → navigate away" requirement. Removed dead `"denied"` status from `GrantFlowState` type, debug panel, and grant page rendering. Cancel button changed from `<Link>` to plain `<Button>` since navigation is now handled programmatically.
 21. **Error scenario test coverage** — added 5 tests to `use-grant-flow.test.tsx`: session claim failure (SessionRelayError), builder verification fallback (uses truncated address + `verified: false`), grant creation failure (PersonalServerError), deny API failure (navigates away regardless), and Personal Server not running.
-22. **Signature verification security fix** — `verifyBuilder()` previously returned `verified: true` even when the manifest's `vana.signature` field was missing, bypassing EIP-191 verification entirely. Fixed: missing signature now correctly sets `verified: false`, causing the consent UI to show the "unverified app" warning banner. A builder must provide a valid EIP-191 signature to be marked as verified. (26 tests in builder.test.ts)
+22. **Signature verification security fix** — `verifyBuilder()` previously returned `verified: true` even when the manifest's `vana.signature` field was missing. Fixed in two iterations: first set `verified: false`, then (item #30) made it fatal per protocol spec.
 23. **Missing secret guard during approve** — `handleApprove()` previously silently skipped the `POST /v1/session/{id}/approve` call when `secret` was undefined, creating a split failure where the grant exists on Gateway but the builder never learns about it (no error shown to user). Fixed: now throws `SessionRelayError` so the error is surfaced to the user. (14 tests in use-grant-flow.test.tsx)
 24. **Personal Server grant route error handling** — Added try-catch blocks around all async operations in `POST /v1/grants` and `DELETE /v1/grants/:grantId` routes. Added `gatewayClient` null checks (previously only `serverSigner` was checked). Added JSON parse error handling for malformed request bodies. Added empty scopes array validation. Errors now return HTTP 500 with error message and log via `send()` for Tauri stdout monitoring.
 25. **MANUAL_TESTING.md accuracy fix** — Removed reference to `denied` debug panel button (state was removed in item #20). Updated state machine diagram to show Cancel → POST deny → navigate to /apps instead of the removed `denied` state.
@@ -35,19 +35,25 @@ All P0, P1, and P2 items have been implemented, tested, and verified.
 27. **Pre-fetch race condition fix** — Connect page's background pre-fetch used a `useRef<Promise>` that was never cleared. If the user navigated to a new session ID, the old ref blocked the new prefetch. Fixed: keyed the ref on `sessionId` so each session gets its own prefetch.
 28. **Revoke rollback fix** — `useConnectedApps.removeApp()` optimistically removed apps from Redux but never rolled back on server failure. A failed `revokeGrant()` left the UI out of sync with Gateway (user thinks revoked, builder still has access). Fixed: on failure, the app is re-added to Redux via `addConnectedApp()`.
 29. **useConnectedApps test coverage** — Added 8 unit tests covering: fetch with dev token, revoked grant filtering, null port guard, unauthenticated guard, fetch error handling, successful revoke, revoke rollback on failure, and null port revoke.
+30. **Builder verification security hardening (protocol spec compliance)** — Five security issues found by auditing `builder.ts` against protocol spec section 5.5. All fixed:
+    - **(a) Verification failure is now fatal**: Protocol spec says "MUST NOT render the consent screen and MUST fail the session flow" if manifest discovery or signature verification fails. Previously, `use-grant-flow.ts` and `connect/index.tsx` caught `verifyBuilder()` errors and fell back to unverified metadata (truncated address, `verified: false`), allowing the consent screen to render for unverified builders. Fixed: the catch blocks are removed — `verifyBuilder()` errors now propagate to the outer error handler, transitioning the flow to `"error"` state.
+    - **(b) Missing `vana.signature` is now fatal**: Previously logged a warning and returned `verified: false`. Now throws `BuilderVerificationError` — a builder must provide a valid EIP-191 signature.
+    - **(c) `vana.appUrl` equality check added**: Protocol spec step 2 requires "Verify `vana.appUrl` equals the on-chain `appUrl`". Previously used `vana.appUrl || builder.appUrl` fallback. Now throws if `vana.appUrl` is missing or doesn't match the Gateway value.
+    - **(d) `webhookUrl` validation added**: Protocol spec step 4 requires "Ensure requested `webhookUrl` matches `vana.webhookUrl`". `verifyBuilder()` now accepts an optional `sessionWebhookUrl` parameter; if the session has a webhookUrl, it must match the manifest's `vana.webhookUrl`.
+    - **(e) Required `vana` fields validated**: `appUrl` and `signature` are now checked before proceeding to signature verification. (30 tests in builder.test.ts, 15 tests in use-grant-flow.test.tsx)
 
 ### Architecture notes
 
 - The spec's `exporting` state was removed from `GrantFlowState` type — data export happens on the `/connect` route (Screen 1-2), not the `/grant` route (Screen 3-5). The grant page starts at `consent` after receiving pre-fetched data from the connect page.
 - Demo mode (`sessionId.startsWith("grant-session-")`) is gated behind `import.meta.env.DEV`.
-- Builder verification is non-fatal — uses fallback metadata (truncated address) if manifest fetch or signature check fails.
+- Builder verification is fatal per protocol spec — if manifest discovery or signature verification fails, the flow errors out. No fallback metadata is used. This means builders must maintain their `appUrl` availability and provide valid EIP-191 signatures.
 - Grant create/revoke routes in `personal-server/index.js` are unauthenticated (no Web3Signed header required). They run on localhost only, managed by Tauri — no external access possible. The library's `GET /v1/grants` route still requires auth, satisfied by the devToken bypass.
 - The `createServer()` bootstrap returns `gatewayClient` and `serverSigner` alongside `app` — we destructure these to add custom routes without modifying the library.
 
 ## Validation
 
 - `npx tsc -b` — zero type errors
-- `npm run test` — 131 tests passing across 18 test files
+- `npm run test` — 135 tests passing across 18 test files
 - Test environment: happy-dom (jsdom broken by html-encoding-sniffer@6.0.0 ESM issue)
 
 ## Known non-blocking TODOs (outside this feature scope)

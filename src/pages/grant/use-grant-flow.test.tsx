@@ -72,6 +72,12 @@ vi.mock("../../services/sessionRelay", () => ({
 vi.mock("../../services/builder", () => ({
   verifyBuilder: (...args: unknown[]) =>
     mockVerifyBuilder.apply(null, args as []),
+  BuilderVerificationError: class BuilderVerificationError extends Error {
+    constructor(message: string) {
+      super(message)
+      this.name = "BuilderVerificationError"
+    }
+  },
 }))
 
 vi.mock("../../services/personalServer", () => ({
@@ -217,7 +223,7 @@ describe("useGrantFlow", () => {
       sessionId: "real-session-1",
       secret: "test-secret",
     })
-    expect(mockVerifyBuilder).toHaveBeenCalledWith("0xbuilder")
+    expect(mockVerifyBuilder).toHaveBeenCalledWith("0xbuilder", undefined)
 
     const session = result.current.flowState.session
     expect(session?.granteeAddress).toBe("0xbuilder")
@@ -383,13 +389,16 @@ describe("useGrantFlow", () => {
     expect(result.current.flowState.error).toBe("Session not found")
   })
 
-  it("uses fallback metadata when builder verification fails", async () => {
+  it("errors when builder verification fails (protocol spec MUST)", async () => {
+    const { BuilderVerificationError } = await import("../../services/builder")
     mockClaimSession.mockResolvedValue({
       granteeAddress: "0xfailbuilder",
       scopes: ["chatgpt.conversations"],
       expiresAt: "2030-01-01T00:00:00.000Z",
     })
-    mockVerifyBuilder.mockRejectedValue(new Error("Gateway unreachable"))
+    mockVerifyBuilder.mockRejectedValue(
+      new BuilderVerificationError("Builder app at https://example.com is unreachable")
+    )
 
     const { result } = renderHook(() =>
       useGrantFlow({
@@ -398,17 +407,13 @@ describe("useGrantFlow", () => {
       })
     )
 
+    // Per protocol spec: "MUST NOT render the consent screen and MUST fail the session flow"
     await waitFor(() => {
-      expect(result.current.flowState.status).toBe("consent")
+      expect(result.current.flowState.status).toBe("error")
     })
-
-    // Flow should continue with fallback metadata, not error out
-    expect(result.current.flowState.builderManifest).toEqual({
-      name: "App 0xfailbu…",
-      appUrl: "",
-      verified: false,
-    })
-    expect(result.current.builderName).toBe("App 0xfailbu…")
+    expect(result.current.flowState.error).toBe(
+      "Builder app at https://example.com is unreachable"
+    )
   })
 
   it("shows error when grant creation fails", async () => {

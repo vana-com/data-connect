@@ -11,7 +11,7 @@ import {
   denySession,
   SessionRelayError,
 } from "../../services/sessionRelay"
-import { verifyBuilder } from "../../services/builder"
+import { verifyBuilder, BuilderVerificationError } from "../../services/builder"
 import {
   createGrant,
   PersonalServerError,
@@ -156,19 +156,13 @@ export function useGrantFlow(params: GrantFlowParams, prefetched?: PrefetchedGra
         setFlowState(prev => ({ ...prev, session }))
 
         // Step 2: Verify builder
+        // Protocol spec: "If manifest discovery or signature verification fails,
+        // the Desktop App MUST NOT render the consent screen and MUST fail the session flow."
         setFlowState(prev => ({ ...prev, status: "verifying-builder" }))
-        let builderManifest: BuilderManifest
-        try {
-          builderManifest = await verifyBuilder(claimed.granteeAddress)
-        } catch (err) {
-          // Builder verification is non-fatal — use fallback metadata
-          console.warn("[GrantFlow] Builder verification failed:", err)
-          builderManifest = {
-            name: `App ${claimed.granteeAddress.slice(0, 8)}…`,
-            appUrl: "",
-            verified: false,
-          }
-        }
+        const builderManifest = await verifyBuilder(
+          claimed.granteeAddress,
+          claimed.webhookUrl,
+        )
         setFlowState(prev => ({ ...prev, builderManifest }))
 
         // Advance to consent (data export already completed on the connect page)
@@ -180,7 +174,8 @@ export function useGrantFlow(params: GrantFlowParams, prefetched?: PrefetchedGra
           secret,
           status: "error",
           error:
-            error instanceof SessionRelayError
+            error instanceof SessionRelayError ||
+            error instanceof BuilderVerificationError
               ? error.message
               : "Failed to load session",
         })

@@ -197,7 +197,7 @@ describe("verifyBuilder — happy path", () => {
     expect(result.verified).toBe(true);
   });
 
-  it("uses builder.appUrl from Gateway when vana.appUrl is absent", async () => {
+  it("throws when vana.appUrl is absent (required field)", async () => {
     const noVanaAppUrl = {
       ...manifestJson,
       vana: { ...manifestJson.vana, appUrl: undefined },
@@ -207,8 +207,24 @@ describe("verifyBuilder — happy path", () => {
       .mockResolvedValueOnce(textResponse(appHtml))
       .mockResolvedValueOnce(jsonResponse(noVanaAppUrl));
 
-    const result = await verifyBuilder(BUILDER_ADDRESS);
-    expect(result.appUrl).toBe(BUILDER_APP_URL);
+    await expect(verifyBuilder(BUILDER_ADDRESS)).rejects.toThrow(
+      "missing required 'appUrl'"
+    );
+  });
+
+  it("throws when vana.appUrl does not match on-chain appUrl", async () => {
+    const mismatchedAppUrl = {
+      ...manifestJson,
+      vana: { ...manifestJson.vana, appUrl: "https://evil.example.com" },
+    };
+    fetchSpy
+      .mockResolvedValueOnce(jsonResponse(gatewayResponse))
+      .mockResolvedValueOnce(textResponse(appHtml))
+      .mockResolvedValueOnce(jsonResponse(mismatchedAppUrl));
+
+    await expect(verifyBuilder(BUILDER_ADDRESS)).rejects.toThrow(
+      "does not match on-chain appUrl"
+    );
   });
 });
 
@@ -364,8 +380,7 @@ describe("verifyBuilder — manifest errors", () => {
     );
   });
 
-  it("returns verified=false when vana.signature is absent", async () => {
-    const warnSpy = vi.spyOn(console, "warn").mockImplementation(() => {});
+  it("throws when vana.signature is absent (required field)", async () => {
     const noSigManifest = {
       ...manifestJson,
       vana: { ...manifestJson.vana, signature: undefined },
@@ -375,14 +390,10 @@ describe("verifyBuilder — manifest errors", () => {
       .mockResolvedValueOnce(textResponse(appHtml))
       .mockResolvedValueOnce(jsonResponse(noSigManifest));
 
-    const result = await verifyBuilder(BUILDER_ADDRESS);
-    expect(result.name).toBe("My Builder App");
-    expect(result.verified).toBe(false);
-    expect(warnSpy).toHaveBeenCalledWith(
-      expect.stringContaining("no signature")
+    await expect(verifyBuilder(BUILDER_ADDRESS)).rejects.toThrow(
+      "missing required 'signature'"
     );
     expect(verifyMessageMock).not.toHaveBeenCalled();
-    warnSpy.mockRestore();
   });
 });
 
@@ -419,6 +430,46 @@ describe("verifyBuilder — signature verification", () => {
     await expect(verifyBuilder(BUILDER_ADDRESS)).rejects.toThrow(
       "signature is invalid"
     );
+  });
+
+  it("passes when sessionWebhookUrl matches vana.webhookUrl", async () => {
+    const withWebhook = {
+      ...manifestJson,
+      vana: { ...manifestJson.vana, webhookUrl: "https://builder-app.example.com/webhook" },
+    };
+    fetchSpy
+      .mockResolvedValueOnce(jsonResponse(gatewayResponse))
+      .mockResolvedValueOnce(textResponse(appHtml))
+      .mockResolvedValueOnce(jsonResponse(withWebhook));
+
+    const result = await verifyBuilder(
+      BUILDER_ADDRESS,
+      "https://builder-app.example.com/webhook"
+    );
+    expect(result.verified).toBe(true);
+  });
+
+  it("throws when sessionWebhookUrl does not match vana.webhookUrl", async () => {
+    const withWebhook = {
+      ...manifestJson,
+      vana: { ...manifestJson.vana, webhookUrl: "https://builder-app.example.com/webhook" },
+    };
+    fetchSpy
+      .mockResolvedValueOnce(jsonResponse(gatewayResponse))
+      .mockResolvedValueOnce(textResponse(appHtml))
+      .mockResolvedValueOnce(jsonResponse(withWebhook));
+
+    await expect(
+      verifyBuilder(BUILDER_ADDRESS, "https://evil.example.com/webhook")
+    ).rejects.toThrow("does not match manifest vana.webhookUrl");
+  });
+
+  it("skips webhookUrl check when session has no webhookUrl", async () => {
+    mockHappyPath();
+
+    // No sessionWebhookUrl passed — should not throw
+    const result = await verifyBuilder(BUILDER_ADDRESS);
+    expect(result.verified).toBe(true);
   });
 
   it("excludes undefined vana fields from canonical JSON", async () => {

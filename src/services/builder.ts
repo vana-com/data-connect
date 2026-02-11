@@ -25,6 +25,12 @@ interface VanaManifestBlock {
   signature?: string;
 }
 
+/** Required fields in the vana block per protocol spec section 5.5. */
+const REQUIRED_VANA_FIELDS: (keyof VanaManifestBlock)[] = [
+  "appUrl",
+  "signature",
+];
+
 interface W3CManifest {
   name?: string;
   short_name?: string;
@@ -154,7 +160,8 @@ async function fetchManifest(
 // --- Public API ---
 
 export async function verifyBuilder(
-  granteeAddress: string
+  granteeAddress: string,
+  sessionWebhookUrl?: string
 ): Promise<BuilderManifest> {
   // 1. Look up builder on Gateway
   const builder = await fetchGatewayBuilder(granteeAddress);
@@ -175,40 +182,55 @@ export async function verifyBuilder(
     );
   }
 
-  // 3. Verify EIP-191 signature of the vana block
+  // 3. Validate required vana fields per protocol spec
+  for (const field of REQUIRED_VANA_FIELDS) {
+    if (!vana[field]) {
+      throw new BuilderVerificationError(
+        `Manifest vana block is missing required '${field}' field`
+      );
+    }
+  }
+
+  // 4. Verify vana.appUrl equals the on-chain appUrl (protocol spec section 5.5 step 2)
+  if (vana.appUrl !== builder.appUrl) {
+    throw new BuilderVerificationError(
+      `Manifest vana.appUrl (${vana.appUrl}) does not match on-chain appUrl (${builder.appUrl})`
+    );
+  }
+
+  // 5. Verify webhookUrl matches if session provided one (protocol spec section 5.5 step 4)
+  if (sessionWebhookUrl && vana.webhookUrl !== sessionWebhookUrl) {
+    throw new BuilderVerificationError(
+      `Session webhookUrl (${sessionWebhookUrl}) does not match manifest vana.webhookUrl (${vana.webhookUrl ?? "absent"})`
+    );
+  }
+
+  // 6. Verify EIP-191 signature of the vana block
   // The signature proves the manifest was published by the builder address.
   // Canonical message: JSON of the vana block with keys sorted alphabetically,
   // excluding the "signature" field itself.
-  let signatureVerified = false;
-  if (!vana.signature) {
-    console.warn(
-      "[Builder] Manifest vana block has no signature — marking as unverified"
+  const canonicalPayload = Object.keys(vana)
+    .filter((k) => k !== "signature")
+    .sort()
+    .reduce<Record<string, unknown>>((obj, k) => {
+      obj[k] = vana[k as keyof VanaManifestBlock];
+      return obj;
+    }, {});
+  const canonicalMessage = JSON.stringify(canonicalPayload);
+
+  const isValid = await verifyMessage({
+    address: granteeAddress as `0x${string}`,
+    message: canonicalMessage,
+    signature: vana.signature as `0x${string}`,
+  });
+
+  if (!isValid) {
+    throw new BuilderVerificationError(
+      "Manifest vana block signature is invalid — signer does not match builder address"
     );
-  } else {
-    const canonicalPayload = Object.keys(vana)
-      .filter((k) => k !== "signature")
-      .sort()
-      .reduce<Record<string, unknown>>((obj, k) => {
-        obj[k] = vana[k as keyof VanaManifestBlock];
-        return obj;
-      }, {});
-    const canonicalMessage = JSON.stringify(canonicalPayload);
-
-    const isValid = await verifyMessage({
-      address: granteeAddress as `0x${string}`,
-      message: canonicalMessage,
-      signature: vana.signature as `0x${string}`,
-    });
-
-    if (!isValid) {
-      throw new BuilderVerificationError(
-        "Manifest vana block signature is invalid — signer does not match builder address"
-      );
-    }
-    signatureVerified = true;
   }
 
-  // 4. Build result from manifest + vana block
+  // 7. Build result from manifest + vana block
   const icons = (manifest.icons ?? []).map((icon) => ({
     src: resolveUrl(builder.appUrl, icon.src),
     sizes: icon.sizes,
@@ -219,10 +241,10 @@ export async function verifyBuilder(
     name: manifest.name || manifest.short_name || granteeAddress,
     description: manifest.description,
     icons: icons.length > 0 ? icons : undefined,
-    appUrl: vana.appUrl || builder.appUrl,
+    appUrl: vana.appUrl!,
     privacyPolicyUrl: vana.privacyPolicyUrl,
     termsUrl: vana.termsUrl,
     supportUrl: vana.supportUrl,
-    verified: signatureVerified,
+    verified: true,
   };
 }

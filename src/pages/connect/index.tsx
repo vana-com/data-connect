@@ -27,7 +27,7 @@ import {
 import { claimSession } from "@/services/sessionRelay"
 import { verifyBuilder } from "@/services/builder"
 import type { RootState } from "@/types"
-import type { PrefetchedGrantData, GrantSession, BuilderManifest } from "@/pages/grant/types"
+import type { PrefetchedGrantData, GrantSession } from "@/pages/grant/types"
 import { cn } from "@/lib/classes"
 
 /*
@@ -80,18 +80,13 @@ export function Connect() {
           appUserId: claimed.appUserId,
         }
 
-        // Step 2: Verify builder (non-fatal — fallback to minimal metadata)
-        let builderManifest: BuilderManifest
-        try {
-          builderManifest = await verifyBuilder(claimed.granteeAddress)
-        } catch (err) {
-          console.warn("[Connect] Builder verification failed:", err)
-          builderManifest = {
-            name: `App ${claimed.granteeAddress.slice(0, 8)}…`,
-            appUrl: "",
-            verified: false,
-          }
-        }
+        // Step 2: Verify builder
+        // Protocol spec: builder verification failure is fatal — the grant page
+        // will re-attempt and show an error if verification fails.
+        const builderManifest = await verifyBuilder(
+          claimed.granteeAddress,
+          claimed.webhookUrl,
+        )
 
         const result = { session, builderManifest }
         setPrefetched(result)

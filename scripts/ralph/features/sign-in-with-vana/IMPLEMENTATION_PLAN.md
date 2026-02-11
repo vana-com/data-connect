@@ -56,6 +56,8 @@ All P0, P1, and P2 items have been implemented, tested, and verified.
 
 37. **Success screen "Done" button + copy alignment** — Spec wireframe (Screen 5) shows a `[Done]` button and copy "You can manage or revoke access in Settings." The success screen had no Done button (user could only click "Manage your account" or navigate away manually) and used slightly different copy ("You can revoke this permission at any time."). Fixed: added a "Done" button that navigates to the home page, aligning the success screen with the spec wireframe. Updated copy to match spec: "You can manage or revoke access in Settings."
 
+38. **Documentation alignment** — `docs/260203-grant-connect-flow.md` and `docs/architecture.md` were outdated: they described the old flow (wrong deep link scheme `dataconnect://`, wrong state machine order `loading → auth-required → consent → signing → success`, localStorage for connected apps, mock grant signing). Updated both to match the current implementation: `vana://connect` deep links with `secret`, consent-before-auth flow, correct state machine (`loading → claiming → verifying-builder → consent → auth-required → creating-grant → approving → success`), Gateway as source of truth for connected apps, Personal Server EIP-712 signing, split-failure recovery, pre-fetch optimization.
+
 ### Architecture notes
 
 - The spec's `exporting` state was removed from `GrantFlowState` type — data export happens on the `/connect` route (Screen 1-2), not the `/grant` route (Screen 3-5). The grant page starts at `consent` after receiving pre-fetched data from the connect page.
@@ -68,6 +70,7 @@ All P0, P1, and P2 items have been implemented, tested, and verified.
 
 - `npx tsc -b` — zero type errors
 - `npm run test` — 162 tests passing across 19 test files
+- Last updated: 2026-02-10
 - Test environment: happy-dom (jsdom broken by html-encoding-sniffer@6.0.0 ESM issue)
 
 ## Known non-blocking TODOs (outside this feature scope)

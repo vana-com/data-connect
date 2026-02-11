@@ -77,6 +77,7 @@ export function useGrantFlow(params: GrantFlowParams, prefetched?: PrefetchedGra
   const [authPending, setAuthPending] = useState(false)
   const [authUrl, setAuthUrl] = useState<string | null>(null)
   const [authError, setAuthError] = useState<string | null>(null)
+  const [retryCount, setRetryCount] = useState(0)
 
   const sessionId = params?.sessionId
   const secret = params?.secret
@@ -184,7 +185,7 @@ export function useGrantFlow(params: GrantFlowParams, prefetched?: PrefetchedGra
 
     runFlow()
     // eslint-disable-next-line react-hooks/exhaustive-deps -- prefetched is stable from navigation state
-  }, [sessionId, secret])
+  }, [sessionId, secret, retryCount])
 
   // Handle success override (when returning from connect page)
   useEffect(() => {
@@ -282,6 +283,17 @@ export function useGrantFlow(params: GrantFlowParams, prefetched?: PrefetchedGra
         return
       }
 
+      // Check session expiry before proceeding — better UX than waiting
+      // for the server to reject the request.
+      if (flowState.session.expiresAt) {
+        const expiresAt = new Date(flowState.session.expiresAt).getTime()
+        if (!Number.isNaN(expiresAt) && Date.now() > expiresAt) {
+          throw new SessionRelayError(
+            "This session has expired. Please start a new request from the app.",
+          )
+        }
+      }
+
       // Step: Create grant via Personal Server
       setFlowState(prev => ({ ...prev, status: "creating-grant" }))
 
@@ -377,6 +389,16 @@ export function useGrantFlow(params: GrantFlowParams, prefetched?: PrefetchedGra
     void handleApprove()
   }, [authPending, handleApprove, isAuthenticated, walletAddress])
 
+  // --- Retry from error ---
+  // Bumps retryCount which re-triggers the main flow effect (claim → verify → consent).
+  // For errors during grant creation/approval, the user returns to consent
+  // and can click Allow again.
+  const handleRetry = useCallback(() => {
+    authTriggered.current = false
+    setAuthPending(false)
+    setRetryCount(c => c + 1)
+  }, [])
+
   // --- Deny flow ---
   // Fire-and-forget the deny call, then navigate away immediately.
   // The user clicked Cancel — they don't need to see a confirmation screen.
@@ -410,6 +432,7 @@ export function useGrantFlow(params: GrantFlowParams, prefetched?: PrefetchedGra
     startBrowserAuth,
     handleApprove,
     handleDeny,
+    handleRetry,
     declineHref,
     authLoading,
     walletAddress,

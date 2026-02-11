@@ -45,6 +45,7 @@ export function Grant() {
     startBrowserAuth,
     handleApprove,
     handleDeny,
+    handleRetry,
     declineHref,
     authLoading,
     builderName,
@@ -111,6 +112,7 @@ export function Grant() {
       <GrantErrorState
         error={resolvedFlowState.error}
         declineHref={declineHref}
+        onRetry={isDebugging ? undefined : handleRetry}
       />
     )
   } else if (resolvedFlowState.status === "success") {

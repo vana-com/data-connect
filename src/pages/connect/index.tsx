@@ -245,7 +245,6 @@ export function Connect() {
               />
             )}
 
-            {/* TODO: busy loading state */}
             {isBusy ? (
               <span
                 className={cn(

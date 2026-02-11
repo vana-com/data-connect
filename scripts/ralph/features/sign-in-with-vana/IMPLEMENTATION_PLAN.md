@@ -48,6 +48,12 @@ All P0, P1, and P2 items have been implemented, tested, and verified.
 
 33. **Connected apps name derivation from scopes** — `useConnectedApps.grantToConnectedApp()` previously showed truncated addresses ("App 0xabcd…7890") for all grants fetched from Gateway on app restart — the builder's display name was lost because `GET /v1/grants` doesn't include builder metadata. Fixed: derives display name from the grant's scopes using `getPrimaryDataSourceLabel()` (e.g., "ChatGPT access", "Spotify access"). Falls back to truncated address only when scopes don't map to a known platform. (2 new tests in useConnectedApps.test.ts)
 
+34. **Error retry UX** — Grant error screen previously had no retry button, forcing users to restart the entire flow from the builder app for transient failures (network hiccups, gateway timeouts). Added `handleRetry` to `useGrantFlow` which bumps a `retryCount` state to re-trigger the main flow effect (claim → verify → consent). Error screen now shows a "Try Again" button alongside "Go to Your Data". (2 new tests in use-grant-flow.test.tsx)
+
+35. **Client-side session expiry check** — Previously, an expired session was only caught by the server (returns `SESSION_EXPIRED`), showing a generic error. Now `handleApprove` checks `session.expiresAt` against `Date.now()` before attempting grant creation, surfacing a clear "This session has expired" message. Prevents unnecessary server round-trips and gives users an actionable error message. (1 new test)
+
+36. **Stale TODO cleanup** — Removed `{/* TODO: busy loading state */}` comment from `src/pages/connect/index.tsx`. The busy state was already fully implemented (spinner overlay with "Checking connectors..." / "Opening browser..." text) — the TODO was left over from the initial implementation.
+
 
 ### Architecture notes
 
@@ -60,11 +66,10 @@ All P0, P1, and P2 items have been implemented, tested, and verified.
 ## Validation
 
 - `npx tsc -b` — zero type errors
-- `npm run test` — 160 tests passing across 19 test files
+- `npm run test` — 162 tests passing across 19 test files
 - Test environment: happy-dom (jsdom broken by html-encoding-sniffer@6.0.0 ESM issue)
 
 ## Known non-blocking TODOs (outside this feature scope)
 
-- `src/pages/connect/index.tsx:252` — `{/* TODO: busy loading state */}` (minor UX polish)
 - `src/pages/data-apps/components/AppCard.tsx:22` — TODO about opening app in external browser with deep-link callback vs in-app route
 - `src/pages/source/index.tsx:18` — Source overview page is a placeholder (separate feature)

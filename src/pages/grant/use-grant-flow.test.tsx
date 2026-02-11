@@ -582,6 +582,92 @@ describe("useGrantFlow", () => {
     expect(mockNavigate).toHaveBeenCalledWith("/apps")
   })
 
+  it("retries the flow from error state via handleRetry", async () => {
+    // First call fails, second call succeeds
+    mockClaimSession
+      .mockRejectedValueOnce(new Error("Network timeout"))
+      .mockResolvedValueOnce({
+        granteeAddress: "0xbuilder",
+        scopes: ["chatgpt.conversations"],
+        expiresAt: "2030-01-01T00:00:00.000Z",
+      })
+    mockVerifyBuilder.mockResolvedValue({
+      name: "Retry Builder",
+      appUrl: "https://retry.example.com",
+    })
+
+    const { result } = renderHook(() =>
+      useGrantFlow({
+        sessionId: "retry-session-1",
+        secret: "retry-secret",
+      })
+    )
+
+    // First attempt should fail
+    await waitFor(() => {
+      expect(result.current.flowState.status).toBe("error")
+    })
+
+    // Retry should re-run the flow
+    await act(async () => {
+      result.current.handleRetry()
+    })
+
+    await waitFor(() => {
+      expect(result.current.flowState.status).toBe("consent")
+    })
+
+    expect(mockClaimSession).toHaveBeenCalledTimes(2)
+    expect(result.current.builderName).toBe("Retry Builder")
+  })
+
+  it("errors when session has expired (client-side check)", async () => {
+    authState = {
+      isAuthenticated: true,
+      isLoading: false,
+      walletAddress: "0xuser",
+    }
+
+    // Session with an already-expired expiresAt
+    const prefetched = {
+      session: {
+        id: "expired-session-1",
+        granteeAddress: "0xbuilder",
+        scopes: ["chatgpt.conversations"],
+        expiresAt: "2020-01-01T00:00:00.000Z", // in the past
+      },
+      builderManifest: {
+        name: "Test Builder",
+        appUrl: "https://test.example.com",
+      },
+    }
+
+    const { result } = renderHook(() =>
+      useGrantFlow(
+        {
+          sessionId: "expired-session-1",
+          secret: "test-secret",
+        },
+        prefetched
+      )
+    )
+
+    await waitFor(() => {
+      expect(result.current.flowState.status).toBe("consent")
+    })
+
+    await act(async () => {
+      await result.current.handleApprove()
+    })
+
+    await waitFor(() => {
+      expect(result.current.flowState.status).toBe("error")
+    })
+    expect(result.current.flowState.error).toContain("expired")
+    // Grant creation should not have been attempted
+    expect(mockCreateGrant).not.toHaveBeenCalled()
+  })
+
   it("shows error when Personal Server is not running", async () => {
     authState = {
       isAuthenticated: true,

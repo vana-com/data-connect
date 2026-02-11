@@ -27,8 +27,8 @@
   },
   "dependencies": {
     "@hono/node-server": "^1.13.7",
-    "@opendatalabs/personal-server-ts-core": "^0.0.1-canary.e647e76",
-    "@opendatalabs/personal-server-ts-server": "^0.0.1-canary.e647e76",
+    "@opendatalabs/personal-server-ts-core": "^0.0.1-canary.b04d0fb",
+    "@opendatalabs/personal-server-ts-server": "^0.0.1-canary.b04d0fb",
     "better-sqlite3": "^12.6.2"
   },
   "devDependencies": {

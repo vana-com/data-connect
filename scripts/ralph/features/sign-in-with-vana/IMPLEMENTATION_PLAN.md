@@ -31,6 +31,10 @@ All P0, P1, and P2 items have been implemented, tested, and verified.
 23. **Missing secret guard during approve** — `handleApprove()` previously silently skipped the `POST /v1/session/{id}/approve` call when `secret` was undefined, creating a split failure where the grant exists on Gateway but the builder never learns about it (no error shown to user). Fixed: now throws `SessionRelayError` so the error is surfaced to the user. (14 tests in use-grant-flow.test.tsx)
 24. **Personal Server grant route error handling** — Added try-catch blocks around all async operations in `POST /v1/grants` and `DELETE /v1/grants/:grantId` routes. Added `gatewayClient` null checks (previously only `serverSigner` was checked). Added JSON parse error handling for malformed request bodies. Added empty scopes array validation. Errors now return HTTP 500 with error message and log via `send()` for Tauri stdout monitoring.
 25. **MANUAL_TESTING.md accuracy fix** — Removed reference to `denied` debug panel button (state was removed in item #20). Updated state machine diagram to show Cancel → POST deny → navigate to /apps instead of the removed `denied` state.
+26. **Auth-required deny fix** — Cancel button on the auth-required screen (Screen 4) previously used a plain `<Link>` to navigate away without calling `denySession()`. The builder's polling loop would hang until TTL expiry. Fixed: Cancel now calls `handleDeny()` → `POST /v1/session/{id}/deny` → navigate to `/apps`, matching the consent screen's Cancel behavior. Test added for auth-required → deny path.
+27. **Pre-fetch race condition fix** — Connect page's background pre-fetch used a `useRef<Promise>` that was never cleared. If the user navigated to a new session ID, the old ref blocked the new prefetch. Fixed: keyed the ref on `sessionId` so each session gets its own prefetch.
+28. **Revoke rollback fix** — `useConnectedApps.removeApp()` optimistically removed apps from Redux but never rolled back on server failure. A failed `revokeGrant()` left the UI out of sync with Gateway (user thinks revoked, builder still has access). Fixed: on failure, the app is re-added to Redux via `addConnectedApp()`.
+29. **useConnectedApps test coverage** — Added 8 unit tests covering: fetch with dev token, revoked grant filtering, null port guard, unauthenticated guard, fetch error handling, successful revoke, revoke rollback on failure, and null port revoke.
 
 ### Architecture notes
 
@@ -43,7 +47,7 @@ All P0, P1, and P2 items have been implemented, tested, and verified.
 ## Validation
 
 - `npx tsc -b` — zero type errors
-- `npm run test` — 122 tests passing across 17 test files
+- `npm run test` — 131 tests passing across 18 test files
 - Test environment: happy-dom (jsdom broken by html-encoding-sniffer@6.0.0 ESM issue)
 
 ## Known non-blocking TODOs (outside this feature scope)

@@ -55,16 +55,16 @@ export function Connect() {
   // Background pre-fetch: claim session + verify builder while user exports data.
   // Per spec, session claim and builder verification happen in the background during
   // the connect/export page (Screen 1), so the grant page can skip straight to consent.
-  const prefetchRef = useRef<Promise<PrefetchedGrantData | null> | null>(null)
+  const prefetchedSessionRef = useRef<string | null>(null)
   const [prefetched, setPrefetched] = useState<PrefetchedGrantData | null>(null)
 
   useEffect(() => {
     // Only pre-fetch for real sessions (not demo, needs secret)
     if (!params.sessionId || !params.secret) return
     if (import.meta.env.DEV && params.sessionId.startsWith("grant-session-")) return
-    if (prefetchRef.current) return // already started
+    if (prefetchedSessionRef.current === params.sessionId) return // already started for this session
 
-    const prefetchPromise = (async (): Promise<PrefetchedGrantData | null> => {
+    void (async (): Promise<PrefetchedGrantData | null> => {
       try {
         // Step 1: Claim session
         const claimed = await claimSession({
@@ -103,7 +103,7 @@ export function Connect() {
       }
     })()
 
-    prefetchRef.current = prefetchPromise
+    prefetchedSessionRef.current = params.sessionId!
   }, [params.sessionId, params.secret])
 
   // Platform resolution + connector run (data-source login/scrape).

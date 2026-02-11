@@ -102,8 +102,8 @@ export function Grant() {
         appName={resolvedBuilderName}
         authUrl={resolvedAuthUrl}
         authError={resolvedAuthError}
-        declineHref={declineHref}
         onRetryAuth={startBrowserAuth}
+        onDeny={handleDeny}
       />
     )
   } else if (resolvedFlowState.status === "error") {

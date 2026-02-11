@@ -1,6 +1,6 @@
 import { useCallback } from "react"
 import { useDispatch, useSelector } from "react-redux"
-import { setConnectedApps, removeConnectedApp as removeConnectedAppAction } from "../state/store"
+import { setConnectedApps, addConnectedApp, removeConnectedApp as removeConnectedAppAction } from "../state/store"
 import { listGrants, revokeGrant } from "../services/personalServer"
 import type { Grant } from "../services/personalServer"
 import type { ConnectedApp, RootState } from "../types"
@@ -54,6 +54,9 @@ export function useConnectedApps() {
 
   const removeApp = useCallback(
     async (appId: string, port: number | null) => {
+      // Snapshot the app before removing so we can roll back on failure
+      const appToRemove = connectedApps.find(app => app.id === appId)
+
       // Optimistically remove from Redux so UI updates immediately
       dispatch(removeConnectedAppAction(appId))
 
@@ -62,10 +65,14 @@ export function useConnectedApps() {
           await revokeGrant(port, appId)
         } catch (error) {
           console.warn("[useConnectedApps] Failed to revoke grant on server:", error)
+          // Roll back: re-add the app so UI reflects the true state
+          if (appToRemove) {
+            dispatch(addConnectedApp(appToRemove))
+          }
         }
       }
     },
-    [dispatch]
+    [dispatch, connectedApps]
   )
 
   return {

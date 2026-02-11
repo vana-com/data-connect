@@ -534,6 +534,49 @@ describe("useGrantFlow", () => {
     expect(result.current.flowState.error).toContain("secret is missing")
   })
 
+  it("calls denySession when canceling from auth-required state", async () => {
+    mockClaimSession.mockResolvedValue({
+      granteeAddress: "0xbuilder",
+      scopes: ["chatgpt.conversations"],
+      expiresAt: "2030-01-01T00:00:00.000Z",
+    })
+    mockVerifyBuilder.mockResolvedValue({
+      name: "Test Builder",
+      appUrl: "https://test.example.com",
+    })
+
+    const { result } = renderHook(() =>
+      useGrantFlow({
+        sessionId: "auth-cancel-1",
+        secret: "auth-cancel-secret",
+      })
+    )
+
+    await waitFor(() => {
+      expect(result.current.flowState.status).toBe("consent")
+    })
+
+    // Click Allow while not authenticated → transitions to auth-required
+    await act(async () => {
+      await result.current.handleApprove()
+    })
+
+    await waitFor(() => {
+      expect(result.current.flowState.status).toBe("auth-required")
+    })
+
+    // Cancel from auth-required — should call denySession and navigate away
+    await act(async () => {
+      await result.current.handleDeny()
+    })
+
+    expect(mockDenySession).toHaveBeenCalledWith("auth-cancel-1", {
+      secret: "auth-cancel-secret",
+      reason: "User declined",
+    })
+    expect(mockNavigate).toHaveBeenCalledWith("/apps")
+  })
+
   it("shows error when Personal Server is not running", async () => {
     authState = {
       isAuthenticated: true,

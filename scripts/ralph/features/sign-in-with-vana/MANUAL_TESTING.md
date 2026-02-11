@@ -187,7 +187,8 @@ If grant creation succeeds but `POST /v1/session/{id}/approve` fails:
 
 ## 5. Deep Link Integration
 
-> Requires Tauri runtime with deep-link plugin (P2 — not yet implemented).
+> Requires Tauri runtime with deep-link plugin configured in `src-tauri/tauri.conf.json`
+> (`"deep-link": { "desktop": { "schemes": ["vana"] } }`).
 
 ### 5A. URL parameter parsing
 
@@ -205,14 +206,14 @@ http://localhost:5173/?sessionId=grant-session-1&secret=abc123
 ## 6. TypeScript & Build Validation
 
 ```bash
-npx tsc -b --noEmit              # typecheck
+npx tsc -b                        # typecheck
 npm run build                     # production build
-npx vitest run src/lib/grant-params.test.ts src/pages/grant/use-grant-flow.test.tsx src/hooks/use-deep-link.test.tsx
+npm run test                      # runs all tests
 ```
 
 - [ ] TypeScript: zero errors
 - [ ] Build: succeeds (warnings about chunk size are expected)
-- [ ] Tests: all 15 pass (grant-params: 6, grant-flow: 7, deep-link: 2)
+- [ ] Tests: all pass (run `npm run test` for the full suite)
 
 ---
 
@@ -220,11 +221,11 @@ npx vitest run src/lib/grant-params.test.ts src/pages/grant/use-grant-flow.test.
 
 ```
 loading → claiming → verifying-builder → consent → auth-required → creating-grant → approving → success
-                                            │
-                                            └─ Cancel ──→ POST /v1/session/{id}/deny → navigate to /apps
+                                            │              │
+                                            └──────────────┴─ Cancel ──→ POST /v1/session/{id}/deny → navigate to /apps
 ```
 
 All `loading`/`claiming`/`verifying-builder` states show the same loading spinner.
 `creating-grant`/`approving` show the consent screen with the Allow button in loading state.
-`auth-required` shows the sign-in modal.
+`auth-required` shows the sign-in modal. Cancel from auth-required also calls deny.
 If already authenticated, `auth-required` is skipped.

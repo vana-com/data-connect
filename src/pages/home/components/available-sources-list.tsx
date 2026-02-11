@@ -17,14 +17,20 @@ interface AvailableSourcesListProps {
   platforms: Platform[]
   runs: Run[]
   onExport: (platform: Platform) => void
+  connectedPlatformIds: string[]
 }
 
 export function AvailableSourcesList({
   platforms,
   runs,
   onExport,
+  connectedPlatformIds,
 }: AvailableSourcesListProps) {
   const connectEntries = getConnectSourceEntries()
+  const connectedPlatformIdSet = useMemo(
+    () => new Set(connectedPlatformIds),
+    [connectedPlatformIds]
+  )
   const connectingPlatformIds = useMemo(
     () =>
       new Set(
@@ -42,6 +48,9 @@ export function AvailableSourcesList({
         {connectEntries
           .map(entry => {
             const platform = resolvePlatformForEntry(platforms, entry)
+            if (platform && connectedPlatformIdSet.has(platform.id)) {
+              return null
+            }
             const state = getConnectSourceState(entry, platform)
             return {
               iconName: entry.displayName,
@@ -57,6 +66,7 @@ export function AvailableSourcesList({
                   : undefined,
             }
           })
+          .filter((card): card is NonNullable<typeof card> => card !== null)
           .map((card, index) => ({
             ...card,
             index,

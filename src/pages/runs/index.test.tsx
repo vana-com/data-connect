@@ -16,6 +16,12 @@ vi.mock("./use-runs-page", () => ({
   useRunsPage: () => ({
     activeRuns: [],
     finishedRuns: [],
+    sourceFilterOptions: [
+      { value: "all", label: "All" },
+      { value: "github", label: "GitHub" },
+    ],
+    selectedSourceFilter: "all",
+    setSourceFilter: vi.fn(),
     stopExport: vi.fn(),
     isAuthenticated: false,
     personalServer: {
@@ -37,5 +43,7 @@ describe("Runs", () => {
     const { getByText } = render(<RouterProvider router={router} />)
 
     expect(getByText("No exports yet")).toBeTruthy()
+    expect(getByText("All")).toBeTruthy()
+    expect(getByText("GitHub")).toBeTruthy()
   })
 })

@@ -1,5 +1,5 @@
 import { useState } from "react"
-import { useSearchParams } from "react-router-dom"
+import { useSearchParams, useLocation } from "react-router-dom"
 import { getGrantParamsFromSearchParams } from "@/lib/grant-params"
 import { useBrowserStatus } from "./use-browser-status"
 import { useGrantFlow } from "./use-grant-flow"
@@ -10,7 +10,7 @@ import { GrantErrorState } from "./components/grant-error-state"
 import { GrantSuccessState } from "./components/grant-success-state"
 import { GrantConsentState } from "./components/consent/grant-consent-state"
 import { GrantDebugPanel } from "./components/grant-debug-panel.tsx"
-import type { BuilderManifest, GrantFlowState, GrantSession } from "./types"
+import type { BuilderManifest, GrantFlowState, GrantSession, PrefetchedGrantData } from "./types"
 
 const DEBUG_SESSION_ID = "grant-session-debug"
 function getDebugSession(): GrantSession {
@@ -27,7 +27,11 @@ function getDebugSession(): GrantSession {
 export function Grant() {
   const browserStatus = useBrowserStatus()
   const [searchParams] = useSearchParams()
+  const location = useLocation()
   const params = getGrantParamsFromSearchParams(searchParams)
+  // Pre-fetched session + builder data passed from the connect page via navigation state.
+  // When available, the grant flow skips claim + verify steps (already done in background).
+  const prefetched = (location.state as { prefetched?: PrefetchedGrantData } | null)?.prefetched
   const [debugStatus, setDebugStatus] = useState<
     GrantFlowState["status"] | null
   >(null)
@@ -44,7 +48,7 @@ export function Grant() {
     declineHref,
     authLoading,
     builderName,
-  } = useGrantFlow(params ?? {})
+  } = useGrantFlow(params ?? {}, prefetched)
 
   const isDev = import.meta.env.DEV
   const activeDebugStatus = debugStatus ?? "loading"

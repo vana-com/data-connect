@@ -285,6 +285,47 @@ describe("useGrantFlow", () => {
     expect(result.current.flowState.error).toContain("No secret provided")
   })
 
+  it("skips claim + verify when pre-fetched data is provided", async () => {
+    // When the connect page pre-fetched session + builder data in the background,
+    // the grant flow should skip straight to consent without calling claim/verify.
+    const prefetched = {
+      session: {
+        id: "prefetch-session-1",
+        granteeAddress: "0xprefetchbuilder",
+        scopes: ["chatgpt.conversations"],
+        expiresAt: "2030-01-01T00:00:00.000Z",
+      },
+      builderManifest: {
+        name: "Pre-fetched Builder",
+        appUrl: "https://prefetched.example.com",
+        privacyPolicyUrl: "https://prefetched.example.com/privacy",
+      },
+    }
+
+    const { result } = renderHook(() =>
+      useGrantFlow(
+        {
+          sessionId: "prefetch-session-1",
+          secret: "prefetch-secret",
+        },
+        prefetched
+      )
+    )
+
+    await waitFor(() => {
+      expect(result.current.flowState.status).toBe("consent")
+    })
+
+    // Claim and verify should NOT have been called — data was pre-fetched
+    expect(mockClaimSession).not.toHaveBeenCalled()
+    expect(mockVerifyBuilder).not.toHaveBeenCalled()
+
+    // Pre-fetched data should be in state
+    expect(result.current.flowState.session?.granteeAddress).toBe("0xprefetchbuilder")
+    expect(result.current.builderName).toBe("Pre-fetched Builder")
+    expect(result.current.currentStep).toBe(3)
+  })
+
   it("handles deny flow", async () => {
     mockClaimSession.mockResolvedValue({
       sessionId: "deny-session-1",

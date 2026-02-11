@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react"
+import { useEffect, useMemo, useRef, useState } from "react"
 import { useNavigate, useSearchParams } from "react-router-dom"
 import { useSelector } from "react-redux"
 import { ChevronRight, LoaderIcon } from "lucide-react"
@@ -24,7 +24,10 @@ import {
   getPlatformRegistryEntryById,
   resolvePlatformForEntry,
 } from "@/lib/platform/utils"
+import { claimSession } from "@/services/sessionRelay"
+import { verifyBuilder } from "@/services/builder"
 import type { RootState } from "@/types"
+import type { PrefetchedGrantData, GrantSession, BuilderManifest } from "@/pages/grant/types"
 import { cn } from "@/lib/classes"
 
 /*
@@ -48,6 +51,59 @@ export function Connect() {
   const grantScopes =
     params.scopes && params.scopes.length > 0 ? params.scopes : appEntry?.scopes
   const scopesKey = grantScopes?.join("|") ?? ""
+
+  // Background pre-fetch: claim session + verify builder while user exports data.
+  // Per spec, session claim and builder verification happen in the background during
+  // the connect/export page (Screen 1), so the grant page can skip straight to consent.
+  const prefetchRef = useRef<Promise<PrefetchedGrantData | null> | null>(null)
+  const [prefetched, setPrefetched] = useState<PrefetchedGrantData | null>(null)
+
+  useEffect(() => {
+    // Only pre-fetch for real sessions (not demo, needs secret)
+    if (!params.sessionId || !params.secret) return
+    if (import.meta.env.DEV && params.sessionId.startsWith("grant-session-")) return
+    if (prefetchRef.current) return // already started
+
+    const prefetchPromise = (async (): Promise<PrefetchedGrantData | null> => {
+      try {
+        // Step 1: Claim session
+        const claimed = await claimSession({
+          sessionId: params.sessionId!,
+          secret: params.secret!,
+        })
+        const session: GrantSession = {
+          id: params.sessionId!,
+          granteeAddress: claimed.granteeAddress,
+          scopes: claimed.scopes,
+          expiresAt: claimed.expiresAt,
+          webhookUrl: claimed.webhookUrl,
+          appUserId: claimed.appUserId,
+        }
+
+        // Step 2: Verify builder (non-fatal — fallback to minimal metadata)
+        let builderManifest: BuilderManifest
+        try {
+          builderManifest = await verifyBuilder(claimed.granteeAddress)
+        } catch (err) {
+          console.warn("[Connect] Builder verification failed:", err)
+          builderManifest = {
+            name: `App ${claimed.granteeAddress.slice(0, 8)}…`,
+            appUrl: "",
+          }
+        }
+
+        const result = { session, builderManifest }
+        setPrefetched(result)
+        return result
+      } catch (err) {
+        // Pre-fetch failure is non-fatal — the grant page will retry
+        console.warn("[Connect] Background pre-fetch failed:", err)
+        return null
+      }
+    })()
+
+    prefetchRef.current = prefetchPromise
+  }, [params.sessionId, params.secret])
 
   // Platform resolution + connector run (data-source login/scrape).
   const { platforms, isPlatformConnected, platformsLoaded, platformLoadError } =
@@ -89,14 +145,16 @@ export function Connect() {
     : "Connect data"
 
   // Build the canonical `/grant` query for step-2+.
+  // Thread `secret` through so the grant flow can claim + approve the session.
   const grantSearch = useMemo(
     () =>
       buildGrantSearchParams({
         sessionId,
+        secret: params.secret,
         appId: resolvedAppId,
         scopes: grantScopes,
       }).toString(),
-    [sessionId, resolvedAppId, scopesKey]
+    [sessionId, params.secret, resolvedAppId, scopesKey]
   )
 
   const activeRun = connectRunId
@@ -122,6 +180,8 @@ export function Connect() {
   const isBusy = isCheckingPlatforms || isConnecting
 
   // When the connector run succeeds, move into `/grant`.
+  // Pass pre-fetched session + builder data via navigation state so the
+  // grant page can skip the claim + verify steps (already done in background).
   useEffect(() => {
     if (!activeRun) return
     if (activeRun.status === "success") {
@@ -129,12 +189,14 @@ export function Connect() {
         ? `${ROUTES.grant}?${grantSearch}`
         : ROUTES.grant
       setConnectRunId(null)
-      navigate(grantHref)
+      navigate(grantHref, {
+        state: prefetched ? { prefetched } : undefined,
+      })
     }
     if (activeRun.status === "error" || activeRun.status === "stopped") {
       setConnectRunId(null)
     }
-  }, [activeRun, grantSearch, navigate])
+  }, [activeRun, grantSearch, navigate, prefetched])
 
   // Step 1 CTA: open data-source login/scrape (connector run).
   const handleConnect = async () => {
@@ -147,7 +209,9 @@ export function Connect() {
     const grantHref = grantSearch
       ? `${ROUTES.grant}?${grantSearch}`
       : ROUTES.grant
-    navigate(grantHref)
+    navigate(grantHref, {
+      state: prefetched ? { prefetched } : undefined,
+    })
   }
 
   return (

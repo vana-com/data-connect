@@ -50,3 +50,9 @@ export interface GrantFlowParams {
   scopes?: string[]
   status?: "success"
 }
+
+/** Pre-fetched session + builder data passed via navigation state from the connect page. */
+export interface PrefetchedGrantData {
+  session: GrantSession
+  builderManifest: BuilderManifest
+}

@@ -45,6 +45,12 @@
 
 - **[DONE]** Deny flow already fully wired: `handleDeny` passed as `onDeny` to `GrantConsentState`, Cancel button calls `onDeny()` which fires `denySession()` API call and transitions state to `denied`. Test coverage confirms the flow works end-to-end.
 
+- **[DONE]** Fixed critical bug: connect page was not passing `secret` parameter through to the grant page URL. `src/pages/connect/index.tsx` now includes `secret` in `buildGrantSearchParams()` call when building the `/grant` navigation URL. Without this, real (non-demo) sessions would fail with 'No secret provided' error on the grant page.
+
+- **[DONE]** Background pre-fetch: connect page now claims session and verifies builder in the background while the user exports data (per spec Screen 1). Pre-fetched data passed via React Router navigation state to grant page. Grant flow hook (`useGrantFlow`) accepts optional `PrefetchedGrantData` and skips claim + verify steps when available. New `PrefetchedGrantData` type in `src/pages/grant/types.ts`. Falls back to on-demand claim + verify if pre-fetch hasn't completed or failed. Test added for pre-fetch path (8 tests in use-grant-flow.test.tsx).
+
+- **[DONE]** Added test for secret passthrough in connect page (verifies debug skip link includes secret in URL). Added mocks for `claimSession` and `verifyBuilder` in connect page test to prevent network calls during testing.
+
 ### P1 Connected Apps Migration (DONE)
 - **[DONE]** Created `src/hooks/useConnectedApps.ts` — hook that fetches grants from Personal Server `GET /v1/grants`, converts `Grant` objects to `ConnectedApp` format (using grantId as id, truncated granteeAddress as name, scopes as permissions), filters revoked grants, and dispatches to Redux. Replaces the old localStorage-based storage approach with Gateway as the single source of truth.
 
@@ -58,25 +64,27 @@
 
 - **[DONE]** Fixed `src/lib/storage.test.ts` — 4 tests were failing due to happy-dom's `ClassMethodBinder` caching bound methods on the localStorage instance, causing `vi.spyOn(Storage.prototype, 'setItem')` to not intercept calls. Fixed by spying on `localStorage.setItem` (instance level) instead of `Storage.prototype.setItem`, with an `interceptSetItem` helper that uses a gate function pattern. All 9 storage tests now pass.
 
-## TODO
+- **[DONE]** Implement revoke via Personal Server API — added `revokeGrant(port, grantId)` to `src/services/personalServer.ts` calling `DELETE /v1/grants/{grantId}`. Updated `useConnectedApps.removeApp` to fire the server revoke after optimistic Redux removal (graceful degradation if server endpoint not yet available). Settings page passes Personal Server port through to revoke handler. Added 4 tests for the new endpoint. File: `src/services/personalServer.test.ts` (now 14 tests).
 
-### P2 Future Enhancements
-- **[P2]** Implement revoke via Personal Server API — currently the revoke handler only removes from Redux optimistically. Need to call `DELETE /v1/grants/{grantId}` to propagate revocation to Gateway.
-
-- **[P2]** Add Tauri deep-link plugin for native `vana://connect` URL scheme. Add `tauri-plugin-deep-link` to `Cargo.toml` and `tauri.conf.json`. Register `vana` scheme. Listen for `onOpenUrl` events in `src/hooks/use-deep-link.ts` and parse `sessionId` + `secret` from the URL. This replaces URL query param routing for production but current URL param approach works for dev/testing.
-
-- **[P2]** Error recovery for split failure — if `POST /v1/grants` succeeds but `POST /v1/session/{id}/approve` fails (session expired, network error), the grant exists on Gateway but builder never learns about it. Store pending `{ sessionId, grantId, secret }` in localStorage. On next app open, retry the approve call. Clear on success.
+- **[DONE]** Implement EIP-191 signature verification in `src/services/builder.ts` — replaced placeholder signature check with real cryptographic verification using `viem/utils` `verifyMessage`. Constructs canonical JSON of the vana block (sorted keys, `signature` field excluded), then verifies the EIP-191 signature recovers to the `granteeAddress`. Invalid signatures throw `BuilderVerificationError`. Missing signatures still warn-and-continue (no throw). Added 3 tests for signature verification (canonical JSON construction, invalid signature rejection, minimal vana block). File: `src/services/builder.test.ts` (now 25 tests).
 
 - **[DONE]** Added unit tests for `sessionRelay.ts` (13 tests) — verifies request shapes for claim/approve/deny, URL encoding of sessionId, structured error handling for all error codes (SESSION_NOT_FOUND, INVALID_CLAIM_SECRET, SESSION_EXPIRED, INVALID_SESSION_STATE), network errors, non-JSON responses, and generic HTTP errors. File: `src/services/sessionRelay.test.ts`.
 
-- **[DONE]** Added unit tests for `builder.ts` (22 tests) — verifies Gateway lookup, app HTML fetching, manifest JSON parsing, manifest link extraction (both attribute orders), relative URL resolution, same-origin enforcement, BuilderManifest construction with icon URL resolution, short_name fallback, missing name/vana block errors, unreachable endpoints, HTTP error codes, and signature-absent warning. File: `src/services/builder.test.ts`.
+- **[DONE]** Added unit tests for `builder.ts` (25 tests) — verifies Gateway lookup, app HTML fetching, manifest JSON parsing, manifest link extraction (both attribute orders), relative URL resolution, same-origin enforcement, BuilderManifest construction with icon URL resolution, short_name fallback, missing name/vana block errors, unreachable endpoints, HTTP error codes, signature-absent warning, canonical JSON construction, invalid signature rejection, and minimal vana block. File: `src/services/builder.test.ts`.
 
-- **[DONE]** Added unit tests for `personalServer.ts` (10 tests) — mocks `@tauri-apps/plugin-http` dynamic import, verifies createGrant and listGrants request shapes (URL, method, headers, body), correct port in URL, optional fields (expiresAt, nonce), network failure errors, non-JSON responses, structured error messages with statusCode, and empty grant lists. File: `src/services/personalServer.test.ts`.
+- **[DONE]** Added unit tests for `personalServer.ts` (14 tests) — mocks `@tauri-apps/plugin-http` dynamic import, verifies createGrant, listGrants, and revokeGrant request shapes (URL, method, headers, body), correct port in URL, optional fields (expiresAt, nonce), network failure errors, non-JSON responses, structured error messages with statusCode, and empty grant lists. File: `src/services/personalServer.test.ts`.
+
+## TODO
+
+### P2 Future Enhancements
+- **[P2]** Add Tauri deep-link plugin for native `vana://connect` URL scheme. Add `tauri-plugin-deep-link` to `Cargo.toml` and `tauri.conf.json`. Register `vana` scheme. Listen for `onOpenUrl` events in `src/hooks/use-deep-link.ts` and parse `sessionId` + `secret` from the URL. This replaces URL query param routing for production but current URL param approach works for dev/testing.
+
+- **[P2]** Error recovery for split failure — if `POST /v1/grants` succeeds but `POST /v1/session/{id}/approve` fails (session expired, network error), the grant exists on Gateway but builder never learns about it. Store pending `{ sessionId, grantId, secret }` in localStorage. On next app open, retry the approve call. Clear on success.
 
 ## Validation
 
 - `npm run typecheck` — no type errors after all changes.
 - `npm run build` — clean production build.
-- `npm run test` — all 100 tests passing across 16 test files. No pre-existing failures.
+- `npm run test` — all 109 tests passing across 16 test files. No pre-existing failures.
 - Manual: open `vana://connect?sessionId=test&secret=abc` (or URL param equivalent in dev), verify full flow: claim → builder verify → consent → auth (if needed) → grant creation → session approve → success.
 - Manual: click Cancel on consent screen, verify deny call fires and app navigates home.

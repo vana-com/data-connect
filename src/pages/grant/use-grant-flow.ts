@@ -22,6 +22,7 @@ import type {
   GrantFlowState,
   GrantSession,
   GrantStep,
+  PrefetchedGrantData,
 } from "./types"
 import { ROUTES } from "@/config/routes"
 
@@ -56,7 +57,7 @@ function createDemoBuilderManifest(): BuilderManifest {
   }
 }
 
-export function useGrantFlow(params: GrantFlowParams) {
+export function useGrantFlow(params: GrantFlowParams, prefetched?: PrefetchedGrantData) {
   const dispatch = useDispatch()
   const { isAuthenticated, isLoading: authLoading, walletAddress } = useAuth()
   const personalServer = usePersonalServer()
@@ -111,7 +112,19 @@ export function useGrantFlow(params: GrantFlowParams) {
         return
       }
 
-      // --- Real flow ---
+      // --- Pre-fetched path: connect page already claimed + verified in background ---
+      if (prefetched?.session && prefetched?.builderManifest) {
+        setFlowState(prev => ({
+          ...prev,
+          status: "consent",
+          session: prefetched.session,
+          builderManifest: prefetched.builderManifest,
+        }))
+        setCurrentStep(3)
+        return
+      }
+
+      // --- Real flow (no pre-fetched data) ---
       if (!secret) {
         setFlowState({
           sessionId,
@@ -169,6 +182,7 @@ export function useGrantFlow(params: GrantFlowParams) {
     }
 
     runFlow()
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- prefetched is stable from navigation state
   }, [sessionId, secret])
 
   // Handle success override (when returning from connect page)

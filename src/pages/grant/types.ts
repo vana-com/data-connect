@@ -36,7 +36,6 @@ export interface GrantFlowState {
     | "approving"
     | "success"
     | "error"
-    | "denied"
   error?: string
   session?: GrantSession
   builderManifest?: BuilderManifest

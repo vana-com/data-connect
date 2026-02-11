@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from "react"
+import { useNavigate } from "react-router-dom"
 import { invoke } from "@tauri-apps/api/core"
 import { listen } from "@tauri-apps/api/event"
 import { useDispatch } from "react-redux"
@@ -63,6 +64,7 @@ function createDemoBuilderManifest(): BuilderManifest {
 }
 
 export function useGrantFlow(params: GrantFlowParams, prefetched?: PrefetchedGrantData) {
+  const navigate = useNavigate()
   const dispatch = useDispatch()
   const { isAuthenticated, isLoading: authLoading, walletAddress } = useAuth()
   const personalServer = usePersonalServer()
@@ -376,22 +378,23 @@ export function useGrantFlow(params: GrantFlowParams, prefetched?: PrefetchedGra
   }, [authPending, handleApprove, isAuthenticated, walletAddress])
 
   // --- Deny flow ---
+  // Fire-and-forget the deny call, then navigate away immediately.
+  // The user clicked Cancel — they don't need to see a confirmation screen.
   const handleDeny = useCallback(async () => {
-    if (!flowState.sessionId || !flowState.secret) return
-    if (isDemoSession(flowState.sessionId)) return
-
-    try {
-      await denySession(flowState.sessionId, {
-        secret: flowState.secret,
-        reason: "User declined",
-      })
-    } catch (error) {
-      // Deny failure is non-fatal — still navigate away
-      console.warn("[GrantFlow] Deny call failed:", error)
+    if (flowState.sessionId && flowState.secret && !isDemoSession(flowState.sessionId)) {
+      try {
+        await denySession(flowState.sessionId, {
+          secret: flowState.secret,
+          reason: "User declined",
+        })
+      } catch (error) {
+        // Deny failure is non-fatal — still navigate away
+        console.warn("[GrantFlow] Deny call failed:", error)
+      }
     }
 
-    setFlowState(prev => ({ ...prev, status: "denied" }))
-  }, [flowState.sessionId, flowState.secret])
+    navigate(ROUTES.apps)
+  }, [flowState.sessionId, flowState.secret, navigate])
 
   // Helper to get display name from builder manifest or session legacy fields
   const builderName =

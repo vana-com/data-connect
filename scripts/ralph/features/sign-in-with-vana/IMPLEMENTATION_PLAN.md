@@ -9,7 +9,7 @@ All P0, P1, and P2 items have been implemented, tested, and verified.
 1. **Session Relay v1 client** (`src/services/sessionRelay.ts`) — claim/approve/deny with secret threading, structured error handling (13 tests)
 2. **Personal Server grant client** (`src/services/personalServer.ts`) — createGrant/listGrants/revokeGrant via Tauri HTTP plugin (18 tests)
 3. **Builder verification service** (`src/services/builder.ts`) — Gateway lookup + W3C manifest fetch + EIP-191 signature verification (25 tests)
-4. **Grant flow state machine** (`src/pages/grant/use-grant-flow.ts`) — `loading → claiming → verifying-builder → consent → [auth-required] → creating-grant → approving → success` with demo mode, pre-fetch support, and deferred auth (8 tests)
+4. **Grant flow state machine** (`src/pages/grant/use-grant-flow.ts`) — `loading → claiming → verifying-builder → consent → [auth-required] → creating-grant → approving → success` with demo mode, pre-fetch support, and deferred auth (13 tests)
 5. **Deep link plugin** — Tauri deep-link plugin for `vana://connect` URL scheme with cold-start/runtime listeners (5 tests)
 6. **Connected apps** (`src/hooks/useConnectedApps.ts`) — fetches from Personal Server `GET /v1/grants`, revokes via `DELETE /v1/grants/{grantId}`, replaces localStorage
 7. **Split-failure recovery** (`src/hooks/usePendingApproval.ts`, `src/lib/storage.ts`) — persists pending approval, retries on next app startup (8 tests)
@@ -24,6 +24,9 @@ All P0, P1, and P2 items have been implemented, tested, and verified.
 16. **Builder description field** — added `description` field to `BuilderManifest` type, extracted from W3C manifest `description`, displayed in consent UI below the "allow" message (26 tests in builder.test.ts)
 17. **Support URL link** — `supportUrl` was already extracted from manifest but not displayed; now shown as a link in consent UI alongside Privacy Policy and Terms of Service
 18. **Unverified app warning** — added `verified` boolean to `BuilderManifest`; set to `true` by `verifyBuilder()`, `false` in fallback paths when verification fails; consent UI shows yellow warning banner "This app could not be verified. Proceed with caution." when `verified === false`
+19. **Dead localStorage cleanup** — removed connected apps CRUD functions (`setConnectedApp`, `getConnectedApp`, `removeConnectedApp`, `getAllConnectedApps`, `subscribeConnectedApps`, `isAppConnected`, `migrateConnectedAppsStorage`) and their 9 tests from `src/lib/storage.ts`. Gateway via Personal Server `GET /v1/grants` is the single source of truth; nothing read the localStorage data anymore.
+20. **Deny flow navigation fix** — Cancel button previously set a `"denied"` status that rendered an error screen ("Access was denied.") instead of navigating away. Fixed: `handleDeny` now calls `navigate(ROUTES.apps)` after the deny API call, matching the spec's "cancel → navigate away" requirement. Removed dead `"denied"` status from `GrantFlowState` type, debug panel, and grant page rendering. Cancel button changed from `<Link>` to plain `<Button>` since navigation is now handled programmatically.
+21. **Error scenario test coverage** — added 5 tests to `use-grant-flow.test.tsx`: session claim failure (SessionRelayError), builder verification fallback (uses truncated address + `verified: false`), grant creation failure (PersonalServerError), deny API failure (navigates away regardless), and Personal Server not running.
 
 ### Architecture notes
 
@@ -36,7 +39,7 @@ All P0, P1, and P2 items have been implemented, tested, and verified.
 ## Validation
 
 - `npx tsc -b` — zero type errors
-- `npm run test` — 125 tests passing across 17 test files
+- `npm run test` — 121 tests passing across 17 test files
 - Test environment: happy-dom (jsdom broken by html-encoding-sniffer@6.0.0 ESM issue)
 
 ## Known non-blocking TODOs (outside this feature scope)

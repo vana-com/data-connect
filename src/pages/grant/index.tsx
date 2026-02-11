@@ -113,13 +113,6 @@ export function Grant() {
         declineHref={declineHref}
       />
     )
-  } else if (resolvedFlowState.status === "denied") {
-    content = (
-      <GrantErrorState
-        error="Access was denied."
-        declineHref={declineHref}
-      />
-    )
   } else if (resolvedFlowState.status === "success") {
     content = (
       <GrantSuccessState
@@ -135,7 +128,6 @@ export function Grant() {
         builderManifest={resolvedBuilderManifest}
         builderName={resolvedBuilderName}
         isApproving={resolvedIsApproving}
-        declineHref={declineHref}
         onApprove={handleApprove}
         onDeny={handleDeny}
       />

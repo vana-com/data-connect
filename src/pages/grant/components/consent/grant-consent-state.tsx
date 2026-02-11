@@ -1,4 +1,3 @@
-import { Link } from "react-router-dom"
 import { AlertTriangleIcon, ArrowRightIcon, ExternalLinkIcon, LoaderIcon } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { PlatformIcon } from "@/components/icons/platform-icon"
@@ -16,7 +15,6 @@ interface GrantConsentStateProps {
   builderManifest?: BuilderManifest
   builderName?: string
   isApproving: boolean
-  declineHref: string
   onApprove: () => void
   onDeny?: () => void
 }
@@ -37,7 +35,6 @@ export function GrantConsentState({
   builderManifest,
   builderName,
   isApproving,
-  declineHref,
   onApprove,
   onDeny,
 }: GrantConsentStateProps) {
@@ -46,13 +43,9 @@ export function GrantConsentState({
   const appName = builderName ?? builderManifest?.name ?? session?.appName ?? "this app"
   const builderIconSrc = pickBuilderIcon(builderManifest)
 
-  const handleCancel = (event: React.MouseEvent) => {
-    if (isApproving) {
-      event.preventDefault()
-      return
-    }
+  const handleCancel = () => {
+    if (isApproving) return
     if (onDeny) {
-      event.preventDefault()
       onDeny()
     }
   }
@@ -177,21 +170,16 @@ export function GrantConsentState({
 
         <div className="flex items-center justify-end gap-2.5">
           <Button
-            asChild
+            type="button"
             variant="ghost"
+            disabled={isApproving}
+            onClick={handleCancel}
             className={cn(
               "text-muted-foreground",
               "border border-transparent hover:border-ring hover:bg-background",
-              isApproving && "pointer-events-none opacity-60"
             )}
           >
-            <Link
-              to={declineHref}
-              aria-disabled={isApproving}
-              onClick={handleCancel}
-            >
-              Cancel
-            </Link>
+            Cancel
           </Button>
           <Button
             type="button"

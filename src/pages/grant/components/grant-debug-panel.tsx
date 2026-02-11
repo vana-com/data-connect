@@ -11,7 +11,6 @@ const DEBUG_STATUSES: GrantFlowState["status"][] = [
   "creating-grant",
   "approving",
   "success",
-  "denied",
   "error",
 ]
 

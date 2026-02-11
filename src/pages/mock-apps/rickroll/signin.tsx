@@ -13,6 +13,12 @@ import {
 } from "@/lib/grant-params"
 import { DEFAULT_APP_ID, getAppRegistryEntry } from "@/apps/registry"
 
+/* 
+  NB! this is for internal data-connect testing only!
+  In production, we use connect.vana.org (via vana-connect repo, /connect page)
+  Read the README.md for more details.
+ */
+
 export function RickrollMockSignIn() {
   const [searchParams] = useSearchParams()
   const parsedParams = getGrantParamsFromSearchParams(searchParams)

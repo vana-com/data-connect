@@ -7,6 +7,8 @@ app that opens in the user's browser and then deep‑links back into DataBridge.
 Important:
 
 - Dev-only. Do not ship or rely on these pages in production.
+- Internal Data Connect testing only. In production, use `connect.vana.org`
+  (see `vana-connect` repo, `/connect` page).
 - The mock app is intentionally minimal; it exists to exercise the handoff flow.
 - Enable explicitly via `VITE_USE_RICKROLL_MOCK=true` (see `src/config/dev-flags.ts`).
 

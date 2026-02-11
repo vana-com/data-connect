@@ -118,77 +118,101 @@ async function main() {
       if (!serverSigner) {
         return c.json({ error: 'Server not configured for signing (no master key)' }, 500);
       }
+      if (!gatewayClient) {
+        return c.json({ error: 'Gateway client not initialized' }, 500);
+      }
 
-      const body = await c.req.json();
+      let body;
+      try {
+        body = await c.req.json();
+      } catch {
+        return c.json({ error: 'Invalid JSON in request body' }, 400);
+      }
+
       const { granteeAddress, scopes, expiresAt, nonce } = body;
 
-      if (!granteeAddress || !Array.isArray(scopes)) {
-        return c.json({ error: 'granteeAddress and scopes[] are required' }, 400);
+      if (!granteeAddress || !Array.isArray(scopes) || scopes.length === 0) {
+        return c.json({ error: 'granteeAddress and non-empty scopes[] are required' }, 400);
       }
 
-      // Look up builder's bytes32 ID from the Gateway
-      const builder = await gatewayClient.getBuilder(granteeAddress);
-      if (!builder) {
-        return c.json({ error: `Builder ${granteeAddress} not registered with Gateway` }, 400);
+      try {
+        // Look up builder's bytes32 ID from the Gateway
+        const builder = await gatewayClient.getBuilder(granteeAddress);
+        if (!builder) {
+          return c.json({ error: `Builder ${granteeAddress} not registered with Gateway` }, 400);
+        }
+
+        const ownerAddress = config.server.address;
+        const expiresAtUnix = expiresAt
+          ? Math.floor(new Date(expiresAt).getTime() / 1000)
+          : 0;
+        const grantNonce = nonce ? Number(nonce) : Math.floor(Math.random() * 1e9);
+
+        // Build the grant payload string (opaque JSON stored on Gateway)
+        const grantPayload = JSON.stringify({
+          user: ownerAddress,
+          builder: granteeAddress,
+          scopes,
+          expiresAt: expiresAtUnix,
+          nonce: grantNonce,
+        });
+
+        // Sign the EIP-712 GrantRegistration message with the server's derived key
+        const signature = await serverSigner.signGrantRegistration({
+          grantorAddress: ownerAddress,
+          granteeId: builder.id,
+          grant: grantPayload,
+          fileIds: [],
+        });
+
+        // Submit to Gateway
+        const result = await gatewayClient.createGrant({
+          grantorAddress: ownerAddress,
+          granteeId: builder.id,
+          grant: grantPayload,
+          fileIds: [],
+          signature,
+        });
+
+        return c.json({ grantId: result.grantId });
+      } catch (err) {
+        const message = err?.message || String(err);
+        send({ type: 'log', message: `[POST /v1/grants] Error: ${message}` });
+        return c.json({ error: message }, 500);
       }
-
-      const ownerAddress = config.server.address;
-      const expiresAtUnix = expiresAt
-        ? Math.floor(new Date(expiresAt).getTime() / 1000)
-        : 0;
-      const grantNonce = nonce ? Number(nonce) : Math.floor(Math.random() * 1e9);
-
-      // Build the grant payload string (opaque JSON stored on Gateway)
-      const grantPayload = JSON.stringify({
-        user: ownerAddress,
-        builder: granteeAddress,
-        scopes,
-        expiresAt: expiresAtUnix,
-        nonce: grantNonce,
-      });
-
-      // Sign the EIP-712 GrantRegistration message with the server's derived key
-      const signature = await serverSigner.signGrantRegistration({
-        grantorAddress: ownerAddress,
-        granteeId: builder.id,
-        grant: grantPayload,
-        fileIds: [],
-      });
-
-      // Submit to Gateway
-      const result = await gatewayClient.createGrant({
-        grantorAddress: ownerAddress,
-        granteeId: builder.id,
-        grant: grantPayload,
-        fileIds: [],
-        signature,
-      });
-
-      return c.json({ grantId: result.grantId });
     });
 
     app.delete('/v1/grants/:grantId', async (c) => {
       if (!serverSigner) {
         return c.json({ error: 'Server not configured for signing (no master key)' }, 500);
       }
+      if (!gatewayClient) {
+        return c.json({ error: 'Gateway client not initialized' }, 500);
+      }
 
       const grantId = c.req.param('grantId');
       const ownerAddress = config.server.address;
 
-      // Sign the EIP-712 GrantRevocation message
-      const signature = await serverSigner.signGrantRevocation({
-        grantorAddress: ownerAddress,
-        grantId,
-      });
+      try {
+        // Sign the EIP-712 GrantRevocation message
+        const signature = await serverSigner.signGrantRevocation({
+          grantorAddress: ownerAddress,
+          grantId,
+        });
 
-      // Submit to Gateway
-      await gatewayClient.revokeGrant({
-        grantId,
-        grantorAddress: ownerAddress,
-        signature,
-      });
+        // Submit to Gateway
+        await gatewayClient.revokeGrant({
+          grantId,
+          grantorAddress: ownerAddress,
+          signature,
+        });
 
-      return c.body(null, 204);
+        return c.body(null, 204);
+      } catch (err) {
+        const message = err?.message || String(err);
+        send({ type: 'log', message: `[DELETE /v1/grants/${grantId}] Error: ${message}` });
+        return c.json({ error: message }, 500);
+      }
     });
 
     // Fix stale proxy name collision on FRP server

@@ -67,16 +67,16 @@
 
 - **[P2]** Error recovery for split failure — if `POST /v1/grants` succeeds but `POST /v1/session/{id}/approve` fails (session expired, network error), the grant exists on Gateway but builder never learns about it. Store pending `{ sessionId, grantId, secret }` in localStorage. On next app open, retry the approve call. Clear on success.
 
-- **[P2]** Add unit tests for `sessionRelay.ts` — mock fetch, verify request shapes for claim/approve/deny, verify error handling for each error code.
+- **[DONE]** Added unit tests for `sessionRelay.ts` (13 tests) — verifies request shapes for claim/approve/deny, URL encoding of sessionId, structured error handling for all error codes (SESSION_NOT_FOUND, INVALID_CLAIM_SECRET, SESSION_EXPIRED, INVALID_SESSION_STATE), network errors, non-JSON responses, and generic HTTP errors. File: `src/services/sessionRelay.test.ts`.
 
-- **[P2]** Add unit tests for `builder.ts` — mock fetch responses for Gateway lookup, manifest HTML parsing, manifest JSON parsing, EIP-191 signature verification. Test failure cases: unreachable appUrl, missing manifest link, invalid signature.
+- **[DONE]** Added unit tests for `builder.ts` (22 tests) — verifies Gateway lookup, app HTML fetching, manifest JSON parsing, manifest link extraction (both attribute orders), relative URL resolution, same-origin enforcement, BuilderManifest construction with icon URL resolution, short_name fallback, missing name/vana block errors, unreachable endpoints, HTTP error codes, and signature-absent warning. File: `src/services/builder.test.ts`.
 
-- **[P2]** Add unit tests for `personalServer.ts` — mock fetch, verify Web3Signed header construction (canonical JSON, base64url encoding, signature), verify request/response shapes for createGrant and listGrants.
+- **[DONE]** Added unit tests for `personalServer.ts` (10 tests) — mocks `@tauri-apps/plugin-http` dynamic import, verifies createGrant and listGrants request shapes (URL, method, headers, body), correct port in URL, optional fields (expiresAt, nonce), network failure errors, non-JSON responses, structured error messages with statusCode, and empty grant lists. File: `src/services/personalServer.test.ts`.
 
 ## Validation
 
 - `npm run typecheck` — no type errors after all changes.
 - `npm run build` — clean production build.
-- `npm run test` — all 55 tests passing across 13 test files. No pre-existing failures.
+- `npm run test` — all 100 tests passing across 16 test files. No pre-existing failures.
 - Manual: open `vana://connect?sessionId=test&secret=abc` (or URL param equivalent in dev), verify full flow: claim → builder verify → consent → auth (if needed) → grant creation → session approve → success.
 - Manual: click Cancel on consent screen, verify deny call fires and app navigates home.

@@ -1,6 +1,7 @@
 import { configureStore, createSlice } from '@reduxjs/toolkit';
 import type { PayloadAction } from '@reduxjs/toolkit';
 import type { Run, Platform, AppState, ExportedData, ProgressPhase, ConnectorUpdateInfo, AuthState, AuthUser, ConnectedApp, AppConfig } from '../types';
+import { getAccountRole } from '../config/account-access';
 
 const initialAuthState: AuthState = {
   isAuthenticated: false,
@@ -8,6 +9,7 @@ const initialAuthState: AuthState = {
   user: null,
   walletAddress: null,
   masterKeySignature: null,
+  accountRole: 'standard',
 };
 
 const initialAppConfig: AppConfig = {
@@ -207,6 +209,7 @@ const appSlice = createSlice({
       state.auth.user = action.payload.user;
       state.auth.walletAddress = action.payload.walletAddress;
       state.auth.masterKeySignature = action.payload.masterKeySignature ?? null;
+      state.auth.accountRole = getAccountRole(action.payload.user);
     },
     clearAuth(state) {
       state.auth.isAuthenticated = false;
@@ -214,6 +217,7 @@ const appSlice = createSlice({
       state.auth.user = null;
       state.auth.walletAddress = null;
       state.auth.masterKeySignature = null;
+      state.auth.accountRole = 'standard';
     },
     setConnectedApps(state, action: PayloadAction<ConnectedApp[]>) {
       state.connectedApps = action.payload;

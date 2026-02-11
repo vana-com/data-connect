@@ -134,6 +134,7 @@ export interface AuthState {
   user: AuthUser | null;
   walletAddress: string | null;
   masterKeySignature: string | null;
+  accountRole: 'standard' | 'debug';
 }
 
 export interface AuthUser {

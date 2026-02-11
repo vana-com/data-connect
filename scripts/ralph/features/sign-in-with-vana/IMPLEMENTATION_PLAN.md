@@ -54,6 +54,7 @@ All P0, P1, and P2 items have been implemented, tested, and verified.
 
 36. **Stale TODO cleanup** — Removed `{/* TODO: busy loading state */}` comment from `src/pages/connect/index.tsx`. The busy state was already fully implemented (spinner overlay with "Checking connectors..." / "Opening browser..." text) — the TODO was left over from the initial implementation.
 
+37. **Success screen "Done" button + copy alignment** — Spec wireframe (Screen 5) shows a `[Done]` button and copy "You can manage or revoke access in Settings." The success screen had no Done button (user could only click "Manage your account" or navigate away manually) and used slightly different copy ("You can revoke this permission at any time."). Fixed: added a "Done" button that navigates to the home page, aligning the success screen with the spec wireframe. Updated copy to match spec: "You can manage or revoke access in Settings."
 
 ### Architecture notes
 

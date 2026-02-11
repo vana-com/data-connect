@@ -80,8 +80,11 @@ Runtime boundaries:
   its signing keypair from this and registers with Gateway.
 - Grant endpoints: `POST /v1/grants` (create — EIP-712 sign + Gateway submit),
   `GET /v1/grants` (list — proxies Gateway), `DELETE /v1/grants/{grantId}` (revoke).
-- Create and revoke routes are unauthenticated (localhost only, managed by Tauri).
-  `GET /v1/grants` requires auth (devToken bypass).
+- Grant creation uses the library's authenticated `POST /v1/grants` route — the desktop
+  client authenticates via the `devToken` bypass in the library's `web3Auth` middleware
+  (`Authorization: Bearer {devToken}`). The `DELETE /v1/grants/:grantId` revoke route is
+  unauthenticated. Both operate on localhost only, managed by Tauri — no external access
+  is possible.
 - Emits `dev-token` on stdout → Rust forwards via `personal-server-dev-token` event
   → `usePersonalServer` hook captures for `GET /v1/grants` auth header.
 - `GET /server-identity` proxies `http://localhost:{PERSONAL_SERVER_PORT}/health`.

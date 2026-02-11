@@ -76,11 +76,18 @@ async function serverFetch<T>(
 
 export async function createGrant(
   port: number,
-  request: CreateGrantRequest
+  request: CreateGrantRequest,
+  devToken?: string | null
 ): Promise<CreateGrantResponse> {
+  const headers: Record<string, string> = {
+    "Content-Type": "application/json",
+  };
+  if (devToken) {
+    headers["Authorization"] = `Bearer ${devToken}`;
+  }
   return serverFetch<CreateGrantResponse>(port, "/v1/grants", {
     method: "POST",
-    headers: { "Content-Type": "application/json" },
+    headers,
     body: JSON.stringify(request),
   });
 }

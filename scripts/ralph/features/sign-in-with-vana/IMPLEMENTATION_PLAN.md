@@ -67,18 +67,20 @@ All P0, P1, and P2 items have been implemented, tested, and verified.
     - **Dev mode behavior** (1 test): skip-to-grant link shown when connector missing
     - **Discovery**: `Text` component's `formatText()` converts straight apostrophes to curly quotes (U+2019), causing regex mismatches — tests now use character classes to match both forms
 
+40. **createGrant auth fix + dead code removal** — The library's `POST /v1/grants` route (registered via `app.route("/v1/grants", grantsRoutes(...))`) includes `web3Auth` + `ownerCheck` middleware. In Hono 4.x, when duplicate method+path routes are registered, the first-registered handler wins (handlers are composed in registration order; the first to return without calling `next()` terminates the chain). The custom `POST /v1/grants` handler added in `personal-server/index.js` was therefore dead code — it could never execute because the library's handler matched first. This meant `createGrant()` would fail with 401 because the client sent no auth header. **Fixed**: (a) `createGrant()` now accepts an optional `devToken` parameter and sends `Authorization: Bearer {devToken}` (matching `listGrants()`), which satisfies the library's `web3Auth` middleware devToken bypass path. (b) `use-grant-flow.ts` threads `personalServer.devToken` to `createGrant()`. (c) Removed the dead custom `POST /v1/grants` handler from `personal-server/index.js` (67 lines). (d) Added 2 tests for createGrant devToken handling. (20 tests in personalServer.test.ts, 17 tests in use-grant-flow.test.tsx)
+
 ### Architecture notes
 
 - The spec's `exporting` state was removed from `GrantFlowState` type — data export happens on the `/connect` route (Screen 1-2), not the `/grant` route (Screen 3-5). The grant page starts at `consent` after receiving pre-fetched data from the connect page.
 - Demo mode (`sessionId.startsWith("grant-session-")`) is gated behind `import.meta.env.DEV`.
 - Builder verification is fatal per protocol spec — if manifest discovery or signature verification fails, the flow errors out. No fallback metadata is used. This means builders must maintain their `appUrl` availability and provide valid EIP-191 signatures.
-- Grant create/revoke routes in `personal-server/index.js` are unauthenticated (no Web3Signed header required). They run on localhost only, managed by Tauri — no external access possible. The library's `GET /v1/grants` route still requires auth, satisfied by the devToken bypass.
+- Grant creation uses the library's authenticated `POST /v1/grants` route with `web3Auth` middleware — the client authenticates via the `devToken` bypass (Bearer token). Only the custom `DELETE /v1/grants/:grantId` route is unauthenticated. Both run on localhost only, managed by Tauri — no external access possible.
 - The `createServer()` bootstrap returns `gatewayClient` and `serverSigner` alongside `app` — we destructure these to add custom routes without modifying the library.
 
 ## Validation
 
 - `npx tsc -b` — zero type errors
-- `npm run test` — 184 tests passing across 19 test files
+- `npm run test` — 186 tests passing across 19 test files
 - Last updated: 2026-02-10
 - Test environment: happy-dom (jsdom broken by html-encoding-sniffer@6.0.0 ESM issue)
 

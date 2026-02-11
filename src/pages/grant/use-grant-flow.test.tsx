@@ -20,6 +20,7 @@ let personalServerState = {
   status: "stopped" as string,
   port: null as number | null,
   tunnelUrl: null as string | null,
+  devToken: null as string | null,
   error: null as string | null,
   startServer: vi.fn(),
   stopServer: vi.fn(),
@@ -104,6 +105,7 @@ beforeEach(() => {
     status: "running",
     port: 8080,
     tunnelUrl: null,
+    devToken: "test-dev-token",
     error: null,
     startServer: vi.fn(),
     stopServer: vi.fn(),
@@ -273,7 +275,7 @@ describe("useGrantFlow", () => {
       granteeAddress: "0xbuilder",
       scopes: ["chatgpt.conversations"],
       expiresAt: "2030-01-01T00:00:00.000Z",
-    })
+    }, "test-dev-token")
     expect(mockApproveSession).toHaveBeenCalledWith("real-session-2", {
       secret: "test-secret",
       grantId: "grant-123",

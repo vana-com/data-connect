@@ -307,7 +307,7 @@ export function useGrantFlow(params: GrantFlowParams, prefetched?: PrefetchedGra
         granteeAddress: flowState.session.granteeAddress,
         scopes: flowState.session.scopes,
         expiresAt: flowState.session.expiresAt,
-      })
+      }, personalServer.devToken)
 
       setFlowState(prev => ({ ...prev, grantId }))
 
@@ -379,6 +379,7 @@ export function useGrantFlow(params: GrantFlowParams, prefetched?: PrefetchedGra
     isAuthenticated,
     walletAddress,
     personalServer.port,
+    personalServer.devToken,
     dispatch,
   ])
 

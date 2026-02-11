@@ -49,6 +49,39 @@ describe("createGrant", () => {
     expect(result).toEqual({ grantId: "grant-abc" });
   });
 
+  it("includes Authorization header when devToken is provided", async () => {
+    tauriFetchSpy.mockResolvedValueOnce(
+      jsonResponse({ grantId: "grant-abc" })
+    );
+
+    await createGrant(
+      3100,
+      { granteeAddress: "0xbuilder", scopes: ["chatgpt.conversations"] },
+      "test-dev-token"
+    );
+
+    const [, init] = tauriFetchSpy.mock.calls[0];
+    expect(init.headers).toEqual({
+      "Content-Type": "application/json",
+      Authorization: "Bearer test-dev-token",
+    });
+  });
+
+  it("omits Authorization header when devToken is null", async () => {
+    tauriFetchSpy.mockResolvedValueOnce(
+      jsonResponse({ grantId: "grant-abc" })
+    );
+
+    await createGrant(
+      3100,
+      { granteeAddress: "0xbuilder", scopes: ["chatgpt.conversations"] },
+      null
+    );
+
+    const [, init] = tauriFetchSpy.mock.calls[0];
+    expect(init.headers).toEqual({ "Content-Type": "application/json" });
+  });
+
   it("includes optional expiresAt and nonce", async () => {
     tauriFetchSpy.mockResolvedValueOnce(
       jsonResponse({ grantId: "grant-xyz" })

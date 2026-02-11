@@ -39,6 +39,7 @@ Validate new behavior without overengineering; run the smallest test set that pr
 - Assert on user-visible output and accessible roles/labels.
 - Prefer `getByRole`/`getByText`; use `*AllBy*` only when multiples are expected.
 - Avoid snapshots and brittle DOM structure checks.
+- For expected error-path tests, spy on `console.error` and assert calls to keep test output clean while preserving coverage.
 
 ## URL state coverage gate
 

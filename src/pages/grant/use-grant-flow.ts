@@ -34,7 +34,8 @@ const PRIVY_APP_ID = import.meta.env.VITE_PRIVY_APP_ID
 const PRIVY_CLIENT_ID = import.meta.env.VITE_PRIVY_CLIENT_ID
 const DEV_AUTH_PAGE_URL = "http://localhost:5175"
 const isTauriRuntime = () =>
-  typeof window !== "undefined" && "__TAURI__" in window
+  typeof window !== "undefined" &&
+  ("__TAURI__" in window || "__TAURI_INTERNALS__" in window)
 
 // Demo mode: sessions starting with "grant-session-" use mock data (dev only)
 function isDemoSession(sessionId: string): boolean {

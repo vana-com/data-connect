@@ -36,11 +36,11 @@ export function useConnectedApps() {
   )
 
   const fetchConnectedApps = useCallback(
-    async (port: number | null) => {
+    async (port: number | null, devToken?: string | null) => {
       if (!port || !isAuthenticated) return
 
       try {
-        const grants = await listGrants(port)
+        const grants = await listGrants(port, devToken)
         // Filter out revoked grants
         const activeGrants = grants.filter((g) => !g.revokedAt)
         const apps = activeGrants.map(grantToConnectedApp)

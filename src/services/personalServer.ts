@@ -85,23 +85,55 @@ export async function createGrant(
   });
 }
 
-export async function listGrants(port: number): Promise<Grant[]> {
-  return serverFetch<Grant[]>(port, "/v1/grants", {
-    method: "GET",
-    headers: { "Content-Type": "application/json" },
-  });
+export async function listGrants(
+  port: number,
+  devToken?: string | null
+): Promise<Grant[]> {
+  const headers: Record<string, string> = {
+    "Content-Type": "application/json",
+  };
+  if (devToken) {
+    headers["Authorization"] = `Bearer ${devToken}`;
+  }
+  // The library's GET /v1/grants returns { grants: Grant[] }
+  const data = await serverFetch<{ grants: Grant[] } | Grant[]>(
+    port,
+    "/v1/grants",
+    { method: "GET", headers }
+  );
+  // Handle both envelope format ({ grants: [] }) and flat array
+  return Array.isArray(data) ? data : data.grants;
 }
 
 export async function revokeGrant(
   port: number,
   grantId: string
 ): Promise<void> {
-  await serverFetch<{ success: boolean }>(
-    port,
-    `/v1/grants/${encodeURIComponent(grantId)}`,
-    {
-      method: "DELETE",
-      headers: { "Content-Type": "application/json" },
+  const { fetch: tauriFetch } = await import("@tauri-apps/plugin-http");
+
+  let response: Response;
+  try {
+    response = await tauriFetch(
+      `${baseUrl(port)}/v1/grants/${encodeURIComponent(grantId)}`,
+      { method: "DELETE", headers: { "Content-Type": "application/json" } }
+    );
+  } catch {
+    throw new PersonalServerError(
+      "Failed to connect to Personal Server. Is it running?"
+    );
+  }
+
+  // 204 No Content is the success case
+  if (response.status === 204 || response.ok) return;
+
+  let message = `Personal Server request failed (HTTP ${response.status})`;
+  try {
+    const data = await response.json();
+    if (typeof data === "object" && data !== null && "error" in data) {
+      message = String((data as { error: string }).error);
     }
-  );
+  } catch {
+    // no JSON body — keep generic message
+  }
+  throw new PersonalServerError(message, response.status);
 }

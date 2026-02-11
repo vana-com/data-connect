@@ -92,9 +92,9 @@ export function useSettingsPage() {
   // Fetch connected apps from Personal Server when available
   useEffect(() => {
     if (personalServer.port && personalServer.status === "running") {
-      fetchConnectedApps(personalServer.port)
+      fetchConnectedApps(personalServer.port, personalServer.devToken)
     }
-  }, [personalServer.port, personalServer.status, fetchConnectedApps])
+  }, [personalServer.port, personalServer.status, personalServer.devToken, fetchConnectedApps])
 
   // Persist simulateNoChrome to localStorage
   useEffect(() => {

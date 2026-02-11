@@ -124,23 +124,24 @@ describe("createGrant", () => {
 // --- listGrants ---
 
 describe("listGrants", () => {
+  const grants = [
+    {
+      grantId: "g-1",
+      granteeAddress: "0xabc",
+      scopes: ["chatgpt.conversations"],
+      createdAt: "2026-01-01T00:00:00Z",
+    },
+    {
+      grantId: "g-2",
+      granteeAddress: "0xdef",
+      scopes: ["spotify.history"],
+      createdAt: "2026-02-01T00:00:00Z",
+      revokedAt: "2026-02-05T00:00:00Z",
+    },
+  ];
+
   it("sends GET to /v1/grants on the correct port", async () => {
-    const grants = [
-      {
-        grantId: "g-1",
-        granteeAddress: "0xabc",
-        scopes: ["chatgpt.conversations"],
-        createdAt: "2026-01-01T00:00:00Z",
-      },
-      {
-        grantId: "g-2",
-        granteeAddress: "0xdef",
-        scopes: ["spotify.history"],
-        createdAt: "2026-02-01T00:00:00Z",
-        revokedAt: "2026-02-05T00:00:00Z",
-      },
-    ];
-    tauriFetchSpy.mockResolvedValueOnce(jsonResponse(grants));
+    tauriFetchSpy.mockResolvedValueOnce(jsonResponse({ grants }));
 
     const result = await listGrants(4200);
 
@@ -152,8 +153,36 @@ describe("listGrants", () => {
     expect(result).toHaveLength(2);
   });
 
+  it("handles flat array response for backwards compatibility", async () => {
+    tauriFetchSpy.mockResolvedValueOnce(jsonResponse(grants));
+
+    const result = await listGrants(4200);
+    expect(result).toEqual(grants);
+  });
+
+  it("includes Authorization header when devToken is provided", async () => {
+    tauriFetchSpy.mockResolvedValueOnce(jsonResponse({ grants: [] }));
+
+    await listGrants(3100, "test-dev-token");
+
+    const [, init] = tauriFetchSpy.mock.calls[0];
+    expect(init.headers).toEqual({
+      "Content-Type": "application/json",
+      Authorization: "Bearer test-dev-token",
+    });
+  });
+
+  it("omits Authorization header when devToken is null", async () => {
+    tauriFetchSpy.mockResolvedValueOnce(jsonResponse({ grants: [] }));
+
+    await listGrants(3100, null);
+
+    const [, init] = tauriFetchSpy.mock.calls[0];
+    expect(init.headers).toEqual({ "Content-Type": "application/json" });
+  });
+
   it("returns empty array when no grants exist", async () => {
-    tauriFetchSpy.mockResolvedValueOnce(jsonResponse([]));
+    tauriFetchSpy.mockResolvedValueOnce(jsonResponse({ grants: [] }));
 
     const result = await listGrants(3100);
     expect(result).toEqual([]);
@@ -181,7 +210,11 @@ describe("listGrants", () => {
 
 describe("revokeGrant", () => {
   it("sends DELETE to /v1/grants/{grantId} on the correct port", async () => {
-    tauriFetchSpy.mockResolvedValueOnce(jsonResponse({ success: true }));
+    tauriFetchSpy.mockResolvedValueOnce({
+      ok: true,
+      status: 204,
+      json: () => Promise.reject(new Error("no body")),
+    } as unknown as Response);
 
     await revokeGrant(3100, "grant-abc");
 
@@ -191,8 +224,19 @@ describe("revokeGrant", () => {
     expect(init.method).toBe("DELETE");
   });
 
-  it("URL-encodes the grantId", async () => {
+  it("succeeds on 200 with JSON body", async () => {
     tauriFetchSpy.mockResolvedValueOnce(jsonResponse({ success: true }));
+
+    await revokeGrant(3100, "grant-abc");
+    expect(tauriFetchSpy).toHaveBeenCalledOnce();
+  });
+
+  it("URL-encodes the grantId", async () => {
+    tauriFetchSpy.mockResolvedValueOnce({
+      ok: true,
+      status: 204,
+      json: () => Promise.reject(new Error("no body")),
+    } as unknown as Response);
 
     await revokeGrant(3100, "grant/with spaces");
 

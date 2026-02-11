@@ -6,6 +6,7 @@ use tauri::{AppHandle, Emitter, Manager};
 static PERSONAL_SERVER_PROCESS: Mutex<Option<std::process::Child>> = Mutex::new(None);
 pub static PERSONAL_SERVER_PORT: Mutex<Option<u16>> = Mutex::new(None);
 static PERSONAL_SERVER_STARTING: Mutex<bool> = Mutex::new(false);
+pub static PERSONAL_SERVER_DEV_TOKEN: Mutex<Option<String>> = Mutex::new(None);
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
 pub struct PersonalServerStatus {
@@ -304,6 +305,17 @@ pub async fn start_personal_server(
                                     serde_json::json!({ "message": message }),
                                 );
                             }
+                            "dev-token" => {
+                                let token = msg.get("token").and_then(|t| t.as_str()).unwrap_or("");
+                                log::info!("Personal server dev token received");
+                                if let Ok(mut guard) = PERSONAL_SERVER_DEV_TOKEN.lock() {
+                                    *guard = Some(token.to_string());
+                                }
+                                let _ = app_handle.emit(
+                                    "personal-server-dev-token",
+                                    serde_json::json!({ "token": token }),
+                                );
+                            }
                             _ => {
                                 log::debug!("Personal server stdout: {}", line);
                             }
@@ -387,6 +399,11 @@ pub async fn stop_personal_server() -> Result<(), String> {
     let mut port_guard = PERSONAL_SERVER_PORT.lock().map_err(|e| e.to_string())?;
     let old_port = *port_guard;
     *port_guard = None;
+
+    // Clear dev token
+    if let Ok(mut token) = PERSONAL_SERVER_DEV_TOKEN.lock() {
+        *token = None;
+    }
 
     // Wait for port to be released (up to 3s)
     if let Some(port) = old_port {

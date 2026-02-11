@@ -53,9 +53,9 @@ export function Home() {
   // Fetch connected apps from Personal Server when it becomes available
   useEffect(() => {
     if (personalServer.port && personalServer.status === "running") {
-      fetchConnectedApps(personalServer.port)
+      fetchConnectedApps(personalServer.port, personalServer.devToken)
     }
-  }, [personalServer.port, personalServer.status, fetchConnectedApps])
+  }, [personalServer.port, personalServer.status, personalServer.devToken, fetchConnectedApps])
 
   // Derived state: recently completed platform IDs (memoized, not effect-stored)
   useEffect(() => {

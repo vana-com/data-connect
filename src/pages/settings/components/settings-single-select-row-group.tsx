@@ -41,8 +41,9 @@ export function SettingsSingleSelectRowGroup<T extends string>({
         const selected = value === item.id
         const disabled = item.available === false
         const radioContainerClass = cn(
-          disabled ? "bg-muted/70" : selected ? "bg-border/50" : "bg-border/50"
+          disabled ? "bg-muted/50" : selected ? "bg-muted" : "bg-muted"
         )
+        // const radioContainerClass = ""
         const radioClass = cn(
           "relative size-5 rounded-full border",
           disabled

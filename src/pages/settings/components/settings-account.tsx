@@ -1,14 +1,12 @@
-import {
-  DatabaseIcon,
-  MonitorIcon,
-  ShieldIcon,
-  LogOutIcon,
-  LogInIcon,
-} from "lucide-react"
+import { MonitorIcon, MailIcon } from "lucide-react"
 import type { AuthUser } from "../../../types"
 import { Text } from "@/components/typography/text"
 import { Button } from "@/components/ui/button"
 import { SettingsCard, SettingsRow, SettingsSection } from "./settings-shared"
+
+// Local UI test toggle: set true to force logged-in state.
+const TEST_LOGGED_IN = false
+const TEST_ACCOUNT_EMAIL = "test.user@vana.xyz"
 
 interface SettingsAccountProps {
   user: AuthUser | null
@@ -23,92 +21,142 @@ export function SettingsAccount({
   onLogout,
   onSignIn,
 }: SettingsAccountProps) {
-  return (
-    <div className="space-y-6">
-      <div className="rounded-card border border-accent/20 bg-accent/10 p-4">
-        <div className="flex gap-3">
-          <DatabaseIcon aria-hidden="true" className="size-5 text-accent" />
-          <div className="space-y-1">
-            <Text as="div" intent="small" weight="semi">
-              Local-only storage enabled
-            </Text>
-            <Text as="div" intent="fine" color="accent">
-              Your data never leaves this device unless you explicitly export it.
-            </Text>
-          </div>
-        </div>
-      </div>
+  const effectiveIsAuthenticated = TEST_LOGGED_IN || isAuthenticated
+  const effectiveAccountEmail = TEST_LOGGED_IN
+    ? TEST_ACCOUNT_EMAIL
+    : user?.email
+  const currentSessionLabel = "Vana Desktop on macOS"
+  const currentSessionLocation = "Brisbane, AU"
+  const otherSessionLabel = "Vana iOS"
+  const otherSessionLastSeen = "Brisbane, AU  Last seen about 4 hours ago"
 
-      <SettingsSection title="Sessions">
-        <SettingsCard>
-          <SettingsRow
-            iconContainerClassName="bg-success/10"
-            icon={<MonitorIcon aria-hidden="true" className="size-5 text-success" />}
-            title={
-              <Text as="div" intent="small" weight="medium">
-                Current device
-              </Text>
-            }
-            description={
-              <Text as="div" intent="fine" color="mutedForeground">
-                This computer
-              </Text>
-            }
-            right={
-              <Text
-                as="span"
-                intent="pill"
-                color="success"
-                className="rounded-button bg-success/10 px-2 py-0.5"
-              >
-                Active
-              </Text>
-            }
-          />
-        </SettingsCard>
+  return (
+    <div className="space-y-8">
+      <SettingsSection
+        title="Sessions"
+        description="Devices logged into your account."
+      >
+        <div className="space-y-3 form-outset">
+          <SettingsCard>
+            <SettingsRow
+              icon={<MonitorIcon aria-hidden="true" />}
+              title={
+                <Text as="div" intent="body" weight="semi">
+                  {effectiveIsAuthenticated
+                    ? currentSessionLabel
+                    : "Not signed in"}
+                </Text>
+              }
+              description={
+                effectiveIsAuthenticated ? (
+                  <div className="flex items-center gap-1.5">
+                    <span className="size-[0.5em] rounded-full bg-success-foreground" />
+                    <Text
+                      as="span"
+                      intent="small"
+                      color="success"
+                      weight="medium"
+                    >
+                      Current session
+                    </Text>
+                    <Text as="span" intent="small" muted>
+                      {currentSessionLocation}
+                    </Text>
+                  </div>
+                ) : (
+                  <Text as="div" intent="small" muted>
+                    Sign in to view and manage active sessions.
+                  </Text>
+                )
+              }
+              right={
+                effectiveIsAuthenticated ? (
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="sm"
+                    onClick={TEST_LOGGED_IN ? undefined : onLogout}
+                  >
+                    Log out
+                  </Button>
+                ) : (
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="sm"
+                    onClick={TEST_LOGGED_IN ? undefined : onSignIn}
+                  >
+                    Sign in
+                  </Button>
+                )
+              }
+            />
+          </SettingsCard>
+
+          {effectiveIsAuthenticated && (
+            <SettingsCard>
+              {/* SettingsMetaRow component? */}
+              <div className="flex items-center justify-between px-4 py-3">
+                <Text as="div" intent="body" weight="normal">
+                  1 other session
+                </Text>
+                <Button type="button" variant="ghost" size="sm">
+                  Revoke All
+                </Button>
+              </div>
+              <div className="border-t border-border">
+                <SettingsRow
+                  icon={<MonitorIcon aria-hidden="true" />}
+                  title={
+                    <Text as="div" intent="body" weight="semi">
+                      {otherSessionLabel}
+                    </Text>
+                  }
+                  description={
+                    <Text as="div" intent="small" muted>
+                      {otherSessionLastSeen}
+                    </Text>
+                  }
+                />
+              </div>
+            </SettingsCard>
+          )}
+        </div>
       </SettingsSection>
 
-      <SettingsSection title="Account">
-        <SettingsCard>
-          <SettingsRow
-            iconContainerClassName="bg-muted"
-            icon={
-              <ShieldIcon aria-hidden="true" className="size-5 text-muted-foreground" />
-            }
-            title={
-              <Text as="div" intent="small" weight="medium">
-                Email
-              </Text>
-            }
-            description={
-              <Text as="div" intent="fine" color="mutedForeground">
-                {user?.email || "Not signed in"}
-              </Text>
-            }
-            right={
-              !isAuthenticated && (
-                <Button type="button" variant="outline" size="sm" onClick={onSignIn}>
-                  <LogInIcon aria-hidden="true" className="size-4" />
-                  Sign in
-                </Button>
-              )
-            }
-          />
-          {isAuthenticated && (
-            <div className="border-t border-border p-4">
-              <Button
-                type="button"
-                variant="outline"
-                size="sm"
-                className="border-destructive/30 text-destructive hover:bg-destructive/10"
-                onClick={onLogout}
-              >
-                <LogOutIcon aria-hidden="true" className="size-4" />
-                Sign out
-              </Button>
-            </div>
-          )}
-        </SettingsCard>
+      <SettingsSection
+        title="Account email"
+        description="You will receive notifications at this email."
+      >
+        <div className="space-y-3 form-outset">
+          <SettingsCard>
+            <SettingsRow
+              icon={
+                <MailIcon
+                  aria-hidden="true"
+                  className="size-5 text-foreground"
+                />
+              }
+              title={
+                <Text as="div" weight="semi">
+                  {effectiveAccountEmail || "Not signed in"}
+                </Text>
+              }
+              right={
+                !effectiveIsAuthenticated && (
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="sm"
+                    onClick={TEST_LOGGED_IN ? undefined : onSignIn}
+                  >
+                    Sign in
+                  </Button>
+                )
+              }
+            />
+          </SettingsCard>
+        </div>
       </SettingsSection>
     </div>
   )

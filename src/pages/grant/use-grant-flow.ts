@@ -103,6 +103,11 @@ export function useGrantFlow(params: GrantFlowParams, prefetched?: PrefetchedGra
       return
     }
 
+    // Guard against stale async updates from React StrictMode double-mount.
+    // When StrictMode unmounts the first instance, cleanup sets cancelled=true
+    // so the first mount's in-flight async ops don't clobber the second mount's state.
+    let cancelled = false
+
     const runFlow = async () => {
       console.log("[GrantFlow] runFlow starting", {
         sessionId,
@@ -157,9 +162,11 @@ export function useGrantFlow(params: GrantFlowParams, prefetched?: PrefetchedGra
             prefetched.session.granteeAddress,
             prefetched.session.webhookUrl,
           )
+          if (cancelled) return
           setFlowState(prev => ({ ...prev, builderManifest }))
           setFlowState(prev => ({ ...prev, status: "consent" }))
         } catch (error) {
+          if (cancelled) return
           console.error("[GrantFlow] Builder verification failed (pre-fetched session)", {
             sessionId: prefetched.session.id,
             message: error instanceof Error ? error.message : String(error),
@@ -194,6 +201,7 @@ export function useGrantFlow(params: GrantFlowParams, prefetched?: PrefetchedGra
         console.log("[GrantFlow] Falling back to fresh claim (no pre-fetched data)", { sessionId });
         setFlowState(prev => ({ ...prev, status: "claiming" }))
         const claimed = await claimSession({ sessionId, secret })
+        if (cancelled) return
         const session: GrantSession = {
           id: sessionId,
           granteeAddress: claimed.granteeAddress,
@@ -217,12 +225,14 @@ export function useGrantFlow(params: GrantFlowParams, prefetched?: PrefetchedGra
           claimed.granteeAddress,
           claimed.webhookUrl,
         )
+        if (cancelled) return
         setFlowState(prev => ({ ...prev, builderManifest }))
 
         // Advance to consent (data export already completed on the connect page)
         setFlowState(prev => ({ ...prev, status: "consent" }))
 
       } catch (error) {
+        if (cancelled) return
         console.error("[GrantFlow] Flow error", {
           sessionId,
           errorType: error instanceof SessionRelayError ? "SessionRelayError" : error instanceof BuilderVerificationError ? "BuilderVerificationError" : "unknown",
@@ -246,6 +256,8 @@ export function useGrantFlow(params: GrantFlowParams, prefetched?: PrefetchedGra
     }
 
     runFlow()
+
+    return () => { cancelled = true }
     // eslint-disable-next-line react-hooks/exhaustive-deps -- prefetched is stable from navigation state
   }, [sessionId, secret, retryCount])
 
@@ -329,10 +341,18 @@ export function useGrantFlow(params: GrantFlowParams, prefetched?: PrefetchedGra
   const handleApprove = useCallback(async () => {
     if (!flowState.session) return
 
-    // If not authenticated, defer to auth
+    // If not authenticated, defer to auth (auto-approve effect will resume)
     if (!isAuthenticated || !walletAddress) {
       setAuthPending(true)
       setFlowState(prev => ({ ...prev, status: "auth-required" }))
+      return
+    }
+
+    // If Personal Server isn't ready yet, defer (auto-approve effect will
+    // resume once personalServer.port arrives).
+    if (!personalServer.port) {
+      setAuthPending(true)
+      setFlowState(prev => ({ ...prev, status: "creating-grant" }))
       return
     }
 
@@ -358,12 +378,6 @@ export function useGrantFlow(params: GrantFlowParams, prefetched?: PrefetchedGra
 
       // Step: Create grant via Personal Server
       setFlowState(prev => ({ ...prev, status: "creating-grant" }))
-
-      if (!personalServer.port) {
-        throw new PersonalServerError(
-          "Personal Server is not running. Please wait for it to start."
-        )
-      }
 
       const { grantId } = await createGrant(personalServer.port, {
         granteeAddress: flowState.session.granteeAddress,
@@ -445,12 +459,25 @@ export function useGrantFlow(params: GrantFlowParams, prefetched?: PrefetchedGra
     dispatch,
   ])
 
-  // Auto-approve after auth completes (if user had clicked Allow before auth)
+  // Auto-approve after auth completes (if user had clicked Allow before auth).
+  // Also waits for personalServer.port — the server auto-starts when walletAddress
+  // becomes available, but it takes a moment to be ready.
   useEffect(() => {
     if (!authPending || !isAuthenticated || !walletAddress) return
+    // If the personal server failed to start, surface the error instead of waiting forever
+    if (personalServer.status === "error") {
+      setAuthPending(false)
+      setFlowState(prev => ({
+        ...prev,
+        status: "error",
+        error: personalServer.error || "Personal Server failed to start.",
+      }))
+      return
+    }
+    if (!personalServer.port) return // server still starting, effect re-runs when port arrives
     setAuthPending(false)
     void handleApprove()
-  }, [authPending, handleApprove, isAuthenticated, walletAddress])
+  }, [authPending, handleApprove, isAuthenticated, walletAddress, personalServer.port, personalServer.status, personalServer.error])
 
   // --- Retry from error ---
   // Bumps retryCount which re-triggers the main flow effect (claim → verify → consent).

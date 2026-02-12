@@ -19,9 +19,6 @@ import type {
 import { normalizeExportData } from '../lib/export-data';
 import { getScopeForPlatform, ingestData } from '../services/personalServerIngest';
 
-// Module-level guard to prevent duplicate listener registration during StrictMode/HMR
-let listenersRegistered = false;
-
 // Extended connector status event that can handle both string and object status
 interface ConnectorStatusEventPayload {
   runId: string;
@@ -49,26 +46,32 @@ export function useEvents() {
   const dispatch = useDispatch();
 
   useEffect(() => {
-    // Guard against duplicate registration (StrictMode double-mount, HMR)
-    if (listenersRegistered) return;
-    listenersRegistered = true;
+    let cancelled = false;
+    const unlistenFns: (() => void)[] = [];
 
-    const unlisteners: (() => void)[] = [];
+    // Helper: register a Tauri event listener with automatic cleanup on unmount.
+    // Handles the race where unmount happens before listen() resolves.
+    function addListener<T>(eventName: string, handler: (payload: T) => void) {
+      listen<T>(eventName, (event) => {
+        if (cancelled) return;
+        handler(event.payload);
+      }).then((unlisten) => {
+        if (cancelled) {
+          unlisten();
+        } else {
+          unlistenFns.push(unlisten);
+        }
+      });
+    }
 
     // Listen for connector log events
-    listen<ConnectorLogEvent>('connector-log', (event) => {
-      console.log('[Connector Log]', event.payload.message);
-      dispatch(
-        updateRunLogs({
-          runId: event.payload.runId,
-          logs: event.payload.message,
-        })
-      );
-    }).then((unlisten) => unlisteners.push(unlisten));
+    addListener<ConnectorLogEvent>('connector-log', ({ runId, message }) => {
+      console.log('[Connector Log]', message);
+      dispatch(updateRunLogs({ runId, logs: message }));
+    });
 
     // Listen for connector status events
-    listen<ConnectorStatusEventPayload>('connector-status', (event) => {
-      const { runId, status } = event.payload;
+    addListener<ConnectorStatusEventPayload>('connector-status', ({ runId, status }) => {
       console.log('[Connector Status]', runId, status);
 
       // Handle both string and object status formats
@@ -175,16 +178,15 @@ export function useEvents() {
           dispatch(updateRunExportData({ runId, statusMessage }));
         }
       }
-    }).then((unlisten) => unlisteners.push(unlisten));
+    });
 
     // Listen for download progress events
-    listen<DownloadProgressEvent>('download-progress', (event) => {
-      console.log('[Download Progress]', event.payload.percent.toFixed(1) + '%');
-    }).then((unlisten) => unlisteners.push(unlisten));
+    addListener<DownloadProgressEvent>('download-progress', ({ percent }) => {
+      console.log('[Download Progress]', percent.toFixed(1) + '%');
+    });
 
     // Listen for export complete events from connector
-    listen<ConnectorExportCompleteEvent>('export-complete', (event) => {
-      const { runId, platformId, company, name, data } = event.payload;
+    addListener<ConnectorExportCompleteEvent>('export-complete', ({ runId, platformId, company, name, data }) => {
       console.log('[Export Complete]', runId, platformId, name);
 
       dispatch(
@@ -237,9 +239,9 @@ export function useEvents() {
       const scope = getScopeForPlatform(platformId);
       if (scope) {
         invoke<{ running: boolean; port?: number }>('get_personal_server_status')
-          .then((status) => {
-            if (status.running && status.port) {
-              return ingestData(status.port, scope, data as object);
+          .then((serverStatus) => {
+            if (serverStatus.running && serverStatus.port) {
+              return ingestData(serverStatus.port, scope, data as object);
             }
           })
           .then(() => {
@@ -249,11 +251,10 @@ export function useEvents() {
             console.warn('[Personal Server Ingest] Failed (non-blocking):', err);
           });
       }
-    }).then((unlisten) => unlisteners.push(unlisten));
+    });
 
     // Listen for export complete events from Rust backend (legacy format)
-    listen<ExportCompleteEvent>('export-complete-rust', (event) => {
-      const { run_id, export_path, export_size } = event.payload;
+    addListener<ExportCompleteEvent>('export-complete-rust', ({ run_id, export_path, export_size }) => {
       console.log('[Export Complete Rust]', run_id, export_path);
       dispatch(
         updateExportStatus({
@@ -262,12 +263,12 @@ export function useEvents() {
           exportSize: export_size,
         })
       );
-    }).then((unlisten) => unlisteners.push(unlisten));
+    });
 
-    // Cleanup listeners on unmount
+    // Cleanup: cancel stale handlers and unregister resolved listeners
     return () => {
-      listenersRegistered = false;
-      unlisteners.forEach((unlisten) => unlisten());
+      cancelled = true;
+      unlistenFns.forEach((fn) => fn());
     };
   }, [dispatch]);
 }

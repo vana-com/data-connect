@@ -203,6 +203,19 @@ export function Connect() {
         : null
   const isBusy = isCheckingPlatforms || isConnecting
 
+  // If the data source is already connected, skip the connect step entirely
+  // and go straight to the grant consent screen.
+  useEffect(() => {
+    if (!platformsLoaded || !isAlreadyConnected) return
+    const grantHref = grantSearch
+      ? `${ROUTES.grant}?${grantSearch}`
+      : ROUTES.grant
+    navigate(grantHref, {
+      replace: true,
+      state: prefetched ? { prefetched } : undefined,
+    })
+  }, [platformsLoaded, isAlreadyConnected, grantSearch, navigate, prefetched])
+
   // When the connector run succeeds, move into `/grant`.
   // Pass pre-fetched session + builder data via navigation state so the
   // grant page can skip the claim + verify steps (already done in background).

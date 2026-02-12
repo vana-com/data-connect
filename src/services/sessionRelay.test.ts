@@ -4,6 +4,7 @@ import {
   approveSession,
   denySession,
   SessionRelayError,
+  _resetClaimCache,
 } from "./sessionRelay";
 
 const fetchSpy = vi.fn();
@@ -19,6 +20,7 @@ function jsonResponse(body: unknown, status = 200): Response {
 
 beforeEach(() => {
   fetchSpy.mockReset();
+  _resetClaimCache();
 });
 
 // --- claimSession ---

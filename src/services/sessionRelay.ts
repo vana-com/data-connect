@@ -121,11 +121,28 @@ async function relayFetch<T>(
 
 // --- API functions ---
 
+// Dedup concurrent claim calls for the same sessionId.
+// A session can only be claimed once — concurrent calls (React StrictMode
+// double-mount, Connect pre-fetch + Grant flow racing) share a single
+// HTTP request to avoid 409 "already claimed" errors.
+const claimInflight = new Map<string, Promise<ClaimSessionResponse>>();
+
+/** @internal Reset claim dedup cache (for testing). */
+export function _resetClaimCache() {
+  claimInflight.clear();
+}
+
 export async function claimSession(
   request: ClaimSessionRequest
 ): Promise<ClaimSessionResponse> {
+  const existing = claimInflight.get(request.sessionId);
+  if (existing) {
+    console.log("[SessionRelay] claimSession deduped (in-flight)", { sessionId: request.sessionId });
+    return existing;
+  }
+
   console.log("[SessionRelay] claimSession called", { sessionId: request.sessionId });
-  return relayFetch<ClaimSessionResponse>(
+  const promise = relayFetch<ClaimSessionResponse>(
     `${SESSION_RELAY_URL}/v1/session/claim`,
     {
       method: "POST",
@@ -133,6 +150,16 @@ export async function claimSession(
       body: JSON.stringify(request),
     }
   );
+
+  claimInflight.set(request.sessionId, promise);
+
+  // Keep successful results cached (claim is idempotent for the session lifetime).
+  // Clear failures so retries can make a fresh request.
+  promise.catch(() => {
+    claimInflight.delete(request.sessionId);
+  });
+
+  return promise;
 }
 
 export async function approveSession(

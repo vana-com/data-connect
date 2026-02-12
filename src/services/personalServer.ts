@@ -64,10 +64,17 @@ async function serverFetch<T>(
   }
 
   if (!response.ok) {
-    const message =
-      typeof data === "object" && data !== null && "error" in data
-        ? String((data as { error: string }).error)
-        : `Personal Server request failed (HTTP ${response.status})`;
+    let message = `Personal Server request failed (HTTP ${response.status})`;
+    if (typeof data === "object" && data !== null && "error" in data) {
+      const err = (data as Record<string, unknown>).error;
+      if (typeof err === "string") {
+        message = err;
+      } else if (typeof err === "object" && err !== null && "message" in err) {
+        message = String((err as Record<string, unknown>).message);
+      } else {
+        message = JSON.stringify(err);
+      }
+    }
     throw new PersonalServerError(message, response.status);
   }
 
@@ -85,10 +92,26 @@ export async function createGrant(
   if (devToken) {
     headers["Authorization"] = `Bearer ${devToken}`;
   }
+  // The library expects expiresAt as a unix timestamp (seconds), but the
+  // grant flow passes it as an ISO string. Convert before sending.
+  const body: Record<string, unknown> = {
+    granteeAddress: request.granteeAddress,
+    scopes: request.scopes,
+  };
+  if (request.expiresAt) {
+    const ms = new Date(request.expiresAt).getTime();
+    if (!Number.isNaN(ms)) {
+      body.expiresAt = Math.floor(ms / 1000);
+    }
+  }
+  if (request.nonce) {
+    body.nonce = Number(request.nonce);
+  }
+
   return serverFetch<CreateGrantResponse>(port, "/v1/grants", {
     method: "POST",
     headers,
-    body: JSON.stringify(request),
+    body: JSON.stringify(body),
   });
 }
 

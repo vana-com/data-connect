@@ -9,8 +9,10 @@ interface PersonalServerStatus {
   port: number | null;
 }
 
-// Module-level state shared across all hook instances so the tunnel URL
-// and dev token survive component remounts (e.g. navigating away from the runs page).
+// Module-level state shared across all hook instances so values
+// survive component remounts (e.g. navigating away from the runs page).
+let _sharedPort: number | null = null;
+let _sharedStatus: 'stopped' | 'starting' | 'running' | 'error' = 'stopped';
 let _sharedTunnelUrl: string | null = null;
 let _sharedDevToken: string | null = null;
 const isTauriRuntime = () =>
@@ -21,38 +23,38 @@ export function usePersonalServer() {
   const { walletAddress, masterKeySignature } = useSelector(
     (state: RootState) => state.app.auth
   );
-  const [status, setStatus] = useState<'stopped' | 'starting' | 'running' | 'error'>('stopped');
-  const [port, setPort] = useState<number | null>(null);
+  const [status, setStatus] = useState<'stopped' | 'starting' | 'running' | 'error'>(_sharedStatus);
+  const [port, setPort] = useState<number | null>(_sharedPort);
   const [tunnelUrl, setTunnelUrl] = useState<string | null>(_sharedTunnelUrl);
   const [devToken, setDevToken] = useState<string | null>(_sharedDevToken);
   const [error, setError] = useState<string | null>(null);
-  const running = useRef(false);
+  const running = useRef(_sharedStatus === 'starting' || _sharedStatus === 'running');
 
   const startServer = useCallback(async (wallet?: string | null) => {
     if (!isTauriRuntime()) return;
     if (running.current) return;
     running.current = true;
+    _sharedStatus = 'starting';
     setStatus('starting');
     setError(null);
 
     try {
       const owner = wallet ?? walletAddress ?? null;
       console.log('[PersonalServer] Starting with wallet:', owner ?? 'none');
-      const result = await invoke<PersonalServerStatus>('start_personal_server', {
+      await invoke<PersonalServerStatus>('start_personal_server', {
         port: null,
         masterKeySignature: masterKeySignature ?? null,
         gatewayUrl: null,
         ownerAddress: owner,
       });
 
-      if (result.running && result.port) {
-        setStatus('running');
-        setPort(result.port);
-      }
-      // If port is null (e.g. duplicate call), the personal-server-ready event will update it
+      // The invoke resolving means the subprocess was launched, not that
+      // the HTTP server is listening. Keep status as 'starting' until the
+      // 'personal-server-ready' event fires with the actual port.
     } catch (err) {
       console.error('[PersonalServer] Failed to start:', err);
       running.current = false;
+      _sharedStatus = 'error';
       setStatus('error');
       setError(err instanceof Error ? err.message : String(err));
     }
@@ -63,11 +65,13 @@ export function usePersonalServer() {
     try {
       await invoke('stop_personal_server');
       running.current = false;
+      _sharedStatus = 'stopped';
+      _sharedPort = null;
+      _sharedTunnelUrl = null;
+      _sharedDevToken = null;
       setStatus('stopped');
       setPort(null);
-      _sharedTunnelUrl = null;
       setTunnelUrl(null);
-      _sharedDevToken = null;
       setDevToken(null);
     } catch (err) {
       console.error('[PersonalServer] Failed to stop:', err);
@@ -81,12 +85,15 @@ export function usePersonalServer() {
 
     listen<{ port: number }>('personal-server-ready', (event) => {
       console.log('[PersonalServer] Ready on port', event.payload.port);
+      _sharedStatus = 'running';
+      _sharedPort = event.payload.port;
       setStatus('running');
       setPort(event.payload.port);
     }).then((fn) => unlisteners.push(fn));
 
     listen<{ message: string }>('personal-server-error', (event) => {
       console.error('[PersonalServer] Error:', event.payload.message);
+      _sharedStatus = 'error';
       setStatus('error');
       setError(event.payload.message);
     }).then((fn) => unlisteners.push(fn));

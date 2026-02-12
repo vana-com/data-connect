@@ -74,6 +74,7 @@
     ui-monospace, "SFMono-Regular", Menlo, Monaco, Consolas, "Liberation Mono",
     "Courier New", monospace;
 
+  /* custom font weights */
   --font-weight-semibold: 550;
 
   /* text sizes */

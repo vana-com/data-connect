@@ -24,6 +24,8 @@
     "demo:chatgpt-endpoint": "sh -c 'PORT=${DATABRIDGE_DEMO_PORT:-8787}; lsof -ti tcp:$PORT -sTCP:LISTEN | xargs kill -9 2>/dev/null || true; DATABRIDGE_DEMO_PORT=$PORT node --watch scripts/demo-chatgpt-endpoint.mjs'",
     "demo:chatgpt-endpoint:once": "sh -c 'PORT=${DATABRIDGE_DEMO_PORT:-8787}; lsof -ti tcp:$PORT -sTCP:LISTEN | xargs kill -9 2>/dev/null || true; DATABRIDGE_DEMO_PORT=$PORT node scripts/demo-chatgpt-endpoint.mjs'",
     "tauri:build": "node scripts/build-prod.js",
+    "release:github": "node scripts/release-github.mjs",
+    "release:versions": "node scripts/release-github.mjs --show-versions",
     "skills:sync": "node scripts/sync-skills.js",
     "skills:watch": "node scripts/watch-skills.js",
     "postinstall": "node scripts/fetch-connectors.js && node scripts/sync-skills.js"

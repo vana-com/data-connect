@@ -57,7 +57,7 @@ function getChatgptRootCandidates() {
       "ChatGPT",
     ),
     join(home, "AppData", "Roaming", "databridge", "exported_data", "OpenAI", "ChatGPT"),
-  ].filter(Boolean);
+  ].filter((candidate) => typeof candidate === "string");
 }
 
 function resolveChatgptRoot() {

@@ -299,7 +299,6 @@ export const useAuthPage = (): UseAuthPageState => {
       showLoading("Starting server...")
 
       let identity: Record<string, unknown> | null = null
-      let tunnelPublicUrl: string | null = null
 
       for (let i = 0; i < 30; i += 1) {
         await new Promise(resolve => setTimeout(resolve, 2000))
@@ -314,17 +313,16 @@ export const useAuthPage = (): UseAuthPageState => {
               "[AUTH] Server identity:",
               JSON.stringify(identity).substring(0, 200)
             )
-            const tunnel = data?.tunnel as
-              | { status?: string; publicUrl?: string }
-              | undefined
-            if (tunnel?.status === "connected" && tunnel?.publicUrl) {
-              tunnelPublicUrl = tunnel.publicUrl
+            const addr = (
+              data as {
+                identity?: { address?: string }
+                address?: string
+              }
+            )
+            if (addr.identity?.address || addr.address) {
               break
             }
-            console.log(
-              "[AUTH] Identity available but tunnel not ready yet:",
-              tunnel?.status ?? "null"
-            )
+            console.log("[AUTH] Identity available but no address yet")
           }
         } catch (err) {
           console.warn("[AUTH] /server-identity fetch error:", err)
@@ -334,15 +332,6 @@ export const useAuthPage = (): UseAuthPageState => {
       if (!identity) {
         console.warn("[AUTH] Server not ready after 60s, skipping registration")
         return
-      }
-
-      if (!tunnelPublicUrl) {
-        console.error(
-          "[AUTH] Tunnel not available — cannot register server with public URL"
-        )
-        throw new Error(
-          "Server tunnel not available. Registration will be retried on next sign-in."
-        )
       }
 
       const identityRecord = identity as {
@@ -362,6 +351,18 @@ export const useAuthPage = (): UseAuthPageState => {
         identityRecord.identity?.publicKey ?? identityRecord.publicKey
       const serverId =
         identityRecord.identity?.serverId ?? identityRecord.serverId
+
+      // Tunnel URL is deterministic: https://{serverAddress}.server.vana.org
+      const tunnelPublicUrl = serverAddress
+        ? `https://${serverAddress.toLowerCase()}.server.vana.org`
+        : null
+
+      if (!tunnelPublicUrl) {
+        console.error("[AUTH] No server address — cannot derive tunnel URL")
+        return
+      }
+
+      console.log("[AUTH] Using derived tunnel URL:", tunnelPublicUrl)
 
       if (serverId) {
         // Check if existing registration has the correct URL

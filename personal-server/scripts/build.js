@@ -6,7 +6,7 @@
  */
 
 import { execSync } from 'child_process';
-import { existsSync, mkdirSync, rmSync, readdirSync, statSync, lstatSync, readlinkSync, cpSync, writeFileSync, readFileSync } from 'fs';
+import { existsSync, mkdirSync, rmSync, readdirSync, statSync, lstatSync, readlinkSync, cpSync, writeFileSync } from 'fs';
 import { join, dirname, resolve } from 'path';
 import { fileURLToPath } from 'url';
 import { platform, arch } from 'os';
@@ -134,13 +134,40 @@ async function build() {
     }
   };
 
+  // Plugin to inline require("../package.json") calls from @opendatalabs
+  // packages at build time, so the runtime never needs to resolve that path
+  // inside the pkg snapshot. Applies to all @opendatalabs packages (not just
+  // personal-server-ts-server) to prevent MODULE_NOT_FOUND errors.
+  const inlinePackageJsonPlugin = {
+    name: 'inline-package-json',
+    setup(build) {
+      build.onLoad(
+        { filter: /node_modules[\\/]@opendatalabs[\\/][^\\/]+[\\/]dist[\\/].*\.js$/ },
+        async (args) => {
+          const { readFileSync } = await import('fs');
+          const { join, dirname } = await import('path');
+          let contents = readFileSync(args.path, 'utf8');
+          if (contents.includes('require("../package.json")')) {
+            const pkgJsonPath = join(dirname(args.path), '..', 'package.json');
+            const pkgJson = readFileSync(pkgJsonPath, 'utf8');
+            contents = contents.replace(
+              /require\("\.\.\/package\.json"\)/g,
+              `(${pkgJson.trim()})`
+            );
+          }
+          return { contents, loader: 'js' };
+        }
+      );
+    }
+  };
+
   await esbuild.build({
     entryPoints: [join(ROOT, 'index.js')],
     bundle: true,
     platform: 'node',
     format: 'cjs',
     outfile: bundlePath,
-    plugins: [dynamicNativeRequirePlugin],
+    plugins: [inlinePackageJsonPlugin, dynamicNativeRequirePlugin],
     banner: { js: nativeBanner },
     inject: [shimPath],
     define: {
@@ -150,33 +177,6 @@ async function build() {
 
   // Clean up shim file
   rmSync(shimPath, { force: true });
-
-  // Post-bundle fix: the library's bootstrap.js does
-  //   const require = createRequire(import.meta.url);
-  //   const pkg = require("../package.json");
-  // Since `require` is locally redefined, esbuild can't resolve it at build
-  // time — it stays as a runtime require("../package.json"). In the pkg binary
-  // that path doesn't resolve correctly. Replace it with the inlined JSON.
-  {
-    let bundle = readFileSync(bundlePath, 'utf-8');
-    // The library's package.json — this is what the original code was trying to load
-    const libPkgPath = join(ROOT, 'node_modules', '@opendatalabs', 'personal-server-ts-server', 'package.json');
-    if (existsSync(libPkgPath)) {
-      const libPkg = JSON.parse(readFileSync(libPkgPath, 'utf-8'));
-      // Only keep the fields the library actually uses (version)
-      const inlined = JSON.stringify({ name: libPkg.name, version: libPkg.version });
-      // esbuild renames the local `require` (from createRequire) to avoid
-      // shadowing — e.g. require3("../package.json"). Match any suffix.
-      const replaced = bundle.replace(
-        /require\d*\("\.\.\/package\.json"\)/g,
-        `(${inlined})`
-      );
-      if (replaced !== bundle) {
-        writeFileSync(bundlePath, replaced);
-        log(`Inlined library package.json (version: ${libPkg.version})`);
-      }
-    }
-  }
 
   // Step 2: Package with pkg
   const target = getPkgTarget();

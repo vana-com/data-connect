@@ -27,6 +27,7 @@
     "shell:allow-open",
     "deep-link:default",
     "http:default",
+    "mcp-bridge:default",
     {
       "identifier": "http:allow-fetch",
       "allow": [

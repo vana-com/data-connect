@@ -42,7 +42,7 @@ describe("claimSession", () => {
 
     expect(fetchSpy).toHaveBeenCalledOnce();
     const [url, init] = fetchSpy.mock.calls[0];
-    expect(url).toBe("https://session-relay.vana.org/v1/session/claim");
+    expect(url).toBe("https://session-relay-git-dev-opendatalabs.vercel.app/v1/session/claim");
     expect(init.method).toBe("POST");
     expect(init.headers).toEqual({ "Content-Type": "application/json" });
     expect(JSON.parse(init.body)).toEqual({
@@ -179,7 +179,7 @@ describe("approveSession", () => {
 
     const [url, init] = fetchSpy.mock.calls[0];
     expect(url).toBe(
-      "https://session-relay.vana.org/v1/session/sess-1/approve"
+      "https://session-relay-git-dev-opendatalabs.vercel.app/v1/session/sess-1/approve"
     );
     expect(init.method).toBe("POST");
     expect(JSON.parse(init.body)).toEqual({
@@ -188,6 +188,41 @@ describe("approveSession", () => {
       userAddress: "0xuser",
       scopes: ["chatgpt.conversations"],
     });
+  });
+
+  it("includes serverAddress in request body when provided", async () => {
+    fetchSpy.mockResolvedValueOnce(jsonResponse({}));
+
+    await approveSession("sess-1", {
+      secret: "s3cret",
+      grantId: "grant-123",
+      userAddress: "0xuser",
+      serverAddress: "0xserver",
+      scopes: ["chatgpt.conversations"],
+    });
+
+    const body = JSON.parse(fetchSpy.mock.calls[0][1].body);
+    expect(body).toEqual({
+      secret: "s3cret",
+      grantId: "grant-123",
+      userAddress: "0xuser",
+      serverAddress: "0xserver",
+      scopes: ["chatgpt.conversations"],
+    });
+  });
+
+  it("omits serverAddress from request body when not provided", async () => {
+    fetchSpy.mockResolvedValueOnce(jsonResponse({}));
+
+    await approveSession("sess-1", {
+      secret: "s3cret",
+      grantId: "grant-123",
+      userAddress: "0xuser",
+      scopes: ["chatgpt.conversations"],
+    });
+
+    const body = JSON.parse(fetchSpy.mock.calls[0][1].body);
+    expect(body.serverAddress).toBeUndefined();
   });
 
   it("URL-encodes the sessionId", async () => {
@@ -244,7 +279,7 @@ describe("denySession", () => {
     });
 
     const [url, init] = fetchSpy.mock.calls[0];
-    expect(url).toBe("https://session-relay.vana.org/v1/session/sess-1/deny");
+    expect(url).toBe("https://session-relay-git-dev-opendatalabs.vercel.app/v1/session/sess-1/deny");
     expect(init.method).toBe("POST");
     expect(JSON.parse(init.body)).toEqual({
       secret: "s3cret",

@@ -25,6 +25,7 @@ export interface ApproveSessionRequest {
   secret: string;
   grantId: string;
   userAddress: string;
+  serverAddress?: string;
   scopes: string[];
 }
 

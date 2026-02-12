@@ -19,6 +19,9 @@ const isTauriRuntime = () =>
   typeof window !== 'undefined' &&
   ('__TAURI__' in window || '__TAURI_INTERNALS__' in window);
 
+const MAX_RESTART_ATTEMPTS = 3;
+let _restartCount = 0;
+
 export function usePersonalServer() {
   const { walletAddress, masterKeySignature } = useSelector(
     (state: RootState) => state.app.auth
@@ -29,6 +32,8 @@ export function usePersonalServer() {
   const [devToken, setDevToken] = useState<string | null>(_sharedDevToken);
   const [error, setError] = useState<string | null>(null);
   const running = useRef(_sharedStatus === 'starting' || _sharedStatus === 'running');
+  const restartingRef = useRef(false);
+  const startServerRef = useRef<(wallet?: string | null) => Promise<void>>(null!);
 
   const startServer = useCallback(async (wallet?: string | null) => {
     if (!isTauriRuntime()) return;
@@ -60,6 +65,8 @@ export function usePersonalServer() {
     }
   }, [walletAddress, masterKeySignature]);
 
+  startServerRef.current = startServer;
+
   const stopServer = useCallback(async () => {
     if (!isTauriRuntime()) return;
     try {
@@ -78,6 +85,15 @@ export function usePersonalServer() {
     }
   }, []);
 
+  const restartServer = useCallback(async (wallet?: string | null) => {
+    console.log('[PersonalServer] Restarting with wallet:', wallet ?? 'none');
+    await stopServer();
+    // Brief wait for port release (stop_personal_server already waits up to 3s,
+    // but add a small buffer for OS-level cleanup)
+    await new Promise((r) => setTimeout(r, 500));
+    await startServerRef.current(wallet);
+  }, [stopServer]);
+
   // Listen for server events
   useEffect(() => {
     if (!isTauriRuntime()) return;
@@ -87,15 +103,46 @@ export function usePersonalServer() {
       console.log('[PersonalServer] Ready on port', event.payload.port);
       _sharedStatus = 'running';
       _sharedPort = event.payload.port;
+      _restartCount = 0;
+      restartingRef.current = false;
       setStatus('running');
       setPort(event.payload.port);
     }).then((fn) => unlisteners.push(fn));
 
     listen<{ message: string }>('personal-server-error', (event) => {
       console.error('[PersonalServer] Error:', event.payload.message);
+      running.current = false;
       _sharedStatus = 'error';
       setStatus('error');
       setError(event.payload.message);
+    }).then((fn) => unlisteners.push(fn));
+
+    listen<{ exitCode: number | null; crashed: boolean }>('personal-server-exited', (event) => {
+      const { exitCode, crashed } = event.payload;
+      console.log('[PersonalServer] Exited:', { exitCode, crashed });
+
+      running.current = false;
+      _sharedTunnelUrl = null;
+      _sharedDevToken = null;
+      setTunnelUrl(null);
+      setDevToken(null);
+      setPort(null);
+
+      if (crashed) {
+        _restartCount++;
+        if (_restartCount <= MAX_RESTART_ATTEMPTS) {
+          const delay = Math.pow(2, _restartCount) * 1000; // 2s, 4s, 8s
+          console.log(`[PersonalServer] Auto-restart attempt ${_restartCount}/${MAX_RESTART_ATTEMPTS} in ${delay}ms`);
+          setStatus('starting');
+          setTimeout(() => startServerRef.current(), delay);
+        } else {
+          console.error('[PersonalServer] Max restart attempts reached, giving up');
+          setStatus('error');
+          setError('Personal Server crashed repeatedly and could not be restarted');
+        }
+      } else {
+        setStatus('stopped');
+      }
     }).then((fn) => unlisteners.push(fn));
 
     listen<{ url: string }>('personal-server-tunnel', (event) => {
@@ -119,12 +166,25 @@ export function usePersonalServer() {
     };
   }, []);
 
-  // Start only after user is logged in (walletAddress available)
+  // Phase 1 — start unauthenticated on mount
+  const startedUnauthed = useRef(false);
+  useEffect(() => {
+    if (startedUnauthed.current) return;
+    if (running.current) return;
+    startedUnauthed.current = true;
+    startServer(null);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  // Phase 2 — restart with credentials when wallet becomes available
+  const lastStartedWallet = useRef<string | null>(null);
   useEffect(() => {
     if (!walletAddress) return;
-    if (running.current) return;
-    startServer(walletAddress);
-  }, [walletAddress, startServer]);
+    if (lastStartedWallet.current === walletAddress) return;
+    lastStartedWallet.current = walletAddress;
+    restartingRef.current = true;
+    restartServer(walletAddress);
+  }, [walletAddress, restartServer]);
 
-  return { status, port, tunnelUrl, devToken, error, startServer, stopServer };
+  return { status, port, tunnelUrl, devToken, error, startServer, stopServer, restartServer, restartingRef };
 }

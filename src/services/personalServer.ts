@@ -5,8 +5,8 @@
 export interface CreateGrantRequest {
   granteeAddress: string;
   scopes: string[];
-  expiresAt?: string;
-  nonce?: string;
+  expiresAt?: number;
+  nonce?: number;
 }
 
 export interface CreateGrantResponse {
@@ -92,26 +92,10 @@ export async function createGrant(
   if (devToken) {
     headers["Authorization"] = `Bearer ${devToken}`;
   }
-  // The library expects expiresAt as a unix timestamp (seconds), but the
-  // grant flow passes it as an ISO string. Convert before sending.
-  const body: Record<string, unknown> = {
-    granteeAddress: request.granteeAddress,
-    scopes: request.scopes,
-  };
-  if (request.expiresAt) {
-    const ms = new Date(request.expiresAt).getTime();
-    if (!Number.isNaN(ms)) {
-      body.expiresAt = Math.floor(ms / 1000);
-    }
-  }
-  if (request.nonce) {
-    body.nonce = Number(request.nonce);
-  }
-
   return serverFetch<CreateGrantResponse>(port, "/v1/grants", {
     method: "POST",
     headers,
-    body: JSON.stringify(body),
+    body: JSON.stringify(request),
   });
 }
 

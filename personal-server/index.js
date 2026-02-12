@@ -16,7 +16,7 @@
 process.env.NODE_ENV = 'production';
 
 import { join } from 'node:path';
-import { readFileSync, writeFileSync } from 'node:fs';
+import { readFileSync, writeFileSync, accessSync, constants } from 'node:fs';
 import { randomUUID } from 'node:crypto';
 import { spawn } from 'node:child_process';
 import { loadConfig } from '@opendatalabs/personal-server-ts-core/config';
@@ -180,12 +180,28 @@ async function main() {
       (await import('node:os')).homedir(),
       '.data-connect', 'personal-server'
     );
+
+    if (!context.tunnelManager && !context.tunnelUrl) {
+      const hasMasterKey = !!process.env.VANA_MASTER_KEY_SIGNATURE;
+      send({ type: 'log', message: `[tunnel] Not started. masterKey=${hasMasterKey}, port=${port}` });
+
+      const frpcPath = join(storageRoot, 'bin', process.platform === 'win32' ? 'frpc.exe' : 'frpc');
+      try {
+        accessSync(frpcPath, constants.X_OK);
+        send({ type: 'log', message: `[tunnel] frpc binary exists at ${frpcPath}` });
+      } catch {
+        send({ type: 'log', message: `[tunnel] frpc binary NOT found at ${frpcPath}` });
+      }
+    }
+
     const effectiveTunnelUrl = context.tunnelManager
       ? await fixTunnelProxyName(context.tunnelManager, storageRoot)
       : context.tunnelUrl;
 
     if (effectiveTunnelUrl) {
       send({ type: 'tunnel', url: effectiveTunnelUrl });
+    } else {
+      send({ type: 'tunnel-failed', message: 'Tunnel could not be established' });
     }
 
     function shutdown(signal) {

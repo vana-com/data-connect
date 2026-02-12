@@ -16,6 +16,7 @@ import {
   createGrant,
   PersonalServerError,
 } from "../../services/personalServer"
+import { fetchServerIdentity } from "../../services/serverRegistration"
 import { usePersonalServer } from "../../hooks/usePersonalServer"
 import {
   savePendingApproval,
@@ -379,13 +380,21 @@ export function useGrantFlow(params: GrantFlowParams, prefetched?: PrefetchedGra
       // Step: Create grant via Personal Server
       setFlowState(prev => ({ ...prev, status: "creating-grant" }))
 
+      const expiresAtNum = flowState.session.expiresAt
+        ? Math.floor(new Date(flowState.session.expiresAt).getTime() / 1000)
+        : undefined
+
       const { grantId } = await createGrant(personalServer.port, {
         granteeAddress: flowState.session.granteeAddress,
         scopes: flowState.session.scopes,
-        expiresAt: flowState.session.expiresAt,
+        expiresAt: expiresAtNum,
       }, personalServer.devToken)
 
       setFlowState(prev => ({ ...prev, grantId }))
+
+      // Fetch the Personal Server's own address so the builder can resolve
+      // the server via Gateway (registered under this address, not the user's).
+      const { address: serverAddress } = await fetchServerIdentity(personalServer.port)
 
       // Step: Approve session via Session Relay
       setFlowState(prev => ({ ...prev, status: "approving" }))
@@ -405,6 +414,7 @@ export function useGrantFlow(params: GrantFlowParams, prefetched?: PrefetchedGra
         grantId,
         secret: flowState.secret,
         userAddress: walletAddress,
+        serverAddress,
         scopes: flowState.session.scopes,
         createdAt: new Date().toISOString(),
       })
@@ -413,6 +423,7 @@ export function useGrantFlow(params: GrantFlowParams, prefetched?: PrefetchedGra
         secret: flowState.secret,
         grantId,
         userAddress: walletAddress,
+        serverAddress,
         scopes: flowState.session.scopes,
       })
 
@@ -460,11 +471,11 @@ export function useGrantFlow(params: GrantFlowParams, prefetched?: PrefetchedGra
   ])
 
   // Auto-approve after auth completes (if user had clicked Allow before auth).
-  // Also waits for personalServer.port — the server auto-starts when walletAddress
-  // becomes available, but it takes a moment to be ready.
+  // For non-demo sessions, wait until the Personal Server is ready (port available)
+  // so handleApprove doesn't throw "not running". If the server errors out, surface
+  // the error immediately instead of waiting forever.
   useEffect(() => {
     if (!authPending || !isAuthenticated || !walletAddress) return
-    // If the personal server failed to start, surface the error instead of waiting forever
     if (personalServer.status === "error") {
       setAuthPending(false)
       setFlowState(prev => ({
@@ -474,10 +485,11 @@ export function useGrantFlow(params: GrantFlowParams, prefetched?: PrefetchedGra
       }))
       return
     }
-    if (!personalServer.port) return // server still starting, effect re-runs when port arrives
+    const isDemo = isDemoSession(flowState.sessionId)
+    if (!isDemo && (personalServer.restartingRef.current || !personalServer.port) && personalServer.status !== "error") return
     setAuthPending(false)
     void handleApprove()
-  }, [authPending, handleApprove, isAuthenticated, walletAddress, personalServer.port, personalServer.status, personalServer.error])
+  }, [authPending, handleApprove, isAuthenticated, walletAddress, personalServer.port, personalServer.status, personalServer.error, flowState.sessionId])
 
   // --- Retry from error ---
   // Bumps retryCount which re-triggers the main flow effect (claim → verify → consent).

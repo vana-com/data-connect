@@ -1,6 +1,6 @@
 import type { ComponentPropsWithoutRef, ReactNode } from "react"
 import { cn } from "@/lib/classes"
-import { DOCS_LINKS } from "@/config/learn-more"
+import { LINKS } from "@/config/links"
 
 type LearnMoreLinkProps = Omit<ComponentPropsWithoutRef<"a">, "href" | "children"> & {
   href?: string
@@ -8,7 +8,7 @@ type LearnMoreLinkProps = Omit<ComponentPropsWithoutRef<"a">, "href" | "children
 }
 
 export function LearnMoreLink({
-  href = DOCS_LINKS.learnMore,
+  href = LINKS.docs,
   children,
   className,
   ...props

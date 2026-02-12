@@ -10,8 +10,9 @@ interface PersonalServerStatus {
 }
 
 // Module-level state shared across all hook instances so the tunnel URL
-// survives component remounts (e.g. navigating away from the runs page).
+// and dev token survive component remounts (e.g. navigating away from the runs page).
 let _sharedTunnelUrl: string | null = null;
+let _sharedDevToken: string | null = null;
 const isTauriRuntime = () =>
   typeof window !== 'undefined' &&
   ('__TAURI__' in window || '__TAURI_INTERNALS__' in window);
@@ -23,6 +24,7 @@ export function usePersonalServer() {
   const [status, setStatus] = useState<'stopped' | 'starting' | 'running' | 'error'>('stopped');
   const [port, setPort] = useState<number | null>(null);
   const [tunnelUrl, setTunnelUrl] = useState<string | null>(_sharedTunnelUrl);
+  const [devToken, setDevToken] = useState<string | null>(_sharedDevToken);
   const [error, setError] = useState<string | null>(null);
   const running = useRef(false);
 
@@ -65,6 +67,8 @@ export function usePersonalServer() {
       setPort(null);
       _sharedTunnelUrl = null;
       setTunnelUrl(null);
+      _sharedDevToken = null;
+      setDevToken(null);
     } catch (err) {
       console.error('[PersonalServer] Failed to stop:', err);
     }
@@ -97,6 +101,12 @@ export function usePersonalServer() {
       console.log('[PersonalServer]', event.payload.message);
     }).then((fn) => unlisteners.push(fn));
 
+    listen<{ token: string }>('personal-server-dev-token', (event) => {
+      console.log('[PersonalServer] Dev token received');
+      _sharedDevToken = event.payload.token;
+      setDevToken(event.payload.token);
+    }).then((fn) => unlisteners.push(fn));
+
     return () => {
       unlisteners.forEach((fn) => fn());
     };
@@ -109,5 +119,5 @@ export function usePersonalServer() {
     startServer(walletAddress);
   }, [walletAddress, startServer]);
 
-  return { status, port, tunnelUrl, error, startServer, stopServer };
+  return { status, port, tunnelUrl, devToken, error, startServer, stopServer };
 }

@@ -1,9 +1,11 @@
-import { Link } from "react-router-dom"
+import { Link, useNavigate } from "react-router-dom"
 import { CheckIcon, UserRoundCogIcon } from "lucide-react"
 import { PlatformIcon } from "@/components/icons/platform-icon"
 import { ActionPanel } from "@/components/typography/action-button"
+import { Button } from "@/components/ui/button"
 import { Text } from "@/components/typography/text"
 import { getPrimaryDataSourceLabel } from "@/lib/scope-labels"
+import { ROUTES } from "@/config/routes"
 
 interface GrantSuccessStateProps {
   appName?: string
@@ -11,6 +13,7 @@ interface GrantSuccessStateProps {
 }
 
 export function GrantSuccessState({ appName, scopes }: GrantSuccessStateProps) {
+  const navigate = useNavigate()
   const resolvedAppName = appName ?? "the app"
   const dataSourceLabel = getPrimaryDataSourceLabel(scopes)
   const dataLabel = dataSourceLabel ? `${dataSourceLabel} data` : "data"
@@ -30,11 +33,11 @@ export function GrantSuccessState({ appName, scopes }: GrantSuccessStateProps) {
         </Text>
 
         <Text as="p">
-          You can{" "}
+          You can manage or revoke access in{" "}
           <Text as={Link} to="/settings" link="default">
-            revoke this permission
-          </Text>{" "}
-          at any time.
+            Settings
+          </Text>
+          .
         </Text>
 
         <div className="action-outset">
@@ -44,10 +47,18 @@ export function GrantSuccessState({ appName, scopes }: GrantSuccessStateProps) {
           </ActionPanel>
         </div>
 
-        <Text as={Link} to="/settings" dim withIcon link="default">
-          <UserRoundCogIcon aria-hidden="true" className="size-[1.1em]" />
-          Manage your account
-        </Text>
+        <div className="flex items-center gap-3">
+          <Button
+            type="button"
+            onClick={() => navigate(ROUTES.home)}
+          >
+            Done
+          </Button>
+          <Text as={Link} to="/settings" dim withIcon link="default">
+            <UserRoundCogIcon aria-hidden="true" className="size-[1.1em]" />
+            Manage your account
+          </Text>
+        </div>
       </div>
     </div>
   )

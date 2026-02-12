@@ -6,9 +6,10 @@ import { Button } from "@/components/ui/button"
 interface GrantErrorStateProps {
   error?: string
   declineHref: string
+  onRetry?: () => void
 }
 
-export function GrantErrorState({ error, declineHref }: GrantErrorStateProps) {
+export function GrantErrorState({ error, declineHref, onRetry }: GrantErrorStateProps) {
   return (
     <div className="grid min-h-screen place-items-center bg-muted p-6">
       <div className="w-full max-w-[440px] rounded-card bg-background p-10 shadow-md">
@@ -22,9 +23,16 @@ export function GrantErrorState({ error, declineHref }: GrantErrorStateProps) {
               {error || "Please try again."}
             </Text>
           </div>
-          <Button asChild variant="default">
-            <Link to={declineHref}>Go to Your Data</Link>
-          </Button>
+          <div className="flex gap-3">
+            {onRetry ? (
+              <Button variant="default" onClick={onRetry}>
+                Try Again
+              </Button>
+            ) : null}
+            <Button asChild variant={onRetry ? "outline" : "default"}>
+              <Link to={declineHref}>Go to Your Data</Link>
+            </Button>
+          </div>
         </div>
       </div>
     </div>

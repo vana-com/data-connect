@@ -8,9 +8,7 @@ import { Settings } from "./index"
 
 const mockUseAuth = vi.fn()
 const mockUsePersonalServer = vi.fn()
-const mockGetAllConnectedApps = vi.fn()
-const mockSubscribeConnectedApps = vi.fn()
-const mockRemoveConnectedApp = vi.fn()
+const mockUseConnectedApps = vi.fn()
 const mockInvoke = vi.fn()
 const mockGetVersion = vi.fn()
 
@@ -30,13 +28,8 @@ vi.mock("@/hooks/usePersonalServer", () => ({
   usePersonalServer: () => mockUsePersonalServer(),
 }))
 
-vi.mock("@/lib/storage", () => ({
-  getAllConnectedApps: () => mockGetAllConnectedApps(),
-  subscribeConnectedApps: (callback: () => void) => {
-    mockSubscribeConnectedApps(callback)
-    return () => {}
-  },
-  removeConnectedApp: (appId: string) => mockRemoveConnectedApp(appId),
+vi.mock("@/hooks/useConnectedApps", () => ({
+  useConnectedApps: () => mockUseConnectedApps(),
 }))
 
 vi.mock("@tauri-apps/api/app", () => ({
@@ -88,7 +81,11 @@ beforeEach(() => {
     startServer: vi.fn(),
     stopServer: vi.fn(),
   })
-  mockGetAllConnectedApps.mockReturnValue([])
+  mockUseConnectedApps.mockReturnValue({
+    connectedApps: [],
+    fetchConnectedApps: vi.fn(),
+    removeApp: vi.fn(),
+  })
   mockGetVersion.mockResolvedValue("1.2.3")
   mockInvoke.mockImplementation((command: string) => {
     if (command === "get_user_data_path") {

@@ -1,5 +1,5 @@
 import { useEffect } from "react"
-import { describe, expect, it } from "vitest"
+import { describe, expect, it, vi, beforeEach, type Mock } from "vitest"
 import { render, waitFor } from "@testing-library/react"
 import {
   createMemoryRouter,
@@ -8,6 +8,12 @@ import {
 } from "react-router-dom"
 import { ROUTES } from "@/config/routes"
 import { useDeepLink } from "./use-deep-link"
+
+// Mock the Tauri deep-link plugin
+vi.mock("@tauri-apps/plugin-deep-link", () => ({
+  getCurrent: vi.fn(),
+  onOpenUrl: vi.fn(),
+}))
 
 function DeepLinkHarness({
   onChange,
@@ -25,7 +31,15 @@ function DeepLinkHarness({
 }
 
 describe("useDeepLink", () => {
+  beforeEach(() => {
+    vi.clearAllMocks()
+  })
+
   it("normalizes deep link params into /connect URL", async () => {
+    const deepLink = await import("@tauri-apps/plugin-deep-link")
+    ;(deepLink.getCurrent as Mock).mockResolvedValue(null)
+    ;(deepLink.onOpenUrl as Mock).mockResolvedValue(() => {})
+
     let latestPathname = ""
     let latestSearch = ""
 
@@ -63,6 +77,10 @@ describe("useDeepLink", () => {
   })
 
   it("does not redirect when already on canonical /grant URL", async () => {
+    const deepLink = await import("@tauri-apps/plugin-deep-link")
+    ;(deepLink.getCurrent as Mock).mockResolvedValue(null)
+    ;(deepLink.onOpenUrl as Mock).mockResolvedValue(() => {})
+
     let latestPathname = ""
     let latestSearch = ""
     const searchParams = new URLSearchParams({
@@ -97,5 +115,129 @@ describe("useDeepLink", () => {
     })
 
     expect(latestSearch).toBe(`?${searchParams.toString()}`)
+  })
+
+  it("navigates to /connect when app launched via vana:// deep link", async () => {
+    const deepLink = await import("@tauri-apps/plugin-deep-link")
+    ;(deepLink.getCurrent as Mock).mockResolvedValue([
+      "vana://connect?sessionId=sess-123&secret=sec-abc",
+    ])
+    ;(deepLink.onOpenUrl as Mock).mockResolvedValue(() => {})
+
+    let latestPathname = ""
+    let latestSearch = ""
+
+    const router = createMemoryRouter(
+      [
+        {
+          path: "*",
+          element: (
+            <DeepLinkHarness
+              onChange={(pathname, search) => {
+                latestPathname = pathname
+                latestSearch = search
+              }}
+            />
+          ),
+        },
+      ],
+      { initialEntries: [ROUTES.home] }
+    )
+
+    render(<RouterProvider router={router} />)
+
+    await waitFor(() => {
+      expect(latestPathname).toBe(ROUTES.connect)
+    })
+
+    const searchParams = new URLSearchParams(latestSearch)
+    expect(searchParams.get("sessionId")).toBe("sess-123")
+    expect(searchParams.get("secret")).toBe("sec-abc")
+  })
+
+  it("handles onOpenUrl callback for deep links while app is running", async () => {
+    const deepLink = await import("@tauri-apps/plugin-deep-link")
+    ;(deepLink.getCurrent as Mock).mockResolvedValue(null)
+
+    let onOpenUrlCallback: ((urls: string[]) => void) | null = null
+    ;(deepLink.onOpenUrl as Mock).mockImplementation(
+      (cb: (urls: string[]) => void) => {
+        onOpenUrlCallback = cb
+        return Promise.resolve(() => {})
+      }
+    )
+
+    let latestPathname = ""
+    let latestSearch = ""
+
+    const router = createMemoryRouter(
+      [
+        {
+          path: "*",
+          element: (
+            <DeepLinkHarness
+              onChange={(pathname, search) => {
+                latestPathname = pathname
+                latestSearch = search
+              }}
+            />
+          ),
+        },
+      ],
+      { initialEntries: [ROUTES.home] }
+    )
+
+    render(<RouterProvider router={router} />)
+
+    // Wait for plugin setup to complete
+    await waitFor(() => {
+      expect(onOpenUrlCallback).not.toBeNull()
+    })
+
+    // Simulate receiving a deep link while app is running
+    onOpenUrlCallback!(["vana://connect?sessionId=live-sess&secret=live-sec&scopes=chatgpt.conversations"])
+
+    await waitFor(() => {
+      expect(latestPathname).toBe(ROUTES.connect)
+    })
+
+    const searchParams = new URLSearchParams(latestSearch)
+    expect(searchParams.get("sessionId")).toBe("live-sess")
+    expect(searchParams.get("secret")).toBe("live-sec")
+    expect(searchParams.get("scopes")).toBe('["chatgpt.conversations"]')
+  })
+
+  it("ignores invalid deep link URLs from native plugin", async () => {
+    const deepLink = await import("@tauri-apps/plugin-deep-link")
+    ;(deepLink.getCurrent as Mock).mockResolvedValue([
+      "not-a-valid-url",
+      "vana://connect",  // valid URL but no sessionId/appId
+    ])
+    ;(deepLink.onOpenUrl as Mock).mockResolvedValue(() => {})
+
+    let latestPathname = ""
+
+    const router = createMemoryRouter(
+      [
+        {
+          path: "*",
+          element: (
+            <DeepLinkHarness
+              onChange={(pathname) => {
+                latestPathname = pathname
+              }}
+            />
+          ),
+        },
+      ],
+      { initialEntries: [ROUTES.home] }
+    )
+
+    render(<RouterProvider router={router} />)
+
+    // Should stay on home — no valid params in the URLs
+    await waitFor(() => {
+      expect(latestPathname).toBe(ROUTES.home)
+    })
   })
 })

@@ -8,7 +8,8 @@ fast loopback/backpressure.
 - **Typecheck**: `npx tsc -b`
 - **Build**: `npm run build`
 - **Lint**: `npm run lint`
-- **Test**: `npm run test` (when tests exist for the task)
+- **Test**: `npm run test` (uses happy-dom; jsdom broken by html-encoding-sniffer@6.0.0 ESM issue)
+- **Test (subset)**: `npx vitest run src/path/to/test.ts` (runs specific test files)
 
 ### Preferred CLI tools (small quality-of-life)
 

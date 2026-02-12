@@ -1,4 +1,3 @@
-import { Link } from "react-router-dom"
 import { LoaderIcon } from "lucide-react"
 import { Text } from "@/components/typography/text"
 import { Button } from "@/components/ui/button"
@@ -7,16 +6,16 @@ interface GrantAuthRequiredStateProps {
   appName?: string
   authUrl: string | null
   authError: string | null
-  declineHref: string
   onRetryAuth: () => void
+  onDeny?: () => void
 }
 
 export function GrantAuthRequiredState({
   appName,
   authUrl,
   authError,
-  declineHref,
   onRetryAuth,
+  onDeny,
 }: GrantAuthRequiredStateProps) {
   return (
     <div className="grid min-h-screen place-items-center bg-muted p-6">
@@ -74,11 +73,12 @@ export function GrantAuthRequiredState({
             </Button>
           )}
           <Button
-            asChild
+            type="button"
             variant="outline"
             className="border-border bg-transparent px-5 py-2.5 hover:bg-muted"
+            onClick={onDeny}
           >
-            <Link to={declineHref}>Cancel</Link>
+            Cancel
           </Button>
         </div>
       </div>

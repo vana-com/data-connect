@@ -44,4 +44,27 @@ describe("grant-params", () => {
       status: "success",
     })
   })
+
+  it("parses and round-trips secret param", () => {
+    const searchParams = buildGrantSearchParams({
+      sessionId: "sess-1",
+      secret: "my-secret-token",
+    })
+
+    expect(searchParams.get("secret")).toBe("my-secret-token")
+
+    const roundTrip = getGrantParamsFromSearchParams(searchParams)
+    expect(roundTrip.secret).toBe("my-secret-token")
+  })
+
+  it("omits secret from search params when not provided", () => {
+    const searchParams = buildGrantSearchParams({
+      sessionId: "sess-1",
+    })
+
+    expect(searchParams.has("secret")).toBe(false)
+
+    const roundTrip = getGrantParamsFromSearchParams(searchParams)
+    expect(roundTrip.secret).toBeUndefined()
+  })
 })

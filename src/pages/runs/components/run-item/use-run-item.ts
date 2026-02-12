@@ -20,11 +20,19 @@ export function useRunItem({ run, serverPort, serverReady }: UseRunItemProps) {
   const [expanded, setExpanded] = useState(false)
   const [exportData, setExportData] = useState<Run["exportData"]>(run.exportData)
   const [loadingData, setLoadingData] = useState(false)
-  const [ingestStatus, setIngestStatus] = useState<IngestStatus>("idle")
+  const [ingestStatus, setIngestStatus] = useState<IngestStatus>(
+    run.syncedToPersonalServer ? "sent" : "idle"
+  )
 
   useEffect(() => {
     setExportData(run.exportData)
   }, [run.exportData])
+
+  useEffect(() => {
+    if (run.syncedToPersonalServer) {
+      setIngestStatus("sent")
+    }
+  }, [run.syncedToPersonalServer])
 
   const scope = useMemo(() => getScopeForPlatform(run.platformId), [run.platformId])
   const canIngest = serverReady && !!serverPort && !!run.exportPath && !!scope

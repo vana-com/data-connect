@@ -176,13 +176,18 @@ export function usePersonalServer() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  // Phase 2 — restart with credentials when wallet becomes available
+  // Phase 2 — restart with credentials when wallet becomes available.
+  // Set restartingRef synchronously during render (not in useEffect) so that
+  // child components' effects (e.g. auto-approve in grant flow) see the flag
+  // before they fire — React runs effects bottom-up (children first).
   const lastStartedWallet = useRef<string | null>(null);
+  if (walletAddress && lastStartedWallet.current !== walletAddress) {
+    restartingRef.current = true;
+  }
   useEffect(() => {
     if (!walletAddress) return;
     if (lastStartedWallet.current === walletAddress) return;
     lastStartedWallet.current = walletAddress;
-    restartingRef.current = true;
     restartServer(walletAddress);
   }, [walletAddress, restartServer]);
 

@@ -43,6 +43,8 @@ export interface Run {
   // Progress tracking
   phase?: ProgressPhase;
   itemCount?: number;  // Real-time count during collection
+  // Sync status
+  syncedToPersonalServer?: boolean;
 }
 
 export interface ExportedData {

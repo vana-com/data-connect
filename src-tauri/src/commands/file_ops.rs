@@ -248,6 +248,8 @@ pub struct SavedRun {
     pub items_exported: Option<i64>,
     #[serde(rename = "itemLabel")]
     pub item_label: Option<String>,
+    #[serde(rename = "syncedToPersonalServer")]
+    pub synced_to_personal_server: Option<bool>,
 }
 
 /// Load all runs from the exported_data directory
@@ -308,51 +310,63 @@ pub async fn load_runs(app: AppHandle) -> Result<Vec<SavedRun>, String> {
                     // Read the JSON file to get more details
                     if let Ok(content) = fs::read_to_string(&json_path) {
                         if let Ok(data) = serde_json::from_str::<serde_json::Value>(&content) {
-                            // Extract items count and label from the content
-                            // Handle both direct content and nested content.data structures
-                            let content = data.get("content");
-                            let content_data = content.and_then(|c| c.get("data"));
+                            // Check if this export was synced to personal server
+                            let synced = data.get("syncedToPersonalServer")
+                                .and_then(|v| v.as_bool())
+                                .unwrap_or(false);
 
-                            // Try exportSummary at content.exportSummary or content.data.exportSummary
-                            let export_summary = content.and_then(|c| c.get("exportSummary"))
-                                .or_else(|| content_data.and_then(|d| d.get("exportSummary")));
+                            // For synced runs, read item metadata from top-level fields
+                            // (content was stripped during sync). For unsynced, parse from content.
+                            let (items_exported, item_label) = if synced {
+                                let items = data.get("itemsExported").and_then(|v| v.as_i64());
+                                let label = data.get("itemLabel").and_then(|v| v.as_str()).map(|s| s.to_string());
+                                (items, label)
+                            } else {
+                                // Extract items count and label from the content
+                                // Handle both direct content and nested content.data structures
+                                let content = data.get("content");
+                                let content_data = content.and_then(|c| c.get("data"));
 
-                            let items_exported = export_summary
-                                .and_then(|s| s.get("count").and_then(|v| v.as_i64()))
-                                .or_else(|| {
-                                    // Try content level first, then content.data level
-                                    let sources = [content, content_data];
-                                    for src in sources.iter().flatten() {
-                                        let count = src.get("totalConversations").and_then(|v| v.as_i64())
-                                            .or_else(|| src.get("totalPosts").and_then(|v| v.as_i64()))
-                                            .or_else(|| src.get("conversations").and_then(|v| v.as_array()).map(|a| a.len() as i64))
-                                            .or_else(|| src.get("posts").and_then(|v| v.as_array()).map(|a| a.len() as i64))
-                                            .or_else(|| src.get("memories").and_then(|v| v.as_array()).map(|a| a.len() as i64))
-                                            .or_else(|| src.get("media_count").and_then(|v| v.as_i64()));
-                                        if count.is_some() {
-                                            return count;
+                                // Try exportSummary at content.exportSummary or content.data.exportSummary
+                                let export_summary = content.and_then(|c| c.get("exportSummary"))
+                                    .or_else(|| content_data.and_then(|d| d.get("exportSummary")));
+
+                                let items = export_summary
+                                    .and_then(|s| s.get("count").and_then(|v| v.as_i64()))
+                                    .or_else(|| {
+                                        let sources = [content, content_data];
+                                        for src in sources.iter().flatten() {
+                                            let count = src.get("totalConversations").and_then(|v| v.as_i64())
+                                                .or_else(|| src.get("totalPosts").and_then(|v| v.as_i64()))
+                                                .or_else(|| src.get("conversations").and_then(|v| v.as_array()).map(|a| a.len() as i64))
+                                                .or_else(|| src.get("posts").and_then(|v| v.as_array()).map(|a| a.len() as i64))
+                                                .or_else(|| src.get("memories").and_then(|v| v.as_array()).map(|a| a.len() as i64))
+                                                .or_else(|| src.get("media_count").and_then(|v| v.as_i64()));
+                                            if count.is_some() {
+                                                return count;
+                                            }
                                         }
-                                    }
-                                    None
-                                });
+                                        None
+                                    });
 
-                            // Determine label based on platform/content type
-                            let item_label = export_summary
-                                .and_then(|s| s.get("label").and_then(|v| v.as_str()).map(|s| s.to_string()))
-                                .or_else(|| {
-                                    // Infer label from content type - check both levels
-                                    let sources = [content, content_data];
-                                    for src in sources.iter().flatten() {
-                                        if src.get("posts").is_some() || src.get("media_count").is_some() {
-                                            return Some("posts".to_string());
-                                        } else if src.get("conversations").is_some() {
-                                            return Some("conversations".to_string());
-                                        } else if src.get("memories").is_some() {
-                                            return Some("memories".to_string());
+                                let label = export_summary
+                                    .and_then(|s| s.get("label").and_then(|v| v.as_str()).map(|s| s.to_string()))
+                                    .or_else(|| {
+                                        let sources = [content, content_data];
+                                        for src in sources.iter().flatten() {
+                                            if src.get("posts").is_some() || src.get("media_count").is_some() {
+                                                return Some("posts".to_string());
+                                            } else if src.get("conversations").is_some() {
+                                                return Some("conversations".to_string());
+                                            } else if src.get("memories").is_some() {
+                                                return Some("memories".to_string());
+                                            }
                                         }
-                                    }
-                                    None
-                                });
+                                        None
+                                    });
+
+                                (items, label)
+                            };
 
                             // Extract display name from JSON, fallback to directory name
                             let display_name = data
@@ -378,6 +392,7 @@ pub async fn load_runs(app: AppHandle) -> Result<Vec<SavedRun>, String> {
                                 export_path: Some(run_path.to_string_lossy().to_string()),
                                 items_exported,
                                 item_label,
+                                synced_to_personal_server: if synced { Some(true) } else { None },
                             });
                         }
                     }
@@ -523,6 +538,89 @@ pub async fn open_platform_export_folder(
     }
 
     super::download::open_folder(data_dir.to_string_lossy().to_string()).await
+}
+
+/// Trim an export JSON after successful delivery to the personal server.
+/// Strips the large `content` payload, preserving metadata so `load_runs` still works.
+#[tauri::command]
+pub async fn mark_export_synced(
+    app: AppHandle,
+    run_id: String,
+    export_path: String,
+    items_exported: Option<i64>,
+    item_label: Option<String>,
+    scope: Option<String>,
+) -> Result<(), String> {
+    // Resolve directory: export_path may be a file (.json) or directory
+    let dir_path = {
+        let p = PathBuf::from(&export_path);
+        if p.extension().map_or(false, |ext| ext == "json") {
+            p.parent()
+                .ok_or_else(|| "Invalid export path".to_string())?
+                .to_path_buf()
+        } else {
+            p
+        }
+    };
+
+    if !dir_path.exists() {
+        log::info!("Export path already removed: {:?}", dir_path);
+        return Ok(());
+    }
+
+    // Safety: verify inside exported_data
+    let data_dir = app
+        .path()
+        .app_data_dir()
+        .map_err(|e| format!("Failed to get app data dir: {}", e))?
+        .join("exported_data");
+
+    if !dir_path.starts_with(&data_dir) {
+        return Err(format!("Refusing to modify path outside exported_data: {}", export_path));
+    }
+
+    // Find the JSON file in the run directory
+    let mut json_path: Option<PathBuf> = None;
+    for entry in fs::read_dir(&dir_path).map_err(|e| e.to_string())?.flatten() {
+        let path = entry.path();
+        if path.extension().map_or(false, |ext| ext == "json") {
+            json_path = Some(path);
+            break;
+        }
+    }
+
+    let json_path = json_path.ok_or_else(|| "No JSON file found in export directory".to_string())?;
+
+    // Read existing JSON, strip content, add synced metadata
+    let raw = fs::read_to_string(&json_path)
+        .map_err(|e| format!("Failed to read export file: {}", e))?;
+    let mut data: serde_json::Value = serde_json::from_str(&raw)
+        .map_err(|e| format!("Failed to parse export file: {}", e))?;
+
+    let synced_at = chrono::Utc::now().to_rfc3339();
+
+    // Strip the large content payload
+    data["content"] = serde_json::Value::Null;
+    // Add synced metadata at top level
+    data["syncedToPersonalServer"] = serde_json::Value::Bool(true);
+    data["syncedAt"] = serde_json::Value::String(synced_at);
+    if let Some(count) = items_exported {
+        data["itemsExported"] = serde_json::Value::Number(serde_json::Number::from(count));
+    }
+    if let Some(ref label) = item_label {
+        data["itemLabel"] = serde_json::Value::String(label.clone());
+    }
+    if let Some(ref s) = scope {
+        data["scope"] = serde_json::Value::String(s.clone());
+    }
+
+    let trimmed = serde_json::to_string_pretty(&data)
+        .map_err(|e| format!("Failed to serialize trimmed export: {}", e))?;
+    fs::write(&json_path, &trimmed)
+        .map_err(|e| format!("Failed to write trimmed export: {}", e))?;
+
+    log::info!("Marked export as synced for run {} (trimmed {})", run_id, json_path.display());
+    Ok(())
 }
 
 /// App configuration structure

@@ -8,6 +8,8 @@ import {
   updateExportStatus,
   updateRunConnected,
   updateRunExportData,
+  markRunSynced,
+  store,
 } from '../state/store';
 import type {
   ConnectorLogEvent,
@@ -40,6 +42,51 @@ interface ConnectorExportCompleteEvent {
   name: string; // Display name (e.g., "Instagram (Playwright)")
   data: unknown;
   timestamp: number;
+}
+
+/**
+ * Deliver a single run's export data to the personal server and mark staging as synced.
+ * Returns true on success, false on failure (non-throwing).
+ */
+async function deliverRunToPersonalServer(
+  run: { id: string; platformId: string; exportPath?: string; itemsExported?: number; itemLabel?: string; syncedToPersonalServer?: boolean },
+  port: number,
+  dispatch: ReturnType<typeof import('react-redux').useDispatch>,
+): Promise<boolean> {
+  if (!run.exportPath || run.syncedToPersonalServer) return false;
+
+  const scope = getScopeForPlatform(run.platformId);
+  if (!scope) return false;
+
+  // Normalize exportPath to directory
+  const dirPath = run.exportPath.endsWith('.json')
+    ? run.exportPath.replace(/\/[^/]+$/, '')
+    : run.exportPath;
+
+  try {
+    const data = await invoke<Record<string, unknown>>('load_run_export_data', {
+      runId: run.id,
+      exportPath: dirPath,
+    });
+    const payload = (data.content ?? data) as object;
+    await ingestData(port, scope, payload);
+
+    // Mark staging as synced (trims the large JSON)
+    await invoke('mark_export_synced', {
+      runId: run.id,
+      exportPath: run.exportPath,
+      itemsExported: run.itemsExported ?? null,
+      itemLabel: run.itemLabel ?? null,
+      scope,
+    });
+
+    dispatch(markRunSynced(run.id));
+    console.log('[Data Delivery] Synced run', run.id, 'to personal server, scope:', scope);
+    return true;
+  } catch (err) {
+    console.warn('[Data Delivery] Failed for run', run.id, '(non-blocking):', err);
+    return false;
+  }
 }
 
 export function useEvents() {
@@ -130,22 +177,44 @@ export function useEvents() {
             })
           );
 
-          // Save the data via Rust backend
+          // Save the data via Rust backend, then attempt delivery
           invoke('write_export_data', {
             runId: runId,
             platformId: exportData.platform || 'unknown',
             company: exportData.company || 'Unknown',
             data: JSON.stringify(exportData),
-          }).then((result) => {
+          }).then(async (result) => {
             console.log('[Export Saved]', result);
-            if (typeof result === 'string') {
-              dispatch(
-                updateExportStatus({
-                  runId,
-                  exportPath: result,
-                  exportSize: JSON.stringify(exportData).length,
-                })
-              );
+            if (typeof result !== 'string') return;
+
+            dispatch(
+              updateExportStatus({
+                runId,
+                exportPath: result,
+                exportSize: JSON.stringify(exportData).length,
+              })
+            );
+
+            // Attempt immediate delivery to personal server
+            const scope = getScopeForPlatform(exportData.platform || 'unknown');
+            if (!scope) return;
+
+            try {
+              const serverStatus = await invoke<{ running: boolean; port?: number }>('get_personal_server_status');
+              if (!serverStatus.running || !serverStatus.port) return;
+
+              await ingestData(serverStatus.port, scope, exportData as object);
+              await invoke('mark_export_synced', {
+                runId,
+                exportPath: result,
+                itemsExported: itemsExported ?? null,
+                itemLabel: itemLabel ?? null,
+                scope,
+              });
+              dispatch(markRunSynced(runId));
+              console.log('[Data Delivery] Synced run', runId, 'immediately after export');
+            } catch (err) {
+              console.warn('[Data Delivery] Deferred (server not ready):', err);
             }
           }).catch((err) => {
             console.error('[Export Save Error]', err);
@@ -185,6 +254,27 @@ export function useEvents() {
       console.log('[Download Progress]', percent.toFixed(1) + '%');
     });
 
+    // When personal server becomes ready, deliver all pending (unsynced) exports sequentially
+    let deliveryInProgress = false;
+    addListener<{ port: number }>('personal-server-ready', async ({ port }) => {
+      if (!port || deliveryInProgress) return;
+      deliveryInProgress = true;
+      console.log('[Data Delivery] Personal server ready on port', port, '— scanning for pending exports');
+      try {
+        const runs = store.getState().app.runs;
+        const pending = runs.filter(
+          (r) => r.exportPath && !r.syncedToPersonalServer && r.status === 'success'
+        );
+        console.log('[Data Delivery]', pending.length, 'pending exports to deliver');
+        for (const run of pending) {
+          if (cancelled) break;
+          await deliverRunToPersonalServer(run, port, dispatch);
+        }
+      } finally {
+        deliveryInProgress = false;
+      }
+    });
+
     // Listen for export complete events from connector
     addListener<ConnectorExportCompleteEvent>('export-complete', ({ runId, platformId, company, name, data }) => {
       console.log('[Export Complete]', runId, platformId, name);
@@ -212,45 +302,53 @@ export function useEvents() {
         })
       );
 
-      // Save the export data
+      // Save the export data, then attempt delivery to personal server
       invoke('write_export_data', {
         runId: runId,
         platformId: platformId,
         company,
         name: name || platformId, // Use display name if available
         data: JSON.stringify(data),
-      }).then((result) => {
+      }).then(async (result) => {
         console.log('[Export Saved]', result);
+        if (typeof result !== 'string') return;
+
         // Update export status with the path
-        if (typeof result === 'string') {
-          dispatch(
-            updateExportStatus({
-              runId,
-              exportPath: result,
-              exportSize: 0,
-            })
-          );
+        dispatch(
+          updateExportStatus({
+            runId,
+            exportPath: result,
+            exportSize: 0,
+          })
+        );
+
+        // Attempt immediate delivery to personal server
+        const scope = getScopeForPlatform(platformId);
+        if (!scope) return;
+
+        try {
+          const serverStatus = await invoke<{ running: boolean; port?: number }>('get_personal_server_status');
+          if (!serverStatus.running || !serverStatus.port) return;
+
+          await ingestData(serverStatus.port, scope, data as object);
+
+          // Delivery succeeded — trim staging and mark synced
+          await invoke('mark_export_synced', {
+            runId,
+            exportPath: result,
+            itemsExported: itemsExported ?? null,
+            itemLabel: itemLabel ?? null,
+            scope,
+          });
+          dispatch(markRunSynced(runId));
+          console.log('[Data Delivery] Synced run', runId, 'immediately after export');
+        } catch (err) {
+          // Delivery failed — staging file stays intact for personal-server-ready retry
+          console.warn('[Data Delivery] Deferred (server not ready):', err);
         }
       }).catch((err) => {
         console.error('[Export Save Error]', err);
       });
-
-      // Auto-upload to personal server if running
-      const scope = getScopeForPlatform(platformId);
-      if (scope) {
-        invoke<{ running: boolean; port?: number }>('get_personal_server_status')
-          .then((serverStatus) => {
-            if (serverStatus.running && serverStatus.port) {
-              return ingestData(serverStatus.port, scope, data as object);
-            }
-          })
-          .then(() => {
-            console.log('[Personal Server Ingest] Success for scope:', scope);
-          })
-          .catch((err) => {
-            console.warn('[Personal Server Ingest] Failed (non-blocking):', err);
-          });
-      }
     });
 
     // Listen for export complete events from Rust backend (legacy format)

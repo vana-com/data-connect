@@ -55,12 +55,15 @@
   --destructive-foreground: oklch(1 0 0); /* white on red */
 
   /* Success green scale */
-  --success: oklch(0.7566 0.255886 142.6788); /* #00D50B */
-  --success-foreground: oklch(1 0 0); /* white on green */
+  /* --success: oklch(0.7566 0.255886 142.6788); */ /* #00D50B */
+  --success: oklch(0.7699 0.212 148.6); /* #20D760 */
+  --success-foreground: color-mix(in oklch, var(--success) 90%, black);
+
+  --vana-blue: oklch(51.7% 0.265 272); /* #4141fc */
+  --vana-blueLight: oklch(0.6888 0.166 281.13); /* #8B8BFE */
 
   /* Accent blue scale (anchor: #4141fc):  */
   /* Using: https://www.radix-ui.com/colors/custom */
-  --vana-blue: oklch(51.7% 0.265 272); /* #4141fc */
   --accent: oklch(0.4248 0.1505 290.12); /* experiment; unused! */
   --accent-1: oklch(99.4% 0.0021 272);
   --accent-2: oklch(98.3% 0.011 272);

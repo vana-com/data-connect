@@ -23,6 +23,10 @@
   /* extend action content blocks outside the container */
   margin-inline: calc(var(--radius-squish) * -1);
 }
+@utility form-outset {
+  /* extend form content blocks outside the container */
+  margin-inline: calc(var(--radius-button) * -1);
+}
 
 /* These are iOS-specific (and take no effect in any other env). We set them here to @apply them in Tailwind classes for ease of application, eg. compose singularly in .viewport-wrapper */
 @utility safe-area-top {

@@ -19,11 +19,16 @@ It does not modify core personal-server or Tauri startup paths.
 
 1. Start DataBridge desktop app and ensure a ChatGPT export has completed at least once.
 2. In this repo, start sidecar server:
-   - `node scripts/demo-chatgpt-endpoint.mjs`
+   - `npm run demo:chatgpt-endpoint`
+   - This force-clears port conflicts and runs sidecar in watch mode.
 3. Confirm health:
    - `curl http://127.0.0.1:8787/healthz`
 4. Confirm endpoint:
    - `curl http://127.0.0.1:8787/v1/demo/chatgpt/latest`
+
+Port override (if needed):
+- `DATABRIDGE_DEMO_PORT=8788 npm run demo:chatgpt-endpoint`
+- Then use `http://127.0.0.1:8788/v1/demo/chatgpt/latest` in the demo app.
 
 If there is no parsed export yet, endpoint returns:
 - `404 { ok: false, error: "No ChatGPT parsed export found" }`
@@ -46,7 +51,11 @@ If there is no parsed export yet, endpoint returns:
 }
 ```
 
-`data` is the parsed ChatGPT export object from `1_parsed_conversations.json`.
+`data` is the latest parsed ChatGPT export object.
+
+Source file resolution is:
+- preferred: `extracted/1_parsed_conversations.json`
+- fallback: latest `*.json` in the run directory (for current playwright export layout)
 
 ### Error responses
 
@@ -87,12 +96,14 @@ export async function fetchChatgptLatest(): Promise<ChatgptLatestResponse> {
 - If network error: show `Demo endpoint unavailable. Start sidecar server.`
 - If `404`: show `No ChatGPT export found yet. Run export in DataBridge first.`
 - If `500`: show `Failed to read export data from local demo endpoint.`
+- If sidecar just came up, no app restart needed; trigger a fresh fetch (retry button, route refresh, or hard refresh).
 
 ## Fast troubleshooting
 
 - Verify sidecar process is running and listening on `127.0.0.1:8787`.
 - Hit `GET /healthz` first, then `GET /v1/demo/chatgpt/latest`.
 - If still failing, print response body directly in demo app logs before parsing assumptions.
+- If the other app shows stale failure state, force a new fetch; do not assume it auto-retries.
 
 ## Non-goals for this integration
 

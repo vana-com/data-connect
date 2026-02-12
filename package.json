@@ -21,6 +21,8 @@
     "preview": "vite preview",
     "tauri": "tauri",
     "tauri:dev": "node scripts/sync-connectors-dev.js && node scripts/ensure-playwright-runner.js && node scripts/ensure-personal-server.js && tauri dev",
+    "demo:chatgpt-endpoint": "sh -c 'PORT=${DATABRIDGE_DEMO_PORT:-8787}; lsof -ti tcp:$PORT -sTCP:LISTEN | xargs kill -9 2>/dev/null || true; DATABRIDGE_DEMO_PORT=$PORT node --watch scripts/demo-chatgpt-endpoint.mjs'",
+    "demo:chatgpt-endpoint:once": "sh -c 'PORT=${DATABRIDGE_DEMO_PORT:-8787}; lsof -ti tcp:$PORT -sTCP:LISTEN | xargs kill -9 2>/dev/null || true; DATABRIDGE_DEMO_PORT=$PORT node scripts/demo-chatgpt-endpoint.mjs'",
     "tauri:build": "node scripts/build-prod.js",
     "skills:sync": "node scripts/sync-skills.js",
     "skills:watch": "node scripts/watch-skills.js",

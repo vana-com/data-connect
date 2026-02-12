@@ -79,11 +79,22 @@ function resolveLatestParsedFile() {
   const runs = readdirSync(root, { withFileTypes: true })
     .filter((entry) => entry.isDirectory())
     .map((entry) => {
-      const parsedPath = join(root, entry.name, "extracted", "1_parsed_conversations.json");
-      if (!existsSync(parsedPath)) {
-        return null;
+      const runDir = join(root, entry.name);
+      const parsedPath = join(runDir, "extracted", "1_parsed_conversations.json");
+      if (existsSync(parsedPath)) {
+        return { parsedPath, updatedAtMs: Math.floor(statSync(parsedPath).mtimeMs) };
       }
-      return { parsedPath, updatedAtMs: Math.floor(statSync(parsedPath).mtimeMs) };
+
+      // Fallback for current local layout: chatgpt-playwright_<timestamp>.json in run dir.
+      const runFiles = readdirSync(runDir, { withFileTypes: true })
+        .filter((file) => file.isFile() && file.name.endsWith(".json"))
+        .map((file) => {
+          const jsonPath = join(runDir, file.name);
+          return { parsedPath: jsonPath, updatedAtMs: Math.floor(statSync(jsonPath).mtimeMs) };
+        })
+        .sort((a, b) => b.updatedAtMs - a.updatedAtMs);
+
+      return runFiles[0] ?? null;
     })
     .filter(Boolean)
     .sort((a, b) => b.updatedAtMs - a.updatedAtMs);

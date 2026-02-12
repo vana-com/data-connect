@@ -50,7 +50,7 @@ function SettingsRouteHarness() {
   )
 }
 
-const renderSettings = (initialEntry = ROUTES.settings) => {
+const renderSettings = (initialEntry: string = ROUTES.settings) => {
   const router = createMemoryRouter(
     [{ path: ROUTES.settings, element: <SettingsRouteHarness /> }],
     {

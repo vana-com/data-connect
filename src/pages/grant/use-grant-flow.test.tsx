@@ -25,6 +25,7 @@ let personalServerState = {
   error: null as string | null,
   startServer: vi.fn(),
   stopServer: vi.fn(),
+  restartServer: vi.fn(),
   restartingRef: { current: false },
 }
 

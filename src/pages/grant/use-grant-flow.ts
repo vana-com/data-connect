@@ -486,7 +486,7 @@ export function useGrantFlow(params: GrantFlowParams, prefetched?: PrefetchedGra
       return
     }
     const isDemo = isDemoSession(flowState.sessionId)
-    if (!isDemo && (personalServer.restartingRef.current || !personalServer.port) && personalServer.status !== "error") return
+    if (!isDemo && (personalServer.restartingRef.current || !personalServer.port)) return
     setAuthPending(false)
     void handleApprove()
   }, [authPending, handleApprove, isAuthenticated, walletAddress, personalServer.port, personalServer.status, personalServer.error, flowState.sessionId])

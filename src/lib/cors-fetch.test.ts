@@ -18,8 +18,8 @@ beforeEach(() => {
 
 afterEach(() => {
   // Clean up Tauri markers between tests
-  delete (window as Record<string, unknown>).__TAURI__;
-  delete (window as Record<string, unknown>).__TAURI_INTERNALS__;
+  delete (window as unknown as Record<string, unknown>).__TAURI__;
+  delete (window as unknown as Record<string, unknown>).__TAURI_INTERNALS__;
 });
 
 describe("corsFetch — browser runtime (no __TAURI__)", () => {
@@ -46,7 +46,7 @@ describe("corsFetch — browser runtime (no __TAURI__)", () => {
 
 describe("corsFetch — Tauri runtime (__TAURI__ present)", () => {
   it("delegates to Tauri HTTP plugin fetch when __TAURI__ is present", async () => {
-    (window as Record<string, unknown>).__TAURI__ = {};
+    (window as unknown as Record<string, unknown>).__TAURI__ = {};
     const fakeResponse = new Response("tauri-ok");
     tauriFetchSpy.mockResolvedValueOnce(fakeResponse);
 
@@ -61,7 +61,7 @@ describe("corsFetch — Tauri runtime (__TAURI__ present)", () => {
   });
 
   it("delegates to Tauri HTTP plugin fetch when __TAURI_INTERNALS__ is present", async () => {
-    (window as Record<string, unknown>).__TAURI_INTERNALS__ = {};
+    (window as unknown as Record<string, unknown>).__TAURI_INTERNALS__ = {};
     const fakeResponse = new Response("tauri-ok");
     tauriFetchSpy.mockResolvedValueOnce(fakeResponse);
 
@@ -76,7 +76,7 @@ describe("corsFetch — Tauri runtime (__TAURI__ present)", () => {
   });
 
   it("passes init options through to Tauri fetch", async () => {
-    (window as Record<string, unknown>).__TAURI__ = {};
+    (window as unknown as Record<string, unknown>).__TAURI__ = {};
     tauriFetchSpy.mockResolvedValueOnce(new Response());
 
     const init: RequestInit = { method: "PUT", headers: { "X-Custom": "1" } };

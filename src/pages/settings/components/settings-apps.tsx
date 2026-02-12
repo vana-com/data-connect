@@ -1,71 +1,148 @@
-import { ShieldIcon, Trash2Icon } from "lucide-react"
+import { BoxIcon, Trash2Icon } from "lucide-react"
 import type { ConnectedApp } from "../../../types"
+import { PlatformIcon } from "@/components/icons/platform-icon"
 import { Text } from "@/components/typography/text"
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogMedia,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from "@/components/ui/alert-dialog"
 import { Button } from "@/components/ui/button"
-import { SettingsCard, SettingsRow, SettingsSection } from "./settings-shared"
+import { LINKS } from "@/config/links"
+import { openExternalUrl } from "@/lib/open-resource"
+import { SettingsCard, SettingsRow } from "./settings-shared"
+
+// Local UI test toggle: set true to force test app rows.
+const TEST_LOGGED_IN = false
+const TEST_CONNECTED_APPS: ConnectedApp[] = [
+  {
+    id: "test-app-even-stevens",
+    name: "Even Stevens",
+    permissions: ["Read", "Write"],
+    connectedAt: new Date().toISOString(),
+  },
+  {
+    id: "test-app-rickroll",
+    name: "RickRoll",
+    permissions: ["Read", "Receive Realtime Updates"],
+    connectedAt: new Date().toISOString(),
+  },
+]
 
 interface SettingsAppsProps {
   connectedApps: ConnectedApp[]
   onRevokeApp: (appId: string) => void
 }
 
-export function SettingsApps({ connectedApps, onRevokeApp }: SettingsAppsProps) {
+export function SettingsApps({
+  connectedApps,
+  onRevokeApp,
+}: SettingsAppsProps) {
+  const effectiveConnectedApps = TEST_LOGGED_IN
+    ? TEST_CONNECTED_APPS
+    : connectedApps
+
   return (
-    <div>
-      <SettingsSection title="Connected applications">
-        {connectedApps.length === 0 ? (
-          <SettingsCard contentClassName="p-12 text-center">
-            <ShieldIcon
-              aria-hidden="true"
-              className="mx-auto size-12 text-muted-foreground"
+    <div className="space-y-8">
+      <div className="space-y-3 form-outset">
+        {effectiveConnectedApps.length === 0 ? (
+          <SettingsCard>
+            <SettingsRow
+              icon={<BoxIcon aria-hidden="true" />}
+              title={
+                <Text as="div" intent="body" weight="semi">
+                  No connected apps
+                </Text>
+              }
             />
-            <Text as="h3" intent="heading" weight="semi" className="mt-4">
-              No connected apps
-            </Text>
-            <Text as="p" intent="small" color="mutedForeground" className="mt-2">
-              Apps that you authorise to access your data will appear here
-            </Text>
           </SettingsCard>
         ) : (
           <SettingsCard divided>
-            {connectedApps.map(app => (
+            {effectiveConnectedApps.map(app => (
               <SettingsRow
                 key={app.id}
-                iconContainerClassName="bg-muted"
+                wrapIcon={false}
                 icon={
-                  <Text as="span" intent="subtitle" inline>
-                    {app.icon || "🔗"}
-                  </Text>
+                  <PlatformIcon
+                    iconName={app.icon?.trim() || app.name}
+                    fallbackLabel={app.name.charAt(0).toUpperCase()}
+                    size={28}
+                  />
                 }
                 title={
-                  <Text as="div" intent="small" weight="medium">
+                  <Text as="div" intent="body" weight="semi">
                     {app.name}
                   </Text>
                 }
                 description={
-                  <Text as="div" intent="fine" color="mutedForeground">
+                  <Text as="div" intent="small" muted>
                     {app.permissions.length > 0
                       ? app.permissions.join(", ")
                       : "Full access"}
                   </Text>
                 }
                 right={
-                  <Button
-                    type="button"
-                    variant="outline"
-                    size="sm"
-                    className="border-destructive/30 text-destructive hover:bg-destructive/10"
-                    onClick={() => onRevokeApp(app.id)}
-                  >
-                    <Trash2Icon aria-hidden="true" className="size-4" />
-                    Revoke
-                  </Button>
+                  <AlertDialog>
+                    <AlertDialogTrigger asChild>
+                      <Button type="button" variant="ghost" size="sm">
+                        Revoke
+                      </Button>
+                    </AlertDialogTrigger>
+                    <AlertDialogContent size="sm">
+                      <AlertDialogHeader>
+                        <AlertDialogMedia>
+                          <Trash2Icon aria-hidden="true" />
+                        </AlertDialogMedia>
+                        <AlertDialogTitle>Revoke app access?</AlertDialogTitle>
+                        <AlertDialogDescription>
+                          This will remove access for{" "}
+                          <strong>{app.name}</strong>. You can reconnect it
+                          later if needed.
+                        </AlertDialogDescription>
+                      </AlertDialogHeader>
+                      <AlertDialogFooter>
+                        <AlertDialogCancel size="sm">Cancel</AlertDialogCancel>
+                        <AlertDialogAction
+                          size="sm"
+                          variant="destructive"
+                          onClick={() => onRevokeApp(app.id)}
+                        >
+                          Revoke
+                        </AlertDialogAction>
+                      </AlertDialogFooter>
+                    </AlertDialogContent>
+                  </AlertDialog>
                 }
               />
             ))}
           </SettingsCard>
         )}
-      </SettingsSection>
+      </div>
+      <Text as="p" intent="small" muted>
+        Want to build your own application? Check{" "}
+        <Text
+          as="a"
+          intent="small"
+          className="text-current hover:text-foreground"
+          href={LINKS.appDevelopmentDocs}
+          target="_blank"
+          rel="noopener noreferrer"
+          onClick={event => {
+            event.preventDefault()
+            void openExternalUrl(LINKS.appDevelopmentDocs)
+          }}
+        >
+          {LINKS.appDevelopmentDocs.replace(/^https?:\/\//, "")}
+        </Text>
+        .
+      </Text>
     </div>
   )
 }

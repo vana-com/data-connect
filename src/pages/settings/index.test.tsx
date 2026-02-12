@@ -1,7 +1,9 @@
 import { describe, expect, it, beforeEach, vi } from "vitest"
-import { fireEvent, render } from "@testing-library/react"
-import { createMemoryRouter, RouterProvider } from "react-router"
+import { cleanup, fireEvent, render } from "@testing-library/react"
+import { createMemoryRouter, RouterProvider, useLocation } from "react-router"
+import { Provider } from "react-redux"
 import { ROUTES } from "@/config/routes"
+import { store } from "@/state/store"
 import { Settings } from "./index"
 
 const mockUseAuth = vi.fn()
@@ -38,15 +40,33 @@ vi.mock("@tauri-apps/api/core", () => ({
   invoke: (...args: unknown[]) => mockInvoke(...args),
 }))
 
-const renderSettings = () => {
-  const router = createMemoryRouter([{ path: ROUTES.settings, element: <Settings /> }], {
-    initialEntries: [ROUTES.settings],
-  })
+function SettingsRouteHarness() {
+  const location = useLocation()
+  return (
+    <>
+      <Settings />
+      <div data-testid="search">{location.search}</div>
+    </>
+  )
+}
 
-  return render(<RouterProvider router={router} />)
+const renderSettings = (initialEntry = ROUTES.settings) => {
+  const router = createMemoryRouter(
+    [{ path: ROUTES.settings, element: <SettingsRouteHarness /> }],
+    {
+      initialEntries: [initialEntry],
+    }
+  )
+
+  return render(
+    <Provider store={store}>
+      <RouterProvider router={router} />
+    </Provider>
+  )
 }
 
 beforeEach(() => {
+  cleanup()
   vi.clearAllMocks()
   mockUseAuth.mockReturnValue({
     user: null,
@@ -91,12 +111,13 @@ describe("Settings", () => {
   })
 
   it("switches to the apps section from the nav", () => {
-    const { getAllByRole, getByText } = renderSettings()
+    const { getAllByRole, getByText, getByTestId } = renderSettings()
 
     const [appsButton] = getAllByRole("button", { name: "Authorised Apps" })
     fireEvent.click(appsButton)
 
     expect(getByText("No connected apps")).toBeTruthy()
+    expect(getByTestId("search").textContent).toBe("?section=apps")
   })
 
   it("shows sign out when authenticated", () => {
@@ -110,5 +131,27 @@ describe("Settings", () => {
     const { getAllByText } = renderSettings()
 
     expect(getAllByText("Sign out").length).toBeGreaterThan(0)
+  })
+
+  it("reads section from URL", () => {
+    const { getByRole } = renderSettings(`${ROUTES.settings}?section=storage`)
+
+    expect(getByRole("heading", { name: "Storage & Server" })).toBeTruthy()
+  })
+
+  it("falls back to account for invalid section values", () => {
+    const { getByText } = renderSettings(`${ROUTES.settings}?section=invalid`)
+    expect(getByText("Local-only storage enabled")).toBeTruthy()
+  })
+
+  it("clears source param when switching between non-runs sections", () => {
+    const { getAllByRole, getByTestId } = renderSettings(
+      `${ROUTES.settings}?section=apps&source=github`
+    )
+
+    const [accountButton] = getAllByRole("button", { name: "Account" })
+    fireEvent.click(accountButton)
+
+    expect(getByTestId("search").textContent).toBe("")
   })
 })

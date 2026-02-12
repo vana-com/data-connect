@@ -63,7 +63,7 @@ const buttonVariants = cva(
         sm: [
           fieldHeight.sm,
           "rounded-button gap-1.5 px-2.5 has-[>svg]:px-2.5",
-          "text-small",
+          "text-small font-semibold",
         ],
         icon: [
           // same height as fieldHeight.default,

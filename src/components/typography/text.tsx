@@ -38,7 +38,7 @@ export const textVariants = cva(
         accent: "text-accent",
         accentForeground: "text-accent-foreground",
         destructive: "text-destructive",
-        success: "text-success",
+        success: "text-success-foreground",
         inherit: "text-inherit",
       },
       // Patterns: intentional design decisions
@@ -50,6 +50,7 @@ export const textVariants = cva(
         eyebrow: ["text-fine", eyebrowStyle],
         sm: "text-small",
         small: "text-small",
+        compact: "text-compact",
         body: "text-body",
         button: "text-button",
         lg: "text-large",

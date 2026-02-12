@@ -19,6 +19,7 @@ Use this skill to audit or refactor React components to align with:
 2. Read `docs/260202-ui-implementation-typography.md` and `AGENTS.md`.
 3. List violations by file with terse bullets.
 4. If asked to fix, apply minimal diff.
+5. If you touched any `Text` props, run a scoped check on touched files for verbose color props (`color="mutedForeground"` and `color="foregroundDim"`), then replace with boolean props (`muted` and `dim` respectively) unless a specific semantic color token is required.
 
 ## Primary principle
 

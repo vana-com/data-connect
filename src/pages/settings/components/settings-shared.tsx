@@ -1,19 +1,35 @@
-import type { ReactNode } from "react"
+import { Children, Fragment, type ReactNode } from "react"
 import { Text } from "@/components/typography/text"
 import { cn } from "@/lib/classes"
 
 interface SettingsSectionProps {
   title: ReactNode
+  description?: ReactNode
   children: ReactNode
   className?: string
 }
 
-export function SettingsSection({ title, children, className }: SettingsSectionProps) {
+export function SettingsSection({
+  title,
+  description,
+  children,
+  className,
+}: SettingsSectionProps) {
   return (
-    <section className={cn("space-y-3", className)}>
-      <Text as="h2" intent="small" weight="medium" color="mutedForeground">
-        {title}
-      </Text>
+    <section
+      data-component="settings-section"
+      className={cn("space-y-gap", className)}
+    >
+      <div className="space-y-1">
+        <Text as="h2" intent="button" weight="medium">
+          {title}
+        </Text>
+        {description && (
+          <Text as="p" intent="small" dim>
+            {description}
+          </Text>
+        )}
+      </div>
       {children}
     </section>
   )
@@ -32,8 +48,16 @@ export function SettingsCard({
   contentClassName,
   divided = false,
 }: SettingsCardProps) {
+  const items = divided ? Children.toArray(children) : []
   const content = divided ? (
-    <div className={cn("divide-y divide-border", contentClassName)}>{children}</div>
+    <div className={contentClassName}>
+      {items.map((child, index) => (
+        <Fragment key={index}>
+          {child}
+          {index < items.length - 1 && <SettingsRowDivider />}
+        </Fragment>
+      ))}
+    </div>
   ) : contentClassName ? (
     <div className={contentClassName}>{children}</div>
   ) : (
@@ -41,7 +65,13 @@ export function SettingsCard({
   )
 
   return (
-    <div className={cn("rounded-card border border-border bg-background", className)}>
+    <div
+      data-component="settings-card"
+      className={cn(
+        "rounded-card ring ring-border/30 bg-background",
+        className
+      )}
+    >
       {content}
     </div>
   )
@@ -49,6 +79,7 @@ export function SettingsCard({
 
 interface SettingsRowProps {
   icon: ReactNode
+  wrapIcon?: boolean
   iconContainerClassName?: string
   title: ReactNode
   description?: ReactNode
@@ -57,8 +88,21 @@ interface SettingsRowProps {
   contentClassName?: string
 }
 
+interface SettingsMetaRowProps {
+  title: ReactNode
+  description?: ReactNode
+  badge?: ReactNode
+  className?: string
+}
+
+interface SettingsStatusBadgeProps {
+  label?: ReactNode
+  className?: string
+}
+
 export function SettingsRow({
   icon,
+  wrapIcon = true,
   iconContainerClassName,
   title,
   description,
@@ -66,21 +110,131 @@ export function SettingsRow({
   className,
   contentClassName,
 }: SettingsRowProps) {
+  const iconContent = wrapIcon ? (
+    <div
+      className={cn(
+        "w-[34px] h-[30px] bg-mutedx",
+        "flex items-center justify-center rounded-button [&_svg]:size-6",
+        iconContainerClassName
+      )}
+    >
+      {icon}
+    </div>
+  ) : (
+    icon
+  )
+
   return (
-    <div className={cn("flex items-center gap-4 p-4", className)}>
+    <div
+      data-component="settings-row"
+      className={cn("flex items-center gap-4 p-4", className)}
+    >
+      {iconContent}
       <div
-        className={cn(
-          "flex size-10 items-center justify-center rounded-button",
-          iconContainerClassName
-        )}
+        className={cn("flex-1", description && "space-y-0.5", contentClassName)}
       >
-        {icon}
-      </div>
-      <div className={cn("flex-1", description && "space-y-1", contentClassName)}>
         {title}
         {description}
       </div>
       {right}
     </div>
+  )
+}
+
+export function SettingsMetaRow({
+  title,
+  description,
+  badge,
+  className,
+}: SettingsMetaRowProps) {
+  return (
+    <div
+      data-component="settings-meta-row"
+      className={cn(
+        "flex items-start justify-between gap-4 px-4 py-3",
+        className
+      )}
+    >
+      <div className={cn("flex-1", description && "space-y-0.5")}>
+        {title}
+        {description}
+      </div>
+      {badge}
+    </div>
+  )
+}
+
+export function SettingsRowDivider() {
+  return (
+    <div data-component="settings-row-divider" className="pl-4">
+      <div className="border-t border-border" />
+    </div>
+  )
+}
+
+function SettingsStatusBadge({
+  label,
+  textClassName,
+  dotClassName,
+  className,
+}: {
+  label: ReactNode
+  textClassName?: string
+  dotClassName?: string
+  className?: string
+}) {
+  return (
+    <Text
+      as="div"
+      intent="compact"
+      withIcon
+      className={cn("gap-1", textClassName, className)}
+      data-component="settings-status-badge"
+    >
+      <span className={cn("size-[0.5em] rounded-full", dotClassName)} />
+      {label}
+    </Text>
+  )
+}
+
+export function SettingsBadgeActive({
+  label = "Active",
+  className,
+}: SettingsStatusBadgeProps) {
+  return (
+    <SettingsStatusBadge
+      label={label}
+      textClassName="text-success-foreground"
+      dotClassName="bg-success-foreground"
+      className={className}
+    />
+  )
+}
+
+export function SettingsBadgeNone({
+  label = "None",
+  className,
+}: SettingsStatusBadgeProps) {
+  return (
+    <SettingsStatusBadge
+      label={label}
+      textClassName="text-stonebeige"
+      dotClassName="bg-stonebeige"
+      className={className}
+    />
+  )
+}
+
+export function SettingsBadgeError({
+  label = "Error",
+  className,
+}: SettingsStatusBadgeProps) {
+  return (
+    <SettingsStatusBadge
+      label={label}
+      textClassName="text-destructive"
+      dotClassName="bg-destructive"
+      className={className}
+    />
   )
 }

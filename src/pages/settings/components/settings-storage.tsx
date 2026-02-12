@@ -1,10 +1,25 @@
-import { useState, useEffect } from "react"
-import { FolderOpenIcon, DatabaseIcon, CheckCircleIcon, ServerIcon } from "lucide-react"
-import { fetchServerIdentity } from "../../../services/serverRegistration"
+import { useState } from "react"
+import { ChevronDownIcon } from "lucide-react"
 import { Text } from "@/components/typography/text"
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from "@/components/ui/alert-dialog"
 import { Button } from "@/components/ui/button"
-import { cn } from "@/lib/classes"
-import { SettingsCard, SettingsRow, SettingsSection } from "./settings-shared"
+import {
+  SettingsBadgeActive,
+  SettingsBadgeNone,
+  SettingsCard,
+  SettingsMetaRow,
+} from "./settings-shared"
+import { SettingsSingleSelectRowGroup } from "./settings-single-select-row-group"
 
 interface SettingsStorageProps {
   dataPath: string
@@ -15,220 +30,287 @@ interface SettingsStorageProps {
 }
 
 const storageOptions = [
-  { label: "Vana Storage", status: "Coming soon" },
-  { label: "Google Drive", status: "Coming soon" },
-  { label: "Dropbox", status: "Coming soon" },
+  {
+    id: "vana-storage",
+    label: "Vana Storage",
+    description: (
+      <>
+        The free storage solution by{" "}
+        <a href="#" className="link">
+          Vana
+        </a>
+        .
+      </>
+    ),
+    available: true,
+  },
+  {
+    id: "google-drive",
+    label: "Google Drive",
+    description: "Coming soon",
+    available: false,
+  },
+  {
+    id: "dropbox",
+    label: "Dropbox",
+    description: "Coming soon",
+    available: false,
+  },
 ] as const
+
+type StorageOptionId = (typeof storageOptions)[number]["id"]
+
+const serverOptions = [
+  {
+    id: "opendatalabs-cloud",
+    label: "OpenDataLabs Cloud",
+    description: (
+      <>
+        Free remote compute by{" "}
+        <a href="#" className="link">
+          OpenDataLabs
+        </a>
+        .
+      </>
+    ),
+    available: true,
+  },
+  {
+    id: "personal-server",
+    label: "Personal Server (advanced)",
+    description: "Run your own server. Control it the way you want it.",
+    available: true,
+  },
+] as const
+
+type ServerOptionId = (typeof serverOptions)[number]["id"]
 
 export function SettingsStorage({
   dataPath,
   onOpenDataFolder,
-  personalServerPort,
-  personalServerStatus,
 }: SettingsStorageProps) {
-  const [serverId, setServerId] = useState<string | null>(null)
-  const [identityChecked, setIdentityChecked] = useState(false)
+  const [draftStorageOption, setDraftStorageOption] =
+    useState<StorageOptionId | null>(null)
+  const [activeStorageOption, setActiveStorageOption] =
+    useState<StorageOptionId | null>(null)
+  const [draftServerOption, setDraftServerOption] =
+    useState<ServerOptionId | null>(null)
+  const [activeServerOption, setActiveServerOption] =
+    useState<ServerOptionId | null>(null)
 
-  useEffect(() => {
-    if (personalServerPort && personalServerStatus === "running") {
-      fetchServerIdentity(personalServerPort)
-        .then(identity => {
-          setServerId(identity.serverId)
-          setIdentityChecked(true)
-        })
-        .catch(() => setIdentityChecked(true))
-    }
-  }, [personalServerPort, personalServerStatus])
-
-  const isServerRunning = personalServerStatus === "running"
-  const isStarting = personalServerStatus === "starting"
-  const isRegistered = !!serverId
+  const selectedStorageOption = activeStorageOption ?? draftStorageOption
+  const showSaveStorage = !activeStorageOption && !!draftStorageOption
+  const selectedServerOption = activeServerOption ?? draftServerOption
+  const showSaveServer = !activeServerOption && !!draftServerOption
 
   return (
-    <div className="space-y-6">
-      <SettingsSection title="Local Data">
+    <div className="space-y-8">
+      {/* LOCAL */}
+      <div className="space-y-3 form-outset">
         <SettingsCard>
-          <SettingsRow
-            iconContainerClassName="bg-accent/10"
-            icon={<DatabaseIcon aria-hidden="true" className="size-5 text-accent" />}
+          <SettingsMetaRow
             title={
-              <Text as="div" intent="small" weight="medium">
-                Export location
+              <Text as="div" intent="body" weight="semi">
+                Local Data
               </Text>
             }
             description={
-              <Text as="div" intent="fine" color="mutedForeground" truncate>
-                {dataPath}
+              <Text as="div" intent="small" muted>
+                Required.&nbsp;
+                <a
+                  href="#"
+                  className="link"
+                  onClick={event => {
+                    event.preventDefault()
+                    onOpenDataFolder()
+                  }}
+                >
+                  Open location.
+                  <span className="sr-only"> at {dataPath}</span>
+                </a>
               </Text>
             }
-            right={
-              <Button
-                type="button"
-                variant="outline"
-                size="sm"
-                onClick={onOpenDataFolder}
-              >
-                <FolderOpenIcon aria-hidden="true" className="size-4" />
-                Open
-              </Button>
-            }
+            badge={<SettingsBadgeActive />}
           />
         </SettingsCard>
-      </SettingsSection>
+      </div>
 
-      <SettingsSection title="Storage">
-        <SettingsCard divided>
-          <SettingsRow
-            iconContainerClassName="bg-accent/10"
-            icon={<DatabaseIcon aria-hidden="true" className="size-5 text-accent" />}
+      {/* STORAGE */}
+      <div className="space-y-3 form-outset">
+        <SettingsCard>
+          <SettingsMetaRow
             title={
-              <Text as="div" intent="small" weight="medium">
-                Local Storage
+              <Text as="div" intent="body" weight="semi">
+                Storage
               </Text>
             }
             description={
-              <Text as="div" intent="fine" color="mutedForeground">
-                Selected
+              <Text as="div" intent="small" muted>
+                Optional. Choose a hosted option for always-on access.
               </Text>
             }
-            right={<CheckCircleIcon aria-hidden="true" className="size-5 text-accent" />}
-          />
-          {storageOptions.map(item => (
-            <SettingsRow
-              key={item.label}
-              className="opacity-60"
-              iconContainerClassName="bg-muted"
-              icon={
-                <DatabaseIcon
-                  aria-hidden="true"
-                  className="size-5 text-muted-foreground"
-                />
-              }
-              title={
-                <Text as="div" intent="small" weight="medium">
-                  {item.label}
-                </Text>
-              }
-              description={
-                <Text as="div" intent="fine" color="mutedForeground">
-                  {item.status}
-                </Text>
-              }
-            />
-          ))}
-        </SettingsCard>
-      </SettingsSection>
-
-      <SettingsSection title="Server">
-        <SettingsCard divided>
-          <SettingsRow
-            iconContainerClassName="bg-accent/10"
-            icon={<DatabaseIcon aria-hidden="true" className="size-5 text-accent" />}
-            title={
-              <Text as="div" intent="small" weight="medium">
-                Self-hosted
-              </Text>
-            }
-            description={
-              <Text as="div" intent="fine" color="mutedForeground">
-                Selected
-              </Text>
-            }
-            right={<CheckCircleIcon aria-hidden="true" className="size-5 text-accent" />}
-          />
-          <SettingsRow
-            className="opacity-60"
-            iconContainerClassName="bg-muted"
-            icon={
-              <DatabaseIcon aria-hidden="true" className="size-5 text-muted-foreground" />
-            }
-            title={
-              <Text as="div" intent="small" weight="medium">
-                OpenDataLabs Cloud
-              </Text>
-            }
-            description={
-              <Text as="div" intent="fine" color="mutedForeground">
-                Coming soon
-              </Text>
-            }
-          />
-        </SettingsCard>
-      </SettingsSection>
-
-      <SettingsSection title="Personal Server">
-        <SettingsCard divided>
-          <SettingsRow
-            iconContainerClassName={cn(
-              isServerRunning ? "bg-success/10" : isStarting ? "bg-accent/10" : "bg-muted"
-            )}
-            icon={
-              <ServerIcon
-                aria-hidden="true"
-                className={cn(
-                  "size-5",
-                  isServerRunning
-                    ? "text-success"
-                    : isStarting
-                      ? "text-accent"
-                      : "text-muted-foreground"
-                )}
-              />
-            }
-            title={
-              <Text as="div" intent="small" weight="medium">
-                Status
-              </Text>
-            }
-            description={
-              <Text
-                as="div"
-                intent="fine"
-                color={
-                  isServerRunning ? "success" : isStarting ? "accent" : "mutedForeground"
-                }
-              >
-                {isServerRunning
-                  ? `Running on port ${personalServerPort}`
-                  : isStarting
-                    ? "Starting..."
-                    : "Stopped"}
-              </Text>
-            }
-          />
-
-          <SettingsRow
-            iconContainerClassName={cn(isRegistered ? "bg-success/10" : "bg-accent/10")}
-            icon={
-              isRegistered ? (
-                <CheckCircleIcon aria-hidden="true" className="size-5 text-success" />
+            badge={
+              activeStorageOption ? (
+                <SettingsBadgeActive />
               ) : (
-                <DatabaseIcon aria-hidden="true" className="size-5 text-accent" />
+                <SettingsBadgeNone />
               )
             }
-            title={
-              <Text as="div" intent="small" weight="medium">
-                Registration
-              </Text>
-            }
-            description={
-              <Text
-                as="div"
-                intent="fine"
-                color={isRegistered ? "success" : "mutedForeground"}
-              >
-                {!isServerRunning
-                  ? "Server not running"
-                  : !identityChecked
-                    ? "Checking..."
-                    : isRegistered
-                      ? `Registered (${serverId})`
-                      : "Not registered — will register on next sign-in"}
-              </Text>
+          />
+          <SettingsSingleSelectRowGroup
+            ariaLabel="Storage"
+            options={storageOptions}
+            value={selectedStorageOption}
+            onChange={nextValue => {
+              if (activeStorageOption) return
+              setDraftStorageOption(nextValue)
+            }}
+            renderRight={(item, selected) =>
+              activeStorageOption === item.id && selected ? (
+                <AlertDialog>
+                  <AlertDialogTrigger asChild>
+                    <Button type="button" variant="ghost" size="sm">
+                      Remove
+                    </Button>
+                  </AlertDialogTrigger>
+                  <AlertDialogContent size="sm">
+                    <AlertDialogHeader>
+                      <AlertDialogTitle>
+                        Remove storage provider?
+                      </AlertDialogTitle>
+                      <AlertDialogDescription>
+                        This will clear the active storage selection. You can
+                        set it again later.
+                      </AlertDialogDescription>
+                    </AlertDialogHeader>
+                    <AlertDialogFooter>
+                      <AlertDialogCancel size="sm">Cancel</AlertDialogCancel>
+                      <AlertDialogAction
+                        size="sm"
+                        variant="destructive"
+                        onClick={() => {
+                          setActiveStorageOption(null)
+                          setDraftStorageOption(null)
+                        }}
+                      >
+                        Remove
+                      </AlertDialogAction>
+                    </AlertDialogFooter>
+                  </AlertDialogContent>
+                </AlertDialog>
+              ) : null
             }
           />
         </SettingsCard>
-      </SettingsSection>
+        {showSaveStorage ? (
+          <div className="flex justify-end">
+            <Button
+              type="button"
+              variant="default"
+              size="sm"
+              className="w-auto bg-irisLight px-w6"
+              onClick={() => {
+                setActiveStorageOption(draftStorageOption)
+              }}
+            >
+              Save & create
+            </Button>
+          </div>
+        ) : null}
+      </div>
+
+      {/* SERVER */}
+      <div className="space-y-3 form-outset">
+        <SettingsCard>
+          <SettingsMetaRow
+            title={
+              <Text as="div" intent="body" weight="semi">
+                Server
+              </Text>
+            }
+            description={
+              <Text as="div" intent="small" muted>
+                Where requests are served from.
+              </Text>
+            }
+            badge={
+              activeServerOption ? (
+                <SettingsBadgeActive />
+              ) : (
+                <SettingsBadgeNone />
+              )
+            }
+          />
+          <SettingsSingleSelectRowGroup
+            ariaLabel="Server"
+            options={serverOptions}
+            value={selectedServerOption}
+            onChange={nextValue => {
+              if (activeServerOption) return
+              setDraftServerOption(nextValue)
+            }}
+            renderRight={(item, selected) => {
+              if (item.id === "personal-server") {
+                return (
+                  <ChevronDownIcon
+                    aria-hidden="true"
+                    className="size-6 text-foreground"
+                  />
+                )
+              }
+
+              return activeServerOption === item.id && selected ? (
+                <AlertDialog>
+                  <AlertDialogTrigger asChild>
+                    <Button type="button" variant="ghost" size="sm">
+                      Remove
+                    </Button>
+                  </AlertDialogTrigger>
+                  <AlertDialogContent size="sm">
+                    <AlertDialogHeader>
+                      <AlertDialogTitle>
+                        Remove server provider?
+                      </AlertDialogTitle>
+                      <AlertDialogDescription>
+                        This will clear the active server selection. You can set
+                        it again later.
+                      </AlertDialogDescription>
+                    </AlertDialogHeader>
+                    <AlertDialogFooter>
+                      <AlertDialogCancel size="sm">Cancel</AlertDialogCancel>
+                      <AlertDialogAction
+                        size="sm"
+                        variant="destructive"
+                        onClick={() => {
+                          setActiveServerOption(null)
+                          setDraftServerOption(null)
+                        }}
+                      >
+                        Remove
+                      </AlertDialogAction>
+                    </AlertDialogFooter>
+                  </AlertDialogContent>
+                </AlertDialog>
+              ) : null
+            }}
+          />
+        </SettingsCard>
+        {showSaveServer ? (
+          <div className="flex justify-end">
+            <Button
+              type="button"
+              variant="default"
+              size="sm"
+              className="w-auto bg-irisLight px-w6"
+              onClick={() => {
+                setActiveServerOption(draftServerOption)
+              }}
+            >
+              Save & create
+            </Button>
+          </div>
+        ) : null}
+      </div>
     </div>
   )
 }

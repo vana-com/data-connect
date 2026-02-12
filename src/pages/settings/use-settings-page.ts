@@ -1,7 +1,7 @@
 import { getVersion } from "@tauri-apps/api/app"
 import { invoke } from "@tauri-apps/api/core"
 import { useCallback, useEffect, useState } from "react"
-import { useNavigate } from "react-router"
+import { useNavigate, useSearchParams } from "react-router"
 import { useAuth } from "@/hooks/useAuth"
 import { usePersonalServer } from "@/hooks/usePersonalServer"
 import { useConnectedApps } from "@/hooks/useConnectedApps"
@@ -9,13 +9,24 @@ import { ROUTES } from "@/config/routes"
 import { openLocalPath } from "@/lib/open-resource"
 import { getUserDataPath } from "@/lib/tauri-paths"
 import type { BrowserSession, BrowserStatus, NodeJsTestResult, SettingsSection } from "./types"
+import {
+  DEFAULT_SETTINGS_SECTION,
+  SETTINGS_SECTION_PARAM,
+  isSettingsSection,
+} from "./url"
+
+const RUNS_SECTION: SettingsSection = "runs"
 
 export function useSettingsPage() {
   const navigate = useNavigate()
+  const [searchParams, setSearchParams] = useSearchParams()
   const { user, logout, isAuthenticated, walletAddress } = useAuth()
   const personalServer = usePersonalServer()
   const { connectedApps, fetchConnectedApps, removeApp } = useConnectedApps()
-  const [activeSection, setActiveSection] = useState<SettingsSection>("account")
+  const sectionParam = searchParams.get(SETTINGS_SECTION_PARAM)
+  const activeSection = isSettingsSection(sectionParam)
+    ? sectionParam
+    : DEFAULT_SETTINGS_SECTION
   const [dataPath, setDataPath] = useState<string>("")
   const [appVersion, setAppVersion] = useState<string>("")
   const [nodeTestStatus, setNodeTestStatus] = useState<
@@ -171,6 +182,22 @@ export function useSettingsPage() {
   const handleSignIn = useCallback(() => {
     navigate(ROUTES.login)
   }, [navigate])
+
+  const setActiveSection = useCallback(
+    (nextSection: SettingsSection) => {
+      const nextSearchParams = new URLSearchParams(searchParams)
+      if (nextSection !== RUNS_SECTION) {
+        nextSearchParams.delete("source")
+      }
+      if (nextSection === DEFAULT_SETTINGS_SECTION) {
+        nextSearchParams.delete(SETTINGS_SECTION_PARAM)
+      } else {
+        nextSearchParams.set(SETTINGS_SECTION_PARAM, nextSection)
+      }
+      setSearchParams(nextSearchParams, { replace: true })
+    },
+    [searchParams, setSearchParams]
+  )
 
   return {
     activeSection,

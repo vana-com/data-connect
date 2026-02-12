@@ -13,13 +13,13 @@ export function SettingsContent({
   children,
 }: SettingsContentProps) {
   return (
-    <section className="space-y-8">
-      <header className="space-y-3">
+    <section className="space-y-small pb-super">
+      <header className="space-y-2">
         <Text as="h1" intent="subtitle" weight="medium">
           {title}
         </Text>
         {description && (
-          <Text as="p" intent="small" color="mutedForeground">
+          <Text as="p" intent="small" dim>
             {description}
           </Text>
         )}

@@ -7,19 +7,27 @@ use commands::{
     download_chromium_rust, download_connector, get_app_config, get_installed_connectors,
     get_personal_server_status, get_platforms, get_registry_url, get_run_files, get_user_data_path,
     handle_download, list_browser_sessions, load_latest_source_export_full,
-    load_latest_source_export_preview, load_run_export_data, load_runs, open_folder,
-    open_platform_export_folder, set_app_config, start_browser_auth, start_personal_server,
-    start_connector_run, stop_connector_run, stop_personal_server, test_nodejs, write_export_data,
+    load_latest_source_export_preview, load_run_export_data, load_runs, mark_export_synced,
+    open_folder, open_platform_export_folder, set_app_config, start_browser_auth,
+    start_personal_server, start_connector_run, stop_connector_run, stop_personal_server,
+    test_nodejs, write_export_data,
 };
 use tauri::{Listener, Manager};
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
-    tauri::Builder::default()
+    let mut builder = tauri::Builder::default()
         .plugin(tauri_plugin_fs::init())
         .plugin(tauri_plugin_shell::init())
         .plugin(tauri_plugin_http::init())
-        .plugin(tauri_plugin_deep_link::init())
+        .plugin(tauri_plugin_deep_link::init());
+
+    #[cfg(debug_assertions)]
+    {
+        builder = builder.plugin(tauri_plugin_mcp_bridge::init());
+    }
+
+    builder
         .setup(|app| {
             // Enable logging in both debug and release builds
             app.handle().plugin(
@@ -78,6 +86,7 @@ pub fn run() {
             get_personal_server_status,
             list_browser_sessions,
             clear_browser_session,
+            mark_export_synced,
         ])
         .build(tauri::generate_context!())
         .expect("error while building tauri application")

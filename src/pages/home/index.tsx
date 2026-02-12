@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react"
+import { useCallback, useEffect, useMemo, useState } from "react"
 import { MotionConfig } from "motion/react"
 import { useNavigate } from "react-router-dom"
 import { useSelector } from "react-redux"
@@ -17,6 +17,10 @@ import { ConnectorUpdates } from "@/pages/home/components/connector-updates"
 import { Text } from "@/components/typography/text"
 import { Button } from "@/components/ui/button"
 import { ROUTES } from "@/config/routes"
+import {
+  buildGrantSearchParams,
+  getGrantParamsFromSearchParams,
+} from "@/lib/grant-params"
 import { getPlatformRegistryEntry } from "@/lib/platform/utils"
 import {
   USE_TEST_DATA,
@@ -35,6 +39,7 @@ export function Home() {
   const runs = useSelector((state: RootState) => state.app.runs)
   const [activeTab, setActiveTab] = useState("sources")
   const [enableTabMotion, setEnableTabMotion] = useState(false)
+  const [deepLinkInput, setDeepLinkInput] = useState("")
 
   const tabs = [
     { value: "sources", label: "Your data" },
@@ -82,6 +87,21 @@ export function Home() {
       console.error("Export failed:", error)
     }
   }
+
+  const handleTestDeepLink = useCallback(() => {
+    const trimmed = deepLinkInput.trim()
+    if (!trimmed) return
+    try {
+      const parsed = new URL(trimmed)
+      const params = getGrantParamsFromSearchParams(parsed.searchParams)
+      if (!params.sessionId && !params.appId) return
+      const qs = buildGrantSearchParams(params).toString()
+      const route = params.status === "success" ? ROUTES.grant : ROUTES.connect
+      navigate(`${route}${qs ? `?${qs}` : ""}`)
+    } catch {
+      // invalid URL — ignore
+    }
+  }, [deepLinkInput, navigate])
 
   // Separate available platforms (memoized to avoid re-filtering on every render)
   const connectedPlatformsList = useMemo(() => {
@@ -159,6 +179,24 @@ export function Home() {
                 </a>
               </Button>
             </div>
+            <form
+              className="mt-3 flex flex-col gap-2"
+              onSubmit={e => {
+                e.preventDefault()
+                handleTestDeepLink()
+              }}
+            >
+              <input
+                type="text"
+                value={deepLinkInput}
+                onChange={e => setDeepLinkInput(e.target.value)}
+                placeholder="vana://connect?sessionId=...&secret=..."
+                className="rounded border px-2 py-1 text-xs"
+              />
+              <Button type="submit" size="xs" variant="outline">
+                Test deep link
+              </Button>
+            </form>
           </div>
         </div>
       )}

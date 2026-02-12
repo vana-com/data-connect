@@ -52,6 +52,27 @@ describe('pendingApproval', () => {
     expect(storage.getPendingApproval()).toBeNull();
   });
 
+  it('round-trips a pending approval with serverAddress', () => {
+    const withServer: PendingApproval = {
+      ...basePending,
+      serverAddress: '0xserveraddress',
+    };
+    storage.savePendingApproval(withServer);
+
+    const retrieved = storage.getPendingApproval();
+    expect(retrieved).toEqual(withServer);
+    expect(retrieved?.serverAddress).toBe('0xserveraddress');
+  });
+
+  it('round-trips a pending approval without serverAddress (backward compat)', () => {
+    // Old records stored before serverAddress was added should still parse
+    storage.savePendingApproval(basePending);
+
+    const retrieved = storage.getPendingApproval();
+    expect(retrieved).toEqual(basePending);
+    expect(retrieved?.serverAddress).toBeUndefined();
+  });
+
   it('returns null for data that fails schema validation', () => {
     localStorage.setItem(
       pendingApprovalKey,

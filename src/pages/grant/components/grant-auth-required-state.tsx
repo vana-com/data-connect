@@ -1,6 +1,7 @@
 import { LoaderIcon } from "lucide-react"
 import { Text } from "@/components/typography/text"
 import { Button } from "@/components/ui/button"
+import { openExternalUrl } from "@/lib/open-resource"
 
 interface GrantAuthRequiredStateProps {
   appName?: string
@@ -43,9 +44,7 @@ export function GrantAuthRequiredState({
             <div className="w-full space-y-3">
               <Button
                 type="button"
-                onClick={() =>
-                  window.open(authUrl, "_blank", "noopener,noreferrer")
-                }
+                onClick={() => openExternalUrl(authUrl)}
                 fullWidth
                 className="hover:bg-foreground/90"
               >

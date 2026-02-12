@@ -9,6 +9,7 @@ const mockApproveSession = vi.fn()
 const mockDenySession = vi.fn()
 const mockVerifyBuilder = vi.fn()
 const mockCreateGrant = vi.fn()
+const mockFetchServerIdentity = vi.fn()
 
 let authState = {
   isAuthenticated: false,
@@ -24,10 +25,11 @@ let personalServerState = {
   error: null as string | null,
   startServer: vi.fn(),
   stopServer: vi.fn(),
+  restartingRef: { current: false },
 }
 
 let authCompleteHandler: ((event: { payload: any }) => void) | null = null
-const tauriWindow = window as Window & { __TAURI__?: unknown }
+const tauriWindow = window as Window & { __TAURI__?: unknown; __TAURI_INTERNALS__?: unknown }
 
 vi.mock("@tauri-apps/api/core", () => ({
   invoke: vi.fn(),
@@ -87,6 +89,11 @@ vi.mock("../../services/personalServer", () => ({
   PersonalServerError: class PersonalServerError extends Error {},
 }))
 
+vi.mock("../../services/serverRegistration", () => ({
+  fetchServerIdentity: (...args: unknown[]) =>
+    mockFetchServerIdentity.apply(null, args as []),
+}))
+
 beforeEach(() => {
   mockNavigate.mockReset()
   mockClaimSession.mockReset()
@@ -94,8 +101,11 @@ beforeEach(() => {
   mockDenySession.mockReset()
   mockVerifyBuilder.mockReset()
   mockCreateGrant.mockReset()
+  mockFetchServerIdentity.mockReset()
+  mockFetchServerIdentity.mockResolvedValue({ address: "0xserver", publicKey: "pk", serverId: null })
   authCompleteHandler = null
   delete tauriWindow.__TAURI__
+  delete tauriWindow.__TAURI_INTERNALS__
   authState = {
     isAuthenticated: false,
     isLoading: false,
@@ -109,6 +119,8 @@ beforeEach(() => {
     error: null,
     startServer: vi.fn(),
     stopServer: vi.fn(),
+    restartServer: vi.fn(),
+    restartingRef: { current: false },
   }
 })
 
@@ -134,7 +146,7 @@ describe("useGrantFlow", () => {
   })
 
   it("starts auth only after approval and auto-approves on auth completion", async () => {
-    tauriWindow.__TAURI__ = {}
+    tauriWindow.__TAURI_INTERNALS__ = {}
     const mockedInvoke = vi.mocked(invoke)
     mockedInvoke.mockResolvedValue("https://auth.vana.test")
 
@@ -182,6 +194,102 @@ describe("useGrantFlow", () => {
     await waitFor(() => {
       expect(result.current.flowState.status).toBe("success")
     })
+  })
+
+  it("waits for Personal Server port before auto-approving after auth", async () => {
+    // Start with server still starting (port null)
+    personalServerState = {
+      ...personalServerState,
+      status: "starting",
+      port: null,
+      devToken: "test-dev-token",
+    }
+
+    tauriWindow.__TAURI_INTERNALS__ = {}
+    const mockedInvoke = vi.mocked(invoke)
+    mockedInvoke.mockResolvedValue("https://auth.vana.test")
+
+    // Use pre-fetched data for a real (non-demo) session to skip claim+verify
+    const prefetched = {
+      session: {
+        id: "race-session-1",
+        granteeAddress: "0xbuilder",
+        scopes: ["chatgpt.conversations"],
+        expiresAt: "2030-01-01T00:00:00.000Z",
+      },
+      builderManifest: {
+        name: "Race Test Builder",
+        appUrl: "https://race.example.com",
+        privacyPolicyUrl: "https://race.example.com/privacy",
+      },
+    }
+
+    mockCreateGrant.mockResolvedValue({ grantId: "grant-race-1" })
+
+    const { result, rerender } = renderHook(() =>
+      useGrantFlow(
+        { sessionId: "race-session-1", secret: "race-secret" },
+        prefetched,
+      ),
+    )
+
+    await waitFor(() => {
+      expect(result.current.flowState.status).toBe("consent")
+    })
+
+    // Click Allow while not authenticated → auth-required
+    await act(async () => {
+      await result.current.handleApprove()
+    })
+
+    await waitFor(() => {
+      expect(result.current.flowState.status).toBe("auth-required")
+    })
+
+    // Simulate auth completion (server port still null)
+    await act(async () => {
+      authState = {
+        isAuthenticated: true,
+        isLoading: false,
+        walletAddress: "0xuser",
+      }
+      authCompleteHandler?.({
+        payload: {
+          success: true,
+          user: { id: "user-1", email: "test@vana.org" },
+          walletAddress: "0xuser",
+        },
+      })
+      rerender()
+    })
+
+    // Auto-approve should NOT have fired — server port is still null
+    expect(mockCreateGrant).not.toHaveBeenCalled()
+
+    // Simulate server becoming ready
+    await act(async () => {
+      personalServerState = {
+        ...personalServerState,
+        status: "running",
+        port: 8080,
+      }
+      rerender()
+    })
+
+    // Now auto-approve should proceed and complete
+    await waitFor(() => {
+      expect(result.current.flowState.status).toBe("success")
+    })
+
+    expect(mockCreateGrant).toHaveBeenCalledWith(
+      8080,
+      {
+        granteeAddress: "0xbuilder",
+        scopes: ["chatgpt.conversations"],
+        expiresAt: 1893456000,
+      },
+      "test-dev-token",
+    )
   })
 
   it("forces success when status param is success", async () => {
@@ -274,12 +382,13 @@ describe("useGrantFlow", () => {
     expect(mockCreateGrant).toHaveBeenCalledWith(8080, {
       granteeAddress: "0xbuilder",
       scopes: ["chatgpt.conversations"],
-      expiresAt: "2030-01-01T00:00:00.000Z",
+      expiresAt: 1893456000,
     }, "test-dev-token")
     expect(mockApproveSession).toHaveBeenCalledWith("real-session-2", {
       secret: "test-secret",
       grantId: "grant-123",
       userAddress: "0xuser",
+      serverAddress: "0xserver",
       scopes: ["chatgpt.conversations"],
     })
   })
@@ -670,7 +779,7 @@ describe("useGrantFlow", () => {
     expect(mockCreateGrant).not.toHaveBeenCalled()
   })
 
-  it("shows error when Personal Server is not running", async () => {
+  it("shows error when Personal Server has failed to start", async () => {
     authState = {
       isAuthenticated: true,
       isLoading: false,
@@ -678,7 +787,9 @@ describe("useGrantFlow", () => {
     }
     personalServerState = {
       ...personalServerState,
+      status: "error",
       port: null,
+      error: "Personal Server failed to start.",
     }
 
     mockClaimSession.mockResolvedValue({
@@ -702,6 +813,8 @@ describe("useGrantFlow", () => {
       expect(result.current.flowState.status).toBe("consent")
     })
 
+    // handleApprove defers when port is null; the auto-approve effect
+    // then surfaces the error because personalServer.status is "error"
     await act(async () => {
       await result.current.handleApprove()
     })
@@ -710,7 +823,7 @@ describe("useGrantFlow", () => {
       expect(result.current.flowState.status).toBe("error")
     })
     expect(result.current.flowState.error).toContain(
-      "Personal Server is not running"
+      "Personal Server failed to start"
     )
   })
 })

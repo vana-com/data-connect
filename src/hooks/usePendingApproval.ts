@@ -24,6 +24,7 @@ export function usePendingApprovalRetry() {
           secret: pending.secret,
           grantId: pending.grantId,
           userAddress: pending.userAddress,
+          ...(pending.serverAddress && { serverAddress: pending.serverAddress }),
           scopes: pending.scopes,
         })
         console.info(

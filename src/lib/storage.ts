@@ -39,6 +39,7 @@ export interface PendingApproval {
   grantId: string;
   secret: string;
   userAddress: string;
+  serverAddress?: string;
   scopes: string[];
   createdAt: string;
 }
@@ -48,6 +49,7 @@ const PendingApprovalSchema = z.object({
   grantId: z.string().min(1),
   secret: z.string().min(1),
   userAddress: z.string().min(1),
+  serverAddress: z.string().optional(),
   scopes: z.array(z.string()),
   createdAt: z.string(),
 });

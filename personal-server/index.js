@@ -16,7 +16,7 @@
 process.env.NODE_ENV = 'production';
 
 import { join } from 'node:path';
-import { readFileSync, writeFileSync } from 'node:fs';
+import { readFileSync, writeFileSync, accessSync, constants } from 'node:fs';
 import { randomUUID } from 'node:crypto';
 import { spawn } from 'node:child_process';
 import { loadConfig } from '@opendatalabs/personal-server-ts-core/config';
@@ -107,7 +107,9 @@ async function main() {
       config.server.address = ownerAddress;
     }
 
-    const { app, devToken, tunnelUrl, tunnelManager, cleanup, gatewayClient, serverSigner } = await createServer(config, { rootPath: configDir });
+    // Keep as a reference — startBackgroundServices mutates context.tunnelManager / context.tunnelUrl.
+    const context = await createServer(config, { rootPath: configDir });
+    const { app, devToken, cleanup, gatewayClient, serverSigner } = context;
 
     // --- Grant management routes ---
     // The library ships POST /v1/grants (create) with Web3Auth middleware and
@@ -148,15 +150,6 @@ async function main() {
       }
     });
 
-    // Fix stale proxy name collision on FRP server
-    const storageRoot = configDir || join(
-      (await import('node:os')).homedir(),
-      '.data-connect', 'personal-server'
-    );
-    const effectiveTunnelUrl = tunnelManager
-      ? await fixTunnelProxyName(tunnelManager, storageRoot)
-      : tunnelUrl;
-
     // Custom status endpoint exposing owner
     app.get('/status', (c) => c.json({
       status: 'healthy',
@@ -164,12 +157,10 @@ async function main() {
       port,
     }));
 
+    // Start HTTP server first so the desktop app can connect immediately.
+    // Background services (gateway check, tunnel) run afterwards.
     const server = serve({ fetch: app.fetch, port }, (info) => {
       send({ type: 'ready', port: info.port });
-
-      if (effectiveTunnelUrl) {
-        send({ type: 'tunnel', url: effectiveTunnelUrl });
-      }
 
       if (devToken) {
         send({
@@ -179,6 +170,39 @@ async function main() {
         send({ type: 'dev-token', token: devToken });
       }
     });
+
+    // Start background services (gateway registration + tunnel setup).
+    // This populates context.tunnelManager and context.tunnelUrl.
+    await context.startBackgroundServices();
+
+    // Fix stale proxy name collision on FRP server
+    const storageRoot = configDir || join(
+      (await import('node:os')).homedir(),
+      '.data-connect', 'personal-server'
+    );
+
+    if (!context.tunnelManager && !context.tunnelUrl) {
+      const hasMasterKey = !!process.env.VANA_MASTER_KEY_SIGNATURE;
+      send({ type: 'log', message: `[tunnel] Not started. masterKey=${hasMasterKey}, port=${port}` });
+
+      const frpcPath = join(storageRoot, 'bin', process.platform === 'win32' ? 'frpc.exe' : 'frpc');
+      try {
+        accessSync(frpcPath, constants.X_OK);
+        send({ type: 'log', message: `[tunnel] frpc binary exists at ${frpcPath}` });
+      } catch {
+        send({ type: 'log', message: `[tunnel] frpc binary NOT found at ${frpcPath}` });
+      }
+    }
+
+    const effectiveTunnelUrl = context.tunnelManager
+      ? await fixTunnelProxyName(context.tunnelManager, storageRoot)
+      : context.tunnelUrl;
+
+    if (effectiveTunnelUrl) {
+      send({ type: 'tunnel', url: effectiveTunnelUrl });
+    } else {
+      send({ type: 'tunnel-failed', message: 'Tunnel could not be established' });
+    }
 
     function shutdown(signal) {
       send({ type: 'log', message: `Shutdown signal: ${signal}` });

@@ -90,13 +90,13 @@ describe("createGrant", () => {
     await createGrant(3100, {
       granteeAddress: "0xbuilder",
       scopes: ["spotify.history"],
-      expiresAt: "2026-12-31T00:00:00Z",
-      nonce: "nonce-1",
+      expiresAt: 1798761600,
+      nonce: 42,
     });
 
     const body = JSON.parse(tauriFetchSpy.mock.calls[0][1].body);
-    expect(body.expiresAt).toBe("2026-12-31T00:00:00Z");
-    expect(body.nonce).toBe("nonce-1");
+    expect(body.expiresAt).toBe(1798761600);
+    expect(body.nonce).toBe(42);
   });
 
   it("throws PersonalServerError on network failure", async () => {

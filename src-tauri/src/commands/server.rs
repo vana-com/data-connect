@@ -7,6 +7,9 @@ static PERSONAL_SERVER_PROCESS: Mutex<Option<std::process::Child>> = Mutex::new(
 pub static PERSONAL_SERVER_PORT: Mutex<Option<u16>> = Mutex::new(None);
 static PERSONAL_SERVER_STARTING: Mutex<bool> = Mutex::new(false);
 pub static PERSONAL_SERVER_DEV_TOKEN: Mutex<Option<String>> = Mutex::new(None);
+/// Set to true by stop_personal_server so the stdout reader thread knows
+/// the exit was intentional and should NOT emit personal-server-exited.
+static PERSONAL_SERVER_STOPPING: Mutex<bool> = Mutex::new(false);
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
 pub struct PersonalServerStatus {
@@ -70,6 +73,11 @@ pub async fn start_personal_server(
 ) -> Result<PersonalServerStatus, String> {
     use std::io::{BufRead, BufReader};
     use std::process::{Command, Stdio};
+
+    // Clear the stopping flag from any previous stop
+    if let Ok(mut s) = PERSONAL_SERVER_STOPPING.lock() {
+        *s = false;
+    }
 
     // Prevent concurrent spawns
     {
@@ -305,6 +313,14 @@ pub async fn start_personal_server(
                                     serde_json::json!({ "message": message }),
                                 );
                             }
+                            "tunnel-failed" => {
+                                let message = msg.get("message").and_then(|m| m.as_str()).unwrap_or("");
+                                log::warn!("Personal server tunnel failed: {}", message);
+                                let _ = app_handle.emit(
+                                    "personal-server-tunnel-failed",
+                                    serde_json::json!({ "message": message }),
+                                );
+                            }
                             "dev-token" => {
                                 let token = msg.get("token").and_then(|t| t.as_str()).unwrap_or("");
                                 log::info!("Personal server dev token received");
@@ -330,7 +346,55 @@ pub async fn start_personal_server(
                 }
             }
         }
-        log::info!("Personal server stdout reader ended");
+
+        // Pipe closed — process has exited.
+        log::info!("Personal server stdout reader ended — process exited");
+
+        // If stop_personal_server set the stopping flag, this is an intentional
+        // shutdown — it already cleaned up global state, so skip the event.
+        let was_intentional = PERSONAL_SERVER_STOPPING
+            .lock()
+            .map(|s| *s)
+            .unwrap_or(false);
+
+        if was_intentional {
+            log::info!("Personal server stopped intentionally, skipping exited event");
+        } else {
+            // Unexpected exit — collect exit code and notify frontend.
+            let exit_code: Option<i32> = PERSONAL_SERVER_PROCESS
+                .lock()
+                .ok()
+                .and_then(|mut guard| {
+                    guard.as_mut().and_then(|child| {
+                        child.try_wait().ok().flatten().and_then(|status| status.code())
+                    })
+                });
+
+            // Clear all global state so a new start can proceed
+            if let Ok(mut guard) = PERSONAL_SERVER_PROCESS.lock() {
+                *guard = None;
+            }
+            if let Ok(mut guard) = PERSONAL_SERVER_PORT.lock() {
+                *guard = None;
+            }
+            if let Ok(mut guard) = PERSONAL_SERVER_STARTING.lock() {
+                *guard = false;
+            }
+            if let Ok(mut guard) = PERSONAL_SERVER_DEV_TOKEN.lock() {
+                *guard = None;
+            }
+
+            let crashed = exit_code.map(|c| c != 0).unwrap_or(true);
+            log::info!(
+                "Personal server exited: code={:?}, crashed={}",
+                exit_code,
+                crashed
+            );
+            let _ = app_handle.emit(
+                "personal-server-exited",
+                serde_json::json!({ "exitCode": exit_code, "crashed": crashed }),
+            );
+        }
     });
 
     // Read stderr in background thread
@@ -355,6 +419,11 @@ pub async fn start_personal_server(
 /// Stop the personal server
 #[tauri::command]
 pub async fn stop_personal_server() -> Result<(), String> {
+    // Tell the stdout reader thread this is an intentional stop
+    if let Ok(mut s) = PERSONAL_SERVER_STOPPING.lock() {
+        *s = true;
+    }
+
     // Reset starting flag in case a start is pending
     if let Ok(mut s) = PERSONAL_SERVER_STARTING.lock() {
         *s = false;
@@ -456,6 +525,10 @@ pub fn get_personal_server_status() -> Result<PersonalServerStatus, String> {
 
 /// Kill the personal server process on app exit (sync, best-effort)
 pub fn cleanup_personal_server() {
+    // Mark as intentional so the reader thread doesn't emit exited event
+    if let Ok(mut s) = PERSONAL_SERVER_STOPPING.lock() {
+        *s = true;
+    }
     if let Ok(mut guard) = PERSONAL_SERVER_PROCESS.lock() {
         if let Some(mut child) = guard.take() {
             log::info!("Cleaning up personal server on app exit...");

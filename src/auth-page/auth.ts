@@ -299,19 +299,30 @@ export const useAuthPage = (): UseAuthPageState => {
       showLoading("Starting server...")
 
       let identity: Record<string, unknown> | null = null
-      for (let i = 0; i < 15; i += 1) {
+
+      for (let i = 0; i < 30; i += 1) {
         await new Promise(resolve => setTimeout(resolve, 2000))
         try {
           console.log("[AUTH] Polling /server-identity attempt", i + 1)
           const resp = await fetch("/server-identity")
           console.log("[AUTH] /server-identity response:", resp.status)
           if (resp.ok) {
-            identity = await resp.json()
+            const data = await resp.json()
+            identity = data
             console.log(
               "[AUTH] Server identity:",
               JSON.stringify(identity).substring(0, 200)
             )
-            break
+            const addr = (
+              data as {
+                identity?: { address?: string }
+                address?: string
+              }
+            )
+            if (addr.identity?.address || addr.address) {
+              break
+            }
+            console.log("[AUTH] Identity available but no address yet")
           }
         } catch (err) {
           console.warn("[AUTH] /server-identity fetch error:", err)
@@ -319,7 +330,7 @@ export const useAuthPage = (): UseAuthPageState => {
       }
 
       if (!identity) {
-        console.warn("[AUTH] Server not ready after 30s, skipping registration")
+        console.warn("[AUTH] Server not ready after 60s, skipping registration")
         return
       }
 
@@ -328,12 +339,10 @@ export const useAuthPage = (): UseAuthPageState => {
           address?: string
           publicKey?: string
           serverId?: string
-          port?: number
         }
         address?: string
         publicKey?: string
         serverId?: string
-        port?: number
       }
 
       const serverAddress =
@@ -342,11 +351,109 @@ export const useAuthPage = (): UseAuthPageState => {
         identityRecord.identity?.publicKey ?? identityRecord.publicKey
       const serverId =
         identityRecord.identity?.serverId ?? identityRecord.serverId
-      const serverPort = identityRecord.identity?.port ?? identityRecord.port
+
+      // Tunnel URL is deterministic: https://{serverAddress}.server.vana.org
+      const tunnelPublicUrl = serverAddress
+        ? `https://${serverAddress.toLowerCase()}.server.vana.org`
+        : null
+
+      if (!tunnelPublicUrl) {
+        console.error("[AUTH] No server address — cannot derive tunnel URL")
+        return
+      }
+
+      console.log("[AUTH] Using derived tunnel URL:", tunnelPublicUrl)
 
       if (serverId) {
-        console.log("[AUTH] Server already registered:", serverId)
-        return
+        // Check if existing registration has the correct URL
+        try {
+          const checkResp = await fetch(
+            `/check-server-url?address=${serverAddress}`
+          )
+          if (checkResp.ok) {
+            const gatewayData = await checkResp.json()
+            const currentUrl = (
+              gatewayData as { data?: { serverUrl?: string } }
+            )?.data?.serverUrl
+            if (currentUrl === tunnelPublicUrl) {
+              console.log(
+                "[AUTH] Server already registered with correct URL:",
+                serverId
+              )
+              return
+            }
+            console.log(
+              "[AUTH] Server registered with wrong URL:",
+              currentUrl,
+              "→ need:",
+              tunnelPublicUrl
+            )
+          }
+        } catch {
+          // If we can't check, proceed with deregister attempt
+        }
+
+        // Deregister the existing server so we can re-register with correct URL
+        showLoading("Updating server registration...")
+        const deadline = Math.floor(Date.now() / 1000) + 300
+
+        const deregTypedData = {
+          types: {
+            EIP712Domain: [
+              { name: "name", type: "string" },
+              { name: "version", type: "string" },
+              { name: "chainId", type: "uint256" },
+              { name: "verifyingContract", type: "address" },
+            ],
+            ServerDeregistration: [
+              { name: "ownerAddress", type: "address" },
+              { name: "serverAddress", type: "address" },
+              { name: "serverId", type: "bytes32" },
+              { name: "deadline", type: "uint256" },
+            ],
+          },
+          domain: {
+            name: "Vana Data Portability",
+            version: "1",
+            chainId: 14800,
+            verifyingContract: "0x1483B1F634DBA75AeaE60da7f01A679aabd5ee2c",
+          },
+          primaryType: "ServerDeregistration",
+          message: {
+            ownerAddress: walletAddress,
+            serverAddress,
+            serverId,
+            deadline,
+          },
+        }
+
+        await setupWalletIframe(privy)
+        const provider = await privy.embeddedWallet.getProvider(
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any -- PrivyLinkedAccount is a subset of the SDK's full type
+          walletAccount as any
+        )
+        const deregSig = await provider.request({
+          method: "eth_signTypedData_v4",
+          params: [walletAddress, JSON.stringify(deregTypedData)],
+        })
+
+        const deregResp = await fetch("/deregister-server", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            serverAddress,
+            ownerAddress: walletAddress,
+            deadline,
+            signature: deregSig,
+          }),
+        })
+
+        if (!deregResp.ok && deregResp.status !== 404) {
+          console.warn("[AUTH] Deregistration failed:", deregResp.status)
+          // Fall through to try registration anyway — gateway may reject with 409
+        }
+
+        // Fall through to registration below with correct tunnel URL
       }
 
       if (!serverAddress || !publicKey) {
@@ -356,9 +463,7 @@ export const useAuthPage = (): UseAuthPageState => {
 
       showLoading("Registering server...")
 
-      const serverUrl = serverPort
-        ? `http://localhost:${serverPort}`
-        : "http://localhost:8080"
+      const serverUrl = tunnelPublicUrl
       const message = {
         ownerAddress: walletAddress,
         serverAddress,

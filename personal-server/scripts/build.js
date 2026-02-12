@@ -134,13 +134,40 @@ async function build() {
     }
   };
 
+  // Plugin to inline require("../package.json") calls from @opendatalabs
+  // packages at build time, so the runtime never needs to resolve that path
+  // inside the pkg snapshot. Applies to all @opendatalabs packages (not just
+  // personal-server-ts-server) to prevent MODULE_NOT_FOUND errors.
+  const inlinePackageJsonPlugin = {
+    name: 'inline-package-json',
+    setup(build) {
+      build.onLoad(
+        { filter: /node_modules[\\/]@opendatalabs[\\/][^\\/]+[\\/]dist[\\/].*\.js$/ },
+        async (args) => {
+          const { readFileSync } = await import('fs');
+          const { join, dirname } = await import('path');
+          let contents = readFileSync(args.path, 'utf8');
+          if (contents.includes('require("../package.json")')) {
+            const pkgJsonPath = join(dirname(args.path), '..', 'package.json');
+            const pkgJson = readFileSync(pkgJsonPath, 'utf8');
+            contents = contents.replace(
+              /require\("\.\.\/package\.json"\)/g,
+              `(${pkgJson.trim()})`
+            );
+          }
+          return { contents, loader: 'js' };
+        }
+      );
+    }
+  };
+
   await esbuild.build({
     entryPoints: [join(ROOT, 'index.js')],
     bundle: true,
     platform: 'node',
     format: 'cjs',
     outfile: bundlePath,
-    plugins: [dynamicNativeRequirePlugin],
+    plugins: [inlinePackageJsonPlugin, dynamicNativeRequirePlugin],
     banner: { js: nativeBanner },
     inject: [shimPath],
     define: {

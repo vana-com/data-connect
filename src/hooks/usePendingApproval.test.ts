@@ -56,6 +56,72 @@ describe("usePendingApprovalRetry", () => {
     consoleSpy.mockRestore()
   })
 
+  it("includes serverAddress in retry when present in pending approval", async () => {
+    const pending: storage.PendingApproval = {
+      sessionId: "sess-server",
+      grantId: "grant-server",
+      secret: "secret-server",
+      userAddress: "0xabc",
+      serverAddress: "0xserver",
+      scopes: ["chatgpt.conversations"],
+      createdAt: new Date().toISOString(),
+    }
+
+    storage.savePendingApproval(pending)
+    ;(sessionRelay.approveSession as Mock).mockResolvedValue(undefined)
+
+    const consoleSpy = vi.spyOn(console, "info").mockImplementation(() => {})
+
+    renderHook(() => usePendingApprovalRetry())
+
+    await waitFor(() => {
+      expect(sessionRelay.approveSession).toHaveBeenCalledWith("sess-server", {
+        secret: "secret-server",
+        grantId: "grant-server",
+        userAddress: "0xabc",
+        serverAddress: "0xserver",
+        scopes: ["chatgpt.conversations"],
+      })
+    })
+
+    expect(storage.getPendingApproval()).toBeNull()
+    consoleSpy.mockRestore()
+  })
+
+  it("omits serverAddress in retry when not present in pending approval", async () => {
+    const pending: storage.PendingApproval = {
+      sessionId: "sess-no-server",
+      grantId: "grant-no-server",
+      secret: "secret-no-server",
+      userAddress: "0xdef",
+      scopes: ["chatgpt.conversations"],
+      createdAt: new Date().toISOString(),
+    }
+
+    storage.savePendingApproval(pending)
+    ;(sessionRelay.approveSession as Mock).mockResolvedValue(undefined)
+
+    const consoleSpy = vi.spyOn(console, "info").mockImplementation(() => {})
+
+    renderHook(() => usePendingApprovalRetry())
+
+    await waitFor(() => {
+      expect(sessionRelay.approveSession).toHaveBeenCalledWith("sess-no-server", {
+        secret: "secret-no-server",
+        grantId: "grant-no-server",
+        userAddress: "0xdef",
+        scopes: ["chatgpt.conversations"],
+      })
+    })
+
+    // serverAddress should NOT be in the call args
+    const callArgs = (sessionRelay.approveSession as Mock).mock.calls[0][1]
+    expect(callArgs).not.toHaveProperty("serverAddress")
+
+    expect(storage.getPendingApproval()).toBeNull()
+    consoleSpy.mockRestore()
+  })
+
   it("clears pending even when retry fails (prevents infinite loop)", async () => {
     const pending: storage.PendingApproval = {
       sessionId: "sess-expired",

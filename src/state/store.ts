@@ -231,6 +231,12 @@ const appSlice = createSlice({
     setAppConfig(state, action: PayloadAction<Partial<AppConfig>>) {
       state.appConfig = { ...state.appConfig, ...action.payload };
     },
+    markRunSynced(state, action: PayloadAction<string>) {
+      const run = state.runs.find((r) => r.id === action.payload);
+      if (run) {
+        run.syncedToPersonalServer = true;
+      }
+    },
   },
 });
 
@@ -263,6 +269,7 @@ export const {
   addConnectedApp,
   removeConnectedApp,
   setAppConfig,
+  markRunSynced,
 } = appSlice.actions;
 
 export const store = configureStore({

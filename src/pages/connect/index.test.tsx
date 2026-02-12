@@ -262,8 +262,8 @@ describe("Connect", () => {
 
       await waitFor(() => {
         expect(consoleWarn).toHaveBeenCalledWith(
-          "[Connect] Background pre-fetch failed:",
-          expect.any(Error)
+          "[Connect] Pre-fetch: claim failed",
+          expect.objectContaining({ error: expect.any(Error) })
         )
       })
 

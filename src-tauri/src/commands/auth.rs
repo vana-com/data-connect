@@ -293,6 +293,111 @@ pub async fn start_browser_auth(
                                 }
                             }
                         }
+                        "GET" if request_path == "/check-server-url" => {
+                            // Proxy GET /v1/servers/{address} to gateway
+                            let cors = "Access-Control-Allow-Origin: *\r\nAccess-Control-Allow-Methods: GET, POST, DELETE, OPTIONS\r\nAccess-Control-Allow-Headers: Content-Type, Authorization";
+                            let gateway_url = "https://data-gateway-env-dev-opendatalabs.vercel.app";
+                            let address = path.split("address=").nth(1).unwrap_or("").split('&').next().unwrap_or("");
+
+                            if address.is_empty() {
+                                let resp_str = format!(
+                                    "HTTP/1.1 400 Bad Request\r\nContent-Type: application/json\r\n{}\r\n\r\n{{\"error\":\"Missing address parameter\"}}",
+                                    cors
+                                );
+                                let _ = stream.write_all(resp_str.as_bytes());
+                            } else {
+                                let client = reqwest::blocking::Client::new();
+                                match client
+                                    .get(format!("{}/v1/servers/{}", gateway_url, address))
+                                    .send()
+                                {
+                                    Ok(resp) => {
+                                        let status = resp.status().as_u16();
+                                        let resp_body = resp.text().unwrap_or_default();
+                                        log::info!("Gateway check-server-url response: {} {}", status, &resp_body[..resp_body.len().min(200)]);
+                                        let resp_str = format!(
+                                            "HTTP/1.1 {} OK\r\nContent-Type: application/json\r\n{}\r\nContent-Length: {}\r\n\r\n{}",
+                                            status, cors, resp_body.len(), resp_body
+                                        );
+                                        let _ = stream.write_all(resp_str.as_bytes());
+                                    }
+                                    Err(e) => {
+                                        let err_body = format!("{{\"error\":\"{}\"}}", e);
+                                        let resp_str = format!(
+                                            "HTTP/1.1 502 Bad Gateway\r\nContent-Type: application/json\r\n{}\r\nContent-Length: {}\r\n\r\n{}",
+                                            cors, err_body.len(), err_body
+                                        );
+                                        let _ = stream.write_all(resp_str.as_bytes());
+                                    }
+                                }
+                            }
+                        }
+                        "POST" if path == "/deregister-server" => {
+                            // Proxy DELETE /v1/servers/{serverAddress} to gateway
+                            let mut content_length: usize = 0;
+                            let mut line = String::new();
+                            loop {
+                                line.clear();
+                                if reader.read_line(&mut line).is_err() || line == "\r\n" {
+                                    break;
+                                }
+                                if line.to_lowercase().starts_with("content-length:") {
+                                    if let Some(len_str) = line.split(':').nth(1) {
+                                        content_length = len_str.trim().parse().unwrap_or(0);
+                                    }
+                                }
+                            }
+
+                            let cors = "Access-Control-Allow-Origin: *\r\nAccess-Control-Allow-Methods: GET, POST, DELETE, OPTIONS\r\nAccess-Control-Allow-Headers: Content-Type, Authorization";
+                            let gateway_url = "https://data-gateway-env-dev-opendatalabs.vercel.app";
+                            let mut body = vec![0u8; content_length];
+
+                            if reader.read_exact(&mut body).is_ok() {
+                                if let Ok(body_str) = String::from_utf8(body) {
+                                    log::info!("Deregister server request: {}", body_str);
+
+                                    if let Ok(dereg) = serde_json::from_str::<serde_json::Value>(&body_str) {
+                                        let server_address = dereg["serverAddress"].as_str().unwrap_or_default();
+                                        let signature = dereg["signature"].as_str().unwrap_or_default();
+                                        let owner_address = dereg["ownerAddress"].as_str().unwrap_or_default();
+                                        let deadline = dereg["deadline"].as_u64().unwrap_or(0);
+
+                                        let delete_body = serde_json::json!({
+                                            "ownerAddress": owner_address,
+                                            "deadline": deadline,
+                                        });
+
+                                        let client = reqwest::blocking::Client::new();
+                                        match client
+                                            .delete(format!("{}/v1/servers/{}", gateway_url, server_address))
+                                            .header("Content-Type", "application/json")
+                                            .header("Authorization", format!("Web3Signed {}", signature))
+                                            .json(&delete_body)
+                                            .send()
+                                        {
+                                            Ok(resp) => {
+                                                let status = resp.status().as_u16();
+                                                let resp_body = resp.text().unwrap_or_default();
+                                                log::info!("Gateway deregister response: {} {}", status, resp_body);
+                                                let resp_str = format!(
+                                                    "HTTP/1.1 {} OK\r\nContent-Type: application/json\r\n{}\r\nContent-Length: {}\r\n\r\n{}",
+                                                    status, cors, resp_body.len(), resp_body
+                                                );
+                                                let _ = stream.write_all(resp_str.as_bytes());
+                                            }
+                                            Err(e) => {
+                                                let err_body = format!("{{\"error\":\"{}\"}}", e);
+                                                let resp_str = format!(
+                                                    "HTTP/1.1 502 Bad Gateway\r\nContent-Type: application/json\r\n{}\r\nContent-Length: {}\r\n\r\n{}",
+                                                    cors, err_body.len(), err_body
+                                                );
+                                                let _ = stream.write_all(resp_str.as_bytes());
+                                            }
+                                        }
+                                    }
+                                }
+                            }
+                        }
                         "GET" if path == "/close-tab" => {
                             // Browser tab navigates here after showing success.
                             // Serve a page with the success message, then close the tab

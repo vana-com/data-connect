@@ -3,7 +3,7 @@ import type { Run } from "@/types"
 export type IngestStatus = "idle" | "sending" | "sent" | "error"
 
 export const getIngestButtonLabel = (status: IngestStatus) =>
-  status === "sent" ? "Sent" : status === "error" ? "Failed" : "Ingest"
+  status === "sent" ? "Synced" : status === "error" ? "Failed" : "Ingest"
 
 export const formatRunDate = (dateString: string) => {
   const date = new Date(dateString)

@@ -99,7 +99,7 @@ export function RunItem({ run, onStop, serverPort, serverReady }: RunItemProps) 
                 !serverReady
                   ? "Personal server not running"
                   : ingestStatus === "sent"
-                    ? "Sent to personal server"
+                    ? "Synced to personal server"
                     : "Send to personal server"
               }
               className={cn(

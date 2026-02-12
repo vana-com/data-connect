@@ -32,6 +32,13 @@ export function Grant() {
   // Pre-fetched session + builder data passed from the connect page via navigation state.
   // When available, the grant flow skips claim + verify steps (already done in background).
   const prefetched = (location.state as { prefetched?: PrefetchedGrantData } | null)?.prefetched
+  console.log("[Grant] Extracted prefetched from location.state", {
+    hasPrefetched: prefetched !== undefined,
+    hasSession: Boolean(prefetched?.session),
+    hasBuilderManifest: Boolean(prefetched?.builderManifest),
+    sessionId: prefetched?.session?.id,
+    locationStateKeys: location.state ? Object.keys(location.state as object) : null,
+  });
   const [debugStatus, setDebugStatus] = useState<
     GrantFlowState["status"] | null
   >(null)

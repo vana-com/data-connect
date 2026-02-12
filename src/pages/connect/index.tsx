@@ -65,13 +65,24 @@ export function Connect() {
     if (prefetchedSessionRef.current === params.sessionId) return // already started for this session
 
     void (async (): Promise<PrefetchedGrantData | null> => {
+      // Step 1: Claim session
+      let session: GrantSession
       try {
-        // Step 1: Claim session
+        console.log("[Connect] Pre-fetch: claiming session", {
+          sessionId: params.sessionId,
+          hasSecret: Boolean(params.secret),
+          timestamp: Date.now(),
+        });
         const claimed = await claimSession({
           sessionId: params.sessionId!,
           secret: params.secret!,
         })
-        const session: GrantSession = {
+        console.log("[Connect] Pre-fetch: claim succeeded", {
+          sessionId: params.sessionId,
+          granteeAddress: claimed.granteeAddress,
+          scopes: claimed.scopes,
+        });
+        session = {
           id: params.sessionId!,
           granteeAddress: claimed.granteeAddress,
           scopes: claimed.scopes,
@@ -79,22 +90,39 @@ export function Connect() {
           webhookUrl: claimed.webhookUrl,
           appUserId: claimed.appUserId,
         }
+      } catch (err) {
+        // Claim failure is non-fatal — the grant page will retry from scratch
+        console.warn("[Connect] Pre-fetch: claim failed", {
+          sessionId: params.sessionId,
+          error: err,
+        })
+        return null
+      }
 
-        // Step 2: Verify builder
-        // Protocol spec: builder verification failure is fatal — the grant page
-        // will re-attempt and show an error if verification fails.
+      // Step 2: Verify builder
+      // If this fails, still pass the claimed session so the grant flow
+      // can skip re-claiming and only retry builder verification.
+      try {
         const builderManifest = await verifyBuilder(
-          claimed.granteeAddress,
-          claimed.webhookUrl,
+          session.granteeAddress,
+          session.webhookUrl,
         )
-
         const result = { session, builderManifest }
+        console.log("[Connect] Pre-fetch: builder verified, prefetched data ready", {
+          sessionId: params.sessionId,
+          builderName: builderManifest?.name,
+        });
         setPrefetched(result)
         return result
       } catch (err) {
-        // Pre-fetch failure is non-fatal — the grant page will retry
-        console.warn("[Connect] Background pre-fetch failed:", err)
-        return null
+        // Builder verification failed — still pass session so grant flow skips claim
+        console.warn("[Connect] Pre-fetch: builder verification failed, passing session only", {
+          sessionId: params.sessionId,
+          error: err,
+        })
+        const result: PrefetchedGrantData = { session }
+        setPrefetched(result)
+        return result
       }
     })()
 
@@ -175,6 +203,19 @@ export function Connect() {
         : null
   const isBusy = isCheckingPlatforms || isConnecting
 
+  // If the data source is already connected, skip the connect step entirely
+  // and go straight to the grant consent screen.
+  useEffect(() => {
+    if (!platformsLoaded || !isAlreadyConnected) return
+    const grantHref = grantSearch
+      ? `${ROUTES.grant}?${grantSearch}`
+      : ROUTES.grant
+    navigate(grantHref, {
+      replace: true,
+      state: prefetched ? { prefetched } : undefined,
+    })
+  }, [platformsLoaded, isAlreadyConnected, grantSearch, navigate, prefetched])
+
   // When the connector run succeeds, move into `/grant`.
   // Pass pre-fetched session + builder data via navigation state so the
   // grant page can skip the claim + verify steps (already done in background).
@@ -184,6 +225,12 @@ export function Connect() {
       const grantHref = grantSearch
         ? `${ROUTES.grant}?${grantSearch}`
         : ROUTES.grant
+      console.log("[Connect] Navigating to /grant", {
+        hasPrefetched: prefetched !== null,
+        prefetchedSession: prefetched?.session?.id,
+        prefetchedBuilder: prefetched?.builderManifest?.name,
+        grantHref,
+      });
       setConnectRunId(null)
       navigate(grantHref, {
         state: prefetched ? { prefetched } : undefined,

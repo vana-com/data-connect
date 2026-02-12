@@ -5,8 +5,8 @@
 export interface CreateGrantRequest {
   granteeAddress: string;
   scopes: string[];
-  expiresAt?: string;
-  nonce?: string;
+  expiresAt?: number;
+  nonce?: number;
 }
 
 export interface CreateGrantResponse {
@@ -64,10 +64,17 @@ async function serverFetch<T>(
   }
 
   if (!response.ok) {
-    const message =
-      typeof data === "object" && data !== null && "error" in data
-        ? String((data as { error: string }).error)
-        : `Personal Server request failed (HTTP ${response.status})`;
+    let message = `Personal Server request failed (HTTP ${response.status})`;
+    if (typeof data === "object" && data !== null && "error" in data) {
+      const err = (data as Record<string, unknown>).error;
+      if (typeof err === "string") {
+        message = err;
+      } else if (typeof err === "object" && err !== null && "message" in err) {
+        message = String((err as Record<string, unknown>).message);
+      } else {
+        message = JSON.stringify(err);
+      }
+    }
     throw new PersonalServerError(message, response.status);
   }
 

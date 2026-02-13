@@ -3,7 +3,7 @@
 // All calls require `secret` from deep link for authorization
 
 const SESSION_RELAY_URL =
-  import.meta.env.VITE_SESSION_RELAY_URL || "https://session-relay.vana.org";
+  import.meta.env.VITE_SESSION_RELAY_URL || "https://session-relay-git-dev-opendatalabs.vercel.app";
 
 // --- Request/Response types ---
 

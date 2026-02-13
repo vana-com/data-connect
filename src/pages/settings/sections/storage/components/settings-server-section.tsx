@@ -117,9 +117,10 @@ export function SettingsServerSection({
 
   const copyManagedUrl = async (url: string) => {
     const success = await copyTextToClipboard(url)
-    if (!success) return
+    if (!success) return false
     setCopied(true)
     window.setTimeout(() => setCopied(false), 1200)
+    return true
   }
 
   const handleRestart = async () => {

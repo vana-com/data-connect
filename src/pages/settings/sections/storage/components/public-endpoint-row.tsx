@@ -20,7 +20,7 @@ const TEST_PUBLIC_ENDPOINT_COPIED = false
 interface PublicEndpointRowProps {
   tunnelUrl: string | null
   copied: boolean
-  onCopy: (url: string) => void
+  onCopy: (url: string) => Promise<boolean>
 }
 
 function getPublicEndpointState(tunnelUrl: string | null): PublicEndpointState {
@@ -61,9 +61,10 @@ export function PublicEndpointRow({
     return () => window.clearTimeout(timeoutId)
   }, [localCopied])
 
-  const handleCopyClick = () => {
+  const handleCopyClick = async () => {
     if (!previewInputs.tunnelUrl) return
-    onCopy(previewInputs.tunnelUrl)
+    const didCopy = await onCopy(previewInputs.tunnelUrl)
+    if (!didCopy) return
     setLocalCopied(true)
   }
 
@@ -101,7 +102,7 @@ export function PublicEndpointRow({
           ) : null}
           <button
             type="button"
-            onClick={handleCopyClick}
+            onClick={() => void handleCopyClick()}
             className={cn(
               "group",
               "inline-flex min-w-0 items-center gap-1.5",

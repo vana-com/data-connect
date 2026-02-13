@@ -63,6 +63,9 @@ describe("usePersonalServer", () => {
     listeners.clear()
     mockInvoke.mockReset()
     authState = { walletAddress: null, masterKeySignature: null }
+    // isTauriRuntime() checks for this — without it every hook call is a no-op
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    ;(window as any).__TAURI_INTERNALS__ = {}
     // Default: invoke succeeds with a running server
     mockInvoke.mockImplementation((cmd: string) => {
       if (cmd === "start_personal_server") {
@@ -77,6 +80,8 @@ describe("usePersonalServer", () => {
 
   afterEach(() => {
     vi.useRealTimers()
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    delete (window as any).__TAURI_INTERNALS__
   })
 
   it("starts in unauthenticated mode on mount", async () => {
@@ -361,5 +366,45 @@ describe("usePersonalServer", () => {
 
     expect(result.current.status).toBe("stopped")
     expect(result.current.port).toBeNull()
+  })
+
+  it("resets restartingRef when restart fails (e.g. stopServer throws)", async () => {
+    const usePersonalServer = await importHook()
+
+    const { result, rerender } = renderHook(() => usePersonalServer())
+
+    // Let initial start complete
+    await act(async () => {
+      await vi.runAllTimersAsync()
+    })
+
+    act(() => {
+      emit("personal-server-ready", { port: 8080 })
+    })
+
+    expect(result.current.restartingRef.current).toBe(false)
+
+    // Make stop_personal_server reject so restartServer fails
+    mockInvoke.mockImplementation((cmd: string) => {
+      if (cmd === "stop_personal_server") {
+        return Promise.reject(new Error("stop failed"))
+      }
+      return Promise.resolve({ running: true, port: 8080 })
+    })
+
+    // Trigger Phase 2 restart via walletAddress change
+    authState = { walletAddress: "0xabc", masterKeySignature: "sig123" }
+    rerender()
+
+    // restartingRef should be true synchronously (set during render)
+    expect(result.current.restartingRef.current).toBe(true)
+
+    // Let the restart attempt run — stopServer will throw
+    await act(async () => {
+      await vi.runAllTimersAsync()
+    })
+
+    // restartingRef must be reset to false despite the error
+    expect(result.current.restartingRef.current).toBe(false)
   })
 })

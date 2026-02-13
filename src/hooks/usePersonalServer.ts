@@ -87,11 +87,23 @@ export function usePersonalServer() {
 
   const restartServer = useCallback(async (wallet?: string | null) => {
     console.log('[PersonalServer] Restarting with wallet:', wallet ?? 'none');
-    await stopServer();
-    // Brief wait for port release (stop_personal_server already waits up to 3s,
-    // but add a small buffer for OS-level cleanup)
-    await new Promise((r) => setTimeout(r, 500));
-    await startServerRef.current(wallet);
+    try {
+      await stopServer();
+      // Brief wait for port release (stop_personal_server already waits up to 3s,
+      // but add a small buffer for OS-level cleanup)
+      await new Promise((r) => setTimeout(r, 500));
+      await startServerRef.current(wallet);
+    } catch (err) {
+      console.error('[PersonalServer] Restart failed:', err);
+    } finally {
+      // If startServer didn't transition to 'starting', the restart
+      // failed or was a no-op (e.g. stopServer error left running.current
+      // true, so startServer bailed). Reset the flag so the grant flow
+      // auto-approve isn't permanently blocked.
+      if (_sharedStatus !== 'starting') {
+        restartingRef.current = false;
+      }
+    }
   }, [stopServer]);
 
   // Listen for server events

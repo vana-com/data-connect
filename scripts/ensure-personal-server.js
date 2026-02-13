@@ -17,6 +17,10 @@ const root = dirname(here);
 const serverDir = join(root, "personal-server");
 const distDir = join(serverDir, "dist");
 const nodeModulesDir = join(serverDir, "node_modules");
+const requiredDeps = [
+  join(nodeModulesDir, "@opendatalabs", "personal-server-ts-core", "package.json"),
+  join(nodeModulesDir, "@opendatalabs", "personal-server-ts-server", "package.json"),
+];
 const binaryName =
   platform() === "win32" ? "personal-server.exe" : "personal-server";
 const binaryPath = join(distDir, binaryName);
@@ -74,7 +78,13 @@ if (!isStale()) {
 }
 
 // --- Ensure deps are installed ---
-if (!existsSync(nodeModulesDir)) {
+const hasMissingRequiredDeps = requiredDeps.some((depPath) => !existsSync(depPath));
+if (!existsSync(nodeModulesDir) || hasMissingRequiredDeps) {
+  if (hasMissingRequiredDeps) {
+    console.log(
+      "[ensure-personal-server] Missing required personal-server dependencies, reinstalling..."
+    );
+  }
   console.log("[ensure-personal-server] Installing personal-server deps...");
   const install = spawnSync("npm", ["install"], {
     cwd: serverDir,

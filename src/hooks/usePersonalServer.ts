@@ -14,6 +14,7 @@ interface PersonalServerStatus {
 let _sharedPort: number | null = null;
 let _sharedStatus: 'stopped' | 'starting' | 'running' | 'error' = 'stopped';
 let _sharedTunnelUrl: string | null = null;
+let _sharedTunnelFailed = false;
 let _sharedDevToken: string | null = null;
 const isTauriRuntime = () =>
   typeof window !== 'undefined' &&
@@ -21,6 +22,7 @@ const isTauriRuntime = () =>
 
 const MAX_RESTART_ATTEMPTS = 3;
 let _restartCount = 0;
+let _lastStartedWallet: string | null = null;
 
 export function usePersonalServer() {
   const { walletAddress, masterKeySignature } = useSelector(
@@ -29,6 +31,7 @@ export function usePersonalServer() {
   const [status, setStatus] = useState<'stopped' | 'starting' | 'running' | 'error'>(_sharedStatus);
   const [port, setPort] = useState<number | null>(_sharedPort);
   const [tunnelUrl, setTunnelUrl] = useState<string | null>(_sharedTunnelUrl);
+  const [tunnelFailed, setTunnelFailed] = useState(_sharedTunnelFailed);
   const [devToken, setDevToken] = useState<string | null>(_sharedDevToken);
   const [error, setError] = useState<string | null>(null);
   const running = useRef(_sharedStatus === 'starting' || _sharedStatus === 'running');
@@ -75,10 +78,12 @@ export function usePersonalServer() {
       _sharedStatus = 'stopped';
       _sharedPort = null;
       _sharedTunnelUrl = null;
+      _sharedTunnelFailed = false;
       _sharedDevToken = null;
       setStatus('stopped');
       setPort(null);
       setTunnelUrl(null);
+      setTunnelFailed(false);
       setDevToken(null);
     } catch (err) {
       console.error('[PersonalServer] Failed to stop:', err);
@@ -123,8 +128,10 @@ export function usePersonalServer() {
 
       running.current = false;
       _sharedTunnelUrl = null;
+      _sharedTunnelFailed = false;
       _sharedDevToken = null;
       setTunnelUrl(null);
+      setTunnelFailed(false);
       setDevToken(null);
       setPort(null);
 
@@ -148,7 +155,15 @@ export function usePersonalServer() {
     listen<{ url: string }>('personal-server-tunnel', (event) => {
       console.log('[PersonalServer] Tunnel:', event.payload.url);
       _sharedTunnelUrl = event.payload.url;
+      _sharedTunnelFailed = false;
       setTunnelUrl(event.payload.url);
+      setTunnelFailed(false);
+    }).then((fn) => unlisteners.push(fn));
+
+    listen<{ message: string }>('personal-server-tunnel-failed', (event) => {
+      console.warn('[PersonalServer] Tunnel failed:', event.payload.message);
+      _sharedTunnelFailed = true;
+      setTunnelFailed(true);
     }).then((fn) => unlisteners.push(fn));
 
     listen<{ message: string }>('personal-server-log', (event) => {
@@ -180,16 +195,15 @@ export function usePersonalServer() {
   // Set restartingRef synchronously during render (not in useEffect) so that
   // child components' effects (e.g. auto-approve in grant flow) see the flag
   // before they fire — React runs effects bottom-up (children first).
-  const lastStartedWallet = useRef<string | null>(null);
-  if (walletAddress && lastStartedWallet.current !== walletAddress) {
+  if (walletAddress && _lastStartedWallet !== walletAddress) {
     restartingRef.current = true;
   }
   useEffect(() => {
     if (!walletAddress) return;
-    if (lastStartedWallet.current === walletAddress) return;
-    lastStartedWallet.current = walletAddress;
+    if (_lastStartedWallet === walletAddress) return;
+    _lastStartedWallet = walletAddress;
     restartServer(walletAddress);
   }, [walletAddress, restartServer]);
 
-  return { status, port, tunnelUrl, devToken, error, startServer, stopServer, restartServer, restartingRef };
+  return { status, port, tunnelUrl, tunnelFailed, devToken, error, startServer, stopServer, restartServer, restartingRef };
 }

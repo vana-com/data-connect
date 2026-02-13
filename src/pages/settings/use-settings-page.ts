@@ -37,9 +37,7 @@ export function useSettingsPage() {
   const [pathsDebug, setPathsDebug] = useState<Record<string, unknown> | null>(null)
   const [browserStatus, setBrowserStatus] = useState<BrowserStatus | null>(null)
   const [browserSessions, setBrowserSessions] = useState<BrowserSession[]>([])
-  const [simulateNoChrome, setSimulateNoChrome] = useState<boolean>(() => {
-    return localStorage.getItem("databridge_simulate_no_chrome") === "true"
-  })
+  const [simulateNoChrome, setSimulateNoChrome] = useState(false)
 
   useEffect(() => {
     let cancelled = false
@@ -107,9 +105,14 @@ export function useSettingsPage() {
     }
   }, [personalServer.port, personalServer.status, personalServer.devToken, fetchConnectedApps])
 
-  // Persist simulateNoChrome to localStorage
+  // Persist simulateNoChrome to localStorage — only store when explicitly true.
+  // Remove the key when false so a fresh profile starts with the correct default.
   useEffect(() => {
-    localStorage.setItem("databridge_simulate_no_chrome", String(simulateNoChrome))
+    if (simulateNoChrome) {
+      localStorage.setItem("databridge_simulate_no_chrome", "true")
+    } else {
+      localStorage.removeItem("databridge_simulate_no_chrome")
+    }
   }, [simulateNoChrome])
 
   useEffect(() => {

@@ -115,7 +115,8 @@ beforeEach(() => {
   personalServerState = {
     status: "running",
     port: 8080,
-    tunnelUrl: null,
+    tunnelUrl: "https://test.server.vana.org",
+    tunnelFailed: false,
     devToken: "test-dev-token",
     error: null,
     startServer: vi.fn(),
@@ -197,12 +198,13 @@ describe("useGrantFlow", () => {
     })
   })
 
-  it("waits for Personal Server port before auto-approving after auth", async () => {
-    // Start with server still starting (port null)
+  it("waits for Personal Server port and tunnel before auto-approving after auth", async () => {
+    // Start with server still starting (port and tunnel null)
     personalServerState = {
       ...personalServerState,
       status: "starting",
       port: null,
+      tunnelUrl: null,
       devToken: "test-dev-token",
     }
 
@@ -266,13 +268,29 @@ describe("useGrantFlow", () => {
 
     // Auto-approve should NOT have fired — server port is still null
     expect(mockCreateGrant).not.toHaveBeenCalled()
+    // Status should transition to preparing-server (not stay on auth-required)
+    expect(result.current.flowState.status).toBe("preparing-server")
 
-    // Simulate server becoming ready
+    // Simulate server port becoming ready (but tunnel still null)
     await act(async () => {
       personalServerState = {
         ...personalServerState,
         status: "running",
         port: 8080,
+        tunnelUrl: null,
+      }
+      rerender()
+    })
+
+    // Auto-approve should still NOT have fired — tunnel is not ready
+    expect(mockCreateGrant).not.toHaveBeenCalled()
+    expect(result.current.flowState.status).toBe("preparing-server")
+
+    // Simulate tunnel becoming ready
+    await act(async () => {
+      personalServerState = {
+        ...personalServerState,
+        tunnelUrl: "https://test.server.vana.org",
       }
       rerender()
     })
@@ -790,6 +808,7 @@ describe("useGrantFlow", () => {
       ...personalServerState,
       status: "error",
       port: null,
+      tunnelUrl: null,
       error: "Personal Server failed to start.",
     }
 
@@ -826,5 +845,132 @@ describe("useGrantFlow", () => {
     expect(result.current.flowState.error).toContain(
       "Personal Server failed to start"
     )
+  })
+
+  it("waits during Phase 2 restart even if tunnelFailed is stale from Phase 1", async () => {
+    // Phase 1 tunnel failed, but server is restarting for Phase 2.
+    // The auto-approve effect should wait (not error) because restartingRef is true.
+    authState = {
+      isAuthenticated: true,
+      isLoading: false,
+      walletAddress: "0xuser",
+    }
+    personalServerState = {
+      ...personalServerState,
+      status: "starting",
+      port: null,
+      tunnelUrl: null,
+      tunnelFailed: true,
+      restartingRef: { current: true },
+    }
+
+    const prefetched = {
+      session: {
+        id: "restart-session",
+        granteeAddress: "0xbuilder",
+        scopes: ["chatgpt.conversations"],
+        expiresAt: "2030-01-01T00:00:00.000Z",
+      },
+      builderManifest: {
+        name: "Test Builder",
+        appUrl: "https://test.example.com",
+        privacyPolicyUrl: "https://test.example.com/privacy",
+      },
+    }
+
+    mockCreateGrant.mockResolvedValue({ grantId: "grant-restart-1" })
+
+    const { result, rerender } = renderHook(() =>
+      useGrantFlow(
+        { sessionId: "restart-session", secret: "test-secret" },
+        prefetched,
+      ),
+    )
+
+    await waitFor(() => {
+      expect(result.current.flowState.status).toBe("consent")
+    })
+
+    // handleApprove defers because port+tunnel are null
+    await act(async () => {
+      await result.current.handleApprove()
+    })
+
+    // Should NOT show tunnel error — restartingRef guards against stale tunnelFailed
+    expect(result.current.flowState.status).not.toBe("error")
+
+    // Simulate Phase 2 restart completing: server ready, tunnel connected
+    await act(async () => {
+      personalServerState = {
+        ...personalServerState,
+        status: "running",
+        port: 8080,
+        tunnelUrl: "https://restarted.server.vana.org",
+        tunnelFailed: false,
+        restartingRef: { current: false },
+      }
+      rerender()
+    })
+
+    // Now auto-approve should proceed
+    await waitFor(() => {
+      expect(result.current.flowState.status).toBe("success")
+    })
+    expect(mockCreateGrant).toHaveBeenCalled()
+  })
+
+  it("shows error when tunnel fails to establish", async () => {
+    authState = {
+      isAuthenticated: true,
+      isLoading: false,
+      walletAddress: "0xuser",
+    }
+    personalServerState = {
+      ...personalServerState,
+      status: "running",
+      port: 8080,
+      tunnelUrl: null,
+      tunnelFailed: true,
+    }
+
+    const prefetched = {
+      session: {
+        id: "tunnel-fail-session",
+        granteeAddress: "0xbuilder",
+        scopes: ["chatgpt.conversations"],
+        expiresAt: "2030-01-01T00:00:00.000Z",
+      },
+      builderManifest: {
+        name: "Test Builder",
+        appUrl: "https://test.example.com",
+        privacyPolicyUrl: "https://test.example.com/privacy",
+      },
+    }
+
+    const { result } = renderHook(() =>
+      useGrantFlow(
+        {
+          sessionId: "tunnel-fail-session",
+          secret: "test-secret",
+        },
+        prefetched
+      )
+    )
+
+    await waitFor(() => {
+      expect(result.current.flowState.status).toBe("consent")
+    })
+
+    // handleApprove defers because tunnelUrl is null; the auto-approve
+    // effect then surfaces the error because tunnelFailed is true
+    await act(async () => {
+      await result.current.handleApprove()
+    })
+
+    await waitFor(() => {
+      expect(result.current.flowState.status).toBe("error")
+    })
+    expect(result.current.flowState.error).toContain("tunnel")
+    expect(mockCreateGrant).not.toHaveBeenCalled()
   })
 })

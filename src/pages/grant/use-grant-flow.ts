@@ -349,9 +349,10 @@ export function useGrantFlow(params: GrantFlowParams, prefetched?: PrefetchedGra
       return
     }
 
-    // If Personal Server isn't ready yet, defer (auto-approve effect will
-    // resume once personalServer.port arrives).
-    if (!personalServer.port) {
+    // If Personal Server isn't fully ready yet (port + tunnel), defer.
+    // The auto-approve effect will resume once both are available.
+    // The tunnel is required so the builder app can reach the server externally.
+    if (!personalServer.port || !personalServer.tunnelUrl) {
       setAuthPending(true)
       setFlowState(prev => ({ ...prev, status: "creating-grant" }))
       return
@@ -466,14 +467,16 @@ export function useGrantFlow(params: GrantFlowParams, prefetched?: PrefetchedGra
     isAuthenticated,
     walletAddress,
     personalServer.port,
+    personalServer.tunnelUrl,
     personalServer.devToken,
     dispatch,
   ])
 
   // Auto-approve after auth completes (if user had clicked Allow before auth).
-  // For non-demo sessions, wait until the Personal Server is ready (port available)
-  // so handleApprove doesn't throw "not running". If the server errors out, surface
-  // the error immediately instead of waiting forever.
+  // For non-demo sessions, wait until the Personal Server is fully ready
+  // (port + tunnel) so handleApprove doesn't throw and the builder can reach
+  // the server externally. If the server or tunnel errors out, surface the
+  // error immediately instead of waiting forever.
   useEffect(() => {
     if (!authPending || !isAuthenticated || !walletAddress) return
     if (personalServer.status === "error") {
@@ -486,10 +489,29 @@ export function useGrantFlow(params: GrantFlowParams, prefetched?: PrefetchedGra
       return
     }
     const isDemo = isDemoSession(flowState.sessionId)
-    if (!isDemo && (personalServer.restartingRef.current || !personalServer.port)) return
+    // During Phase 2 restart, wait for the server to come back up.
+    // restartingRef is set synchronously during render so we see it
+    // before any stale tunnelFailed state from Phase 1.
+    if (!isDemo && personalServer.restartingRef.current) {
+      setFlowState(prev => prev.status === "preparing-server" ? prev : { ...prev, status: "preparing-server" })
+      return
+    }
+    if (personalServer.tunnelFailed) {
+      setAuthPending(false)
+      setFlowState(prev => ({
+        ...prev,
+        status: "error",
+        error: "Could not establish a public tunnel for the Personal Server. The requesting app won't be able to access your data.",
+      }))
+      return
+    }
+    if (!isDemo && (!personalServer.port || !personalServer.tunnelUrl)) {
+      setFlowState(prev => prev.status === "preparing-server" ? prev : { ...prev, status: "preparing-server" })
+      return
+    }
     setAuthPending(false)
     void handleApprove()
-  }, [authPending, handleApprove, isAuthenticated, walletAddress, personalServer.port, personalServer.status, personalServer.error, flowState.sessionId])
+  }, [authPending, handleApprove, isAuthenticated, walletAddress, personalServer.port, personalServer.tunnelUrl, personalServer.tunnelFailed, personalServer.status, personalServer.error, flowState.sessionId])
 
   // --- Retry from error ---
   // Bumps retryCount which re-triggers the main flow effect (claim → verify → consent).

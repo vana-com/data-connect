@@ -1,7 +1,11 @@
 import { LoaderIcon } from "lucide-react"
 import { Text } from "@/components/typography/text"
 
-export function GrantLoadingState() {
+interface GrantLoadingStateProps {
+  message?: string
+}
+
+export function GrantLoadingState({ message }: GrantLoadingStateProps) {
   return (
     <div className="flex min-h-screen items-center justify-center bg-muted">
       <div className="flex flex-col items-center gap-4 text-center">
@@ -10,7 +14,7 @@ export function GrantLoadingState() {
           className="size-12 animate-spin text-accent motion-reduce:animate-none"
         />
         <Text as="p" intent="body" color="mutedForeground" aria-live="polite">
-          Loading…
+          {message ?? "Loading…"}
         </Text>
       </div>
     </div>

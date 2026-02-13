@@ -59,7 +59,10 @@ async function fixTunnelProxyName(tunnelManager, storageRoot) {
     stdio: ['ignore', 'pipe', 'pipe'],
   });
 
-  // Wait for connection (up to 15s)
+  // Wait for frpc to actually report a successful connection (up to 30s).
+  // Do NOT resolve optimistically on timeout — the tunnel must be functional
+  // before we tell the desktop app it's ready, otherwise the builder will
+  // get 404s when trying to reach the personal server.
   const url = await new Promise((resolve) => {
     let resolved = false;
     const onData = (data) => {
@@ -72,7 +75,7 @@ async function fixTunnelProxyName(tunnelManager, storageRoot) {
     frpc.stderr?.on('data', onData);
     frpc.on('error', () => { if (!resolved) { resolved = true; resolve(null); } });
     frpc.on('exit', (code) => { if (!resolved && code !== 0) { resolved = true; resolve(null); } });
-    setTimeout(() => { if (!resolved) { resolved = true; resolve(publicUrl); } }, 15000);
+    setTimeout(() => { if (!resolved) { resolved = true; resolve(null); } }, 30000);
   });
 
   // Ensure frpc is killed on process exit

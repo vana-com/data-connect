@@ -32,6 +32,7 @@ export interface GrantFlowState {
     | "verifying-builder"
     | "consent"
     | "auth-required"
+    | "preparing-server"
     | "creating-grant"
     | "approving"
     | "success"

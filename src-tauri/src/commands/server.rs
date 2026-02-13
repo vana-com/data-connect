@@ -115,7 +115,10 @@ pub async fn start_personal_server(
         let preferred = [8080u16, 8081, 8082, 8083, 8084, 8085];
         let mut found = None;
         for p in preferred {
-            if std::net::TcpListener::bind(("127.0.0.1", p)).is_ok() {
+            // Check both IPv4 and IPv6 — the PS binds on :::PORT (all interfaces)
+            if std::net::TcpListener::bind(("127.0.0.1", p)).is_ok()
+                && std::net::TcpListener::bind(("::1", p)).is_ok()
+            {
                 found = Some(p);
                 break;
             }
@@ -474,10 +477,12 @@ pub async fn stop_personal_server() -> Result<(), String> {
         *token = None;
     }
 
-    // Wait for port to be released (up to 3s)
+    // Wait for port to be released on both IPv4 and IPv6 (up to 3s)
     if let Some(port) = old_port {
         for _ in 0..30 {
-            if std::net::TcpListener::bind(("0.0.0.0", port)).is_ok() {
+            if std::net::TcpListener::bind(("0.0.0.0", port)).is_ok()
+                && std::net::TcpListener::bind(("::1", port)).is_ok()
+            {
                 break;
             }
             std::thread::sleep(std::time::Duration::from_millis(100));

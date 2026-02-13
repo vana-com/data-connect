@@ -92,6 +92,23 @@ npm run tauri build
 
 The built app will be in `src-tauri/target/release/bundle/`.
 
+### Releasing
+
+Releases are created via the release script, which bumps the version in `tauri.conf.json`, commits, pushes, and creates a GitHub release that triggers CI builds across all platforms.
+
+```bash
+# Check current and suggested versions
+npm run release:github -- --show-versions
+
+# Dry run to preview what will happen
+npm run release:github -- --version X.Y.Z --dry-run
+
+# Create a new release
+npm run release:github -- --version X.Y.Z
+```
+
+> **Do not** create releases manually via `gh release create` or the GitHub UI — the CI workflow will fail if `tauri.conf.json` version doesn't match the release tag.
+
 ## Architecture
 
 ```

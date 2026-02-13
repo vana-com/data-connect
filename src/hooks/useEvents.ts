@@ -48,7 +48,7 @@ interface ConnectorExportCompleteEvent {
  * Deliver a single run's export data to the personal server and mark staging as synced.
  * Returns true on success, false on failure (non-throwing).
  */
-async function deliverRunToPersonalServer(
+export async function deliverRunToPersonalServer(
   run: { id: string; platformId: string; exportPath?: string; itemsExported?: number; itemLabel?: string; syncedToPersonalServer?: boolean },
   port: number,
   dispatch: ReturnType<typeof import('react-redux').useDispatch>,

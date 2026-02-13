@@ -13,7 +13,7 @@ import { cn } from "@/lib/classes"
   - "Public endpoint" can be unclear; this explains what the URL is for.
 */
 type PublicEndpointState = "available" | "unavailable"
-const TEST_PUBLIC_ENDPOINT_STATE: PublicEndpointState | null = "available"
+const TEST_PUBLIC_ENDPOINT_STATE: PublicEndpointState | null = null
 const TEST_PUBLIC_ENDPOINT_URL = "https://abc123.server.vana.org"
 const TEST_PUBLIC_ENDPOINT_COPIED = false
 

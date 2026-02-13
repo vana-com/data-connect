@@ -77,8 +77,8 @@ const ACTIVE_SERVER_OPTION_KEY = "settings.active-server-option"
   - "starting" => hides restart button
   - null      => use real runtime status from usePersonalServer
 */
-const TEST_AUTHENTICATED = true
-const TEST_SERVER_STATUS_OVERRIDE: ServerRuntimeStatus | null = "starting"
+const TEST_AUTHENTICATED = false
+const TEST_SERVER_STATUS_OVERRIDE: ServerRuntimeStatus | null = null
 
 interface SettingsServerSectionProps {
   isAuthenticated: boolean

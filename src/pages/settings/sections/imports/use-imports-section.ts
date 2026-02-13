@@ -14,15 +14,15 @@ interface ServerRegisteredPayload {
   serverId: string | null
 }
 
-const RUNS_SOURCE_FILTER_PARAM = "source"
-const RUNS_SOURCE_FILTER_ALL = "all"
+const IMPORTS_SOURCE_FILTER_PARAM = "source"
+const IMPORTS_SOURCE_FILTER_ALL = "all"
 
-export interface RunSourceFilterOption {
+export interface ImportSourceFilterOption {
   value: string
   label: string
 }
 
-export function useRunsSection() {
+export function useImportsSection() {
   const [searchParams, setSearchParams] = useSearchParams()
   const runs = useSelector((state: RootState) => state.app.runs)
   const platforms = useSelector((state: RootState) => state.app.platforms)
@@ -71,14 +71,14 @@ export function useRunsSection() {
 
   const serverReady = personalServer.status === "running" && !!serverId
 
-  const sourceFilterOptions = useMemo<RunSourceFilterOption[]>(() => {
+  const sourceFilterOptions = useMemo<ImportSourceFilterOption[]>(() => {
     const connectedSources =
       USE_TEST_DATA && platforms.length === 0
         ? testConnectedPlatforms
         : platforms.filter(platform => connectedPlatforms[platform.id])
 
     return [
-      { value: RUNS_SOURCE_FILTER_ALL, label: "All" },
+      { value: IMPORTS_SOURCE_FILTER_ALL, label: "All" },
       ...connectedSources.map(platform => ({
         value: platform.id,
         label: platform.name,
@@ -92,25 +92,25 @@ export function useRunsSection() {
   )
 
   const selectedSourceFilter = useMemo(() => {
-    const sourceFromSearch = searchParams.get(RUNS_SOURCE_FILTER_PARAM)
-    if (!sourceFromSearch || sourceFromSearch === RUNS_SOURCE_FILTER_ALL) {
-      return RUNS_SOURCE_FILTER_ALL
+    const sourceFromSearch = searchParams.get(IMPORTS_SOURCE_FILTER_PARAM)
+    if (!sourceFromSearch || sourceFromSearch === IMPORTS_SOURCE_FILTER_ALL) {
+      return IMPORTS_SOURCE_FILTER_ALL
     }
     return connectedSourceIdSet.has(sourceFromSearch)
       ? sourceFromSearch
-      : RUNS_SOURCE_FILTER_ALL
+      : IMPORTS_SOURCE_FILTER_ALL
   }, [connectedSourceIdSet, searchParams])
 
   const setSourceFilter = useCallback(
     (nextSourceFilter: string) => {
       const nextParams = new URLSearchParams(searchParams)
       if (
-        nextSourceFilter === RUNS_SOURCE_FILTER_ALL ||
+        nextSourceFilter === IMPORTS_SOURCE_FILTER_ALL ||
         !connectedSourceIdSet.has(nextSourceFilter)
       ) {
-        nextParams.delete(RUNS_SOURCE_FILTER_PARAM)
+        nextParams.delete(IMPORTS_SOURCE_FILTER_PARAM)
       } else {
-        nextParams.set(RUNS_SOURCE_FILTER_PARAM, nextSourceFilter)
+        nextParams.set(IMPORTS_SOURCE_FILTER_PARAM, nextSourceFilter)
       }
       setSearchParams(nextParams, { replace: true })
     },
@@ -118,27 +118,27 @@ export function useRunsSection() {
   )
 
   const filteredRuns = useMemo(() => {
-    if (selectedSourceFilter === RUNS_SOURCE_FILTER_ALL) {
+    if (selectedSourceFilter === IMPORTS_SOURCE_FILTER_ALL) {
       return runs
     }
     return runs.filter(run => run.platformId === selectedSourceFilter)
   }, [runs, selectedSourceFilter])
 
-  const activeRuns = useMemo(() => {
+  const activeImports = useMemo(() => {
     return [...filteredRuns]
       .filter(run => run.status === "running" || run.status === "pending")
       .sort((a, b) => new Date(b.startDate).getTime() - new Date(a.startDate).getTime())
   }, [filteredRuns])
 
-  const finishedRuns = useMemo(() => {
+  const finishedImports = useMemo(() => {
     return [...filteredRuns]
       .filter(run => run.status !== "running" && run.status !== "pending")
       .sort((a, b) => new Date(b.startDate).getTime() - new Date(a.startDate).getTime())
   }, [filteredRuns])
 
   return {
-    activeRuns,
-    finishedRuns,
+    activeImports,
+    finishedImports,
     sourceFilterOptions,
     selectedSourceFilter,
     setSourceFilter,

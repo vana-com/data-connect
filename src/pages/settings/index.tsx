@@ -15,7 +15,7 @@ import { SettingsCredentials } from "./components/settings-credentials"
 import { SettingsOverviewLayout } from "./components/settings-overview-layout"
 import { SettingsSidebar } from "./components/settings-sidebar"
 import { SettingsStorage } from "./components/settings-storage"
-import { SettingsRunsSection } from "./sections/runs/index"
+import { SettingsImportsSection } from "./sections/imports/index"
 import { SETTINGS_SECTION_META, SETTINGS_SECTION_ORDER } from "./sections"
 import type { SettingsSection } from "./types"
 import { useSettingsPage } from "./use-settings-page"
@@ -24,7 +24,7 @@ const sectionIcons: Record<SettingsSection, ReactNode> = {
   account: <UserIcon aria-hidden="true" />,
   apps: <BoxIcon aria-hidden="true" />,
   storage: <HousePlusIcon aria-hidden="true" />,
-  runs: <ActivityIcon aria-hidden="true" />,
+  imports: <ActivityIcon aria-hidden="true" />,
   credentials: <KeyRoundIcon aria-hidden="true" />,
   about: <InfoIcon aria-hidden="true" />,
 }
@@ -96,9 +96,11 @@ export function Settings() {
       <SettingsStorage
         dataPath={dataPath}
         onOpenDataFolder={onOpenDataFolder}
-        personalServerPort={personalServer.port}
-        personalServerStatus={personalServer.status}
+        isAuthenticated={isAuthenticated}
+        accountEmail={user?.email ?? null}
         walletAddress={walletAddress ?? null}
+        onSignIn={onSignIn}
+        personalServer={personalServer}
       />
     )
   } else if (activeSection === "about") {
@@ -124,8 +126,8 @@ export function Settings() {
         onSimulateNoChromeChange={onSimulateNoChromeChange}
       />
     )
-  } else if (activeSection === "runs") {
-    content = <SettingsRunsSection />
+  } else if (activeSection === "imports") {
+    content = <SettingsImportsSection />
   }
 
   return (

@@ -61,7 +61,12 @@ export function Home() {
     if (personalServer.port && personalServer.status === "running") {
       fetchConnectedApps(personalServer.port, personalServer.devToken)
     }
-  }, [personalServer.port, personalServer.status, personalServer.devToken, fetchConnectedApps])
+  }, [
+    personalServer.port,
+    personalServer.status,
+    personalServer.devToken,
+    fetchConnectedApps,
+  ])
 
   // Derived state: recently completed platform IDs (memoized, not effect-stored)
   useEffect(() => {
@@ -143,6 +148,7 @@ export function Home() {
           <ConnectedSourcesList
             platforms={connectedPlatformsList}
             runs={runs}
+            headline="Your connected data"
             onOpenRuns={platform =>
               navigate(
                 ROUTES.source.replace(
@@ -155,6 +161,7 @@ export function Home() {
           <AvailableSourcesList
             platforms={availablePlatforms}
             runs={runs}
+            headline="Available connectors"
             onExport={handleExport}
             connectedPlatformIds={connectedPlatformsList.map(p => p.id)}
           />

@@ -11,7 +11,7 @@ import { Row, RowDot } from "./row"
 */
 type AuthIdentityState = "email" | "wallet" | "signed-in"
 
-const TEST_AUTH_IDENTITY: AuthIdentityState | null = "email"
+const TEST_AUTH_IDENTITY: AuthIdentityState | null = null
 const TEST_ACCOUNT_EMAIL = "you@vana.example"
 const TEST_WALLET_ADDRESS = "0x1234567890abcdef1234567890abcdef12345678"
 

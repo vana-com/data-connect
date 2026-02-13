@@ -37,13 +37,14 @@ export const textVariants = cva(
         mutedForeground: "text-muted-foreground",
         accent: "text-accent",
         accentForeground: "text-accent-foreground",
-        destructive: "text-destructive",
+        destructive: "text-destructive-foreground",
         success: "text-success-foreground",
         inherit: "text-inherit",
       },
       // Patterns: intentional design decisions
       // "I need a section label" (driven by size)
       intent: {
+        inherit: "",
         pill: ["text-pill subpixel-antialiased"],
         pillEyebrow: ["text-pill", eyebrowStyle],
         fine: "text-fine",

@@ -1,7 +1,7 @@
 import { Link } from "react-router-dom"
 import { sourceRowActionStyle } from "@/components/elements/source-row"
 import { PlatformIcon } from "@/components/icons/platform-icon"
-import { ActionPanel } from "@/components/typography/action-button"
+import { ActionPanel } from "@/components/typography/button-action"
 import { stateFocus } from "@/components/typography/field"
 import { Text } from "@/components/typography/text"
 import { buttonVariants } from "@/components/ui/button"

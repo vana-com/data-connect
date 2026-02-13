@@ -33,9 +33,10 @@ export function SettingsSingleSelectRowGroup<T extends string>({
   // so users can click the selected option again to clear back to "none".
   return (
     <div
-      className="border-t border-border"
+      data-component="settings-single-select-row-group"
       role="radiogroup"
       aria-label={ariaLabel}
+      className="border-t border-border"
     >
       {options.map((item, index) => {
         const selected = value === item.id

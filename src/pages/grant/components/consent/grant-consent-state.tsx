@@ -6,7 +6,7 @@ import { cn } from "@/lib/classes"
 import { formatScopeLabel, getPrimaryDataSourceLabel } from "@/lib/scope-labels"
 import type { BuilderManifest, GrantSession } from "../../types"
 import { GrantWarning } from "./grant-warning"
-import { ActionPanel } from "@/components/typography/action-button"
+import { ActionPanel } from "@/components/typography/button-action"
 
 // Note: `isApproving` maps to the "creating-grant" / "approving" states.
 // The consent screen stays visible while the Allow button shows a loading spinner.

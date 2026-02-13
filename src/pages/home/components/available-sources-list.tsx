@@ -1,6 +1,6 @@
 import { useMemo } from "react"
 import { LoaderIcon } from "lucide-react"
-import { ActionButton } from "@/components/typography/action-button"
+import { ActionButton } from "@/components/typography/button-action"
 import { EyebrowBadge } from "@/components/typography/eyebrow-badge"
 import { Text } from "@/components/typography/text"
 import { SourceStack } from "@/components/elements/source-row"

@@ -1,7 +1,7 @@
 import { Link, useNavigate } from "react-router-dom"
 import { CheckIcon, UserRoundCogIcon } from "lucide-react"
 import { PlatformIcon } from "@/components/icons/platform-icon"
-import { ActionPanel } from "@/components/typography/action-button"
+import { ActionPanel } from "@/components/typography/button-action"
 import { Button } from "@/components/ui/button"
 import { Text } from "@/components/typography/text"
 import { getPrimaryDataSourceLabel } from "@/lib/scope-labels"

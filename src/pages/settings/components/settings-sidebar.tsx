@@ -3,7 +3,6 @@ import { Button } from "@/components/ui/button"
 import {
   Tooltip,
   TooltipContent,
-  TooltipProvider,
   TooltipTrigger,
 } from "@/components/ui/tooltip"
 import { cn } from "@/lib/classes"
@@ -41,29 +40,27 @@ export function SettingsSidebar({
 }: SettingsSidebarProps) {
   return (
     <aside className="pt-w16">
-      <TooltipProvider delayDuration={120}>
-        <nav className="sticky top-6 space-y-0.5 pt-1">
-          {items.map(section => (
-            <Tooltip key={section.key}>
-              <TooltipTrigger asChild>
-                <Button
-                  type="button"
-                  variant="ghost"
-                  onClick={() => onSectionChange(section.key)}
-                  aria-current={activeSection === section.key ? "page" : undefined}
-                  className={settingsNavButtonClassName}
-                >
-                  {section.icon}
-                  <span className="hidden md:inline">{section.label}</span>
-                </Button>
-              </TooltipTrigger>
-              <TooltipContent side="right" className="md:hidden">
-                {section.label}
-              </TooltipContent>
-            </Tooltip>
-          ))}
-        </nav>
-      </TooltipProvider>
+      <nav className="sticky top-6 space-y-0.5 pt-1">
+        {items.map(section => (
+          <Tooltip key={section.key}>
+            <TooltipTrigger asChild>
+              <Button
+                type="button"
+                variant="ghost"
+                onClick={() => onSectionChange(section.key)}
+                aria-current={activeSection === section.key ? "page" : undefined}
+                className={settingsNavButtonClassName}
+              >
+                {section.icon}
+                <span className="hidden md:inline">{section.label}</span>
+              </Button>
+            </TooltipTrigger>
+            <TooltipContent side="right" className="md:hidden">
+              {section.label}
+            </TooltipContent>
+          </Tooltip>
+        ))}
+      </nav>
     </aside>
   )
 }

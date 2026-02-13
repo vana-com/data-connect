@@ -1,7 +1,7 @@
 import {
   ActionButton,
   ActionPanel,
-} from "@/components/typography/action-button"
+} from "@/components/typography/button-action"
 import { Text } from "@/components/typography/text"
 import { SourceRow } from "@/components/elements/source-row"
 import { cn } from "@/lib/classes"

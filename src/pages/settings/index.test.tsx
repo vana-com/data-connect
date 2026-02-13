@@ -4,6 +4,7 @@ import { createMemoryRouter, RouterProvider, useLocation } from "react-router"
 import { Provider } from "react-redux"
 import { ROUTES } from "@/config/routes"
 import { store } from "@/state/store"
+import { TooltipProvider } from "@/components/ui/tooltip"
 import { Settings } from "./index"
 
 const mockUseAuth = vi.fn()
@@ -59,9 +60,11 @@ const renderSettings = (initialEntry: string = ROUTES.settings) => {
   )
 
   return render(
-    <Provider store={store}>
-      <RouterProvider router={router} />
-    </Provider>
+    <TooltipProvider delayDuration={120}>
+      <Provider store={store}>
+        <RouterProvider router={router} />
+      </Provider>
+    </TooltipProvider>
   )
 }
 

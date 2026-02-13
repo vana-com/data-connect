@@ -35,6 +35,7 @@ const buttonVariants = cva(
         accent:
           "bg-accent text-background hover:bg-accent-foreground data-[state=open]:bg-accent-surface",
         default: "bg-foreground text-background hover:bg-foreground",
+        iris: "bg-irisLight text-background hover:bg-irisLight/90 data-[state=open]:bg-irisLight/90",
         outline: [
           // shadow-xs
           "border border-ring/20 bg-background",
@@ -49,7 +50,7 @@ const buttonVariants = cva(
         secondary:
           "bg-secondary text-secondary-foreground hover:bg-secondary/80",
         destructive:
-          "bg-destructive text-destructive-foreground hover:bg-destructive/90 focus-visible:ring-destructive/20 dark:focus-visible:ring-destructive/40 dark:bg-destructive/60",
+          "bg-destructive text-destructive-reversed hover:bg-destructive/90 focus-visible:ring-destructive/20 dark:focus-visible:ring-destructive/40 dark:bg-destructive/60",
         link: "text-foreground underline-offset-4 hover:underline",
       },
       size: {
@@ -95,6 +96,11 @@ const buttonVariants = cva(
       {
         size: ["pill", "xs", "sm"],
         className: "[&_svg]:translate-y-[-0.05em]",
+      },
+      {
+        variant: "iris",
+        size: "sm",
+        className: "px-w6",
       },
     ],
     defaultVariants: {

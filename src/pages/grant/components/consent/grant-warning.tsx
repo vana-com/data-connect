@@ -1,5 +1,5 @@
 import { Text } from "@/components/typography/text"
-import { LearnMoreLink } from "@/components/typography/learn-more-link"
+import { LearnMoreLink } from "@/components/typography/link-learn-more"
 
 export function GrantWarning() {
   return (

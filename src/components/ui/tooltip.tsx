@@ -31,10 +31,19 @@ function TooltipContent({
         data-slot="tooltip-content"
         sideOffset={sideOffset}
         className={cn(
-          "z-50 overflow-hidden rounded-none px-2 py-1.5",
+          // layout
+          "overflow-hidden",
+          // position
+          "z-50",
+          // shape + spacing
+          "rounded-none px-2 py-1.5",
+          // typography + surface
           "bg-popover text-popover-foreground text-xs",
+          // border + depth
           "ring-1 ring-foreground/10 shadow-md",
-          "data-open:animate-in data-closed:animate-out data-closed:fade-out-0 data-open:fade-in-0 data-closed:zoom-out-95 data-open:zoom-in-95",
+          // state transitions
+          "data-closed:animate-out data-closed:fade-out-0 data-closed:zoom-out-95",
+          "data-open:animate-in data-open:fade-in-0 data-open:zoom-in-95",
           className
         )}
         {...props}

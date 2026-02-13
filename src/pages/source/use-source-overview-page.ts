@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from "react"
 import { useSelector } from "react-redux"
 import { useAuth } from "@/hooks/useAuth"
+import { copyTextToClipboard } from "@/lib/clipboard"
 import { openLocalPath, toFileUrl } from "@/lib/open-resource"
 import { getPlatformRegistryEntryById } from "@/lib/platform/utils"
 import {
@@ -12,7 +13,6 @@ import {
 } from "@/lib/tauri-paths"
 import type { RootState, Run } from "@/types"
 import type { CopyStatus, SourceOverviewPageState } from "./types"
-import { copyTextToClipboard } from "./utils"
 
 const fileSystemStub = `../exported_data`
 

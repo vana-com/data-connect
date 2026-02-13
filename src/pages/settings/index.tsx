@@ -14,8 +14,8 @@ import { SettingsContent } from "./components/settings-content"
 import { SettingsCredentials } from "./components/settings-credentials"
 import { SettingsOverviewLayout } from "./components/settings-overview-layout"
 import { SettingsSidebar } from "./components/settings-sidebar"
-import { SettingsStorage } from "./components/settings-storage"
 import { SettingsImportsSection } from "./sections/imports/index"
+import { SettingsStorageSection } from "./sections/storage/index"
 import { SETTINGS_SECTION_META, SETTINGS_SECTION_ORDER } from "./sections"
 import type { SettingsSection } from "./types"
 import { useSettingsPage } from "./use-settings-page"
@@ -93,7 +93,7 @@ export function Settings() {
     )
   } else if (activeSection === "storage") {
     content = (
-      <SettingsStorage
+      <SettingsStorageSection
         dataPath={dataPath}
         onOpenDataFolder={onOpenDataFolder}
         isAuthenticated={isAuthenticated}

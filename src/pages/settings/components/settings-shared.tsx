@@ -162,7 +162,7 @@ export function SettingsRow({
   const iconContent = wrapIcon ? (
     <div
       className={cn(
-        "w-[34px] h-[30px] mt-0.5",
+        "w-[34px] h-inset mt-0.5",
         "flex items-center justify-center rounded-button [&_svg]:size-6",
         iconContainerClassName
       )}
@@ -176,7 +176,11 @@ export function SettingsRow({
   return (
     <div
       data-component="settings-row"
-      className={cn("flex items-start gap-4 p-4", className)}
+      className={cn(
+        "flex gap-4 p-4",
+        descriptionContent ? "items-start" : "items-center",
+        className
+      )}
     >
       {iconContent}
       <div

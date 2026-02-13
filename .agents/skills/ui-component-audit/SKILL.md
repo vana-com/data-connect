@@ -47,6 +47,7 @@ about component internals — verify them. Do not pass props that match defaults
 - Defer to base component styles (padding, radius, borders) unless the UI markup explicitly specifies an override.
 - Use semantic radius/color tokens (e.g., `rounded-button`, tokenized color classes) instead of raw Tailwind radius/color classes.
 - Icon sizing: use `size-*` for square icons instead of paired `w-*`/`h-*`.
+- Icons inside `Button`: do not set explicit icon sizing classes by default. `Button` already sizes nested SVGs via its base styles; only add `size-*` when the design explicitly requires an override.
 - SVG sizing: `useBoxSize` sets inline `width/height` (`1em` by default). Use it when icons should scale with text; avoid mixing with `size-*` in the same element.
 - Lucide icon imports must end with `Icon` suffix (e.g., `DownloadIcon`).
 - Component filenames are kebab-case.
@@ -66,6 +67,15 @@ barrel imports, etc.), defer to the **vercel-react-best-practices** and
 **vercel-composition-patterns** skills when available. This skill focuses on
 UI implementation correctness, not general React guidance.
 
+- Barrel files are a tool, not a default. Follow `vercel-react-best-practices`
+  rule 2.1 (anti-barrel by default): prefer direct imports, especially for
+  third-party packages.
+- Exception: allow tiny, explicit, feature-local curated barrels (no
+  `export *`) when they define a stable boundary (for example, section ->
+  shared settings components) and reduce fragile relative paths.
+- Never create broad catch-all barrels for large folders or app-wide UI
+  exports as part of UI audit refactors.
+
 ## Fix Workflow (when asked to refactor)
 
 1. Convert inline styles → Tailwind classes + tokens.
@@ -73,10 +83,11 @@ UI implementation correctness, not general React guidance.
 3. Convert raw `<button>` to `Button` and drop custom focus rings.
 4. If a file is not kebab-case, flag it and suggest the new name — do not rename automatically. Wait for confirmation before renaming and updating imports.
 5. Enforce icon suffix and direct imports.
-6. For icon + text rows, use `Text` with `withIcon`; remove manual layout classes where possible.
-7. Add `type="button"` to non-submit buttons.
-8. Verify null-safe rendering for optional fields.
-9. Run lints for touched files.
+6. If import ergonomics are poor, prefer alias-based direct imports; only introduce a curated local barrel when it is intentionally tiny and boundary-scoped.
+7. For icon + text rows, use `Text` with `withIcon`; remove manual layout classes where possible.
+8. Add `type="button"` to non-submit buttons.
+9. Verify null-safe rendering for optional fields.
+10. Run lints for touched files.
 
 ## Output Format
 

@@ -10,6 +10,7 @@ function renderServerSection() {
     status: "running" as const,
     port: 7777,
     tunnelUrl: "https://real.server.vana.org",
+    tunnelFailed: false,
     devToken: null,
     error: null,
     startServer: vi.fn(),

@@ -21,6 +21,7 @@ let personalServerState = {
   status: "stopped" as string,
   port: null as number | null,
   tunnelUrl: null as string | null,
+  tunnelFailed: false,
   devToken: null as string | null,
   error: null as string | null,
   startServer: vi.fn(),

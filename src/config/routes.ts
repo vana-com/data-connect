@@ -3,7 +3,6 @@ export const ROUTES = {
   apps: "/apps",
   mcp: "/mcp",
   docs: "/docs",
-  runs: "/runs",
   source: "/sources/:platformId",
   settings: "/settings",
   connect: "/connect",

@@ -3,17 +3,17 @@ import { Text } from "@/components/typography/text"
 import { Button } from "@/components/ui/button"
 import { PersonalServerCard } from "./personal-server-card"
 import { RunItem } from "./run-item/run-item"
-import { useRunsPage } from "../use-runs-page"
+import { useImportsSection } from "../use-imports-section"
 
-interface RunsPanelProps {
+interface ImportHistoryPanelProps {
   showHeader?: boolean
 }
 
-/* Runs = sync/export job history, not "which app accessed my data." */
-export function RunsPanel({ showHeader = true }: RunsPanelProps) {
+/* Import history = scraped data import activity, not app authorization history. */
+export function ImportHistoryPanel({ showHeader = true }: ImportHistoryPanelProps) {
   const {
-    activeRuns,
-    finishedRuns,
+    activeImports,
+    finishedImports,
     sourceFilterOptions,
     selectedSourceFilter,
     setSourceFilter,
@@ -22,17 +22,17 @@ export function RunsPanel({ showHeader = true }: RunsPanelProps) {
     personalServer,
     serverId,
     serverReady,
-  } = useRunsPage()
+  } = useImportsSection()
 
   return (
     <div className="space-y-6">
       {showHeader ? (
         <div className="space-y-1">
           <Text as="h1" intent="heading" weight="semi">
-            Export history
+            Import History
           </Text>
           <Text as="p" intent="small" color="mutedForeground">
-            Your data export runs
+            Your data import activity
           </Text>
         </div>
       ) : null}
@@ -58,9 +58,9 @@ export function RunsPanel({ showHeader = true }: RunsPanelProps) {
         ))}
       </div>
 
-      {activeRuns.length > 0 ? (
+      {activeImports.length > 0 ? (
         <div className="space-y-3">
-          {activeRuns.map(run => (
+          {activeImports.map(run => (
             <RunItem
               key={run.id}
               run={run}
@@ -72,21 +72,21 @@ export function RunsPanel({ showHeader = true }: RunsPanelProps) {
         </div>
       ) : null}
 
-      {finishedRuns.length === 0 && activeRuns.length === 0 ? (
+      {finishedImports.length === 0 && activeImports.length === 0 ? (
         <div className="rounded-card border border-border bg-background p-12 text-center">
           <div className="mx-auto mb-4 flex size-16 items-center justify-center rounded-card bg-muted">
             <ActivityIcon aria-hidden="true" className="size-8 text-muted-foreground" />
           </div>
           <Text as="h3" intent="heading" weight="semi" className="mb-2">
-            No exports yet
+            No imports yet
           </Text>
           <Text as="p" intent="small" color="mutedForeground">
-            Start an export from the Data Sources page.
+            Start an import from the Data Sources page.
           </Text>
         </div>
-      ) : finishedRuns.length > 0 ? (
+      ) : finishedImports.length > 0 ? (
         <div className="space-y-3">
-          {finishedRuns.map(run => (
+          {finishedImports.map(run => (
             <RunItem
               key={run.id}
               run={run}

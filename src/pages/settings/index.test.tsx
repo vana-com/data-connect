@@ -4,6 +4,7 @@ import { createMemoryRouter, RouterProvider, useLocation } from "react-router"
 import { Provider } from "react-redux"
 import { ROUTES } from "@/config/routes"
 import { store } from "@/state/store"
+import { TooltipProvider } from "@/components/ui/tooltip"
 import { Settings } from "./index"
 
 const mockUseAuth = vi.fn()
@@ -59,9 +60,11 @@ const renderSettings = (initialEntry: string = ROUTES.settings) => {
   )
 
   return render(
-    <Provider store={store}>
-      <RouterProvider router={router} />
-    </Provider>
+    <TooltipProvider delayDuration={120}>
+      <Provider store={store}>
+        <RouterProvider router={router} />
+      </Provider>
+    </TooltipProvider>
   )
 }
 
@@ -104,10 +107,10 @@ beforeEach(() => {
 
 describe("Settings", () => {
   it("shows the account section by default", () => {
-    const { getByText } = renderSettings()
+    const { getAllByRole } = renderSettings()
 
-    expect(getByText("Local-only storage enabled")).toBeTruthy()
-    expect(getByText("Sign in")).toBeTruthy()
+    expect(getAllByRole("heading", { name: "Account" }).length).toBeGreaterThan(0)
+    expect(getAllByRole("button", { name: "Sign in" }).length).toBeGreaterThan(0)
   })
 
   it("switches to the apps section from the nav", () => {
@@ -130,7 +133,7 @@ describe("Settings", () => {
 
     const { getAllByText } = renderSettings()
 
-    expect(getAllByText("Sign out").length).toBeGreaterThan(0)
+    expect(getAllByText("Log out").length).toBeGreaterThan(0)
   })
 
   it("reads section from URL", () => {
@@ -140,11 +143,11 @@ describe("Settings", () => {
   })
 
   it("falls back to account for invalid section values", () => {
-    const { getByText } = renderSettings(`${ROUTES.settings}?section=invalid`)
-    expect(getByText("Local-only storage enabled")).toBeTruthy()
+    const { getAllByRole } = renderSettings(`${ROUTES.settings}?section=invalid`)
+    expect(getAllByRole("heading", { name: "Account" }).length).toBeGreaterThan(0)
   })
 
-  it("clears source param when switching between non-runs sections", () => {
+  it("clears source param when switching between non-import sections", () => {
     const { getAllByRole, getByTestId } = renderSettings(
       `${ROUTES.settings}?section=apps&source=github`
     )

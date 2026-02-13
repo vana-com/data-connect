@@ -6,7 +6,7 @@ import {
 } from "lucide-react"
 import { PlatformIcon } from "@/components/icons/platform-icon"
 import { Text } from "@/components/typography/text"
-import { ROUTES } from "@/config/routes"
+import { buildSettingsUrl } from "@/pages/settings/url"
 import { SourceLinkRow } from "./source-link-row"
 
 interface SourceSidebarProps {
@@ -26,6 +26,8 @@ export function SourceSidebar({
   canAccessDebugRuns,
   onOpenSourcePath,
 }: SourceSidebarProps) {
+  const importsSettingsUrl = buildSettingsUrl({ section: "imports", source: sourceId })
+
   return (
     <aside className="space-y-6 relative">
       {/* <Text
@@ -56,12 +58,16 @@ export function SourceSidebar({
 
         <div className="flex flex-wrap items-start gap-small lg:gap-w6 lg:flex-col">
           <SourceActivityLinks
+            importsSettingsUrl={importsSettingsUrl}
             openSourceHref={openSourceHref}
             sourceStoragePath={sourceStoragePath}
             onOpenSourcePath={onOpenSourcePath}
           />
           <hr className="w-full hidden lg:block" />
-          <SourceActionLinks canAccessDebugRuns={canAccessDebugRuns} />
+          <SourceActionLinks
+            canAccessDebugRuns={canAccessDebugRuns}
+            importsSettingsUrl={importsSettingsUrl}
+          />
         </div>
       </div>
     </aside>
@@ -69,12 +75,14 @@ export function SourceSidebar({
 }
 
 interface SourceActivityLinksProps {
+  importsSettingsUrl: string
   openSourceHref: string
   sourceStoragePath: string
   onOpenSourcePath: () => Promise<void>
 }
 
 function SourceActivityLinks({
+  importsSettingsUrl,
   openSourceHref,
   sourceStoragePath,
   onOpenSourcePath,
@@ -94,7 +102,7 @@ function SourceActivityLinks({
       <SourceLinkRow href="#" icon={<ActivityIcon aria-hidden />}>
         Last used yesterday
       </SourceLinkRow>
-      <SourceLinkRow to={ROUTES.runs} icon={<RefreshCcwIcon aria-hidden />}>
+      <SourceLinkRow to={importsSettingsUrl} icon={<RefreshCcwIcon aria-hidden />}>
         Last synced yesterday
       </SourceLinkRow>
     </div>
@@ -103,9 +111,13 @@ function SourceActivityLinks({
 
 interface SourceActionLinksProps {
   canAccessDebugRuns: boolean
+  importsSettingsUrl: string
 }
 
-function SourceActionLinks({ canAccessDebugRuns }: SourceActionLinksProps) {
+function SourceActionLinks({
+  canAccessDebugRuns,
+  importsSettingsUrl,
+}: SourceActionLinksProps) {
   return (
     <nav className="space-y-3">
       <SourceLinkRow
@@ -131,11 +143,11 @@ function SourceActionLinks({ canAccessDebugRuns }: SourceActionLinksProps) {
       </SourceLinkRow>
       {canAccessDebugRuns ? (
         <SourceLinkRow
-          to={ROUTES.runs}
+          to={importsSettingsUrl}
           muted
           trailingIcon={<ArrowUpRightIcon aria-hidden />}
         >
-          Debug runs
+          Import history
         </SourceLinkRow>
       ) : null}
     </nav>

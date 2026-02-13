@@ -85,8 +85,16 @@ export function Grant() {
   const resolvedBuilderName = isDebugging
     ? debugSession.appName
     : builderName
+  const debugBuilderManifest: BuilderManifest =
+    flowState.builderManifest ?? {
+      name: debugSession.appName ?? "Debug App",
+      appUrl: "https://example.com",
+      privacyPolicyUrl: "https://example.com/privacy",
+      termsUrl: "https://example.com/terms",
+      supportUrl: "https://example.com/support",
+    }
   const resolvedBuilderManifest: BuilderManifest | undefined = isDebugging
-    ? { name: debugSession.appName ?? "Debug App", appUrl: "https://example.com" }
+    ? debugBuilderManifest
     : flowState.builderManifest
 
   // States that show loading spinner

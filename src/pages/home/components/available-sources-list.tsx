@@ -1,6 +1,6 @@
 import { useMemo } from "react"
 import { LoaderIcon } from "lucide-react"
-import { ActionButton } from "@/components/typography/action-button"
+import { ActionButton } from "@/components/typography/button-action"
 import { EyebrowBadge } from "@/components/typography/eyebrow-badge"
 import { Text } from "@/components/typography/text"
 import { SourceStack } from "@/components/elements/source-row"
@@ -16,6 +16,7 @@ import { getPlatformPrimaryColor } from "@/lib/platform/ui"
 interface AvailableSourcesListProps {
   platforms: Platform[]
   runs: Run[]
+  headline?: string
   onExport: (platform: Platform) => void
   connectedPlatformIds: string[]
 }
@@ -23,6 +24,7 @@ interface AvailableSourcesListProps {
 export function AvailableSourcesList({
   platforms,
   runs,
+  headline = "Your sources at the moment.",
   onExport,
   connectedPlatformIds,
 }: AvailableSourcesListProps) {
@@ -42,7 +44,7 @@ export function AvailableSourcesList({
   return (
     <section className="space-y-gap">
       <Text as="h2" weight="medium">
-        Connect sources
+        {headline}
       </Text>
       <div className="grid grid-cols-2 gap-2 action-outset">
         {connectEntries

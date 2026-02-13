@@ -28,7 +28,9 @@ export function SlidingTabs({
 }: SlidingTabsProps) {
   return (
     <nav className={cn("relative", className)}>
-      <ul className={cn("flex gap-5", ulClassName)}>
+      <ul className={cn("flex gap-5 relative", ulClassName)}>
+        <div className="absolute z-0 rounded-button bg-foreground/10 h-[1px] inset-x-0 bottom-[-0.8em]"></div>
+
         {tabs.map(tab => {
           const isSelected = value === tab.value
 

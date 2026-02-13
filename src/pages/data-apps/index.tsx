@@ -1,4 +1,4 @@
-import { LearnMoreLink } from "@/components/typography/learn-more-link"
+import { LearnMoreLink } from "@/components/typography/link-learn-more"
 import { Text } from "@/components/typography/text"
 import { getAppRegistryEntries } from "@/apps/registry"
 import { AppCard } from "./components/AppCard"

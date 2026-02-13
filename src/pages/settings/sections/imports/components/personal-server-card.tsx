@@ -7,11 +7,11 @@ import {
   ServerIcon,
   XCircleIcon,
 } from "lucide-react"
-import type { usePersonalServer } from "../../../hooks/usePersonalServer"
+import type { usePersonalServer } from "@/hooks/usePersonalServer"
+import { OpenExternalLink } from "@/components/typography/link-open-external"
 import { Text } from "@/components/typography/text"
 import { Button } from "@/components/ui/button"
 import { cn } from "@/lib/classes"
-import { openExternalUrl } from "@/lib/open-resource"
 import { ROUTES } from "@/config/routes"
 
 export interface PersonalServerCardProps {
@@ -110,9 +110,8 @@ export function PersonalServerCard({
                   : "Stopped"}
           </Text>
           {isRunning && personalServer.tunnelUrl && (
-            <button
-              type="button"
-              onClick={() => void openExternalUrl(`${personalServer.tunnelUrl}/health`)}
+            <OpenExternalLink
+              href={`${personalServer.tunnelUrl}/health`}
               className="mt-0.5 flex items-center gap-1 text-left"
               title={`${personalServer.tunnelUrl}/health`}
             >
@@ -123,7 +122,7 @@ export function PersonalServerCard({
                 )}/health
               </Text>
               <ExternalLinkIcon aria-hidden="true" className="size-3 shrink-0 text-accent" />
-            </button>
+            </OpenExternalLink>
           )}
         </div>
         {isRunning && (

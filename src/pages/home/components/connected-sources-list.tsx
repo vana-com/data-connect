@@ -1,7 +1,7 @@
 import {
   ActionButton,
   ActionPanel,
-} from "@/components/typography/action-button"
+} from "@/components/typography/button-action"
 import { Text } from "@/components/typography/text"
 import { SourceRow } from "@/components/elements/source-row"
 import { cn } from "@/lib/classes"
@@ -11,19 +11,21 @@ import type { Platform, Run } from "@/types"
 interface ConnectedSourcesListProps {
   platforms: Platform[]
   runs: Run[]
+  headline?: string
   onOpenRuns?: (platform: Platform) => void
 }
 
 export function ConnectedSourcesList({
   platforms,
   runs,
+  headline = "Your sources at the moment.",
   onOpenRuns,
 }: ConnectedSourcesListProps) {
   if (platforms.length === 0) {
     return (
       <section className="space-y-gap">
         <Text as="h2" weight="medium">
-          Your sources
+          {headline}
         </Text>
         <div className="action-outset">
           <ActionPanel>
@@ -37,7 +39,7 @@ export function ConnectedSourcesList({
   return (
     <section className="space-y-gap">
       <Text as="h2" weight="medium">
-        Your sources
+        {headline}
       </Text>
       <div className="flex flex-col gap-3 action-outset">
         {platforms.map(platform => {

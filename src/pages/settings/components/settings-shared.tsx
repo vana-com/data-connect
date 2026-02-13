@@ -1,5 +1,12 @@
-import { Children, Fragment, type ReactNode } from "react"
+import {
+  Children,
+  Fragment,
+  type ComponentPropsWithoutRef,
+  isValidElement,
+  type ReactNode,
+} from "react"
 import { Text } from "@/components/typography/text"
+import { Button } from "@/components/ui/button"
 import { cn } from "@/lib/classes"
 
 interface SettingsSectionProps {
@@ -42,6 +49,11 @@ interface SettingsCardProps {
   divided?: boolean
 }
 
+interface SettingsCardStackProps {
+  children: ReactNode
+  className?: string
+}
+
 export function SettingsCard({
   children,
   className,
@@ -77,6 +89,20 @@ export function SettingsCard({
   )
 }
 
+export function SettingsCardStack({
+  children,
+  className,
+}: SettingsCardStackProps) {
+  return (
+    <div
+      data-component="settings-card-stack"
+      className={cn("form-outset space-y-3", className)}
+    >
+      {children}
+    </div>
+  )
+}
+
 interface SettingsRowProps {
   icon: ReactNode
   wrapIcon?: boolean
@@ -100,6 +126,11 @@ interface SettingsStatusBadgeProps {
   className?: string
 }
 
+type SettingsRowActionProps = Omit<
+  ComponentPropsWithoutRef<typeof Button>,
+  "variant" | "size"
+>
+
 export function SettingsRow({
   icon,
   wrapIcon = true,
@@ -110,10 +141,28 @@ export function SettingsRow({
   className,
   contentClassName,
 }: SettingsRowProps) {
+  const titleContent =
+    typeof title === "string" ? (
+      <Text as="div" intent="body" weight="semi">
+        {title}
+      </Text>
+    ) : (
+      title
+    )
+  const descriptionContent =
+    description == null ? null : isValidElement(description) &&
+      description.type === Text ? (
+      description
+    ) : (
+      <Text as="div" intent="small" muted>
+        {description}
+      </Text>
+    )
+
   const iconContent = wrapIcon ? (
     <div
       className={cn(
-        "w-[34px] h-[30px] bg-mutedx",
+        "w-[34px] h-[30px] mt-0.5",
         "flex items-center justify-center rounded-button [&_svg]:size-6",
         iconContainerClassName
       )}
@@ -127,14 +176,18 @@ export function SettingsRow({
   return (
     <div
       data-component="settings-row"
-      className={cn("flex items-center gap-4 p-4", className)}
+      className={cn("flex items-start gap-4 p-4", className)}
     >
       {iconContent}
       <div
-        className={cn("flex-1", description && "space-y-0.5", contentClassName)}
+        className={cn(
+          "flex-1",
+          descriptionContent && "space-y-0.5",
+          contentClassName
+        )}
       >
-        {title}
-        {description}
+        {titleContent}
+        {descriptionContent}
       </div>
       {right}
     </div>
@@ -147,6 +200,24 @@ export function SettingsMetaRow({
   badge,
   className,
 }: SettingsMetaRowProps) {
+  const titleContent =
+    typeof title === "string" ? (
+      <Text as="div" intent="body" weight="semi">
+        {title}
+      </Text>
+    ) : (
+      title
+    )
+  const descriptionContent =
+    description == null ? null : isValidElement(description) &&
+      description.type === Text ? (
+      description
+    ) : (
+      <Text as="div" intent="small" dim>
+        {description}
+      </Text>
+    )
+
   return (
     <div
       data-component="settings-meta-row"
@@ -155,12 +226,27 @@ export function SettingsMetaRow({
         className
       )}
     >
-      <div className={cn("flex-1", description && "space-y-0.5")}>
-        {title}
-        {description}
+      <div className={cn("flex-1", descriptionContent && "space-y-0.5")}>
+        {titleContent}
+        {descriptionContent}
       </div>
       {badge}
     </div>
+  )
+}
+
+export function SettingsRowAction({
+  type = "button",
+  ...props
+}: SettingsRowActionProps) {
+  return (
+    <Button
+      type={type}
+      variant="outline"
+      size="sm"
+      className="hover:bg-muted"
+      {...props}
+    />
   )
 }
 

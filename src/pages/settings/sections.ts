@@ -4,7 +4,7 @@ export const SETTINGS_SECTION_ORDER: SettingsSection[] = [
   "account",
   "apps",
   "storage",
-  "runs",
+  "imports",
   "credentials",
   "about",
 ]
@@ -43,9 +43,9 @@ export const SETTINGS_SECTION_META: Record<
     title: "About & Diagnostics",
     description: "Check runtime status, diagnostics, and debug resources.",
   },
-  runs: {
-    navLabel: "Runs",
-    title: "Runs",
-    description: "View and manage export history in one place.",
+  imports: {
+    navLabel: "Import History",
+    title: "Import History",
+    description: "View and manage import history in one place.",
   },
 }

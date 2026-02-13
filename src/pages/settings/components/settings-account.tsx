@@ -1,8 +1,13 @@
 import { MonitorIcon, MailIcon } from "lucide-react"
-import type { AuthUser } from "../../../types"
+import type { AuthUser } from "@/types"
 import { Text } from "@/components/typography/text"
 import { Button } from "@/components/ui/button"
-import { SettingsCard, SettingsRow, SettingsSection } from "./settings-shared"
+import {
+  SettingsCard,
+  SettingsCardStack,
+  SettingsRow,
+  SettingsSection,
+} from "./settings-shared"
 
 // Local UI test toggle: set true to force logged-in state.
 const TEST_LOGGED_IN = false
@@ -36,7 +41,7 @@ export function SettingsAccount({
         title="Sessions"
         description="Devices logged into your account."
       >
-        <div className="space-y-3 form-outset">
+        <SettingsCardStack>
           <SettingsCard>
             <SettingsRow
               icon={<MonitorIcon aria-hidden="true" />}
@@ -121,14 +126,14 @@ export function SettingsAccount({
               </div>
             </SettingsCard>
           )}
-        </div>
+        </SettingsCardStack>
       </SettingsSection>
 
       <SettingsSection
         title="Account email"
         description="You will receive notifications at this email."
       >
-        <div className="space-y-3 form-outset">
+        <SettingsCardStack>
           <SettingsCard>
             <SettingsRow
               icon={
@@ -156,7 +161,7 @@ export function SettingsAccount({
               }
             />
           </SettingsCard>
-        </div>
+        </SettingsCardStack>
       </SettingsSection>
     </div>
   )

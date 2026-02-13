@@ -1,6 +1,7 @@
 import { BoxIcon, Trash2Icon } from "lucide-react"
-import type { ConnectedApp } from "../../../types"
+import type { ConnectedApp } from "@/types"
 import { PlatformIcon } from "@/components/icons/platform-icon"
+import { OpenExternalLink } from "@/components/typography/link-open-external"
 import { Text } from "@/components/typography/text"
 import {
   AlertDialog,
@@ -16,8 +17,7 @@ import {
 } from "@/components/ui/alert-dialog"
 import { Button } from "@/components/ui/button"
 import { LINKS } from "@/config/links"
-import { openExternalUrl } from "@/lib/open-resource"
-import { SettingsCard, SettingsRow } from "./settings-shared"
+import { SettingsCard, SettingsCardStack, SettingsRow } from "./settings-shared"
 
 // Local UI test toggle: set true to force test app rows.
 const TEST_LOGGED_IN = false
@@ -51,7 +51,7 @@ export function SettingsApps({
 
   return (
     <div className="space-y-8">
-      <div className="space-y-3 form-outset">
+      <SettingsCardStack>
         {effectiveConnectedApps.length === 0 ? (
           <SettingsCard>
             <SettingsRow
@@ -124,23 +124,16 @@ export function SettingsApps({
             ))}
           </SettingsCard>
         )}
-      </div>
+      </SettingsCardStack>
       <Text as="p" intent="small" muted>
         Want to build your own application? Check{" "}
-        <Text
-          as="a"
+        <OpenExternalLink
           intent="small"
           className="text-current hover:text-foreground"
           href={LINKS.appDevelopmentDocs}
-          target="_blank"
-          rel="noopener noreferrer"
-          onClick={event => {
-            event.preventDefault()
-            void openExternalUrl(LINKS.appDevelopmentDocs)
-          }}
         >
           {LINKS.appDevelopmentDocs.replace(/^https?:\/\//, "")}
-        </Text>
+        </OpenExternalLink>
         .
       </Text>
     </div>

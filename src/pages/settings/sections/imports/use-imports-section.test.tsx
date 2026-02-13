@@ -5,25 +5,25 @@ import { createMemoryRouter, RouterProvider, useLocation } from "react-router-do
 import { ROUTES } from "@/config/routes"
 import { setConnectedPlatforms, setPlatforms, setRuns, store } from "@/state/store"
 import type { Platform, Run } from "@/types"
-import { useRunsPage } from "./use-runs-page"
+import { useImportsSection } from "./use-imports-section"
 
 vi.mock("@tauri-apps/api/event", () => ({
   listen: vi.fn(() => Promise.resolve(() => {})),
 }))
 
-vi.mock("../../hooks/useConnector", () => ({
+vi.mock("@/hooks/useConnector", () => ({
   useConnector: () => ({
     stopExport: vi.fn(),
   }),
 }))
 
-vi.mock("../../hooks/useAuth", () => ({
+vi.mock("@/hooks/useAuth", () => ({
   useAuth: () => ({
     isAuthenticated: false,
   }),
 }))
 
-vi.mock("../../hooks/usePersonalServer", () => ({
+vi.mock("@/hooks/usePersonalServer", () => ({
   usePersonalServer: () => ({
     status: "stopped",
     port: null,
@@ -31,19 +31,19 @@ vi.mock("../../hooks/usePersonalServer", () => ({
   }),
 }))
 
-vi.mock("../../services/serverRegistration", () => ({
+vi.mock("@/services/serverRegistration", () => ({
   fetchServerIdentity: vi.fn(() => Promise.resolve({ serverId: null })),
 }))
 
 function HookHarness() {
   const location = useLocation()
   const {
-    activeRuns,
-    finishedRuns,
+    activeImports,
+    finishedImports,
     selectedSourceFilter,
     setSourceFilter,
     sourceFilterOptions,
-  } = useRunsPage()
+  } = useImportsSection()
 
   return (
     <div>
@@ -55,8 +55,8 @@ function HookHarness() {
       </button>
       <div data-testid="search">{location.search}</div>
       <div data-testid="selected-filter">{selectedSourceFilter}</div>
-      <div data-testid="active-count">{activeRuns.length}</div>
-      <div data-testid="finished-count">{finishedRuns.length}</div>
+      <div data-testid="active-count">{activeImports.length}</div>
+      <div data-testid="finished-count">{finishedImports.length}</div>
       <div data-testid="option-count">{sourceFilterOptions.length}</div>
     </div>
   )
@@ -120,7 +120,7 @@ const testRuns: Run[] = [
   buildRun("run-github-success", "github", "success", "2026-01-01T00:00:00.000Z"),
 ]
 
-describe("useRunsPage source filter URL behavior", () => {
+describe("useImportsSection source filter URL behavior", () => {
   beforeEach(() => {
     cleanup()
     store.dispatch(setPlatforms(testPlatforms))
@@ -130,9 +130,9 @@ describe("useRunsPage source filter URL behavior", () => {
 
   it("applies source filter from URL when source is valid", async () => {
     const router = createMemoryRouter(
-      [{ path: ROUTES.runs, element: <HookHarness /> }],
+      [{ path: ROUTES.settings, element: <HookHarness /> }],
       {
-        initialEntries: [`${ROUTES.runs}?source=github`],
+        initialEntries: [`${ROUTES.settings}?section=imports&source=github`],
       }
     )
 
@@ -152,9 +152,9 @@ describe("useRunsPage source filter URL behavior", () => {
 
   it("falls back to all when URL source is invalid", async () => {
     const router = createMemoryRouter(
-      [{ path: ROUTES.runs, element: <HookHarness /> }],
+      [{ path: ROUTES.settings, element: <HookHarness /> }],
       {
-        initialEntries: [`${ROUTES.runs}?source=not-a-source`],
+        initialEntries: [`${ROUTES.settings}?section=imports&source=not-a-source`],
       }
     )
 
@@ -171,11 +171,11 @@ describe("useRunsPage source filter URL behavior", () => {
     expect(getByTestId("finished-count").textContent).toBe("2")
   })
 
-  it("writes source param to URL and removes it when switching back to all", async () => {
+  it("writes source param to URL and removes only source when switching back to all", async () => {
     const router = createMemoryRouter(
-      [{ path: ROUTES.runs, element: <HookHarness /> }],
+      [{ path: ROUTES.settings, element: <HookHarness /> }],
       {
-        initialEntries: [ROUTES.runs],
+        initialEntries: [`${ROUTES.settings}?section=imports`],
       }
     )
 
@@ -187,12 +187,12 @@ describe("useRunsPage source filter URL behavior", () => {
 
     fireEvent.click(getByRole("button", { name: "set github" }))
     await waitFor(() => {
-      expect(getByTestId("search").textContent).toBe("?source=github")
+      expect(getByTestId("search").textContent).toBe("?section=imports&source=github")
     })
 
     fireEvent.click(getByRole("button", { name: "set all" }))
     await waitFor(() => {
-      expect(getByTestId("search").textContent).toBe("")
+      expect(getByTestId("search").textContent).toBe("?section=imports")
     })
   })
 })

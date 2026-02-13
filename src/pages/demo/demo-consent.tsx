@@ -5,7 +5,7 @@ import { TopNav } from "@/components/top-nav"
 import { Button } from "@/components/ui/button"
 import { PlatformIcon } from "@/components/icons/platform-icon"
 import { Text } from "@/components/typography/text"
-import { ActionPanel } from "@/components/typography/action-button"
+import { ActionPanel } from "@/components/typography/button-action"
 import { GrantWarning } from "@/pages/grant/components/consent/grant-warning"
 
 export function DemoConsent() {

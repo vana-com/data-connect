@@ -3,7 +3,7 @@ import { Link } from "react-router-dom"
 import { CheckIcon, UserRoundCogIcon } from "lucide-react"
 import { TopNav } from "@/components/top-nav"
 import { PlatformIcon } from "@/components/icons/platform-icon"
-import { ActionPanel } from "@/components/typography/action-button"
+import { ActionPanel } from "@/components/typography/button-action"
 import { Text } from "@/components/typography/text"
 
 export function DemoSuccess() {

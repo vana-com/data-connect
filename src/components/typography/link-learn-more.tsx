@@ -1,8 +1,11 @@
 import type { ComponentPropsWithoutRef, ReactNode } from "react"
-import { cn } from "@/lib/classes"
 import { LINKS } from "@/config/links"
+import { OpenExternalLink } from "./link-open-external"
 
-type LearnMoreLinkProps = Omit<ComponentPropsWithoutRef<"a">, "href" | "children"> & {
+type LearnMoreLinkProps = Omit<
+  ComponentPropsWithoutRef<typeof OpenExternalLink>,
+  "href" | "children"
+> & {
   href?: string
   children?: ReactNode
 }
@@ -10,18 +13,11 @@ type LearnMoreLinkProps = Omit<ComponentPropsWithoutRef<"a">, "href" | "children
 export function LearnMoreLink({
   href = LINKS.docs,
   children,
-  className,
   ...props
 }: LearnMoreLinkProps) {
   return (
-    <a
-      href={href}
-      target="_blank"
-      rel="noopener noreferrer"
-      className={cn("link", className)}
-      {...props}
-    >
+    <OpenExternalLink href={href} {...props}>
       {children ?? "Learn more."}
-    </a>
+    </OpenExternalLink>
   )
 }

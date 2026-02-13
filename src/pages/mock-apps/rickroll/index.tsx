@@ -1,11 +1,11 @@
-import { Link } from "react-router-dom"
-import { Button, ButtonArrow } from "@/components/ui/button"
+import { useNavigate } from "react-router-dom"
+import { ButtonSignInVana } from "@/components/elements/button-sign-in-vana"
 import { Text } from "@/components/typography/text"
 import { cn } from "@/lib/classes"
 import { ROUTES } from "@/config/routes"
-import { ArrowRightIcon } from "lucide-react"
 
 export function RickrollMockRoot() {
+  const navigate = useNavigate()
   const signInHref = ROUTES.rickrollMockSignIn
 
   return (
@@ -22,12 +22,12 @@ export function RickrollMockRoot() {
           <Text as="h1" intent="title">
             RickRoll Demo App
           </Text>
-          <Button asChild size="lg" fullWidth>
-            <Link to={signInHref}>
-              Sign in with Vana
-              <ButtonArrow icon={ArrowRightIcon} className="ms-0" />
-            </Link>
-          </Button>
+          <ButtonSignInVana
+            size="lg"
+            fullWidth
+            showArrow
+            onClick={() => navigate(signInHref)}
+          />
         </div>
       </div>
     </div>

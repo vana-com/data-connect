@@ -93,6 +93,7 @@
   --text-display: 40px;
   --text-hero: 54px;
   /* tailwind aliases → semantic tokens */
+  --text-xs: var(--text-fine);
   --text-sm: var(--text-small);
   --text-lg: var(--text-large);
   --text-xl: var(--text-xlarge);
@@ -182,6 +183,7 @@
   --spacing-mobile-width: 480px;
   --spacing-desktop-width: 580px;
   --spacing-wide-width: 960px;
+  --spacing-panel-width: 520px;
 
   --spacing-w4: clamp(10.5px, 6.5714px + 0.7857vw, 16px);
   --spacing-w5: clamp(12px, 6.2857px + 1.1429vw, 20px);
@@ -222,8 +224,10 @@
 
   --color-destructive: var(--destructive);
   --color-destructive-foreground: var(--destructive-foreground);
+  --color-destructive-reversed: var(--destructive-reversed);
   --color-success: var(--success);
   --color-success-foreground: var(--success-foreground);
+  --color-success-reversed: var(--success-reversed);
 
   --color-iris: var(--vana-blue);
   --color-irisLight: var(--vana-blueLight);

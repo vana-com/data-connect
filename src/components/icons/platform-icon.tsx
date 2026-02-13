@@ -9,6 +9,8 @@ import { cn } from "@/lib/utils"
 
 interface PlatformIconProps extends Omit<ComponentProps<"div">, "children"> {
   iconName: string
+  imageSrc?: string
+  imageAlt?: string
   size?: number
   fallbackLabel?: string
   fallbackScale?: number
@@ -24,6 +26,8 @@ const iconWrapper = "flex items-center justify-center rounded-button p-1"
  */
 export function PlatformIcon({
   iconName,
+  imageSrc,
+  imageAlt = "",
   size = 32,
   className,
   fallbackLabel,
@@ -34,6 +38,23 @@ export function PlatformIcon({
 }: PlatformIconProps) {
   const Icon = getPlatformIconComponentForName(iconName)
   const resolvedAriaHidden = ariaHidden ?? ariaHiddenProp ?? true
+
+  if (imageSrc) {
+    return (
+      <div
+        className={cn(iconWrapper, className)}
+        aria-hidden={resolvedAriaHidden}
+        {...props}
+      >
+        <img
+          src={imageSrc}
+          alt={imageAlt}
+          className="rounded-full object-cover"
+          style={{ width: `${size}px`, height: `${size}px` }}
+        />
+      </div>
+    )
+  }
 
   if (Icon) {
     return (

@@ -43,6 +43,18 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v4
 
+      - name: Verify version matches release tag
+        run: |
+          tag="${{ github.ref_name }}"
+          conf_version=$(grep '"version"' src-tauri/tauri.conf.json | head -1 | sed 's/.*"\([0-9][0-9]*\.[0-9][0-9]*\.[0-9][0-9]*\)".*/\1/')
+          tag_version="${tag#v}"
+          if [ "$conf_version" != "$tag_version" ]; then
+            echo "::error::Version mismatch: tauri.conf.json has '$conf_version' but release tag is '$tag' ($tag_version)."
+            echo "::error::Run 'npm run release:github -- --version $tag_version' instead of creating a release manually."
+            exit 1
+          fi
+          echo "Version check passed: $conf_version matches tag $tag"
+
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
@@ -132,6 +144,8 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           VITE_PRIVY_APP_ID: ${{ secrets.VITE_PRIVY_APP_ID }}
           VITE_PRIVY_CLIENT_ID: ${{ secrets.VITE_PRIVY_CLIENT_ID }}
+          VITE_SESSION_RELAY_URL: ${{ secrets.VITE_SESSION_RELAY_URL }}
+          VITE_GATEWAY_URL: ${{ secrets.VITE_GATEWAY_URL }}
           APPLE_CERTIFICATE: ${{ secrets.APPLE_BUILD_CERTIFICATE_BASE64 }}
           APPLE_CERTIFICATE_PASSWORD: ${{ secrets.APPLE_BUILD_CERTIFICATE_PASSWORD }}
           APPLE_SIGNING_IDENTITY: "Developer ID Application: Corsali, Inc (${{ secrets.APPLE_TEAM_ID }})"

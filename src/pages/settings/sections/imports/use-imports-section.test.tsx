@@ -5,7 +5,7 @@ import { createMemoryRouter, RouterProvider, useLocation } from "react-router-do
 import { ROUTES } from "@/config/routes"
 import { setConnectedPlatforms, setPlatforms, setRuns, store } from "@/state/store"
 import type { Platform, Run } from "@/types"
-import { useRunsSection } from "./use-runs-section"
+import { useImportsSection } from "./use-imports-section"
 
 vi.mock("@tauri-apps/api/event", () => ({
   listen: vi.fn(() => Promise.resolve(() => {})),
@@ -38,12 +38,12 @@ vi.mock("@/services/serverRegistration", () => ({
 function HookHarness() {
   const location = useLocation()
   const {
-    activeRuns,
-    finishedRuns,
+    activeImports,
+    finishedImports,
     selectedSourceFilter,
     setSourceFilter,
     sourceFilterOptions,
-  } = useRunsSection()
+  } = useImportsSection()
 
   return (
     <div>
@@ -55,8 +55,8 @@ function HookHarness() {
       </button>
       <div data-testid="search">{location.search}</div>
       <div data-testid="selected-filter">{selectedSourceFilter}</div>
-      <div data-testid="active-count">{activeRuns.length}</div>
-      <div data-testid="finished-count">{finishedRuns.length}</div>
+      <div data-testid="active-count">{activeImports.length}</div>
+      <div data-testid="finished-count">{finishedImports.length}</div>
       <div data-testid="option-count">{sourceFilterOptions.length}</div>
     </div>
   )
@@ -120,7 +120,7 @@ const testRuns: Run[] = [
   buildRun("run-github-success", "github", "success", "2026-01-01T00:00:00.000Z"),
 ]
 
-describe("useRunsSection source filter URL behavior", () => {
+describe("useImportsSection source filter URL behavior", () => {
   beforeEach(() => {
     cleanup()
     store.dispatch(setPlatforms(testPlatforms))
@@ -132,7 +132,7 @@ describe("useRunsSection source filter URL behavior", () => {
     const router = createMemoryRouter(
       [{ path: ROUTES.settings, element: <HookHarness /> }],
       {
-        initialEntries: [`${ROUTES.settings}?section=runs&source=github`],
+        initialEntries: [`${ROUTES.settings}?section=imports&source=github`],
       }
     )
 
@@ -154,7 +154,7 @@ describe("useRunsSection source filter URL behavior", () => {
     const router = createMemoryRouter(
       [{ path: ROUTES.settings, element: <HookHarness /> }],
       {
-        initialEntries: [`${ROUTES.settings}?section=runs&source=not-a-source`],
+        initialEntries: [`${ROUTES.settings}?section=imports&source=not-a-source`],
       }
     )
 
@@ -175,7 +175,7 @@ describe("useRunsSection source filter URL behavior", () => {
     const router = createMemoryRouter(
       [{ path: ROUTES.settings, element: <HookHarness /> }],
       {
-        initialEntries: [`${ROUTES.settings}?section=runs`],
+        initialEntries: [`${ROUTES.settings}?section=imports`],
       }
     )
 
@@ -187,12 +187,12 @@ describe("useRunsSection source filter URL behavior", () => {
 
     fireEvent.click(getByRole("button", { name: "set github" }))
     await waitFor(() => {
-      expect(getByTestId("search").textContent).toBe("?section=runs&source=github")
+      expect(getByTestId("search").textContent).toBe("?section=imports&source=github")
     })
 
     fireEvent.click(getByRole("button", { name: "set all" }))
     await waitFor(() => {
-      expect(getByTestId("search").textContent).toBe("?section=runs")
+      expect(getByTestId("search").textContent).toBe("?section=imports")
     })
   })
 })

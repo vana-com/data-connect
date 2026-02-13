@@ -17,6 +17,7 @@ import { ConnectorUpdates } from "@/pages/home/components/connector-updates"
 import { Text } from "@/components/typography/text"
 import { Button } from "@/components/ui/button"
 import { ROUTES } from "@/config/routes"
+import { buildSettingsUrl } from "@/pages/settings/url"
 import {
   buildGrantSearchParams,
   getGrantParamsFromSearchParams,
@@ -82,7 +83,7 @@ export function Home() {
     )
     try {
       await startExport(platform)
-      navigate(ROUTES.runs)
+      navigate(buildSettingsUrl({ section: "runs", source: platform.id }))
     } catch (error) {
       console.error("Export failed:", error)
     }

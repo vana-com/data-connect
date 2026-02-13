@@ -45,6 +45,13 @@ interface ConnectorExportCompleteEvent {
 }
 
 /**
+ * Tracks run IDs currently being delivered to prevent duplicate ingestion
+ * when the immediate path (export-complete) and catch-up path
+ * (personal-server-ready) race each other.
+ */
+const _deliveringRunIds = new Set<string>();
+
+/**
  * Deliver a single run's export data to the personal server and mark staging as synced.
  * Returns true on success, false on failure (non-throwing).
  */
@@ -54,9 +61,12 @@ export async function deliverRunToPersonalServer(
   dispatch: ReturnType<typeof import('react-redux').useDispatch>,
 ): Promise<boolean> {
   if (!run.exportPath || run.syncedToPersonalServer) return false;
+  if (_deliveringRunIds.has(run.id)) return false;
 
   const scope = getScopeForPlatform(run.platformId);
   if (!scope) return false;
+
+  _deliveringRunIds.add(run.id);
 
   // Normalize exportPath to directory
   const dirPath = run.exportPath.endsWith('.json')
@@ -86,6 +96,8 @@ export async function deliverRunToPersonalServer(
   } catch (err) {
     console.warn('[Data Delivery] Failed for run', run.id, '(non-blocking):', err);
     return false;
+  } finally {
+    _deliveringRunIds.delete(run.id);
   }
 }
 
@@ -197,8 +209,9 @@ export function useEvents() {
 
             // Attempt immediate delivery to personal server
             const scope = getScopeForPlatform(exportData.platform || 'unknown');
-            if (!scope) return;
+            if (!scope || _deliveringRunIds.has(runId)) return;
 
+            _deliveringRunIds.add(runId);
             try {
               const serverStatus = await invoke<{ running: boolean; port?: number }>('get_personal_server_status');
               if (!serverStatus.running || !serverStatus.port) return;
@@ -215,6 +228,8 @@ export function useEvents() {
               console.log('[Data Delivery] Synced run', runId, 'immediately after export');
             } catch (err) {
               console.warn('[Data Delivery] Deferred (server not ready):', err);
+            } finally {
+              _deliveringRunIds.delete(runId);
             }
           }).catch((err) => {
             console.error('[Export Save Error]', err);
@@ -324,8 +339,9 @@ export function useEvents() {
 
         // Attempt immediate delivery to personal server
         const scope = getScopeForPlatform(platformId);
-        if (!scope) return;
+        if (!scope || _deliveringRunIds.has(runId)) return;
 
+        _deliveringRunIds.add(runId);
         try {
           const serverStatus = await invoke<{ running: boolean; port?: number }>('get_personal_server_status');
           if (!serverStatus.running || !serverStatus.port) return;
@@ -345,6 +361,8 @@ export function useEvents() {
         } catch (err) {
           // Delivery failed — staging file stays intact for personal-server-ready retry
           console.warn('[Data Delivery] Deferred (server not ready):', err);
+        } finally {
+          _deliveringRunIds.delete(runId);
         }
       }).catch((err) => {
         console.error('[Export Save Error]', err);

@@ -26,7 +26,7 @@ export function SourceSidebar({
   canAccessDebugRuns,
   onOpenSourcePath,
 }: SourceSidebarProps) {
-  const runsSettingsUrl = buildSettingsUrl({ section: "runs", source: sourceId })
+  const importsSettingsUrl = buildSettingsUrl({ section: "imports", source: sourceId })
 
   return (
     <aside className="space-y-6 relative">
@@ -58,7 +58,7 @@ export function SourceSidebar({
 
         <div className="flex flex-wrap items-start gap-small lg:gap-w6 lg:flex-col">
           <SourceActivityLinks
-            runsSettingsUrl={runsSettingsUrl}
+            importsSettingsUrl={importsSettingsUrl}
             openSourceHref={openSourceHref}
             sourceStoragePath={sourceStoragePath}
             onOpenSourcePath={onOpenSourcePath}
@@ -66,7 +66,7 @@ export function SourceSidebar({
           <hr className="w-full hidden lg:block" />
           <SourceActionLinks
             canAccessDebugRuns={canAccessDebugRuns}
-            runsSettingsUrl={runsSettingsUrl}
+            importsSettingsUrl={importsSettingsUrl}
           />
         </div>
       </div>
@@ -75,14 +75,14 @@ export function SourceSidebar({
 }
 
 interface SourceActivityLinksProps {
-  runsSettingsUrl: string
+  importsSettingsUrl: string
   openSourceHref: string
   sourceStoragePath: string
   onOpenSourcePath: () => Promise<void>
 }
 
 function SourceActivityLinks({
-  runsSettingsUrl,
+  importsSettingsUrl,
   openSourceHref,
   sourceStoragePath,
   onOpenSourcePath,
@@ -102,7 +102,7 @@ function SourceActivityLinks({
       <SourceLinkRow href="#" icon={<ActivityIcon aria-hidden />}>
         Last used yesterday
       </SourceLinkRow>
-      <SourceLinkRow to={runsSettingsUrl} icon={<RefreshCcwIcon aria-hidden />}>
+      <SourceLinkRow to={importsSettingsUrl} icon={<RefreshCcwIcon aria-hidden />}>
         Last synced yesterday
       </SourceLinkRow>
     </div>
@@ -111,12 +111,12 @@ function SourceActivityLinks({
 
 interface SourceActionLinksProps {
   canAccessDebugRuns: boolean
-  runsSettingsUrl: string
+  importsSettingsUrl: string
 }
 
 function SourceActionLinks({
   canAccessDebugRuns,
-  runsSettingsUrl,
+  importsSettingsUrl,
 }: SourceActionLinksProps) {
   return (
     <nav className="space-y-3">
@@ -143,11 +143,11 @@ function SourceActionLinks({
       </SourceLinkRow>
       {canAccessDebugRuns ? (
         <SourceLinkRow
-          to={runsSettingsUrl}
+          to={importsSettingsUrl}
           muted
           trailingIcon={<ArrowUpRightIcon aria-hidden />}
         >
-          Debug runs
+          Import history
         </SourceLinkRow>
       ) : null}
     </nav>

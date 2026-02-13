@@ -83,7 +83,7 @@ export function Home() {
     )
     try {
       await startExport(platform)
-      navigate(buildSettingsUrl({ section: "runs", source: platform.id }))
+      navigate(buildSettingsUrl({ section: "imports", source: platform.id }))
     } catch (error) {
       console.error("Export failed:", error)
     }

@@ -15,7 +15,7 @@ import {
   isSettingsSection,
 } from "./url"
 
-const RUNS_SECTION: SettingsSection = "runs"
+const IMPORTS_SECTION: SettingsSection = "imports"
 
 export function useSettingsPage() {
   const navigate = useNavigate()
@@ -186,7 +186,7 @@ export function useSettingsPage() {
   const setActiveSection = useCallback(
     (nextSection: SettingsSection) => {
       const nextSearchParams = new URLSearchParams(searchParams)
-      if (nextSection !== RUNS_SECTION) {
+      if (nextSection !== IMPORTS_SECTION) {
         nextSearchParams.delete("source")
       }
       if (nextSection === DEFAULT_SETTINGS_SECTION) {

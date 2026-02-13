@@ -4,7 +4,7 @@ export type SettingsSection =
   | "credentials"
   | "storage"
   | "about"
-  | "runs"
+  | "imports"
 
 export interface BrowserSession {
   connectorId: string

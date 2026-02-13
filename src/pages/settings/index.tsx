@@ -15,7 +15,7 @@ import { SettingsCredentials } from "./components/settings-credentials"
 import { SettingsOverviewLayout } from "./components/settings-overview-layout"
 import { SettingsSidebar } from "./components/settings-sidebar"
 import { SettingsStorage } from "./components/settings-storage"
-import { RunsPanel } from "../runs/components/runs-panel"
+import { SettingsRunsSection } from "./sections/runs/index"
 import { SETTINGS_SECTION_META, SETTINGS_SECTION_ORDER } from "./sections"
 import type { SettingsSection } from "./types"
 import { useSettingsPage } from "./use-settings-page"
@@ -125,7 +125,7 @@ export function Settings() {
       />
     )
   } else if (activeSection === "runs") {
-    content = <RunsPanel showHeader={false} />
+    content = <SettingsRunsSection />
   }
 
   return (

@@ -2,12 +2,12 @@ import { useCallback, useEffect, useMemo, useState } from "react"
 import { useSearchParams } from "react-router-dom"
 import { useSelector } from "react-redux"
 import { listen } from "@tauri-apps/api/event"
-import { useConnector } from "../../hooks/useConnector"
-import { useAuth } from "../../hooks/useAuth"
-import { usePersonalServer } from "../../hooks/usePersonalServer"
-import { fetchServerIdentity } from "../../services/serverRegistration"
-import type { RootState } from "../../state/store"
-import { USE_TEST_DATA, testConnectedPlatforms } from "../home/fixtures"
+import { useConnector } from "@/hooks/useConnector"
+import { useAuth } from "@/hooks/useAuth"
+import { usePersonalServer } from "@/hooks/usePersonalServer"
+import { fetchServerIdentity } from "@/services/serverRegistration"
+import type { RootState } from "@/state/store"
+import { USE_TEST_DATA, testConnectedPlatforms } from "@/pages/home/fixtures"
 
 interface ServerRegisteredPayload {
   status: number
@@ -22,7 +22,7 @@ export interface RunSourceFilterOption {
   label: string
 }
 
-export function useRunsPage() {
+export function useRunsSection() {
   const [searchParams, setSearchParams] = useSearchParams()
   const runs = useSelector((state: RootState) => state.app.runs)
   const platforms = useSelector((state: RootState) => state.app.platforms)
@@ -51,7 +51,9 @@ export function useRunsPage() {
       setReadyTick((t) => t + 1)
     }).then((fn) => unlisteners.push(fn))
 
-    return () => { unlisteners.forEach((fn) => fn()) }
+    return () => {
+      unlisteners.forEach((fn) => fn())
+    }
   }, [])
 
   // Fetch serverId from health endpoint when server is running and ready

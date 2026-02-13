@@ -3,7 +3,7 @@ import { Text } from "@/components/typography/text"
 import { Button } from "@/components/ui/button"
 import { PersonalServerCard } from "./personal-server-card"
 import { RunItem } from "./run-item/run-item"
-import { useRunsPage } from "../use-runs-page"
+import { useRunsSection } from "../use-runs-section"
 
 interface RunsPanelProps {
   showHeader?: boolean
@@ -22,7 +22,7 @@ export function RunsPanel({ showHeader = true }: RunsPanelProps) {
     personalServer,
     serverId,
     serverReady,
-  } = useRunsPage()
+  } = useRunsSection()
 
   return (
     <div className="space-y-6">

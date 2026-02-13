@@ -1,8 +1,7 @@
-import { Link, useNavigate } from "react-router-dom"
-import { CheckIcon, UserRoundCogIcon } from "lucide-react"
+import { Link } from "react-router-dom"
+import { CheckIcon, UserRoundCogIcon, HomeIcon } from "lucide-react"
 import { PlatformIcon } from "@/components/icons/platform-icon"
 import { ActionPanel } from "@/components/typography/button-action"
-import { Button } from "@/components/ui/button"
 import { Text } from "@/components/typography/text"
 import { getPrimaryDataSourceLabel } from "@/lib/scope-labels"
 import { ROUTES } from "@/config/routes"
@@ -13,7 +12,6 @@ interface GrantSuccessStateProps {
 }
 
 export function GrantSuccessState({ appName, scopes }: GrantSuccessStateProps) {
-  const navigate = useNavigate()
   const resolvedAppName = appName ?? "the app"
   const dataSourceLabel = getPrimaryDataSourceLabel(scopes)
   const dataLabel = dataSourceLabel ? `${dataSourceLabel} data` : "data"
@@ -24,7 +22,7 @@ export function GrantSuccessState({ appName, scopes }: GrantSuccessStateProps) {
         <Text as="h1" intent="title" className="relative">
           <div className="absolute left-[-1.3em] top-[0.05em]">
             <CheckIcon
-              className="size-9 text-success"
+              className="size-9 text-foreground-muted"
               aria-hidden="true"
               strokeWidth={2.5}
             />
@@ -34,29 +32,29 @@ export function GrantSuccessState({ appName, scopes }: GrantSuccessStateProps) {
 
         <Text as="p">
           You can manage or revoke access in{" "}
-          <Text as={Link} to="/settings" link="default">
+          <Text as={Link} to={ROUTES.settings} link="default">
             Settings
           </Text>
           .
         </Text>
 
-        <div className="action-outset">
-          <ActionPanel className="gap-3 justify-start">
-            <PlatformIcon iconName={appName ?? "App"} />
-            Return to {resolvedAppName} to continue
-          </ActionPanel>
-        </div>
+        {/* Purposely not wrapped in action-outset */}
+        <ActionPanel className="gap-3 justify-start">
+          <PlatformIcon iconName={appName ?? "App"} />
+          Return to {resolvedAppName} to continue
+        </ActionPanel>
 
-        <div className="flex items-center gap-3">
-          <Button
-            type="button"
-            onClick={() => navigate(ROUTES.home)}
-          >
-            Done
-          </Button>
-          <Text as={Link} to="/settings" dim withIcon link="default">
+        <div className="flex items-center gap-3 pt-0.5">
+          <Text as={Link} to={ROUTES.settings} dim withIcon link="default">
             <UserRoundCogIcon aria-hidden="true" className="size-[1.1em]" />
-            Manage your account
+            Manage account
+          </Text>
+          <Text as="span" dim>
+            or
+          </Text>
+          <Text as={Link} to={ROUTES.home} dim withIcon link="default">
+            <HomeIcon aria-hidden="true" className="size-[1.1em]" />
+            return Home
           </Text>
         </div>
       </div>

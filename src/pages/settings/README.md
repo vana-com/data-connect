@@ -15,7 +15,7 @@
 - `components/settings-storage.tsx`: data path, storage options, server status/registration.
 - `components/settings-about.tsx`: version, diagnostics, browser status, debug tools.
 - `components/settings-shared.tsx`: shared section/card/row layout helpers.
-- `sections/runs/*`: canonical Runs section implementation rendered for `section=runs`.
+- `sections/imports/*`: canonical import history section implementation rendered for `section=imports`.
 
 ### Data flow
 

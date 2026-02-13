@@ -1,7 +1,9 @@
 import { useCallback, useEffect, useMemo, useState } from "react"
 import { invoke } from "@tauri-apps/api/core"
+import { useDispatch } from "react-redux"
 import { getScopeForPlatform, ingestData } from "@/services/personalServerIngest"
 import { openLocalPath } from "@/lib/open-resource"
+import { markRunSynced } from "@/state/store"
 import type { Run } from "@/types"
 import {
   buildExportData,
@@ -17,6 +19,7 @@ export interface UseRunItemProps {
 }
 
 export function useRunItem({ run, serverPort, serverReady }: UseRunItemProps) {
+  const dispatch = useDispatch()
   const [expanded, setExpanded] = useState(false)
   const [exportData, setExportData] = useState<Run["exportData"]>(run.exportData)
   const [loadingData, setLoadingData] = useState(false)
@@ -79,12 +82,22 @@ export function useRunItem({ run, serverPort, serverReady }: UseRunItemProps) {
       })
       const payload = (data.content ?? data) as object
       await ingestData(serverPort!, scope!, payload)
+
+      await invoke('mark_export_synced', {
+        runId: run.id,
+        exportPath: run.exportPath,
+        itemsExported: run.itemsExported ?? null,
+        itemLabel: run.itemLabel ?? null,
+        scope,
+      })
+      dispatch(markRunSynced(run.id))
+
       setIngestStatus("sent")
     } catch (err) {
       console.error("[Ingest] Failed:", err)
       setIngestStatus("error")
     }
-  }, [canIngest, run, serverPort, scope])
+  }, [canIngest, run, serverPort, scope, dispatch])
 
   const openFolder = useCallback(async () => {
     if (run.exportPath) {

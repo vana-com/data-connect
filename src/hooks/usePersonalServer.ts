@@ -48,7 +48,7 @@ export function usePersonalServer() {
 
     try {
       const owner = wallet ?? walletAddress ?? null;
-      console.log('[PersonalServer] Starting with wallet:', owner ?? 'none');
+      console.log('[PersonalServer] Starting with wallet:', owner ?? 'none', 'masterKey:', masterKeySignature ? 'present' : 'null');
       await invoke<PersonalServerStatus>('start_personal_server', {
         port: null,
         masterKeySignature: masterKeySignature ?? null,
@@ -92,6 +92,7 @@ export function usePersonalServer() {
 
   const restartServer = useCallback(async (wallet?: string | null) => {
     console.log('[PersonalServer] Restarting with wallet:', wallet ?? 'none');
+    _restartCount = 0; // Reset crash counter for explicit restarts
     await stopServer();
     // Brief wait for port release (stop_personal_server already waits up to 3s,
     // but add a small buffer for OS-level cleanup)
@@ -166,23 +167,28 @@ export function usePersonalServer() {
       setTunnelFailed(true);
     }).then((fn) => unlisteners.push(fn));
 
-    // When gateway registration completes (from the auth page), restart the
-    // server so the library's startBackgroundServices() retries with the
-    // registration in place and starts the tunnel. Without this, Phase 2
-    // starts before registration finishes → library finds "not registered"
-    // → no tunnel.
+    // When gateway registration completes, restart the server so the
+    // library's startBackgroundServices() finds the registration and
+    // establishes the tunnel. Phase 2 gave us identity; this gives us tunnel.
     listen<{ status: number; serverId: string | null }>('server-registered', (event) => {
       console.log('[PersonalServer] Server registered with gateway:', event.payload);
-      if (!_sharedTunnelUrl && _lastStartedWallet) {
-        console.log('[PersonalServer] Tunnel not active, restarting to establish tunnel...');
-        restartingRef.current = true;
-        // Small delay to let the gateway propagate the registration
-        setTimeout(() => {
-          void stopServer().then(() => {
-            setTimeout(() => startServerRef.current(_lastStartedWallet), 500);
-          });
-        }, 1000);
+      if (_sharedTunnelUrl) {
+        console.log('[PersonalServer] Tunnel already active, skipping restart');
+        return;
       }
+      if (!_lastStartedWallet) {
+        console.log('[PersonalServer] No wallet available, skipping restart');
+        return;
+      }
+      console.log('[PersonalServer] Restarting to establish tunnel...');
+      restartingRef.current = true;
+      _restartCount = 0;
+      // Small delay to let the gateway propagate the registration
+      setTimeout(() => {
+        void stopServer().then(() => {
+          setTimeout(() => startServerRef.current(_lastStartedWallet), 500);
+        });
+      }, 1000);
     }).then((fn) => unlisteners.push(fn));
 
     listen<{ message: string }>('personal-server-log', (event) => {
@@ -210,19 +216,25 @@ export function usePersonalServer() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  // Phase 2 — restart with credentials when wallet becomes available.
-  // Set restartingRef synchronously during render (not in useEffect) so that
-  // child components' effects (e.g. auto-approve in grant flow) see the flag
-  // before they fire — React runs effects bottom-up (children first).
-  if (walletAddress && _lastStartedWallet !== walletAddress) {
+  // Phase 2 — restart with credentials so the server derives its keypair.
+  // The auth page needs the server identity (keypair address) to register
+  // with the gateway, so we must restart before registration can proceed.
+  //
+  // Set restartingRef synchronously during render so child effects (e.g.
+  // auto-approve in grant flow) see it before they fire.
+  if (walletAddress && masterKeySignature && _lastStartedWallet !== walletAddress) {
     restartingRef.current = true;
   }
   useEffect(() => {
-    if (!walletAddress) return;
+    if (!walletAddress || !masterKeySignature) return;
     if (_lastStartedWallet === walletAddress) return;
     _lastStartedWallet = walletAddress;
-    restartServer(walletAddress);
-  }, [walletAddress, restartServer]);
+    console.log('[PersonalServer] Credentials available, restarting for identity...');
+    _restartCount = 0;
+    void stopServer().then(() => {
+      setTimeout(() => startServerRef.current(walletAddress), 500);
+    });
+  }, [walletAddress, masterKeySignature, stopServer]);
 
   return { status, port, tunnelUrl, tunnelFailed, devToken, error, startServer, stopServer, restartServer, restartingRef };
 }

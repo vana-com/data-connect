@@ -63,6 +63,9 @@ describe("usePersonalServer", () => {
     listeners.clear()
     mockInvoke.mockReset()
     authState = { walletAddress: null, masterKeySignature: null }
+    // Simulate Tauri runtime so isTauriRuntime() returns true
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    ;(window as any).__TAURI_INTERNALS__ = {}
     // Default: invoke succeeds with a running server
     mockInvoke.mockImplementation((cmd: string) => {
       if (cmd === "start_personal_server") {
@@ -77,6 +80,8 @@ describe("usePersonalServer", () => {
 
   afterEach(() => {
     vi.useRealTimers()
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    delete (window as any).__TAURI_INTERNALS__
   })
 
   it("starts in unauthenticated mode on mount", async () => {
@@ -99,7 +104,7 @@ describe("usePersonalServer", () => {
     expect(result.current.status).toBe("starting")
   })
 
-  it("restarts with credentials when walletAddress changes", async () => {
+  it("restarts with credentials when walletAddress changes (Phase 2)", async () => {
     const usePersonalServer = await importHook()
 
     const { result, rerender } = renderHook(() => usePersonalServer())
@@ -117,11 +122,61 @@ describe("usePersonalServer", () => {
     expect(result.current.status).toBe("running")
     mockInvoke.mockClear()
 
-    // Now sign in — set walletAddress
+    // Sign in — set walletAddress + masterKeySignature
     authState = { walletAddress: "0xabc", masterKeySignature: "sig123" }
     rerender()
 
-    // restartServer calls stop, then waits 500ms, then starts
+    // Phase 2 restart: stop + 500ms delay + start
+    await act(async () => {
+      await vi.runAllTimersAsync()
+    })
+
+    expect(mockInvoke).toHaveBeenCalledWith("stop_personal_server")
+    expect(mockInvoke).toHaveBeenCalledWith("start_personal_server", {
+      port: null,
+      masterKeySignature: "sig123",
+      gatewayUrl: null,
+      ownerAddress: "0xabc",
+    })
+  })
+
+  it("restarts again after server-registered for tunnel", async () => {
+    const usePersonalServer = await importHook()
+
+    const { result, rerender } = renderHook(() => usePersonalServer())
+
+    // Let initial unauthenticated start complete
+    await act(async () => {
+      await vi.runAllTimersAsync()
+    })
+
+    act(() => {
+      emit("personal-server-ready", { port: 8080 })
+    })
+
+    mockInvoke.mockClear()
+
+    // Sign in → Phase 2 restart
+    authState = { walletAddress: "0xabc", masterKeySignature: "sig123" }
+    rerender()
+
+    await act(async () => {
+      await vi.runAllTimersAsync()
+    })
+
+    // Phase 2 server is ready
+    act(() => {
+      emit("personal-server-ready", { port: 8080 })
+    })
+
+    mockInvoke.mockClear()
+
+    // Gateway registration completes → tunnel restart
+    act(() => {
+      emit("server-registered", { status: 200, serverId: "srv-123" })
+    })
+
+    // Let the 1s delay + stop + 500ms delay + start resolve
     await act(async () => {
       await vi.runAllTimersAsync()
     })
@@ -315,14 +370,14 @@ describe("usePersonalServer", () => {
 
     expect(result.current.restartingRef.current).toBe(false)
 
-    // Now sign in — set walletAddress to trigger Phase 2 restart
+    // Sign in — set walletAddress (restartingRef set synchronously during render)
     authState = { walletAddress: "0xabc", masterKeySignature: "sig123" }
     rerender()
 
-    // restartingRef should be true synchronously after the effect fires
+    // restartingRef should be true synchronously (set during render body)
     expect(result.current.restartingRef.current).toBe(true)
 
-    // Let the restart complete (stop + 500ms delay + start)
+    // Let Phase 2 restart complete (stop + 500ms delay + start)
     await act(async () => {
       await vi.runAllTimersAsync()
     })

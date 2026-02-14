@@ -51,7 +51,7 @@ export function TopNav() {
   return (
     <div data-component="top-nav" className="relative z-20 w-full">
       {/* spacer covering the dot pattern, sets the nav under the macOS traffic lights bar */}
-      <div className="h-[28px] bg-muted"></div>
+      <div data-tauri-drag-region className="h-[28px] bg-muted"></div>
       <header
         data-tauri-drag-region
         className={cn(

@@ -16,9 +16,7 @@
 process.env.NODE_ENV = 'production';
 
 import { join } from 'node:path';
-import { readFileSync, writeFileSync, accessSync, constants } from 'node:fs';
-import { randomUUID } from 'node:crypto';
-import { spawn } from 'node:child_process';
+import { execSync } from 'node:child_process';
 import { loadConfig } from '@opendatalabs/personal-server-ts-core/config';
 import { createServer } from '@opendatalabs/personal-server-ts-server';
 import { serve } from '@hono/node-server';
@@ -28,76 +26,27 @@ function send(msg) {
 }
 
 /**
- * The library's TunnelManager uses a static proxy name ("personal-server")
- * which collides with stale sessions on the FRP server. This restarts frpc
- * with a unique per-session proxy name.
+ * Kill any stale frpc processes from a previous server session.
  *
- * Fire-and-forget: emits tunnel/tunnel-failed events via `send()` as they
- * happen. If frpc takes a while to connect (e.g. first download on a fresh
- * install), the success event arrives later and the frontend picks it up.
+ * The library's TunnelManager uses a static proxy name ("personal-server").
+ * If a previous frpc process is still connected to the FRP server with that
+ * name, the new frpc will fail with a name collision. Killing the stale
+ * process lets the FRP server detect the TCP disconnect and free the name,
+ * so the library's own tunnel manager works natively.
  */
-async function startTunnel(tunnelManager, storageRoot, send) {
-  if (!tunnelManager) {
-    send({ type: 'tunnel-failed', message: 'No tunnel manager available' });
-    return;
-  }
-
-  const tomlPath = join(storageRoot, 'tunnel', 'frpc.toml');
+function killStaleFrpc(storageRoot, send) {
   const frpcPath = join(storageRoot, 'bin', process.platform === 'win32' ? 'frpc.exe' : 'frpc');
-
-  // Stop the library's frpc (stuck retrying with colliding name)
-  await tunnelManager.stop();
-
-  // Rewrite config with unique proxy name
-  let toml = readFileSync(tomlPath, 'utf-8');
-  const uniqueName = `ps-${randomUUID().slice(0, 8)}`;
-  toml = toml.replace(/name = "personal-server"/, `name = "${uniqueName}"`);
-  writeFileSync(tomlPath, toml);
-
-  // Extract subdomain to build public URL
-  const match = toml.match(/subdomain = "(.+)"/);
-  const subdomain = match?.[1];
-  if (!subdomain) {
-    send({ type: 'tunnel-failed', message: 'No subdomain found in frpc config' });
-    return;
+  try {
+    if (process.platform === 'win32') {
+      execSync('taskkill /F /IM frpc.exe 2>nul', { stdio: 'ignore' });
+    } else {
+      // Kill frpc processes running from our storage directory
+      execSync(`pkill -f "${frpcPath}" 2>/dev/null`, { stdio: 'ignore' });
+    }
+    send({ type: 'log', message: '[tunnel] Killed stale frpc process' });
+  } catch {
+    // No stale process — expected on clean starts
   }
-
-  const publicUrl = `https://${subdomain}.server.vana.org`;
-
-  // Spawn frpc with fixed config
-  const frpc = spawn(frpcPath, ['-c', tomlPath], {
-    stdio: ['ignore', 'pipe', 'pipe'],
-  });
-
-  // Monitor frpc output — emit tunnel URL whenever it connects.
-  // This is fire-and-forget: if frpc connects late (after an initial
-  // timeout), the event still arrives and the frontend picks it up.
-  let connected = false;
-  const onData = (data) => {
-    const text = data.toString();
-    if (!connected && (text.includes('start proxy success') || text.includes('login to server success'))) {
-      connected = true;
-      send({ type: 'tunnel', url: publicUrl });
-    }
-  };
-  frpc.stdout?.on('data', onData);
-  frpc.stderr?.on('data', onData);
-  frpc.on('error', (err) => {
-    if (!connected) {
-      send({ type: 'tunnel-failed', message: `frpc error: ${err.message}` });
-    }
-  });
-  frpc.on('exit', (code) => {
-    if (!connected) {
-      send({ type: 'tunnel-failed', message: `frpc exited with code ${code}` });
-    }
-  });
-
-  // Ensure frpc is killed on process exit
-  const killFrpc = () => { try { frpc.kill(); } catch {} };
-  process.on('exit', killFrpc);
-  process.on('SIGTERM', killFrpc);
-  process.on('SIGINT', killFrpc);
 }
 
 async function main() {
@@ -187,40 +136,27 @@ async function main() {
       }
     });
 
-    // Start background services (gateway registration + tunnel setup).
-    // This populates context.tunnelManager and context.tunnelUrl.
-    await context.startBackgroundServices();
-
-    // Fix stale proxy name collision on FRP server
+    // Kill any stale frpc from a previous session to avoid proxy name
+    // collision on the FRP server, then let the library handle the tunnel.
     const storageRoot = configDir || join(
       (await import('node:os')).homedir(),
       '.data-connect', 'personal-server'
     );
+    killStaleFrpc(storageRoot, send);
+
+    // Start background services (gateway registration + tunnel setup).
+    // This populates context.tunnelManager and context.tunnelUrl.
+    await context.startBackgroundServices();
 
     const hasMasterKey = !!process.env.VANA_MASTER_KEY_SIGNATURE;
 
-    if (!context.tunnelManager && !context.tunnelUrl) {
-      send({ type: 'log', message: `[tunnel] Not started. masterKey=${hasMasterKey}, port=${port}` });
-
-      const frpcPath = join(storageRoot, 'bin', process.platform === 'win32' ? 'frpc.exe' : 'frpc');
-      try {
-        accessSync(frpcPath, constants.X_OK);
-        send({ type: 'log', message: `[tunnel] frpc binary exists at ${frpcPath}` });
-      } catch {
-        send({ type: 'log', message: `[tunnel] frpc binary NOT found at ${frpcPath}` });
-      }
-    }
-
-    if (context.tunnelManager) {
-      // Fire-and-forget: startTunnel monitors frpc and emits tunnel/tunnel-failed
-      // events asynchronously. If frpc takes a while (e.g. first install), the
-      // success event arrives late and the frontend picks it up.
-      startTunnel(context.tunnelManager, storageRoot, send);
-    } else if (context.tunnelUrl) {
-      // Library established the tunnel itself (no proxy name collision)
+    if (context.tunnelUrl) {
       send({ type: 'tunnel', url: context.tunnelUrl });
+    } else if (context.tunnelManager) {
+      // Library set up tunnel manager but hasn't connected yet — it will
+      // keep retrying in the background. We don't need to intervene.
+      send({ type: 'log', message: '[tunnel] Tunnel manager active, waiting for connection...' });
     } else if (hasMasterKey) {
-      // Phase 2 with masterKey but no tunnel — genuine failure
       send({ type: 'tunnel-failed', message: 'Tunnel could not be established' });
     }
     // Phase 1 (no masterKey): silently skip — tunnel is not expected

@@ -1,8 +1,9 @@
-import { KeyIcon, Trash2Icon } from "lucide-react"
-import type { BrowserSession } from "../types"
 import { Text } from "@/components/typography/text"
 import { Button } from "@/components/ui/button"
-import { SettingsCard, SettingsRow, SettingsSection } from "./settings-shared"
+import { KeyRoundIcon } from "lucide-react"
+import { PlatformIcon } from "@/components/icons/platform-icon"
+import type { BrowserSession } from "../types"
+import { SettingsCard, SettingsCardStack, SettingsRow } from "./settings-shared"
 
 interface SettingsCredentialsProps {
   sessions: BrowserSession[]
@@ -21,6 +22,10 @@ function getDisplayName(connectorId: string): string {
       .replace(/-/g, " ")
       .replace(/\b\w/g, c => c.toUpperCase())
   )
+}
+
+function getPlatformIconName(connectorId: string): string {
+  return connectorId.replace(/-playwright$/, "")
 }
 
 function formatBytes(bytes: number): string {
@@ -47,65 +52,64 @@ export function SettingsCredentials({
   onClearSession,
 }: SettingsCredentialsProps) {
   return (
-    <div>
-      <SettingsSection title="Browser sessions">
-        {sessions.length === 0 ? (
-          <SettingsCard contentClassName="p-12 text-center">
-            <KeyIcon
-              aria-hidden="true"
-              className="mx-auto size-12 text-muted-foreground"
-            />
-            <Text as="h3" intent="heading" weight="semi" className="mt-4">
-              No stored sessions
-            </Text>
-            <Text
-              as="p"
-              intent="small"
-              color="mutedForeground"
-              className="mt-2 max-w-sm mx-auto"
-            >
-              When you log in to a platform through a connector, your browser
-              session is stored here so you don't have to log in again next
-              time.
-            </Text>
-          </SettingsCard>
-        ) : (
-          <SettingsCard divided>
-            {sessions.map(session => (
+    <div className="space-y-8">
+      {sessions.length === 0 ? (
+        <>
+          <SettingsCardStack>
+            <SettingsCard>
               <SettingsRow
-                key={session.connectorId}
-                iconContainerClassName="bg-muted"
-                icon={
-                  <KeyIcon aria-hidden="true" className="size-4 text-muted-foreground" />
-                }
+                icon={<KeyRoundIcon aria-hidden="true" />}
                 title={
-                  <Text as="div" intent="small" weight="medium">
-                    {getDisplayName(session.connectorId)}
+                  <Text as="div" intent="body" weight="semi">
+                    No stored sessions
                   </Text>
-                }
-                description={
-                  <Text as="div" intent="fine" color="mutedForeground">
-                    Session stored · {formatBytes(session.sizeBytes)} · Last
-                    used {formatDate(session.lastModified)}
-                  </Text>
-                }
-                right={
-                  <Button
-                    type="button"
-                    variant="outline"
-                    size="sm"
-                    className="border-destructive/30 text-destructive hover:bg-destructive/10"
-                    onClick={() => onClearSession(session.connectorId)}
-                  >
-                    <Trash2Icon aria-hidden="true" className="size-4" />
-                    Clear
-                  </Button>
                 }
               />
-            ))}
-          </SettingsCard>
-        )}
-      </SettingsSection>
+            </SettingsCard>
+          </SettingsCardStack>
+          <Text as="p" intent="small" muted>
+            When you log in to a platform through a connector, your browser
+            session is stored here so you don't have to log in again next time.
+          </Text>
+        </>
+      ) : (
+        <SettingsCard divided>
+          {sessions.map(session => (
+            <SettingsRow
+              key={session.connectorId}
+              wrapIcon={false}
+              icon={
+                <PlatformIcon
+                  iconName={getPlatformIconName(session.connectorId)}
+                  fallbackLabel={getDisplayName(session.connectorId)}
+                  size={28}
+                />
+              }
+              title={
+                <Text as="div" intent="small" weight="medium">
+                  {getDisplayName(session.connectorId)}
+                </Text>
+              }
+              description={
+                <Text as="div" intent="fine" color="mutedForeground">
+                  Session stored · {formatBytes(session.sizeBytes)} · Last used{" "}
+                  {formatDate(session.lastModified)}
+                </Text>
+              }
+              right={
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => onClearSession(session.connectorId)}
+                >
+                  Clear
+                </Button>
+              }
+            />
+          ))}
+        </SettingsCard>
+      )}
     </div>
   )
 }

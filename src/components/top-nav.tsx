@@ -34,15 +34,15 @@ const navIconClasses = "size-[18px]"
 
 const navItems: NavItem[] = [
   { to: ROUTES.home, label: "Home", Icon: HomeIcon },
-  { to: ROUTES.apps, label: "Apps", Icon: BoxIcon },
-  { to: ROUTES.mcp, label: "MCP", Icon: IconMcp },
+  // { to: ROUTES.apps, label: "Apps", Icon: BoxIcon },
+  // { to: ROUTES.mcp, label: "MCP", Icon: IconMcp },
   // {
   //   to: "https://docs.dataconnect.com",
   //   label: "Docs",
   //   Icon: BookOpenIcon,
   //   external: true,
   // },
-  { to: ROUTES.docs, label: "Docs", Icon: BookOpenIcon },
+  // { to: ROUTES.docs, label: "Docs", Icon: BookOpenIcon },
   // { to: "/activity", label: "Activity", Icon: ActivityIcon },
   { to: ROUTES.settings, label: "Settings", Icon: UserRoundCogIcon },
 ]

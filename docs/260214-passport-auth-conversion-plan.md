@@ -16,7 +16,7 @@ Move Data Connect auth from the current in-app/external hybrid (`src/auth-page`,
 
 - Single auth mechanism: **system browser -> Passport -> callback -> Data Connect session**.
 - No standalone `src/auth-page` build/distribution pipeline.
-- No duplicate `browser-login` auth implementation unless kept temporarily behind a feature flag.
+- No duplicate `browser-login` auth implementation.
 - Persisted auth session is restored on fresh app open.
 - Logout from Data Connect clears local auth and allows re-login via Passport URL.
 
@@ -28,21 +28,12 @@ Move Data Connect auth from the current in-app/external hybrid (`src/auth-page`,
 2. **Session persistence backend**
    - Preferred: OS-backed secure storage (keychain/credential vault).
    - Minimum acceptable: encrypted local file with strict lifecycle handling.
-3. **Legacy path strategy**
-   - Hard cut (delete `src/auth-page` + `/browser-login`) vs short-lived feature-flagged fallback.
+3. **Cutover strategy**
+   - Hard cut in a single PR: delete `src/auth-page` and `/browser-login` in the same pass as Passport auth wiring.
 
-## Migration phases
+## One-pass execution plan
 
-### Phase 0 — Instrument and freeze behavior
-
-- Add temporary auth flow logging around:
-  - `start_browser_auth` invocation
-  - callback receive path
-  - `auth-complete` emission
-  - Redux `setAuthenticated` dispatch
-- Capture one full successful flow and one failure flow as baseline.
-
-### Phase 1 — Introduce Passport callback path (no deletions yet)
+### Step 1 — Replace auth command + callback plumbing
 
 - Update Tauri auth command implementation (`src-tauri/src/commands/auth.rs`):
   - open Passport authorize URL in system browser
@@ -56,7 +47,7 @@ Move Data Connect auth from the current in-app/external hybrid (`src/auth-page`,
   - `src/pages/grant/use-grant-flow.ts`
   - `src/components/auth/InlineLogin.tsx`
 
-### Phase 2 — Add durable auth session bootstrap
+### Step 2 — Add durable auth session bootstrap
 
 - Create an auth session service boundary:
   - frontend coordinator: `src/services/auth-session.ts` (new)
@@ -68,7 +59,7 @@ Move Data Connect auth from the current in-app/external hybrid (`src/auth-page`,
   - keep current behavior of routing user home after logout (`use-settings-page`)
   - if Passport supports it, call Passport logout/revocation endpoint (or document why local-only logout is sufficient)
 
-### Phase 3 — Remove legacy auth surfaces
+### Step 3 — Delete legacy auth surfaces immediately
 
 - Delete:
   - `src/auth-page/*`
@@ -82,7 +73,7 @@ Move Data Connect auth from the current in-app/external hybrid (`src/auth-page`,
   - route constant from `src/config/routes.ts`
   - route wiring from `src/App.tsx`
 
-### Phase 4 — Docs and cleanup
+### Step 4 — Docs and cleanup
 
 - Update architecture and flow docs:
   - `docs/architecture.md`
@@ -90,7 +81,7 @@ Move Data Connect auth from the current in-app/external hybrid (`src/auth-page`,
   - any README that references `src/auth-page` or `/browser-login`
 - Add one canonical auth flow doc with sequence diagrams.
 
-## Test plan (must pass before legacy deletion)
+## Test plan (must pass in this PR)
 
 1. **Auth start**
    - command opens expected Passport URL with required params.
@@ -120,7 +111,7 @@ Move Data Connect auth from the current in-app/external hybrid (`src/auth-page`,
   - `src/state/store.ts`
 - **Deletion candidates**
   - `src/auth-page/*`
-  - `src/pages/browser-login/*` (if hard cut)
+  - `src/pages/browser-login/*`
   - `vite.auth.config.ts`
   - auth-specific scripts in `package.json`
 
@@ -134,6 +125,6 @@ Move Data Connect auth from the current in-app/external hybrid (`src/auth-page`,
 
 ## Rollout recommendation
 
-- **Preferred**: ship behind `passportAuthV2` feature flag for one release.
-- Keep legacy code one release as fallback, but default to Passport-first path.
-- Remove fallback in the next release once telemetry confirms stable conversion and recovery rates.
+- Ship as a single hard cut before first release.
+- Do not keep legacy fallback paths in the codebase.
+- Block merge until all tests in this document pass locally and in CI.

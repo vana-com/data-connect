@@ -22,8 +22,8 @@ export const SETTINGS_SECTION_META: Record<
     title: "Account",
   },
   apps: {
-    navLabel: "Authorised Apps",
-    title: "Authorised Apps",
+    navLabel: "Connected apps",
+    title: "Connected apps",
     // description: "Review and manage applications with access to your data.",
     description: "OAuth apps that you have approved to use your data.",
   },

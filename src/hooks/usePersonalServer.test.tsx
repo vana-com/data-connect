@@ -143,7 +143,7 @@ describe("usePersonalServer", () => {
   it("restarts again after server-registered for tunnel", async () => {
     const usePersonalServer = await importHook()
 
-    const { result, rerender } = renderHook(() => usePersonalServer())
+    const { rerender } = renderHook(() => usePersonalServer())
 
     // Let initial unauthenticated start complete
     await act(async () => {

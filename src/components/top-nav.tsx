@@ -4,10 +4,7 @@ import { ROUTES } from "@/config/routes"
 import { cn } from "@/lib/classes"
 import type { LucideIcon } from "lucide-react"
 import {
-  BookOpenIcon,
-  BoxIcon,
   HomeIcon,
-  // ActivityIcon,
   UserRoundCogIcon,
 } from "lucide-react"
 import { NavLink } from "react-router-dom"

@@ -920,7 +920,9 @@ describe("useGrantFlow", () => {
     expect(mockCreateGrant).toHaveBeenCalled()
   })
 
-  it("shows error when tunnel fails to establish", async () => {
+  it("shows error after 90s tunnel timeout, not on tunnelFailed alone", async () => {
+    vi.useFakeTimers({ shouldAdvanceTime: true })
+
     authState = {
       isAuthenticated: true,
       isLoading: false,
@@ -962,16 +964,28 @@ describe("useGrantFlow", () => {
       expect(result.current.flowState.status).toBe("consent")
     })
 
-    // handleApprove defers because tunnelUrl is null; the auto-approve
-    // effect then surfaces the error because tunnelFailed is true
+    // handleApprove defers because tunnelUrl is null
     await act(async () => {
       await result.current.handleApprove()
     })
 
+    // tunnelFailed is true but the effect should NOT immediately error —
+    // it keeps waiting in "preparing-server" for a late tunnel-success event.
+    expect(result.current.flowState.status).toBe("preparing-server")
+    expect(mockCreateGrant).not.toHaveBeenCalled()
+
+    // Advance past the 90s timeout
+    await act(async () => {
+      vi.advanceTimersByTime(91_000)
+    })
+
+    // NOW the error should surface
     await waitFor(() => {
       expect(result.current.flowState.status).toBe("error")
     })
     expect(result.current.flowState.error).toContain("tunnel")
     expect(mockCreateGrant).not.toHaveBeenCalled()
+
+    vi.useRealTimers()
   })
 })

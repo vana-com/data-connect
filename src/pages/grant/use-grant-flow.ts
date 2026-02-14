@@ -475,8 +475,34 @@ export function useGrantFlow(params: GrantFlowParams, prefetched?: PrefetchedGra
   // Auto-approve after auth completes (if user had clicked Allow before auth).
   // For non-demo sessions, wait until the Personal Server is fully ready
   // (port + tunnel) so handleApprove doesn't throw and the builder can reach
-  // the server externally. If the server or tunnel errors out, surface the
-  // error immediately instead of waiting forever.
+  // the server externally. If the server errors out, surface the error
+  // immediately. For tunnel failures, keep waiting — the backend monitors
+  // frpc asynchronously and may emit a late tunnel-success event.
+  const preparingTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
+  const [tunnelTimedOut, setTunnelTimedOut] = useState(false)
+
+  // Start a timeout when entering "preparing-server" — give the tunnel up
+  // to 90s before declaring failure. This covers fresh installs where frpc
+  // needs time to download/connect.
+  useEffect(() => {
+    if (flowState.status === "preparing-server" && !preparingTimerRef.current) {
+      preparingTimerRef.current = setTimeout(() => {
+        setTunnelTimedOut(true)
+      }, 90_000)
+    }
+    if (flowState.status !== "preparing-server" && preparingTimerRef.current) {
+      clearTimeout(preparingTimerRef.current)
+      preparingTimerRef.current = null
+      setTunnelTimedOut(false)
+    }
+    return () => {
+      if (preparingTimerRef.current) {
+        clearTimeout(preparingTimerRef.current)
+        preparingTimerRef.current = null
+      }
+    }
+  }, [flowState.status])
+
   useEffect(() => {
     if (!authPending || !isAuthenticated || !walletAddress) return
     if (personalServer.status === "error") {
@@ -496,7 +522,8 @@ export function useGrantFlow(params: GrantFlowParams, prefetched?: PrefetchedGra
       setFlowState(prev => prev.status === "preparing-server" ? prev : { ...prev, status: "preparing-server" })
       return
     }
-    if (personalServer.tunnelFailed) {
+    // If the tunnel timed out (90s), surface the error.
+    if (tunnelTimedOut) {
       setAuthPending(false)
       setFlowState(prev => ({
         ...prev,
@@ -511,7 +538,7 @@ export function useGrantFlow(params: GrantFlowParams, prefetched?: PrefetchedGra
     }
     setAuthPending(false)
     void handleApprove()
-  }, [authPending, handleApprove, isAuthenticated, walletAddress, personalServer.port, personalServer.tunnelUrl, personalServer.tunnelFailed, personalServer.status, personalServer.error, flowState.sessionId])
+  }, [authPending, handleApprove, isAuthenticated, walletAddress, personalServer.port, personalServer.tunnelUrl, tunnelTimedOut, personalServer.status, personalServer.error, flowState.sessionId])
 
   // --- Retry from error ---
   // Bumps retryCount which re-triggers the main flow effect (claim → verify → consent).

@@ -31,9 +31,16 @@ function send(msg) {
  * The library's TunnelManager uses a static proxy name ("personal-server")
  * which collides with stale sessions on the FRP server. This restarts frpc
  * with a unique per-session proxy name.
+ *
+ * Fire-and-forget: emits tunnel/tunnel-failed events via `send()` as they
+ * happen. If frpc takes a while to connect (e.g. first download on a fresh
+ * install), the success event arrives later and the frontend picks it up.
  */
-async function fixTunnelProxyName(tunnelManager, storageRoot) {
-  if (!tunnelManager) return null;
+async function startTunnel(tunnelManager, storageRoot, send) {
+  if (!tunnelManager) {
+    send({ type: 'tunnel-failed', message: 'No tunnel manager available' });
+    return;
+  }
 
   const tomlPath = join(storageRoot, 'tunnel', 'frpc.toml');
   const frpcPath = join(storageRoot, 'bin', process.platform === 'win32' ? 'frpc.exe' : 'frpc');
@@ -50,7 +57,10 @@ async function fixTunnelProxyName(tunnelManager, storageRoot) {
   // Extract subdomain to build public URL
   const match = toml.match(/subdomain = "(.+)"/);
   const subdomain = match?.[1];
-  if (!subdomain) return null;
+  if (!subdomain) {
+    send({ type: 'tunnel-failed', message: 'No subdomain found in frpc config' });
+    return;
+  }
 
   const publicUrl = `https://${subdomain}.server.vana.org`;
 
@@ -59,23 +69,28 @@ async function fixTunnelProxyName(tunnelManager, storageRoot) {
     stdio: ['ignore', 'pipe', 'pipe'],
   });
 
-  // Wait for frpc to actually report a successful connection (up to 30s).
-  // Do NOT resolve optimistically on timeout — the tunnel must be functional
-  // before we tell the desktop app it's ready, otherwise the builder will
-  // get 404s when trying to reach the personal server.
-  const url = await new Promise((resolve) => {
-    let resolved = false;
-    const onData = (data) => {
-      const text = data.toString();
-      if (text.includes('start proxy success') || text.includes('login to server success')) {
-        if (!resolved) { resolved = true; resolve(publicUrl); }
-      }
-    };
-    frpc.stdout?.on('data', onData);
-    frpc.stderr?.on('data', onData);
-    frpc.on('error', () => { if (!resolved) { resolved = true; resolve(null); } });
-    frpc.on('exit', (code) => { if (!resolved && code !== 0) { resolved = true; resolve(null); } });
-    setTimeout(() => { if (!resolved) { resolved = true; resolve(null); } }, 30000);
+  // Monitor frpc output — emit tunnel URL whenever it connects.
+  // This is fire-and-forget: if frpc connects late (after an initial
+  // timeout), the event still arrives and the frontend picks it up.
+  let connected = false;
+  const onData = (data) => {
+    const text = data.toString();
+    if (!connected && (text.includes('start proxy success') || text.includes('login to server success'))) {
+      connected = true;
+      send({ type: 'tunnel', url: publicUrl });
+    }
+  };
+  frpc.stdout?.on('data', onData);
+  frpc.stderr?.on('data', onData);
+  frpc.on('error', (err) => {
+    if (!connected) {
+      send({ type: 'tunnel-failed', message: `frpc error: ${err.message}` });
+    }
+  });
+  frpc.on('exit', (code) => {
+    if (!connected) {
+      send({ type: 'tunnel-failed', message: `frpc exited with code ${code}` });
+    }
   });
 
   // Ensure frpc is killed on process exit
@@ -83,8 +98,6 @@ async function fixTunnelProxyName(tunnelManager, storageRoot) {
   process.on('exit', killFrpc);
   process.on('SIGTERM', killFrpc);
   process.on('SIGINT', killFrpc);
-
-  return url;
 }
 
 async function main() {
@@ -184,8 +197,9 @@ async function main() {
       '.data-connect', 'personal-server'
     );
 
+    const hasMasterKey = !!process.env.VANA_MASTER_KEY_SIGNATURE;
+
     if (!context.tunnelManager && !context.tunnelUrl) {
-      const hasMasterKey = !!process.env.VANA_MASTER_KEY_SIGNATURE;
       send({ type: 'log', message: `[tunnel] Not started. masterKey=${hasMasterKey}, port=${port}` });
 
       const frpcPath = join(storageRoot, 'bin', process.platform === 'win32' ? 'frpc.exe' : 'frpc');
@@ -197,15 +211,19 @@ async function main() {
       }
     }
 
-    const effectiveTunnelUrl = context.tunnelManager
-      ? await fixTunnelProxyName(context.tunnelManager, storageRoot)
-      : context.tunnelUrl;
-
-    if (effectiveTunnelUrl) {
-      send({ type: 'tunnel', url: effectiveTunnelUrl });
-    } else {
+    if (context.tunnelManager) {
+      // Fire-and-forget: startTunnel monitors frpc and emits tunnel/tunnel-failed
+      // events asynchronously. If frpc takes a while (e.g. first install), the
+      // success event arrives late and the frontend picks it up.
+      startTunnel(context.tunnelManager, storageRoot, send);
+    } else if (context.tunnelUrl) {
+      // Library established the tunnel itself (no proxy name collision)
+      send({ type: 'tunnel', url: context.tunnelUrl });
+    } else if (hasMasterKey) {
+      // Phase 2 with masterKey but no tunnel — genuine failure
       send({ type: 'tunnel-failed', message: 'Tunnel could not be established' });
     }
+    // Phase 1 (no masterKey): silently skip — tunnel is not expected
 
     function shutdown(signal) {
       send({ type: 'log', message: `Shutdown signal: ${signal}` });

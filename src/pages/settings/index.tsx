@@ -33,11 +33,14 @@ const settingsSections: Array<{
   key: SettingsSection
   label: string
   icon: ReactNode
-}> = SETTINGS_SECTION_ORDER.map(section => ({
+}> = SETTINGS_SECTION_ORDER
+  // Temporarily hide Storage in nav; keep storage section implementation intact.
+  .filter(section => section !== "storage")
+  .map(section => ({
   key: section,
   label: SETTINGS_SECTION_META[section].navLabel,
   icon: sectionIcons[section],
-}))
+  }))
 
 export function Settings() {
   const {

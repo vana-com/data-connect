@@ -166,6 +166,25 @@ export function usePersonalServer() {
       setTunnelFailed(true);
     }).then((fn) => unlisteners.push(fn));
 
+    // When gateway registration completes (from the auth page), restart the
+    // server so the library's startBackgroundServices() retries with the
+    // registration in place and starts the tunnel. Without this, Phase 2
+    // starts before registration finishes → library finds "not registered"
+    // → no tunnel.
+    listen<{ status: number; serverId: string | null }>('server-registered', (event) => {
+      console.log('[PersonalServer] Server registered with gateway:', event.payload);
+      if (!_sharedTunnelUrl && _lastStartedWallet) {
+        console.log('[PersonalServer] Tunnel not active, restarting to establish tunnel...');
+        restartingRef.current = true;
+        // Small delay to let the gateway propagate the registration
+        setTimeout(() => {
+          void stopServer().then(() => {
+            setTimeout(() => startServerRef.current(_lastStartedWallet), 500);
+          });
+        }, 1000);
+      }
+    }).then((fn) => unlisteners.push(fn));
+
     listen<{ message: string }>('personal-server-log', (event) => {
       console.log('[PersonalServer]', event.payload.message);
     }).then((fn) => unlisteners.push(fn));

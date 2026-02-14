@@ -19,6 +19,10 @@ import { Button } from "@/components/ui/button"
 import { LINKS } from "@/config/links"
 import { SettingsCard, SettingsCardStack, SettingsRow } from "./settings-shared"
 
+// Settings surface for Connected apps.
+// This is a permission management surface: it shows granted scopes and supports revoke actions.
+// It is intentionally different from Home's quick-launch/activity list.
+
 // Local UI test toggle: set true to force test app rows.
 const TEST_LOGGED_IN = false
 const TEST_CONNECTED_APPS: ConnectedApp[] = [

@@ -74,7 +74,7 @@ export function PublicEndpointRow({
         label="Public endpoint"
         labelInfo="Public URL that routes requests to your Personal Server. If unavailable, the server is not currently reachable from outside your device."
         value={
-          <Text as="div" intent="fine" muted>
+          <Text as="div" intent="small" dim>
             Not available yet
           </Text>
         }

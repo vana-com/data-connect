@@ -116,7 +116,7 @@ describe("Settings", () => {
   it("switches to the apps section from the nav", () => {
     const { getAllByRole, getByText, getByTestId } = renderSettings()
 
-    const [appsButton] = getAllByRole("button", { name: "Authorised Apps" })
+    const [appsButton] = getAllByRole("button", { name: "Connected apps" })
     fireEvent.click(appsButton)
 
     expect(getByText("No connected apps")).toBeTruthy()
@@ -133,7 +133,7 @@ describe("Settings", () => {
 
     const { getAllByText } = renderSettings()
 
-    expect(getAllByText("Log out").length).toBeGreaterThan(0)
+    expect(getAllByText("Sign out").length).toBeGreaterThan(0)
   })
 
   it("reads section from URL", () => {

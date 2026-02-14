@@ -1,6 +1,7 @@
 export type SettingsSection =
   | "account"
   | "apps"
+  | "personalServer"
   | "credentials"
   | "storage"
   | "about"

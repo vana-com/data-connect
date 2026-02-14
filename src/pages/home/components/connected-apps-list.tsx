@@ -9,9 +9,14 @@ import { DEV_FLAGS } from "@/config/dev-flags"
 import { ROUTES } from "@/config/routes"
 import { cn } from "@/lib/classes"
 import { openExternalUrl } from "@/lib/open-resource"
+import { buildSettingsUrl } from "@/pages/settings/url"
 import { getAppRegistryEntry } from "@/apps/registry"
 import type { ConnectedApp } from "@/types"
 import { ArrowUpRight, Settings } from "lucide-react"
+
+// Home surface for Connected apps.
+// This is a quick-launch/activity surface: it shows recency and open/manage shortcuts.
+// It is intentionally different from Settings' permission management list.
 
 interface ConnectedAppsListProps {
   apps: ConnectedApp[]
@@ -55,7 +60,7 @@ function getConnectedAppUrl(app: ConnectedApp) {
 const Header = () => {
   return (
     <Text as="h2" weight="medium">
-      Apps using your data
+      Connected apps
     </Text>
   )
 }
@@ -67,7 +72,7 @@ export function ConnectedAppsList({ apps }: ConnectedAppsListProps) {
         <Header />
         <div className="action-outset">
           <ActionPanel>
-            <Text muted>No apps yet</Text>
+            <Text muted>No connected apps</Text>
           </ActionPanel>
         </div>
       </section>
@@ -111,9 +116,9 @@ export function ConnectedAppsList({ apps }: ConnectedAppsListProps) {
               >
                 {/* Duplicated SourceRow LHS; RHS is different! */}
                 <PlatformIcon
-                  iconName={app.id}
+                  iconName={app.icon?.trim() || app.name}
                   fallbackLabel={
-                    app.icon?.trim() || app.name.charAt(0).toUpperCase()
+                    app.name.charAt(0).toUpperCase()
                   }
                 />
                 <div className="flex items-baseline gap-2">
@@ -126,13 +131,13 @@ export function ConnectedAppsList({ apps }: ConnectedAppsListProps) {
               </button>
 
               <Link
-                to={ROUTES.settings}
+                to={buildSettingsUrl({ section: "apps" })}
                 className={cn(
                   "flex h-full items-center justify-center px-3",
                   stateFocus,
                   "text-foreground/30 hover:text-foreground"
                 )}
-                aria-label="Account settings"
+                aria-label="Connected apps settings"
               >
                 <Settings className="size-4.5" aria-hidden />
               </Link>

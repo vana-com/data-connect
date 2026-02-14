@@ -3,6 +3,7 @@ import type { SettingsSection } from "./types"
 export const SETTINGS_SECTION_ORDER: SettingsSection[] = [
   "account",
   "apps",
+  "personalServer",
   "storage",
   "imports",
   "credentials",
@@ -22,10 +23,15 @@ export const SETTINGS_SECTION_META: Record<
     title: "Account",
   },
   apps: {
-    navLabel: "Authorised Apps",
-    title: "Authorised Apps",
+    navLabel: "Connected apps",
+    title: "Connected apps",
     // description: "Review and manage applications with access to your data.",
     description: "OAuth apps that you have approved to use your data.",
+  },
+  personalServer: {
+    navLabel: "Personal Server",
+    title: "Personal Server",
+    description: "Status and endpoint details for your personal server.",
   },
   credentials: {
     navLabel: "Credentials",

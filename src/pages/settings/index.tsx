@@ -4,6 +4,7 @@ import {
   HousePlusIcon,
   InfoIcon,
   KeyRoundIcon,
+  ServerIcon,
   UserIcon,
 } from "lucide-react"
 import type { ReactNode } from "react"
@@ -15,6 +16,7 @@ import { SettingsCredentials } from "./components/settings-credentials"
 import { SettingsOverviewLayout } from "./components/settings-overview-layout"
 import { SettingsSidebar } from "./components/settings-sidebar"
 import { SettingsImportsSection } from "./sections/imports/index"
+import { SettingsPersonalServer } from "./sections/personal-server"
 import { SettingsStorageSection } from "./sections/storage/index"
 import { SETTINGS_SECTION_META, SETTINGS_SECTION_ORDER } from "./sections"
 import type { SettingsSection } from "./types"
@@ -23,6 +25,7 @@ import { useSettingsPage } from "./use-settings-page"
 const sectionIcons: Record<SettingsSection, ReactNode> = {
   account: <UserIcon aria-hidden="true" />,
   apps: <BoxIcon aria-hidden="true" />,
+  personalServer: <ServerIcon aria-hidden="true" />,
   storage: <HousePlusIcon aria-hidden="true" />,
   imports: <ActivityIcon aria-hidden="true" />,
   credentials: <KeyRoundIcon aria-hidden="true" />,
@@ -33,11 +36,14 @@ const settingsSections: Array<{
   key: SettingsSection
   label: string
   icon: ReactNode
-}> = SETTINGS_SECTION_ORDER.map(section => ({
+}> = SETTINGS_SECTION_ORDER
+  // Temporarily hide Storage in nav; keep storage section implementation intact.
+  .filter(section => section !== "storage")
+  .map(section => ({
   key: section,
   label: SETTINGS_SECTION_META[section].navLabel,
   icon: sectionIcons[section],
-}))
+  }))
 
 export function Settings() {
   const {
@@ -91,6 +97,8 @@ export function Settings() {
         onClearSession={onClearBrowserSession}
       />
     )
+  } else if (activeSection === "personalServer") {
+    content = <SettingsPersonalServer personalServer={personalServer} />
   } else if (activeSection === "storage") {
     content = (
       <SettingsStorageSection

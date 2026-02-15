@@ -16,7 +16,9 @@
 process.env.NODE_ENV = 'production';
 
 import { join } from 'node:path';
-import { execSync } from 'node:child_process';
+import { readFileSync, writeFileSync } from 'node:fs';
+import { randomUUID } from 'node:crypto';
+import { execSync, spawn } from 'node:child_process';
 import { loadConfig } from '@opendatalabs/personal-server-ts-core/config';
 import { createServer } from '@opendatalabs/personal-server-ts-server';
 import { serve } from '@hono/node-server';
@@ -26,13 +28,10 @@ function send(msg) {
 }
 
 /**
- * Kill any stale frpc processes from a previous server session.
+ * Kill any stale frpc processes from a previous app session.
  *
- * The library's TunnelManager uses a static proxy name ("personal-server").
- * If a previous frpc process is still connected to the FRP server with that
- * name, the new frpc will fail with a name collision. Killing the stale
- * process lets the FRP server detect the TCP disconnect and free the name,
- * so the library's own tunnel manager works natively.
+ * On macOS/Linux, uses pkill to match the frpc binary path.
+ * On Windows, kills all frpc.exe processes.
  */
 function killStaleFrpc(storageRoot, send) {
   const frpcPath = join(storageRoot, 'bin', process.platform === 'win32' ? 'frpc.exe' : 'frpc');
@@ -40,13 +39,88 @@ function killStaleFrpc(storageRoot, send) {
     if (process.platform === 'win32') {
       execSync('taskkill /F /IM frpc.exe 2>nul', { stdio: 'ignore' });
     } else {
-      // Kill frpc processes running from our storage directory
       execSync(`pkill -f "${frpcPath}" 2>/dev/null`, { stdio: 'ignore' });
     }
     send({ type: 'log', message: '[tunnel] Killed stale frpc process' });
   } catch {
     // No stale process — expected on clean starts
   }
+}
+
+/**
+ * Fix the static proxy name collision on the FRP server.
+ *
+ * The library's TunnelManager hardcodes proxy name "personal-server".
+ * If a previous frpc session (from this or a prior server start) used that
+ * name, the FRP server rejects the new connection or silently drops it.
+ *
+ * This stops the library's frpc, rewrites the TOML with a unique per-session
+ * proxy name, and respawns frpc. Fire-and-forget: emits tunnel/tunnel-failed
+ * events via send() as they happen.
+ */
+function fixTunnelProxyName(tunnelManager, storageRoot, send) {
+  const tomlPath = join(storageRoot, 'tunnel', 'frpc.toml');
+  const frpcPath = join(storageRoot, 'bin', process.platform === 'win32' ? 'frpc.exe' : 'frpc');
+
+  // Stop the library's frpc (stuck with static "personal-server" name)
+  tunnelManager.stop().then(() => {
+    let toml;
+    try {
+      toml = readFileSync(tomlPath, 'utf-8');
+    } catch {
+      send({ type: 'tunnel-failed', message: 'Tunnel config not found' });
+      return;
+    }
+
+    // Patch proxy name to a unique per-session value
+    const uniqueName = `ps-${randomUUID().slice(0, 8)}`;
+    toml = toml.replace(/name = "personal-server"/, `name = "${uniqueName}"`);
+    writeFileSync(tomlPath, toml);
+
+    // Extract subdomain to build public URL
+    const match = toml.match(/subdomain = "(.+)"/);
+    if (!match) {
+      send({ type: 'tunnel-failed', message: 'No subdomain in tunnel config' });
+      return;
+    }
+    const publicUrl = `https://${match[1]}.server.vana.org`;
+
+    send({ type: 'log', message: `[tunnel] Respawning frpc with unique name: ${uniqueName}` });
+
+    // Respawn frpc with the patched config
+    const frpc = spawn(frpcPath, ['-c', tomlPath], {
+      stdio: ['ignore', 'pipe', 'pipe'],
+    });
+
+    let connected = false;
+    const onData = (data) => {
+      const text = data.toString();
+      if (!connected && (text.includes('start proxy success') || text.includes('login to server success'))) {
+        connected = true;
+        send({ type: 'tunnel', url: publicUrl });
+      }
+    };
+    frpc.stdout?.on('data', onData);
+    frpc.stderr?.on('data', onData);
+    frpc.on('error', (err) => {
+      if (!connected) {
+        send({ type: 'tunnel-failed', message: `frpc error: ${err.message}` });
+      }
+    });
+    frpc.on('exit', (code) => {
+      if (!connected) {
+        send({ type: 'tunnel-failed', message: `frpc exited with code ${code}` });
+      }
+    });
+
+    // Ensure frpc is killed on process exit
+    const killFrpc = () => { try { frpc.kill(); } catch {} };
+    process.on('exit', killFrpc);
+    process.on('SIGTERM', killFrpc);
+    process.on('SIGINT', killFrpc);
+  }).catch((err) => {
+    send({ type: 'tunnel-failed', message: `Failed to stop library tunnel: ${err.message}` });
+  });
 }
 
 async function main() {
@@ -136,8 +210,8 @@ async function main() {
       }
     });
 
-    // Kill any stale frpc from a previous session to avoid proxy name
-    // collision on the FRP server, then let the library handle the tunnel.
+    // Kill any stale frpc from a previous app session, then let the library
+    // handle the initial tunnel setup.
     const storageRoot = configDir || join(
       (await import('node:os')).homedir(),
       '.data-connect', 'personal-server'
@@ -150,12 +224,13 @@ async function main() {
 
     const hasMasterKey = !!process.env.VANA_MASTER_KEY_SIGNATURE;
 
-    if (context.tunnelUrl) {
+    if (context.tunnelManager) {
+      // Library set up tunnel — fix the static proxy name to avoid FRP
+      // server collisions, then emit tunnel URL when connected.
+      fixTunnelProxyName(context.tunnelManager, storageRoot, send);
+    } else if (context.tunnelUrl) {
+      // Tunnel connected without a manager (shouldn't happen, but handle it)
       send({ type: 'tunnel', url: context.tunnelUrl });
-    } else if (context.tunnelManager) {
-      // Library set up tunnel manager but hasn't connected yet — it will
-      // keep retrying in the background. We don't need to intervene.
-      send({ type: 'log', message: '[tunnel] Tunnel manager active, waiting for connection...' });
     } else if (hasMasterKey) {
       send({ type: 'tunnel-failed', message: 'Tunnel could not be established' });
     }

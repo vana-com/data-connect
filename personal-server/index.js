@@ -16,7 +16,8 @@
 process.env.NODE_ENV = 'production';
 
 import { join } from 'node:path';
-import { readFileSync } from 'node:fs';
+import { readFileSync, writeFileSync } from 'node:fs';
+import { randomUUID } from 'node:crypto';
 import { execSync, spawn } from 'node:child_process';
 import { loadConfig } from '@opendatalabs/personal-server-ts-core/config';
 import { createServer } from '@opendatalabs/personal-server-ts-server';
@@ -37,77 +38,32 @@ function killStaleFrpc(storageRoot) {
     } else {
       execSync(`pkill -f "${frpcPath}" 2>/dev/null`, { stdio: 'ignore' });
     }
-    return true; // killed something
   } catch {
-    return false; // no stale process
+    // No stale process — expected on clean starts
   }
 }
 
 /**
- * Spawn frpc and wait for it to connect or fail.
- *
- * Returns a promise that resolves to the public URL on success, or null on failure.
- * The spawned frpc process is registered for cleanup on process exit.
- */
-function spawnFrpc(frpcPath, tomlPath, publicUrl, timeoutMs = 15000) {
-  return new Promise((resolve) => {
-    const frpc = spawn(frpcPath, ['-c', tomlPath], {
-      stdio: ['ignore', 'pipe', 'pipe'],
-    });
-
-    let settled = false;
-    const timer = setTimeout(() => {
-      if (!settled) {
-        settled = true;
-        frpc.kill();
-        resolve(null);
-      }
-    }, timeoutMs);
-
-    const onData = (data) => {
-      const text = data.toString();
-      if (!settled && (text.includes('start proxy success') || text.includes('login to server success'))) {
-        settled = true;
-        clearTimeout(timer);
-
-        // Keep frpc alive — register cleanup handlers
-        const killFrpc = () => { try { frpc.kill(); } catch {} };
-        process.on('exit', killFrpc);
-        process.on('SIGTERM', killFrpc);
-        process.on('SIGINT', killFrpc);
-
-        resolve(publicUrl);
-      }
-    };
-    frpc.stdout?.on('data', onData);
-    frpc.stderr?.on('data', onData);
-
-    frpc.on('error', () => {
-      if (!settled) { settled = true; clearTimeout(timer); resolve(null); }
-    });
-    frpc.on('exit', () => {
-      if (!settled) { settled = true; clearTimeout(timer); resolve(null); }
-    });
-  });
-}
-
-/**
- * Connect the tunnel with retries.
+ * Connect the tunnel with a unique proxy name.
  *
  * The library's TunnelManager hardcodes proxy name "personal-server" which
- * collides on the FRP server if a previous frpc session held that name.
- * After the library sets up the tunnel config (TOML + frpc binary), we:
- *   1. Stop the library's frpc
- *   2. Kill any remaining frpc processes
- *   3. Wait for the FRP server to release the proxy name
- *   4. Spawn frpc ourselves from the existing TOML
- *   5. Retry with increasing delays if the connection fails
+ * collides on the FRP server if a previous session used that name. The FRP
+ * server reports "login to server success" even when the proxy registration
+ * fails, so we can't detect the collision from frpc output alone.
+ *
+ * Fix: stop the library's frpc, rewrite the TOML with a unique per-session
+ * proxy name, and respawn frpc. Fire-and-forget: emits tunnel/tunnel-failed
+ * events via send() as they happen.
  */
-async function connectTunnelWithRetry(tunnelManager, storageRoot, send, maxRetries = 3) {
+async function connectTunnel(tunnelManager, storageRoot, send) {
   const tomlPath = join(storageRoot, 'tunnel', 'frpc.toml');
   const frpcPath = join(storageRoot, 'bin', process.platform === 'win32' ? 'frpc.exe' : 'frpc');
 
-  // Read TOML to extract the public URL
+  // Stop the library's frpc
+  try { await tunnelManager.stop(); } catch {}
+  killStaleFrpc(storageRoot);
+
+  // Read and patch the TOML config
   let toml;
   try {
     toml = readFileSync(tomlPath, 'utf-8');
@@ -116,34 +72,52 @@ async function connectTunnelWithRetry(tunnelManager, storageRoot, send, maxRetri
     return;
   }
 
-  const match = toml.match(/subdomain = "(.+)"/);
-  if (!match) {
+  // Extract subdomain for the public URL
+  const subdomainMatch = toml.match(/subdomain = "(.+)"/);
+  if (!subdomainMatch) {
     send({ type: 'tunnel-failed', message: 'No subdomain in tunnel config' });
     return;
   }
-  const publicUrl = `https://${match[1]}.server.vana.org`;
+  const publicUrl = `https://${subdomainMatch[1]}.server.vana.org`;
 
-  // Stop the library's frpc (it uses the static "personal-server" name
-  // which may collide on the FRP server)
-  try { await tunnelManager.stop(); } catch {}
+  // Replace static proxy name with a unique per-session name
+  const uniqueName = `ps-${randomUUID().slice(0, 8)}`;
+  toml = toml.replace(/name = "personal-server"/, `name = "${uniqueName}"`);
+  writeFileSync(tomlPath, toml);
 
-  for (let attempt = 1; attempt <= maxRetries; attempt++) {
-    // Kill any lingering frpc and wait for FRP server to release the name
-    killStaleFrpc(storageRoot);
-    const delay = attempt * 3000; // 3s, 6s, 9s
-    send({ type: 'log', message: `[tunnel] Attempt ${attempt}/${maxRetries}, waiting ${delay / 1000}s for FRP server...` });
-    await new Promise((r) => setTimeout(r, delay));
+  send({ type: 'log', message: `[tunnel] Connecting with proxy name: ${uniqueName}` });
 
-    const url = await spawnFrpc(frpcPath, tomlPath, publicUrl);
-    if (url) {
-      send({ type: 'tunnel', url });
-      return;
+  // Spawn frpc with the patched config
+  const frpc = spawn(frpcPath, ['-c', tomlPath], {
+    stdio: ['ignore', 'pipe', 'pipe'],
+  });
+
+  let connected = false;
+  const onData = (data) => {
+    const text = data.toString();
+    if (!connected && text.includes('start proxy success')) {
+      connected = true;
+      send({ type: 'tunnel', url: publicUrl });
     }
+  };
+  frpc.stdout?.on('data', onData);
+  frpc.stderr?.on('data', onData);
+  frpc.on('error', (err) => {
+    if (!connected) {
+      send({ type: 'tunnel-failed', message: `frpc error: ${err.message}` });
+    }
+  });
+  frpc.on('exit', (code) => {
+    if (!connected) {
+      send({ type: 'tunnel-failed', message: `frpc exited with code ${code}` });
+    }
+  });
 
-    send({ type: 'log', message: `[tunnel] Attempt ${attempt}/${maxRetries} failed` });
-  }
-
-  send({ type: 'tunnel-failed', message: 'Tunnel could not be established after retries' });
+  // Ensure frpc is killed on process exit
+  const killFrpc = () => { try { frpc.kill(); } catch {} };
+  process.on('exit', killFrpc);
+  process.on('SIGTERM', killFrpc);
+  process.on('SIGINT', killFrpc);
 }
 
 async function main() {
@@ -247,9 +221,9 @@ async function main() {
     const hasMasterKey = !!process.env.VANA_MASTER_KEY_SIGNATURE;
 
     if (context.tunnelManager) {
-      // Library set up tunnel infrastructure. Reconnect with retries to
-      // handle FRP server proxy name collisions from stale sessions.
-      connectTunnelWithRetry(context.tunnelManager, storageRoot, send);
+      // Library set up tunnel infrastructure (TOML + frpc binary).
+      // Reconnect with a unique proxy name to avoid FRP server collisions.
+      connectTunnel(context.tunnelManager, storageRoot, send);
     } else if (context.tunnelUrl) {
       send({ type: 'tunnel', url: context.tunnelUrl });
     } else if (hasMasterKey) {

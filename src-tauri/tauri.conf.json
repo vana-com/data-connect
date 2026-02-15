@@ -1,7 +1,7 @@
 {
   "$schema": "../node_modules/@tauri-apps/cli/config.schema.json",
   "productName": "DataBridge",
-  "version": "0.7.8",
+  "version": "0.7.9",
   "identifier": "dev.databridge",
   "build": {
     "frontendDist": "../dist",

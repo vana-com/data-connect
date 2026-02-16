@@ -1,5 +1,5 @@
 /**
- * Personal Server wrapper for DataBridge
+ * Personal Server wrapper for DataConnect
  *
  * Runs as a subprocess managed by the Tauri backend.
  * Communicates status via JSON lines on stdout.

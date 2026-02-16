@@ -1,13 +1,13 @@
 # 260212-demo-app-chatgpt-endpoint-instructions
 
-This is the integration guide for external demo apps that need ChatGPT export data from DataBridge fast.
+This is the integration guide for external demo apps that need ChatGPT export data from DataConnect fast.
 
 For implementation context and scope boundaries, see:
 - `docs/plans/260212-browser-demo-chatgpt-endpoint.md`
 
 ## What is running
 
-DataBridge repo now includes a standalone sidecar server script:
+DataConnect repo now includes a standalone sidecar server script:
 - `scripts/demo-chatgpt-endpoint.mjs`
 
 It serves:
@@ -17,7 +17,7 @@ It does not modify core personal-server or Tauri startup paths.
 
 ## Operator startup steps (manual)
 
-1. Start DataBridge desktop app and ensure a ChatGPT export has completed at least once.
+1. Start DataConnect desktop app and ensure a ChatGPT export has completed at least once.
 2. In this repo, start sidecar server:
    - `npm run demo:chatgpt-endpoint`
    - This force-clears port conflicts and runs sidecar in watch mode.
@@ -27,7 +27,7 @@ It does not modify core personal-server or Tauri startup paths.
    - `curl http://127.0.0.1:8787/v1/demo/chatgpt/latest`
 
 Port override (if needed):
-- `DATABRIDGE_DEMO_PORT=8788 npm run demo:chatgpt-endpoint`
+- `DATACONNECT_DEMO_PORT=8788 npm run demo:chatgpt-endpoint`
 - Then use `http://127.0.0.1:8788/v1/demo/chatgpt/latest` in the demo app.
 
 If there is no parsed export yet, endpoint returns:
@@ -94,7 +94,7 @@ export async function fetchChatgptLatest(): Promise<ChatgptLatestResponse> {
 ## UX handling recommendations (minimal)
 
 - If network error: show `Demo endpoint unavailable. Start sidecar server.`
-- If `404`: show `No ChatGPT export found yet. Run export in DataBridge first.`
+- If `404`: show `No ChatGPT export found yet. Run export in DataConnect first.`
 - If `500`: show `Failed to read export data from local demo endpoint.`
 - If sidecar just came up, no app restart needed; trigger a fresh fetch (retry button, route refresh, or hard refresh).
 

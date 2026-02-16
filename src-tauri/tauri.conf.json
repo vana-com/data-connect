@@ -1,8 +1,8 @@
 {
   "$schema": "../node_modules/@tauri-apps/cli/config.schema.json",
-  "productName": "DataBridge",
+  "productName": "DataConnect",
   "version": "0.7.10",
-  "identifier": "dev.databridge",
+  "identifier": "dev.dataconnect",
   "build": {
     "frontendDist": "../dist",
     "devUrl": "http://localhost:5173",
@@ -13,7 +13,7 @@
     "withGlobalTauri": true,
     "windows": [
       {
-        "title": "DataBridge",
+        "title": "DataConnect",
         "label": "main",
         "width": 1280,
         "height": 800,

@@ -1,5 +1,5 @@
 /**
- * Playwright Runner for DataBridge
+ * Playwright Runner for DataConnect
  *
  * Runs as a sidecar process, receives commands via stdin, sends results via stdout.
  *
@@ -33,7 +33,7 @@ function getBrowserCacheDir() {
     return process.env.PLAYWRIGHT_BROWSERS_PATH;
   }
   const home = process.env.HOME || process.env.USERPROFILE || '';
-  return path.join(home, '.databridge', 'browsers');
+  return path.join(home, '.dataconnect', 'browsers');
 }
 
 // Check if system Chrome exists
@@ -161,10 +161,10 @@ function log(...args) {
 function resolveBrowserPath() {
   let browserPath = null;
 
-  if (!process.env.DATABRIDGE_SIMULATE_NO_CHROME) {
+  if (!process.env.DATACONNECT_SIMULATE_NO_CHROME) {
     browserPath = getSystemChromePath();
   } else {
-    log('DATABRIDGE_SIMULATE_NO_CHROME is set, skipping system Chrome detection');
+    log('DATACONNECT_SIMULATE_NO_CHROME is set, skipping system Chrome detection');
   }
 
   if (!browserPath) {
@@ -548,7 +548,7 @@ async function runConnector(runId, connectorPath, url, headless = true) {
   // Derive connector ID for persistent browser profile
   const connectorFileName = path.basename(connectorPath, path.extname(connectorPath));
   const home = process.env.HOME || process.env.USERPROFILE || '';
-  const userDataDir = path.join(home, '.databridge', 'browser-profiles', connectorFileName);
+  const userDataDir = path.join(home, '.dataconnect', 'browser-profiles', connectorFileName);
 
   // Mutable state shared with pageApi
   const runState = {

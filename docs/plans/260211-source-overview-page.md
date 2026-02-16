@@ -35,8 +35,8 @@ Also fix naming/URL ergonomics so the route segment is stable and human-readable
 
 - Rust writes exports to:
   - `app_data_dir()/exported_data/<company>/<name>/<run_id>/<platform_id>_<timestamp>.json`
-- On macOS with `identifier: "dev.databridge"` this typically resolves under:
-  - `~/Library/Application Support/dev.databridge/exported_data/...`
+- On macOS with `identifier: "dev.dataconnect"` this typically resolves under:
+  - `~/Library/Application Support/dev.dataconnect/exported_data/...`
 - Current source-page sidebar path remains a short local stub for UX; actual folder-open behavior should resolve from real run `exportPath`.
 
 ## Proposed approach

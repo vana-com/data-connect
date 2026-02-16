@@ -21,7 +21,7 @@ these transformations to align with the design system.
 - **Sorting rule**: `.cursor/rules/tailwind-sort.mdc` — apply to any element
   with >5 classes
 
-### Repo notes (DataBridge)
+### Repo notes (DataConnect)
 
 - Token recognition: `src/lib/classes.ts`
 - Tokens + `@theme` aliases: `src/styles/vars.css`, `src/styles/index.css`

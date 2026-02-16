@@ -28,7 +28,7 @@ npm run release:github -- --version 0.8.0
 
 - `--version X.Y.Z` (required)
 - `--target main` (optional; default `main`)
-- `--title "DataBridge vX.Y.Z"` (optional)
+- `--title "DataConnect vX.Y.Z"` (optional)
 - `--notes "Release vX.Y.Z"` (optional)
 - `--dry-run` (optional; print planned actions only)
 - `--no-push` (optional; commit locally, skip push)

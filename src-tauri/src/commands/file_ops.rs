@@ -644,14 +644,14 @@ impl Default for AppConfig {
     }
 }
 
-/// Get the path to the DataBridge config file (~/.databridge/config.json)
+/// Get the path to the DataConnect config file (~/.dataconnect/config.json)
 fn get_config_path() -> Result<PathBuf, String> {
     let home = home_dir().ok_or("Failed to get home directory")?;
-    let config_dir = home.join(".databridge");
+    let config_dir = home.join(".dataconnect");
     Ok(config_dir.join("config.json"))
 }
 
-/// Get app configuration from ~/.databridge/config.json
+/// Get app configuration from ~/.dataconnect/config.json
 #[tauri::command]
 pub async fn get_app_config() -> Result<AppConfig, String> {
     let config_path = get_config_path()?;
@@ -668,12 +668,12 @@ pub async fn get_app_config() -> Result<AppConfig, String> {
         .map_err(|e| format!("Failed to parse config file: {}", e))
 }
 
-/// Set app configuration to ~/.databridge/config.json
+/// Set app configuration to ~/.dataconnect/config.json
 #[tauri::command]
 pub async fn set_app_config(config: AppConfig) -> Result<(), String> {
     let config_path = get_config_path()?;
 
-    // Ensure the .databridge directory exists
+    // Ensure the .dataconnect directory exists
     if let Some(parent) = config_path.parent() {
         fs::create_dir_all(parent)
             .map_err(|e| format!("Failed to create config directory: {}", e))?;

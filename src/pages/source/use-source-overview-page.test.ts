@@ -55,11 +55,11 @@ beforeEach(() => {
       ],
     },
   }
-  mockGetUserDataPath.mockResolvedValue("/tmp/databridge")
+  mockGetUserDataPath.mockResolvedValue("/tmp/dataconnect")
   mockLoadLatestSourceExportPreview.mockResolvedValue({
     previewJson: "{\n  \"ok\": true\n}",
     isTruncated: false,
-    filePath: "/tmp/databridge/exported_data/OpenAI/ChatGPT/chatgpt.json",
+    filePath: "/tmp/dataconnect/exported_data/OpenAI/ChatGPT/chatgpt.json",
     fileSizeBytes: 2048,
     exportedAt: "2026-02-11T10:00:00.000Z",
   })

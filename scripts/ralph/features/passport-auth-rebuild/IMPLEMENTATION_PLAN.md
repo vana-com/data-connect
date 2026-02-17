@@ -128,11 +128,8 @@
   - Validation completed (slice + relevant phase regression):
     - `npx vitest run --maxWorkers=1 src/pages/grant/grant-flow-machine.test.ts src/pages/grant/use-grant-flow.test.tsx` (pass)
     - `npx vitest run src/pages/connect/index.test.tsx` (fails, unrelated to touched files; see blocker below)
-  - Unrelated failure documented (not expanded scope):
-    - Repro: `npx vitest run src/pages/connect/index.test.tsx`
-    - Failing case: `Connect > title and copy > shows '(again)' suffix when platform is already connected`
-    - Observed failure: test rendered grant route sentinel (`data-testid="grant-page"`) and could not find `"Connect your ChatGPT (again)"`.
-    - Notes: no code changes in `src/pages/connect/*` in this slice; treat as pre-existing or concurrent-branch drift unless it blocks upcoming phase work.
+  - Unrelated failure tracked outside this plan:
+    - `docs/260217-connect-already-connected-test-followup.md`
 
 - 2026-02-17 (current loop): completed callback hardening slice for `src-tauri/src/commands/auth.rs` + `src/auth-page/auth.ts`.
   - Added callback state lifecycle contract in native layer: one-time consume, TTL expiry, explicit reject reasons, and strict `POST /auth-callback` acceptance (removed `POST /` callback acceptance).

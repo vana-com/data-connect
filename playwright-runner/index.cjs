@@ -113,6 +113,108 @@ function getDownloadedChromiumPath() {
   return null;
 }
 
+// Default Chrome user-data directories by platform
+const CHROME_PROFILE_DIRS = {
+  darwin: path.join(process.env.HOME || '', 'Library', 'Application Support', 'Google', 'Chrome'),
+  win32: path.join(process.env.LOCALAPPDATA || '', 'Google', 'Chrome', 'User Data'),
+  linux: path.join(process.env.HOME || '', '.config', 'google-chrome'),
+};
+
+// Check whether a browser path points to system Chrome (not Playwright Chromium).
+function isSystemChrome(browserPath) {
+  if (!browserPath) return false;
+  const lower = browserPath.toLowerCase();
+  if (lower.includes('.databridge') || lower.includes('chromium') || lower.includes('chrome for testing')) {
+    return false;
+  }
+  return true;
+}
+
+// Get the Chrome last-used profile directory path.
+function getChromeProfileDir(chromeRoot) {
+  const localStatePath = path.join(chromeRoot, 'Local State');
+  if (fs.existsSync(localStatePath)) {
+    try {
+      const localState = JSON.parse(fs.readFileSync(localStatePath, 'utf-8'));
+      const lastUsed = localState?.profile?.last_used;
+      if (lastUsed) {
+        const profileDir = path.join(chromeRoot, lastUsed);
+        if (fs.existsSync(profileDir)) {
+          log(`Chrome last-used profile: "${lastUsed}"`);
+          return profileDir;
+        }
+      }
+    } catch (e) {
+      log(`Warning: could not read Chrome Local State: ${e.message}`);
+    }
+  }
+
+  const defaultDir = path.join(chromeRoot, 'Default');
+  if (fs.existsSync(defaultDir)) return defaultDir;
+  return null;
+}
+
+// Import cookies from the user's Chrome profile into a running Playwright
+// browser context's Cookies database. This is done AFTER Chrome creates its
+// own fresh profile, so we INSERT into Chrome's own db rather than replacing it
+// (which Chrome would wipe on startup).
+//
+// The encrypted_value blobs use the same Keychain key (v10 format), so Chrome
+// can decrypt them transparently — no Keychain popup needed since Chrome itself
+// is the one reading them.
+function importChromecookies(userDataDir, browserPath) {
+  if (!isSystemChrome(browserPath)) return;
+
+  // Only import once
+  const markerFile = path.join(userDataDir, '.cookies-imported');
+  if (fs.existsSync(markerFile)) {
+    log('Skipping cookie import — already done');
+    return;
+  }
+
+  const chromeRoot = CHROME_PROFILE_DIRS[process.platform];
+  if (!chromeRoot || !fs.existsSync(chromeRoot)) return;
+
+  const sourceProfileDir = getChromeProfileDir(chromeRoot);
+  if (!sourceProfileDir) return;
+
+  const sourceCookies = path.join(sourceProfileDir, 'Cookies');
+  if (!fs.existsSync(sourceCookies)) return;
+
+  // Find the target Cookies db — Chrome creates it inside "Default/" by default
+  const targetCookies = path.join(userDataDir, 'Default', 'Cookies');
+  if (!fs.existsSync(targetCookies)) {
+    log('Skipping cookie import — target Cookies db not found yet');
+    return;
+  }
+
+  try {
+    // Use sqlite3 to INSERT cookies from source into the target db.
+    // ATTACH the source db, then INSERT OR IGNORE to avoid duplicates.
+    const sql = `
+      ATTACH DATABASE '${sourceCookies.replace(/'/g, "''")}' AS src;
+      INSERT OR REPLACE INTO cookies
+        SELECT * FROM src.cookies;
+      DETACH DATABASE src;
+    `;
+    execSync(`sqlite3 "${targetCookies}" "${sql}"`, {
+      encoding: 'utf-8',
+      timeout: 10000,
+    });
+
+    // Verify
+    const count = execSync(
+      `sqlite3 "${targetCookies}" "SELECT COUNT(*) FROM cookies;"`,
+      { encoding: 'utf-8' }
+    ).trim();
+    log(`Imported cookies into profile — total cookies now: ${count}`);
+
+    fs.writeFileSync(markerFile, new Date().toISOString());
+  } catch (e) {
+    log(`Warning: could not import Chrome cookies: ${e.message}`);
+  }
+}
+
 // Download Chromium using Playwright
 async function downloadChromium(sendStatus) {
   const cacheDir = getBrowserCacheDir();
@@ -192,6 +294,14 @@ async function launchPersistentContext(userDataDir, headless, browserPath) {
 
   if (browserPath) {
     launchOptions.executablePath = browserPath;
+  }
+
+  // When using system Chrome, disable Playwright's mock keychain so Chrome
+  // uses the real macOS Keychain. This lets it decrypt cookies imported from
+  // the user's real Chrome profile (both use the same "Chrome Safe Storage"
+  // Keychain entry). No popup — Chrome itself is already authorized.
+  if (isSystemChrome(browserPath)) {
+    launchOptions.ignoreDefaultArgs = ['--use-mock-keychain'];
   }
 
   log(`Launching ${headless ? 'headless' : 'headed'} browser with profile: ${userDataDir}`);
@@ -570,7 +680,21 @@ async function runConnector(runId, connectorPath, url, headless = true) {
     runState.browserPath = resolveBrowserPath();
     log(`Using browser: ${runState.browserPath}`);
 
-    // Launch browser with persistent context
+    // On first run, we need to:
+    //  1. Launch Chrome briefly so it creates its profile/Cookies db
+    //  2. Close it
+    //  3. INSERT cookies from the user's Chrome profile into the db
+    //  4. Relaunch — now Chrome loads the imported cookies from disk
+    const markerFile = path.join(userDataDir, '.cookies-imported');
+    if (isSystemChrome(runState.browserPath) && !fs.existsSync(markerFile)) {
+      log('First run: launching browser to initialize profile...');
+      const tempCtx = await launchPersistentContext(userDataDir, true, runState.browserPath);
+      await tempCtx.close();
+      log('Profile initialized, importing cookies...');
+      importChromecookies(userDataDir, runState.browserPath);
+    }
+
+    // Launch browser with persistent context (cookies already in db on first run)
     const context = await launchPersistentContext(userDataDir, headless, runState.browserPath);
     const page = context.pages()[0] || await context.newPage();
 

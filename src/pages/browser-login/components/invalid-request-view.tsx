@@ -8,7 +8,7 @@ export function InvalidRequestView() {
           Invalid Request
         </Text>
         <Text as="p" intent="small" color="mutedForeground">
-          This page should be opened from the Data Connect app. Please return to the app
+          This page should be opened from the DataConnect app. Please return to the app
           and try again.
         </Text>
       </div>

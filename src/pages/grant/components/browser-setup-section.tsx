@@ -50,7 +50,7 @@ export function BrowserSetupSection({ browserStatus }: BrowserSetupSectionProps)
           {browserStatus.status === "downloading" &&
             `One-time setup (~160 MB) - ${Math.round(browserStatus.progress)}%`}
           {browserStatus.status === "needs_browser" &&
-            "Data Connect uses a browser to securely export your data. Your credentials stay on your device."}
+            "DataConnect uses a browser to securely export your data. Your credentials stay on your device."}
         </p>
         {browserStatus.status === "needs_browser" && (
           <div style={{ display: "flex", gap: "12px", justifyContent: "center" }}>

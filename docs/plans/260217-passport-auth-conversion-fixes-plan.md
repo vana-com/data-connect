@@ -6,6 +6,7 @@
 - Phase checkpoints:
   - `docs/solutions/260217-passport-auth-conversion-phase-1.md`
   - `docs/solutions/260217-passport-auth-conversion-phase-2.md`
+- Closure summary: `docs/solutions/260217-passport-auth-conversion-fixes-closure.md`
 - Review inputs:
   - last 13 commits on `callum1/bui-178-refactor-connectgrant-flow-in-dc`
   - follow-up fixes:

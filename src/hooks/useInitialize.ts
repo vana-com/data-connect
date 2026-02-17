@@ -2,7 +2,7 @@ import { useEffect, useRef } from 'react';
 import { invoke } from '@tauri-apps/api/core';
 import { useDispatch, useSelector } from 'react-redux';
 import { setAuthenticated, setRuns } from '../state/store';
-import { getPersistedAuthSession } from '../lib/storage';
+import { clearPersistedAuthSession, getPersistedAuthSession } from '../lib/storage';
 import type { RootState } from '../state/store';
 import type { Run } from '../types';
 interface SavedRun {
@@ -32,7 +32,7 @@ export function useInitialize() {
 
     // Restore persisted auth session before loading route-specific data.
     const persistedAuth = getPersistedAuthSession();
-    if (persistedAuth) {
+    if (persistedAuth?.user?.id && persistedAuth.walletAddress) {
       dispatch(
         setAuthenticated({
           user: persistedAuth.user,
@@ -40,6 +40,8 @@ export function useInitialize() {
           masterKeySignature: persistedAuth.masterKeySignature,
         })
       );
+    } else if (persistedAuth) {
+      clearPersistedAuthSession();
     }
 
     // Load saved runs from disk on startup

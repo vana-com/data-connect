@@ -107,7 +107,7 @@ describe('persistedAuthSession', () => {
   it('clears persisted auth session', () => {
     storage.savePersistedAuthSession({
       user: { id: 'user-2' },
-      walletAddress: null,
+      walletAddress: '0xdef',
       masterKeySignature: null,
     });
     expect(storage.getPersistedAuthSession()).not.toBeNull();
@@ -130,5 +130,24 @@ describe('persistedAuthSession', () => {
       })
     );
     expect(storage.getPersistedAuthSession()).toBeNull();
+    expect(localStorage.getItem(authSessionKey)).toBeNull();
+  });
+
+  it('returns null and clears stale auth session by max age', () => {
+    vi.useFakeTimers();
+    vi.setSystemTime(new Date('2026-02-17T00:00:00.000Z'));
+    localStorage.setItem(
+      authSessionKey,
+      JSON.stringify({
+        user: { id: 'user-1' },
+        walletAddress: '0xabc',
+        masterKeySignature: null,
+        createdAt: '2026-02-15T00:00:00.000Z',
+      })
+    );
+
+    expect(storage.getPersistedAuthSession()).toBeNull();
+    expect(localStorage.getItem(authSessionKey)).toBeNull();
+    vi.useRealTimers();
   });
 });

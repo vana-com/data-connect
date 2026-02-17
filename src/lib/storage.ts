@@ -35,6 +35,8 @@ function safeSetItem(key: string, value: string): boolean {
 const PENDING_APPROVAL_KEY = `${STORAGE_VERSION}_pending_approval`;
 const PENDING_GRANT_REDIRECT_KEY = `${STORAGE_VERSION}_pending_grant_redirect`;
 const AUTH_SESSION_KEY = `${STORAGE_VERSION}_auth_session`;
+const AUTH_SESSION_MAX_AGE_MS = 1000 * 60 * 60 * 24; // 24 hours
+const AUTH_SESSION_MAX_FUTURE_SKEW_MS = 1000 * 60 * 5; // 5 minutes
 
 export interface PendingApproval {
   sessionId: string;
@@ -126,7 +128,7 @@ export interface PersistedAuthSession {
     id: string;
     email?: string;
   };
-  walletAddress: string | null;
+  walletAddress: string;
   masterKeySignature: string | null;
   createdAt: string;
 }
@@ -136,9 +138,9 @@ const PersistedAuthSessionSchema = z.object({
     id: z.string().min(1),
     email: z.string().optional(),
   }),
-  walletAddress: z.string().nullable(),
+  walletAddress: z.string().min(1),
   masterKeySignature: z.string().nullable(),
-  createdAt: z.string(),
+  createdAt: z.string().datetime(),
 });
 
 export function savePersistedAuthSession(
@@ -159,8 +161,31 @@ export function getPersistedAuthSession(): PersistedAuthSession | null {
   try {
     const parsed = JSON.parse(raw);
     const result = PersistedAuthSessionSchema.safeParse(parsed);
-    return result.success ? result.data : null;
+    if (!result.success) {
+      clearPersistedAuthSession();
+      return null;
+    }
+
+    const createdAtMs = new Date(result.data.createdAt).getTime();
+    if (!Number.isFinite(createdAtMs)) {
+      clearPersistedAuthSession();
+      return null;
+    }
+
+    const now = Date.now();
+    if (createdAtMs > now + AUTH_SESSION_MAX_FUTURE_SKEW_MS) {
+      clearPersistedAuthSession();
+      return null;
+    }
+
+    if (now - createdAtMs > AUTH_SESSION_MAX_AGE_MS) {
+      clearPersistedAuthSession();
+      return null;
+    }
+
+    return result.data;
   } catch {
+    clearPersistedAuthSession();
     return null;
   }
 }

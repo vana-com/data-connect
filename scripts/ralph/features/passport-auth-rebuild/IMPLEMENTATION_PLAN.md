@@ -1,0 +1,469 @@
+# Passport Auth Rebuild - Phase-Gated Execution Blueprint
+
+## Evidence Baseline
+
+- Spec source reviewed: `scripts/ralph/features/passport-auth-rebuild/specs/passport-auth-rebuild.md`.
+- Upstream planning input reviewed (fallible): `docs/plans/260217-passport-auth-rebuild-plan.md`.
+- Architecture/rules reviewed: `AGENTS.md`, `docs/architecture.md`, `docs/260203-grant-connect-flow.md`.
+- Verified runtime ownership (cross-layer):
+  - Frontend orchestration: `src/pages/grant/use-grant-flow.ts`, `src/pages/connect/index.tsx`, `src/hooks/use-deep-link.ts`.
+  - Auth browser page: `src/auth-page/auth.ts`.
+  - Native callback boundary: `src-tauri/src/commands/auth.rs`.
+  - State/persistence: `src/state/store.ts`, `src/lib/storage.ts`, `src/hooks/usePendingApproval.ts`.
+- Verified current test surface:
+  - Strong transition and parsing tests exist (`use-grant-flow`, `connect`, `deep-link`, `grant-params`, `storage`, `sessionRelay`, `builder`, `personalServer`).
+  - No auth callback boundary tests in Rust for `start_browser_auth` / `/auth-callback` abuse paths.
+
+## Phase Derivation
+
+Phases are preserved from `docs/plans/260217-passport-auth-rebuild-plan.md` and aligned to the spec acceptance criteria:
+
+1. Phase 0 - Freeze invariants first (no feature behavior changes)
+2. Phase 1 - Auth callback boundary hardening
+3. Phase 2 - Grant-flow architecture before behavior additions
+4. Phase 3 - Durable auth + resume semantics
+5. Phase 4 - Deep-link normalization and contract gate
+6. Phase 5 - Legacy removal and observability polish
+
+## Boundary Contracts (Must Hold Across All Phases)
+
+- **Input validation contract**
+  - Callback ingestion must only accept explicit contract payload shape; reject malformed payloads with explicit reason.
+  - Grant URL intake is canonical from query params via `getGrantParamsFromSearchParams`; normalization is deterministic.
+- **State transition contract**
+  - Grant flow transitions remain explicit and test-asserted (`loading/claiming/verifying-builder/consent/auth-required/preparing-server/creating-grant/approving/success/error`).
+  - Callback auth completion updates auth state exactly once per valid callback.
+- **Persistence contract**
+  - Durable auth persistence stores only minimal identity/session metadata.
+  - No sensitive secret material at rest (notably session `secret`).
+- **Security-sensitive handling contract**
+  - Callback boundary enforces method/path/TTL/one-time semantics before state mutation.
+  - Replay and malformed callback attempts are rejected and observable.
+
+## Spec -> Code Ownership -> Planned Change
+
+| Spec requirement | Current evidence | Code ownership (file + symbol) | Planned change |
+| --- | --- | --- | --- |
+| Auth callback boundary isolated + abuse-path protections test-backed | Partial: callback exists but co-located with unrelated routes; no Rust tests for replay/TTL/one-time | `src-tauri/src/commands/auth.rs` (`start_browser_auth`, request loop, `/auth-callback` handling) | Extract callback request validation/state gate helpers; add one-time + expiry + reasoned reject paths; add Rust tests |
+| Grant flow decomposed with transition tests | Partial: transition tests exist; orchestration is monolithic in one hook | `src/pages/grant/use-grant-flow.ts` (`useGrantFlow`, `runFlow`, `handleApprove`), `src/pages/grant/use-grant-flow.test.tsx` | Split into page-local modules (bootstrap/approval/auth-resume reducer seam) while preserving behavior |
+| Durable auth + resume without secret-at-rest | Missing/violating: auth is Redux-memory only; pending approval stores `secret` in localStorage | `src/state/store.ts`, `src/hooks/useAuth.ts`, `src/lib/storage.ts` (`PendingApproval.secret`), `src/hooks/usePendingApproval.ts` | Add durable auth session store + bootstrap; remove at-rest `secret` persistence, replace with process-scoped bridge |
+| Deep-link normalization deterministic + bounded compatibility while strict allowlist blocked | Partial: normalization exists with tests; no strict allowlist mode and compatibility bounds are implicit | `src/hooks/use-deep-link.ts` (`parseDeepLinkUrl`, fallback redirect), `src/lib/grant-params.ts` | Introduce explicit normalizer contract + compat parser; add strict-mode gate flag and blocked-item tracking |
+| Legacy auth surfaces removed only after replacement validation | Missing: `src/auth-page/*`, `src/pages/browser-login/*`, `ROUTES.browserLogin`, `InlineLogin` still active | `src/auth-page/auth.ts`, `src/pages/browser-login/use-browser-login.ts`, `src/config/routes.ts`, `src/App.tsx`, `src/components/auth/InlineLogin.tsx` | Remove legacy surfaces in final phase after replacement gate passes and regression tests are green |
+| Each delivered slice satisfies phase exit gate with tests | Partial: tests exist but not structured by phase gate for callback/security/durable-auth contracts | Existing test files + new Rust tests | Add gate-mapped tests and enforce per-slice command set |
+
+## Phase 0 - Freeze Invariants First (No Behavior Change)
+
+**Objective**
+- Lock cross-layer contracts in tests before refactors.
+
+**In-scope outcomes**
+- Callback contract invariants are explicitly encoded (method/path/shape/one-time/expiry semantics).
+- Grant transition invariants are explicitly encoded (including auth-required resume and server readiness deferral).
+- Persistence invariants are encoded with executable tests (no TODO/skip-based gate criteria).
+
+**Code ownership (`file` + symbols)**
+- `src/pages/grant/use-grant-flow.test.tsx` (`useGrantFlow` transition expectations)
+- `src/hooks/use-deep-link.test.tsx` (`useDeepLink` normalization assertions)
+- `src/lib/grant-params.test.ts` (`parseScopesParam`, `buildGrantSearchParams`)
+- `src/lib/storage.test.ts` (`PendingApproval` schema behavior)
+- `src/hooks/usePendingApproval.test.ts` (`usePendingApprovalRetry`)
+- `src-tauri/src/commands/auth.rs` (new `#[cfg(test)] mod tests`)
+
+**Concrete edits to perform**
+- Add missing abuse-path callback tests in `auth.rs` by introducing testable helper functions:
+  - parse/validate callback request payload shape
+  - callback state lifecycle validation (required + one-time + expiry)
+  - rejection reason mapping
+- Add explicit grant transition contract tests in `use-grant-flow.test.tsx` for exactly-once auth completion behavior.
+- Add a failing (or skipped with TODO marker) test documenting prohibition on persisting `secret` in `PendingApproval` as migration target.
+
+**Tests to add/update**
+- `src-tauri/src/commands/auth.rs`
+  - `rejects_non_post_auth_callback`
+  - `rejects_missing_state`
+  - `rejects_expired_state`
+  - `rejects_replayed_state`
+  - `accepts_valid_state_once`
+- `src/pages/grant/use-grant-flow.test.tsx`
+  - `auth_complete_event_applies_once_per_auth_cycle`
+- `src/lib/storage.test.ts`
+  - `pending_approval_does_not_persist_secret_after_migration` (target-state contract test)
+
+**Entry criteria**
+- Baseline mainline tests currently green.
+- No callback security refactor merged yet.
+
+**Exit gate (binary)**
+- PASS only if all new invariant tests are present and passing.
+- PASS is not allowed when phase-critical assertions are TODO/skip/pending.
+- FAIL if any phase-critical invariant remains untested.
+
+**Dependencies/blockers**
+- Rust callback state contract definition from upstream auth contract owners (TTL and state token format).
+
+**Rollback/compat notes**
+- Test-only phase; rollback = revert test additions.
+
+## Phase 1 - Auth Callback Boundary Hardening
+
+**Objective**
+- Isolate and harden callback acceptance boundary in native layer before higher-level auth rewiring.
+
+**In-scope outcomes**
+- Callback endpoint handling separated from unrelated proxy endpoints.
+- Explicit validation + reject reasons for malformed/expired/replayed callbacks.
+- Auth-complete emit path only reachable through validated callback.
+
+**Code ownership (`file` + symbols)**
+- `src-tauri/src/commands/auth.rs`
+  - `start_browser_auth`
+  - request dispatch loop
+  - `/auth-callback` branch
+- `src-tauri/src/lib.rs`
+  - command wiring for `start_browser_auth`
+
+**Concrete edits to perform**
+- Refactor `auth.rs` to isolate callback server concerns:
+  - Move callback route handling into dedicated function/module-level helpers.
+  - Move non-callback utility routes (`/server-identity`, `/register-server`, `/check-server-url`, `/deregister-server`, `/close-tab`) behind explicit route map with clear ownership comments.
+- Introduce callback attempt state store:
+  - generated auth state token
+  - expiry timestamp
+  - consumed flag (one-time use)
+- Enforce strict callback acceptance:
+  - `POST /auth-callback` only (remove `path == "/"` acceptance)
+  - payload schema checks before deserialization side effects
+  - reject invalid/expired/replayed with structured reason and no `auth-complete` emit
+- Keep frontend event contract unchanged (`auth-complete` payload shape stays compatible).
+
+**Tests to add/update**
+- `src-tauri/src/commands/auth.rs` (unit tests for helper-level validation)
+- `src/auth-page/auth.test.ts`
+  - ensure failed callback response path remains user-visible and does not proceed to success
+- `src/pages/grant/use-grant-flow.test.tsx`
+  - ensure only valid `auth-complete` paths trigger resume
+
+**Entry criteria**
+- Phase 0 invariants merged.
+
+**Exit gate (binary)**
+- PASS only if:
+  - callback accepts valid request once;
+  - rejects missing/invalid/replayed/expired states;
+  - no auth state mutation/event emission on rejected requests.
+- FAIL if any abuse-path still results in `auth-complete` emission.
+
+**Dependencies/blockers**
+- Upstream callback contract freeze for exact state/nonce format.
+
+**Rollback/compat notes**
+- Keep old payload schema compatibility for one release window if upstream payload fields are unstable.
+- If callback hardening causes auth failures in dev, feature-flag strictness to fallback mode only for local/dev builds.
+
+## Phase 2 - Grant-Flow Architecture Before Behavior Additions
+
+**Objective**
+- Decompose grant orchestration into explicit seams without behavior drift.
+
+**In-scope outcomes**
+- Transition logic is reducer/state-machine-like and test-addressable.
+- Bootstrap, approval side effects, and auth-resume gating are separated.
+- Existing UX and route semantics stay unchanged.
+
+**Code ownership (`file` + symbols)**
+- `src/pages/grant/use-grant-flow.ts` (`useGrantFlow`, `runFlow`, `handleApprove`, auto-approve effects)
+- `src/pages/grant/types.ts` (`GrantFlowState`, `GrantFlowParams`)
+- `src/pages/grant/index.tsx` (hook integration)
+- `src/pages/grant/use-grant-flow.test.tsx`
+
+**Concrete edits to perform**
+- Split `useGrantFlow` internals into page-local modules:
+  - `grant-flow-machine` (pure transition/reducer utilities)
+  - `grant-flow-bootstrap` (claim/verify/prefetch path resolution)
+  - `grant-flow-approval` (createGrant/approveSession pipeline)
+  - `grant-flow-auth-bridge` (auth-required + auto-resume logic)
+- Replace ad-hoc `setFlowState` sequences with transition actions for deterministic step changes.
+- Preserve existing external API returned by `useGrantFlow` to avoid UI churn.
+
+**Tests to add/update**
+- `src/pages/grant/use-grant-flow.test.tsx`
+  - update existing cases to assert transition events (not just final state)
+  - add `bootstrap_prefetched_session_only_runs_verify_builder`
+  - add `approval_pipeline_persists_then_clears_pending_on_success`
+- New file: `src/pages/grant/grant-flow-machine.test.ts` (pure transition table tests)
+
+**Entry criteria**
+- Phase 1 callback hardening merged and green.
+
+**Exit gate (binary)**
+- PASS only if transition tests cover all state edges used in production code and existing behavior tests remain green.
+- FAIL if behavior changes (route/state outcomes) without explicit spec justification.
+
+**Dependencies/blockers**
+- None external; internal dependency on Phase 0/1 tests.
+
+**Rollback/compat notes**
+- Keep compatibility adapter in `useGrantFlow` return shape while machine split lands in slices.
+
+## Phase 3 - Durable Auth + Resume Semantics
+
+**Objective**
+- Implement restart-safe auth restore and grant resume without storing secrets at rest.
+
+**In-scope outcomes**
+- Auth identity survives app restart and hydrates Redux on startup.
+- Resume path supports split-failure retry while removing persisted `secret` from storage.
+- Logout clears durable auth session and in-memory auth state.
+
+**Code ownership (`file` + symbols)**
+- `src/state/store.ts` (`setAuthenticated`, `clearAuth`, auth state shape)
+- `src/hooks/useAuth.ts` (`logout`)
+- `src/App.tsx` (`AppContent` bootstrap order)
+- `src/hooks/usePendingApproval.ts` (`usePendingApprovalRetry`)
+- `src/lib/storage.ts` (`PendingApproval`, `savePendingApproval`, `getPendingApproval`)
+- `src/pages/grant/use-grant-flow.ts` (`savePendingApproval` callsite)
+- Native session commands (new): `src-tauri/src/commands/auth.rs` + command exports in `src-tauri/src/lib.rs`
+
+**Concrete edits to perform**
+- Add durable auth session service:
+  - frontend boundary `src/services/auth-session.ts` (new)
+  - tauri commands for save/load/clear minimal auth session fields
+- Hydrate auth on app start before grant flow needs it.
+- Replace persisted `PendingApproval.secret` strategy:
+  - remove `secret` from localStorage schema
+  - introduce process-scoped secret bridge keyed by `sessionId` (memory-only) or equivalent secure handoff
+  - define bounded fallback behavior when restart occurs without available secret
+- Update logout to clear durable session backend plus Redux.
+
+**Tests to add/update**
+- New file: `src/services/auth-session.test.ts`
+  - `hydrates_valid_session_on_startup`
+  - `evicts_invalid_or_stale_session`
+  - `logout_clears_durable_and_memory_state`
+- `src/hooks/usePendingApproval.test.ts`
+  - `retry_requires_runtime_secret_bridge_and_skips_without_secret`
+- `src/lib/storage.test.ts`
+  - remove/replace assertions expecting secret persistence
+- Rust tests in `src-tauri/src/commands/auth.rs`
+  - `save_load_clear_auth_session_roundtrip`
+
+**Entry criteria**
+- Phase 2 decomposition merged.
+
+**Exit gate (binary)**
+- PASS only if:
+  - restart restores auth when durable session valid;
+  - logout clears both persistent and in-memory auth;
+  - no persisted secret-at-rest in storage schema/data.
+- FAIL if any path still writes grant/session secret to persistent storage.
+
+**Dependencies/blockers**
+- Decision on secure storage backend contract for desktop session persistence.
+
+**Rollback/compat notes**
+- Migration path: read old pending approval records once, clear them, and rewrite in new schema without secret.
+
+## Phase 4 - Deep-Link Normalization and Contract Gate
+
+**Objective**
+- Make deep-link normalization deterministic and explicitly gate strict allowlist behavior behind external contract freeze.
+
+**In-scope outcomes**
+- Canonical normalization path documented and test-backed.
+- Compatibility parser retained but bounded and explicit.
+- Strict allowlist mode implemented but disabled until upstream freeze.
+
+**Code ownership (`file` + symbols)**
+- `src/hooks/use-deep-link.ts` (`parseDeepLinkUrl`, `handleGrantParams`, fallback effect)
+- `src/lib/grant-params.ts` (`getGrantParamsFromSearchParams`, `buildGrantSearchParams`, `parseScopesParam`)
+- `src/hooks/use-deep-link.test.tsx`
+- `src/lib/grant-params.test.ts`
+
+**Concrete edits to perform**
+- Add explicit normalizer utility (new module) that:
+  - parses incoming query/deep-link params
+  - emits canonical param object/order
+  - tracks compatibility parse source
+- Add strict allowlist parser branch behind feature flag/config:
+  - allow only canonical keys when enabled
+  - keep compatibility mode while flag is off
+- Ensure redirect rules are deterministic and idempotent (`replace` semantics preserved).
+
+**Tests to add/update**
+- `src/hooks/use-deep-link.test.tsx`
+  - `normalization_is_idempotent`
+  - `strict_allowlist_rejects_unknown_params_when_enabled`
+  - `compat_mode_accepts_legacy_scopes_payload`
+- `src/lib/grant-params.test.ts`
+  - deterministic canonical serialization order and round-trip cases
+
+**Entry criteria**
+- Phase 3 persistence semantics merged.
+
+**Exit gate (binary)**
+- PASS only if deep-link parse + normalize produces same canonical output for equivalent inputs and strict-mode tests pass (when toggled).
+- FAIL if unknown params mutate flow behavior in strict mode.
+
+**Dependencies/blockers**
+- External contract freeze for final strict allowlist enablement.
+
+**Rollback/compat notes**
+- Keep strict allowlist disabled by default until freeze is signed off.
+
+## Phase 5 - Legacy Removal and Observability Polish
+
+**Objective**
+- Remove superseded auth surfaces and reduce hot-path log noise after replacement paths are proven.
+
+**In-scope outcomes**
+- Legacy auth page/runtime routes deleted after gates pass.
+- Packaging/scripts cleaned up.
+- Info/debug logs behind explicit debug switch; warn/error remain.
+
+**Code ownership (`file` + symbols)**
+- `src/auth-page/*` (delete)
+- `src/pages/browser-login/*` (delete if superseded)
+- `src/components/auth/InlineLogin.tsx` (delete or rewire)
+- `src/config/routes.ts` (`ROUTES.browserLogin`, `ROUTES.login` usage cleanup)
+- `src/App.tsx` (route wiring cleanup)
+- `src-tauri/src/commands/auth.rs` (remove obsolete callback/asset serving branches if no longer used)
+- `package.json` (`auth:build`, `auth:dev`, prebuild hooks)
+
+**Concrete edits to perform**
+- Remove legacy auth runtime entrypoints only after phase gates prove replacement complete.
+- Canonical replacement decision rule before deletion:
+  - Preserve and harden `start_browser_auth` + `src/auth-page/*` as the single production path.
+  - Treat `src/pages/browser-login/*` and `src/components/auth/InlineLogin.tsx` as legacy surfaces to remove after replacement-path parity is proven.
+- Remove obsolete scripts/build artifacts and related docs references.
+- Gate noisy hot-path logs in:
+  - `src/pages/grant/use-grant-flow.ts`
+  - `src/pages/connect/index.tsx`
+  - `src/auth-page/auth.ts` (or delete with surface removal)
+
+**Tests to add/update**
+- `src/App` routing tests (new or existing router tests)
+  - legacy routes removed / redirect behavior verified
+- `src/pages/grant/use-grant-flow.test.tsx`
+  - ensure auth-required path still works post-removal
+- `src/pages/connect/index.test.tsx`
+  - ensure navigation and prefetch unaffected by cleanup
+
+**Entry criteria**
+- Phases 0-4 all PASS.
+
+**Exit gate (binary)**
+- PASS only if:
+  - no code references to removed legacy auth surfaces remain;
+  - full validation command set green;
+  - auth flow works through replacement-only path.
+- FAIL on any dead reference, broken route, or auth regression.
+
+**Dependencies/blockers**
+- Confirmation that replacement auth flow is production-ready.
+
+**Rollback/compat notes**
+- If removal causes regression, revert deletion commit(s) and keep replacement code behind default path until fixed.
+
+## Dependency Graph
+
+**Must precede**
+- Phase 0 -> Phase 1 -> Phase 2 -> Phase 3 -> Phase 4 -> Phase 5
+- Phase 3 depends on Phase 1 callback contract hardening and Phase 2 flow seam clarity.
+- Phase 5 depends on all previous phase gates passing.
+
+**Can parallelize (inside phase boundaries)**
+- Phase 0: frontend invariant tests and Rust callback tests can run in parallel.
+- Phase 2: machine extraction and test migration can run as separate slices once adapters exist.
+- Phase 4: grant-param canonicalization tests and deep-link hook tests can be split.
+- Phase 5: log gating can land in a separate slice from legacy file deletion.
+
+## Slice Plan (Ordered, Reviewable)
+
+1. **Slice 0.1 - Invariant tests only**
+   - Add callback abuse-path tests + grant transition invariants.
+   - Gate tests: Phase 0 test set.
+2. **Slice 1.1 - Callback validator extraction**
+   - Introduce helper-level validation in `auth.rs` without changing external payload.
+   - Gate tests: Rust callback tests pass.
+3. **Slice 1.2 - Enforce one-time + expiry callback acceptance**
+   - Wire state token lifecycle into `/auth-callback`.
+   - Gate tests: replay/expiry tests pass.
+4. **Slice 2.1 - Grant machine seam**
+   - Add pure transition module + unit tests; keep hook adapter.
+   - Gate tests: `grant-flow-machine.test.ts`, existing `use-grant-flow` tests.
+5. **Slice 2.2 - Split bootstrap and approval pipelines**
+   - Move claim/verify and createGrant/approve logic into dedicated modules.
+   - Gate tests: `use-grant-flow.test.tsx` full pass.
+6. **Slice 3.1 - Durable auth session service**
+   - Add save/load/clear session commands + frontend service.
+   - Gate tests: auth session tests + startup hydration tests.
+7. **Slice 3.2 - Remove secret-at-rest for pending approval**
+   - Storage schema migration + runtime secret bridge path.
+   - Gate tests: storage + pending-approval tests.
+8. **Slice 4.1 - Deep-link normalizer module**
+   - Deterministic canonicalization + idempotent redirect tests.
+   - Gate tests: deep-link and grant-params suites.
+9. **Slice 4.2 - Strict allowlist gate (disabled by default)**
+   - Implement strict parser branch and test coverage.
+   - Gate tests: strict-mode tests + compat tests.
+10. **Slice 5.1 - Legacy route/surface removal**
+    - Delete obsolete auth pages/routes/scripts.
+    - Gate tests: route and grant/connect regression suites.
+11. **Slice 5.2 - Logging polish**
+    - Gate noisy info logs with debug flag.
+    - Gate tests: smoke/regression test set unchanged.
+
+If any single slice cannot validate in isolation, merge as smallest safe integration pair:
+- `3.1 + 3.2` may require pairing if durable session and secret-bridge interfaces are tightly coupled.
+
+## Slice Validation Matrix (Minimal vs Boundary)
+
+Use minimal, slice-specific checks for fast iteration; run full boundary checks at phase completion.
+
+| Slice | Minimal validation commands (must pass before commit) | Phase-boundary/full checks |
+| --- | --- | --- |
+| 0.1 | `cargo test --manifest-path src-tauri/Cargo.toml callback` (or module-filter equivalent), `npx vitest run src/pages/grant/use-grant-flow.test.tsx src/lib/storage.test.ts` | At Phase 0 exit: run full Validation Commands set |
+| 1.1 / 1.2 | `cargo test --manifest-path src-tauri/Cargo.toml` (callback module focused), `npx vitest run src/auth-page/auth.test.ts src/pages/grant/use-grant-flow.test.tsx` | At Phase 1 exit: run full Validation Commands set |
+| 2.1 / 2.2 | `npx vitest run src/pages/grant/grant-flow-machine.test.ts src/pages/grant/use-grant-flow.test.tsx` | At Phase 2 exit: run full Validation Commands set |
+| 3.1 / 3.2 | `npx vitest run src/services/auth-session.test.ts src/lib/storage.test.ts src/hooks/usePendingApproval.test.ts`, `cargo test --manifest-path src-tauri/Cargo.toml` | At Phase 3 exit: run full Validation Commands set |
+| 4.1 / 4.2 | `npx vitest run src/hooks/use-deep-link.test.tsx src/lib/grant-params.test.ts` | At Phase 4 exit: run full Validation Commands set |
+| 5.1 / 5.2 | `npx vitest run src/pages/connect/index.test.tsx src/pages/grant/use-grant-flow.test.tsx` (+ router tests once added) | At Phase 5 exit: run full Validation Commands set |
+
+## Validation Commands
+
+Run the full set at each phase boundary (and before merge). Expected outcome is exit code `0` and all tests green.
+
+- `npx vitest run src/pages/grant/use-grant-flow.test.tsx`
+  - Expected: all grant transition and approval/resume tests pass.
+- `npx vitest run src/pages/connect/index.test.tsx`
+  - Expected: connect prefetch/navigation behavior unchanged.
+- `npx vitest run src/hooks/use-deep-link.test.tsx src/lib/grant-params.test.ts`
+  - Expected: canonical parse/normalize round-trips pass.
+- `npx vitest run src/lib/storage.test.ts src/hooks/usePendingApproval.test.ts`
+  - Expected: persistence schema and retry semantics pass (no secret-at-rest in target state).
+- `npx vitest run src/auth-page/auth.test.ts src/pages/browser-login/index.test.tsx`
+  - Expected: only while legacy surfaces still exist; remove from gate once deleted.
+- `cargo test --manifest-path src-tauri/Cargo.toml`
+  - Expected: Rust callback validation tests pass (including replay/expiry/one-time cases).
+- `npx tsc -b`
+  - Expected: zero TypeScript type errors.
+- `cargo check --manifest-path src-tauri/Cargo.toml`
+  - Expected: Rust compile passes for tauri command changes.
+
+## Open Questions / External Blockers
+
+- Upstream callback contract freeze: exact callback `state` format, TTL, and replay semantics.
+- Strict allowlist activation date and final canonical param set ownership.
+- Durable session storage backend decision (OS keychain vs alternate secure storage).
+- Resume semantics across app restart when pending approval exists but runtime secret bridge is unavailable.
+
+## Plan DoD Checklist
+
+- [x] Phases explicitly derived from local specs/docs and preserved (0-5).
+- [x] Each phase includes objective, scope, ownership, concrete edits, tests, entry criteria, binary exit gate, dependencies, rollback notes.
+- [x] Mapping table ties spec requirements to concrete files/symbols and planned deltas.
+- [x] Dependency graph includes `must precede` and `can parallelize`.
+- [x] Slice plan is ordered, reviewable, and each slice maps to gate tests.
+- [x] Validation commands are explicit with expected outcomes.
+- [x] Open blockers recorded where ownership is external.
+- [x] Boundary contracts explicitly covered: input validation, transitions, persistence, security-sensitive handling.

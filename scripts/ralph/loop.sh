@@ -35,29 +35,42 @@ fi
 FEATURE_ROOT="$(cd "$FEATURE_ROOT" && pwd)"
 REPO_DIR="$(git -C "$SCRIPT_DIR" rev-parse --show-toplevel 2>/dev/null || echo "$SCRIPT_DIR/../..")"
 MODE="build"
-PROMPT_FILE="$FEATURE_ROOT/PROMPT_build.md"
-FALLBACK_PROMPT_FILE="$SCRIPT_DIR/PROMPT_build.md"
+PROMPT_FILE=""
+PROMPT_SOURCE=""
 MAX_ITERATIONS=0
 
 if [[ "${1:-}" == "plan" ]]; then
   MODE="plan"
-  PROMPT_FILE="$FEATURE_ROOT/PROMPT_plan.md"
-  FALLBACK_PROMPT_FILE="$SCRIPT_DIR/PROMPT_plan.md"
   MAX_ITERATIONS="${2:-0}"
 elif [[ "${1:-}" =~ ^[0-9]+$ ]]; then
   MODE="build"
-  PROMPT_FILE="$FEATURE_ROOT/PROMPT_build.md"
-  FALLBACK_PROMPT_FILE="$SCRIPT_DIR/PROMPT_build.md"
   MAX_ITERATIONS="$1"
 fi
 
-if [[ ! -f "$PROMPT_FILE" ]]; then
-  if [[ -f "$FALLBACK_PROMPT_FILE" ]]; then
-    PROMPT_FILE="$FALLBACK_PROMPT_FILE"
-  else
-    echo "Error: prompt file not found: $PROMPT_FILE" >&2
+# Prompt selection (simple by default):
+# - plan  => scripts/ralph/PROMPT_plan2.md
+# - build => scripts/ralph/PROMPT_build2.md
+# - override via RALPH_PROMPT_FILE with an absolute path only
+if [[ "$MODE" == "plan" ]]; then
+  PROMPT_FILE="$SCRIPT_DIR/PROMPT_plan2.md"
+else
+  PROMPT_FILE="$SCRIPT_DIR/PROMPT_build2.md"
+fi
+PROMPT_SOURCE="default:v2"
+
+# Optional explicit prompt override (absolute path only)
+if [[ -n "${RALPH_PROMPT_FILE:-}" ]]; then
+  if [[ "$RALPH_PROMPT_FILE" != /* ]]; then
+    echo "Error: RALPH_PROMPT_FILE must be an absolute path: $RALPH_PROMPT_FILE" >&2
     exit 1
   fi
+  PROMPT_FILE="$RALPH_PROMPT_FILE"
+  PROMPT_SOURCE="override:RALPH_PROMPT_FILE"
+fi
+
+if [[ ! -f "$PROMPT_FILE" ]]; then
+  echo "Error: prompt file not found: $PROMPT_FILE" >&2
+  exit 1
 fi
 
 CURSOR_AGENT_MODEL_DEFAULT="gpt-5.3-codex"
@@ -118,6 +131,7 @@ ITERATION=0
 echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
 echo "Mode:        $MODE"
 echo "Prompt:      $PROMPT_FILE"
+echo "Prompt src:  $PROMPT_SOURCE (override requires absolute RALPH_PROMPT_FILE)"
 echo "Feature:     $FEATURE_ROOT"
 if [[ "$MAX_ITERATIONS" -gt 0 ]]; then
   echo "Max loops:   $MAX_ITERATIONS"

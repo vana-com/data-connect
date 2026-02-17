@@ -16,6 +16,18 @@
 
 ## Loopback Execution Updates
 
+- 2026-02-17 (current loop): completed **Slice 1.3 - Callback method contract regression coverage**.
+  - Finding:
+    - Phase 0/1 callback abuse-path matrix listed `rejects_non_post_auth_callback`, but the Rust callback tests only covered state lifecycle (`missing/expired/replayed/valid-once`) and did not explicitly lock the method contract in a dedicated test.
+  - Implemented change:
+    - `src-tauri/src/commands/auth.rs` now has `is_auth_callback_request(method, request_path)` as the single callback-route match contract (`POST /auth-callback` only).
+    - Added Rust test `rejects_non_post_auth_callback` that asserts non-POST and wrong-path requests are rejected by the contract matcher.
+  - Why this slice now:
+    - This closes a security-sensitive regression gap in the callback boundary invariants and prevents accidental re-expansion of accepted callback methods during future route-loop refactors.
+  - Validation completed (slice + relevant phase gate check):
+    - `cargo test --manifest-path src-tauri/Cargo.toml auth::tests` (pass)
+    - `npx vitest run --maxWorkers=1 src/auth-page/auth.test.ts` (pass)
+
 - 2026-02-17 (current loop): completed **Slice 5.3 - Legacy route contract regression coverage**.
   - Added focused route-contract tests:
     - New `src/config/routes.test.ts` asserts removed legacy auth route keys/paths stay absent (`login`, `browserLogin`, `/login`, `/browser-login`).

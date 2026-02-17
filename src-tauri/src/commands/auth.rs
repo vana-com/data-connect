@@ -223,6 +223,10 @@ fn parse_auth_callback_payload(
     Ok(auth_result)
 }
 
+fn is_auth_callback_request(method: &str, request_path: &str) -> bool {
+    method == "POST" && request_path == "/auth-callback"
+}
+
 /// Start the external browser auth flow
 #[tauri::command]
 pub async fn start_browser_auth(
@@ -353,7 +357,7 @@ pub async fn start_browser_auth(
                                 }
                             }
                         }
-                        "POST" if request_path == "/auth-callback" => {
+                        _ if is_auth_callback_request(method, request_path) => {
                             // Read headers to get content length
                             let mut content_length: usize = 0;
                             let mut line = String::new();
@@ -783,6 +787,14 @@ mod tests {
             "walletAddress": "0xabc"
         })
         .to_string()
+    }
+
+    #[test]
+    fn rejects_non_post_auth_callback() {
+        assert!(is_auth_callback_request("POST", "/auth-callback"));
+        assert!(!is_auth_callback_request("GET", "/auth-callback"));
+        assert!(!is_auth_callback_request("OPTIONS", "/auth-callback"));
+        assert!(!is_auth_callback_request("POST", "/"));
     }
 
     #[test]

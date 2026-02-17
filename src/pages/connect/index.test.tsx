@@ -212,6 +212,26 @@ describe("Connect", () => {
   // -------- background pre-fetch --------
 
   describe("background pre-fetch", () => {
+    it("does not emit Connect info logs during normal pre-fetch path", async () => {
+      const consoleLog = vi.spyOn(console, "log").mockImplementation(() => {})
+      mockClaimSession.mockResolvedValue(CLAIMED_SESSION)
+      mockVerifyBuilder.mockResolvedValue(BUILDER_MANIFEST)
+      mockUsePlatforms.mockReturnValue(defaultPlatforms())
+
+      renderConnect(REAL_SESSION_SEARCH)
+
+      await waitFor(() => {
+        expect(mockVerifyBuilder).toHaveBeenCalled()
+      })
+
+      expect(
+        consoleLog.mock.calls.some(([firstArg]) =>
+          typeof firstArg === "string" && firstArg.startsWith("[Connect]")
+        )
+      ).toBe(false)
+      consoleLog.mockRestore()
+    })
+
     it("claims session and verifies builder for real sessions", async () => {
       mockClaimSession.mockResolvedValue(CLAIMED_SESSION)
       mockVerifyBuilder.mockResolvedValue(BUILDER_MANIFEST)

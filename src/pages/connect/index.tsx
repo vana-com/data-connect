@@ -58,6 +58,9 @@ export function Connect() {
   // the connect/export page (Screen 1), so the grant page can skip straight to consent.
   const prefetchedSessionRef = useRef<string | null>(null)
   const [prefetched, setPrefetched] = useState<PrefetchedGrantData | null>(null)
+  const shouldLogConnectDebug =
+    import.meta.env.DEV &&
+    import.meta.env.VITE_DEBUG_GRANT_FLOW === "true"
 
   useEffect(() => {
     // Only pre-fetch for real sessions (not demo, needs secret)
@@ -69,20 +72,24 @@ export function Connect() {
       // Step 1: Claim session
       let session: GrantSession
       try {
-        console.log("[Connect] Pre-fetch: claiming session", {
-          sessionId: params.sessionId,
-          hasSecret: Boolean(params.secret),
-          timestamp: Date.now(),
-        });
+        if (shouldLogConnectDebug) {
+          console.log("[Connect] Pre-fetch: claiming session", {
+            sessionId: params.sessionId,
+            hasSecret: Boolean(params.secret),
+            timestamp: Date.now(),
+          })
+        }
         const claimed = await claimSession({
           sessionId: params.sessionId!,
           secret: params.secret!,
         })
-        console.log("[Connect] Pre-fetch: claim succeeded", {
-          sessionId: params.sessionId,
-          granteeAddress: claimed.granteeAddress,
-          scopes: claimed.scopes,
-        });
+        if (shouldLogConnectDebug) {
+          console.log("[Connect] Pre-fetch: claim succeeded", {
+            sessionId: params.sessionId,
+            granteeAddress: claimed.granteeAddress,
+            scopes: claimed.scopes,
+          })
+        }
         session = {
           id: params.sessionId!,
           granteeAddress: claimed.granteeAddress,
@@ -109,10 +116,12 @@ export function Connect() {
           session.webhookUrl,
         )
         const result = { session, builderManifest }
-        console.log("[Connect] Pre-fetch: builder verified, prefetched data ready", {
-          sessionId: params.sessionId,
-          builderName: builderManifest?.name,
-        });
+        if (shouldLogConnectDebug) {
+          console.log("[Connect] Pre-fetch: builder verified, prefetched data ready", {
+            sessionId: params.sessionId,
+            builderName: builderManifest?.name,
+          })
+        }
         stashPendingGrantPrefetch(params.sessionId, result)
         setPrefetched(result)
         return result
@@ -225,19 +234,21 @@ export function Connect() {
       const grantHref = grantSearch
         ? `${ROUTES.grant}?${grantSearch}`
         : ROUTES.grant
-      console.log("[Connect] Navigating to /grant", {
-        hasPrefetched: prefetched !== null,
-        prefetchedSession: prefetched?.session?.id,
-        prefetchedBuilder: prefetched?.builderManifest?.name,
-        grantHref,
-      });
+      if (shouldLogConnectDebug) {
+        console.log("[Connect] Navigating to /grant", {
+          hasPrefetched: prefetched !== null,
+          prefetchedSession: prefetched?.session?.id,
+          prefetchedBuilder: prefetched?.builderManifest?.name,
+          grantHref,
+        })
+      }
       setConnectRunId(null)
       navigate(grantHref)
     }
     if (activeRun.status === "error" || activeRun.status === "stopped") {
       setConnectRunId(null)
     }
-  }, [activeRun, grantSearch, navigate, prefetched])
+  }, [activeRun, grantSearch, navigate, prefetched, shouldLogConnectDebug])
 
   // Step 1 CTA: open data-source login/scrape (connector run).
   const handleConnect = async () => {

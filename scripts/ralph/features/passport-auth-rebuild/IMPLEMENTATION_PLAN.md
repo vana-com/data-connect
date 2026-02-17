@@ -16,6 +16,24 @@
 
 ## Loopback Execution Updates
 
+- 2026-02-17 (current loop): completed **Slice 2.2 - Split bootstrap and approval pipelines** for `src/pages/grant/use-grant-flow.ts`.
+  - Added `src/pages/grant/grant-flow-bootstrap.ts`:
+    - Extracted bootstrap orchestration for demo, pre-fetched, pre-fetched-session-only, and fresh claim/verify paths into a dedicated module.
+    - Preserved existing transition and failure behavior by reusing `dispatchFlow` + `transitionFlow` actions from the machine seam.
+  - Added `src/pages/grant/grant-flow-approval.ts`:
+    - Extracted create-grant/approve-session pipeline, including session expiry guard and pending-approval persistence lifecycle (`savePendingApproval` -> `approveSession` -> `clearPendingApproval`).
+    - Kept Redux connected-app write behavior in one place to reduce duplicate side-effect paths.
+  - Added `src/pages/grant/grant-flow-auth-bridge.ts`:
+    - Extracted auth-required and post-auth resume gating into pure helpers for deterministic branching (`defer-auth`, `defer-server`, `wait`, `fail`, `approve`).
+  - Refactored `useGrantFlow` to compose these modules while preserving public hook API and route/UX behavior.
+  - Added/updated tests:
+    - New: `src/pages/grant/grant-flow-auth-bridge.test.ts` (pure gate behavior).
+    - Updated: `src/pages/grant/use-grant-flow.test.tsx` with `approval pipeline persists then clears pending approval on success` assertions.
+  - Why this slice now: Phase 3 durable auth + resume changes require isolated seams so persistence migration can be changed without destabilizing bootstrap/auth-resume behavior.
+  - Validation completed (slice + relevant phase regression):
+    - `npx vitest run --maxWorkers=1 src/pages/grant/grant-flow-machine.test.ts src/pages/grant/grant-flow-auth-bridge.test.ts src/pages/grant/use-grant-flow.test.tsx` (pass)
+    - `npx vitest run --maxWorkers=1 src/pages/connect/index.test.tsx` (fails, unrelated to touched files; see blocker below)
+
 - 2026-02-17 (current loop): completed **Slice 2.1 - Grant machine seam** for `src/pages/grant/use-grant-flow.ts`.
   - Added pure transition module: `src/pages/grant/grant-flow-machine.ts`.
     - Centralized valid status edges (`loading -> ... -> success/error`) and mutation actions (`start`, `transition`, `set-session`, `set-builder-manifest`, `set-grant-id`, `fail`).

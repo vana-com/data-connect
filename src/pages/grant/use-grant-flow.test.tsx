@@ -10,6 +10,8 @@ const mockDenySession = vi.fn()
 const mockVerifyBuilder = vi.fn()
 const mockCreateGrant = vi.fn()
 const mockFetchServerIdentity = vi.fn()
+const mockSavePendingApproval = vi.fn()
+const mockClearPendingApproval = vi.fn()
 
 let authState = {
   isAuthenticated: false,
@@ -96,6 +98,13 @@ vi.mock("../../services/serverRegistration", () => ({
     mockFetchServerIdentity.apply(null, args as []),
 }))
 
+vi.mock("../../lib/storage", () => ({
+  savePendingApproval: (...args: unknown[]) =>
+    mockSavePendingApproval.apply(null, args as []),
+  clearPendingApproval: (...args: unknown[]) =>
+    mockClearPendingApproval.apply(null, args as []),
+}))
+
 beforeEach(() => {
   mockNavigate.mockReset()
   mockClaimSession.mockReset()
@@ -104,6 +113,8 @@ beforeEach(() => {
   mockVerifyBuilder.mockReset()
   mockCreateGrant.mockReset()
   mockFetchServerIdentity.mockReset()
+  mockSavePendingApproval.mockReset()
+  mockClearPendingApproval.mockReset()
   mockFetchServerIdentity.mockResolvedValue({ address: "0xserver", publicKey: "pk", serverId: null })
   authCompleteHandler = null
   delete tauriWindow.__TAURI__
@@ -361,7 +372,7 @@ describe("useGrantFlow", () => {
     expect(result.current.builderName).toBe("RickRoll Facts")
   })
 
-  it("creates grant and approves real sessions", async () => {
+  it("approval pipeline persists then clears pending approval on success", async () => {
     authState = {
       isAuthenticated: true,
       isLoading: false,
@@ -411,6 +422,16 @@ describe("useGrantFlow", () => {
       serverAddress: "0xserver",
       scopes: ["chatgpt.conversations"],
     })
+    expect(mockSavePendingApproval).toHaveBeenCalledWith({
+      sessionId: "real-session-2",
+      grantId: "grant-123",
+      secret: "test-secret",
+      userAddress: "0xuser",
+      serverAddress: "0xserver",
+      scopes: ["chatgpt.conversations"],
+      createdAt: expect.any(String),
+    })
+    expect(mockClearPendingApproval).toHaveBeenCalledTimes(1)
   })
 
   it("errors when no secret is provided for non-demo session", async () => {

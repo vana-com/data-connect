@@ -4,24 +4,9 @@ import { invoke } from "@tauri-apps/api/core"
 import { listen } from "@tauri-apps/api/event"
 import { useDispatch } from "react-redux"
 import { useAuth } from "../../hooks/useAuth"
-import { setAuthenticated, addConnectedApp } from "../../state/store"
-import {
-  claimSession,
-  approveSession,
-  denySession,
-  SessionRelayError,
-} from "../../services/sessionRelay"
-import { verifyBuilder, BuilderVerificationError } from "../../services/builder"
-import {
-  createGrant,
-  PersonalServerError,
-} from "../../services/personalServer"
-import { fetchServerIdentity } from "../../services/serverRegistration"
+import { setAuthenticated } from "../../state/store"
+import { denySession } from "../../services/sessionRelay"
 import { usePersonalServer } from "../../hooks/usePersonalServer"
-import {
-  savePendingApproval,
-  clearPendingApproval,
-} from "../../lib/storage"
 import type {
   BuilderManifest,
   GrantFlowParams,
@@ -32,6 +17,15 @@ import type {
 } from "./types"
 import { ROUTES } from "@/config/routes"
 import { createInitialGrantFlowState, reduceGrantFlowState } from "./grant-flow-machine"
+import { runGrantFlowBootstrap } from "./grant-flow-bootstrap"
+import {
+  mapGrantApprovalError,
+  runGrantApprovalPipeline,
+} from "./grant-flow-approval"
+import {
+  resolveAuthResumeGate,
+  resolveInitialApprovalGate,
+} from "./grant-flow-auth-bridge"
 
 const PRIVY_APP_ID = import.meta.env.VITE_PRIVY_APP_ID
 const PRIVY_CLIENT_ID = import.meta.env.VITE_PRIVY_CLIENT_ID
@@ -115,144 +109,17 @@ export function useGrantFlow(params: GrantFlowParams, prefetched?: PrefetchedGra
     let cancelled = false
 
     const runFlow = async () => {
-      console.log("[GrantFlow] runFlow starting", {
+      await runGrantFlowBootstrap({
         sessionId,
-        hasSecret: Boolean(secret),
-        hasPrefetched: Boolean(prefetched),
-        prefetchedSessionId: prefetched?.session?.id,
-        prefetchedHasBuilder: Boolean(prefetched?.builderManifest),
-        isDemoSession: isDemoSession(sessionId),
-      });
-      dispatchFlow({ type: "start", sessionId, secret })
-
-      // --- Demo mode ---
-      if (isDemoSession(sessionId)) {
-        const session = createDemoSession(sessionId)
-        const builderManifest = createDemoBuilderManifest()
-        dispatchFlow({ type: "set-session", session })
-        dispatchFlow({ type: "set-builder-manifest", builderManifest })
-        transitionFlow("consent")
-
-        return
-      }
-
-      // --- Pre-fetched path: connect page already claimed + verified in background ---
-      if (prefetched?.session && prefetched?.builderManifest) {
-        console.log("[GrantFlow] Using pre-fetched data (skipping claim + verify)", {
-          sessionId: prefetched.session.id,
-          builderName: prefetched.builderManifest.name,
-        });
-        dispatchFlow({ type: "set-session", session: prefetched.session })
-        dispatchFlow({ type: "set-builder-manifest", builderManifest: prefetched.builderManifest })
-        transitionFlow("consent")
-
-        return
-      }
-
-      // --- Pre-fetched session only: claim done, builder verification still needed ---
-      if (prefetched?.session) {
-        console.log("[GrantFlow] Using pre-fetched session (skipping claim, verifying builder)", {
-          sessionId: prefetched.session.id,
-        });
-        dispatchFlow({ type: "set-session", session: prefetched.session })
-
-        try {
-          transitionFlow("verifying-builder")
-          const builderManifest = await verifyBuilder(
-            prefetched.session.granteeAddress,
-            prefetched.session.webhookUrl,
-          )
-          if (cancelled) return
-          dispatchFlow({ type: "set-builder-manifest", builderManifest })
-          transitionFlow("consent")
-        } catch (error) {
-          if (cancelled) return
-          console.error("[GrantFlow] Builder verification failed (pre-fetched session)", {
-            sessionId: prefetched.session.id,
-            message: error instanceof Error ? error.message : String(error),
-          });
-          dispatchFlow({
-            type: "fail",
-            sessionId,
-            secret,
-            error:
-              error instanceof BuilderVerificationError
-                ? error.message
-                : "Failed to verify builder",
-          })
-        }
-
-        return
-      }
-
-      // --- Real flow (no pre-fetched data) ---
-      if (!secret) {
-        dispatchFlow({
-          type: "fail",
-          sessionId,
-          error:
-            "No secret provided. The deep link URL is missing the secret parameter.",
-        })
-        return
-      }
-
-      // Step 1: Claim session
-      try {
-        console.log("[GrantFlow] Falling back to fresh claim (no pre-fetched data)", { sessionId });
-        transitionFlow("claiming")
-        const claimed = await claimSession({ sessionId, secret })
-        if (cancelled) return
-        const session: GrantSession = {
-          id: sessionId,
-          granteeAddress: claimed.granteeAddress,
-          scopes: claimed.scopes,
-          expiresAt: claimed.expiresAt,
-          webhookUrl: claimed.webhookUrl,
-          appUserId: claimed.appUserId,
-        }
-        console.log("[GrantFlow] Claim succeeded", {
-          sessionId,
-          granteeAddress: claimed.granteeAddress,
-          scopes: claimed.scopes,
-        });
-        dispatchFlow({ type: "set-session", session })
-
-        // Step 2: Verify builder
-        // Protocol spec: "If manifest discovery or signature verification fails,
-        // the Desktop App MUST NOT render the consent screen and MUST fail the session flow."
-        transitionFlow("verifying-builder")
-        const builderManifest = await verifyBuilder(
-          claimed.granteeAddress,
-          claimed.webhookUrl,
-        )
-        if (cancelled) return
-        dispatchFlow({ type: "set-builder-manifest", builderManifest })
-
-        // Advance to consent (data export already completed on the connect page)
-        transitionFlow("consent")
-
-      } catch (error) {
-        if (cancelled) return
-        console.error("[GrantFlow] Flow error", {
-          sessionId,
-          errorType: error instanceof SessionRelayError ? "SessionRelayError" : error instanceof BuilderVerificationError ? "BuilderVerificationError" : "unknown",
-          message: error instanceof Error ? error.message : String(error),
-          ...(error instanceof SessionRelayError && {
-            errorCode: error.errorCode,
-            statusCode: error.statusCode,
-          }),
-        });
-        dispatchFlow({
-          type: "fail",
-          sessionId,
-          secret,
-          error:
-            error instanceof SessionRelayError ||
-            error instanceof BuilderVerificationError
-              ? error.message
-              : "Failed to load session",
-        })
-      }
+        secret,
+        prefetched,
+        isCancelled: () => cancelled,
+        dispatchFlow,
+        transitionFlow,
+        isDemoSession,
+        createDemoSession,
+        createDemoBuilderManifest,
+      })
     }
 
     runFlow()
@@ -341,120 +208,41 @@ export function useGrantFlow(params: GrantFlowParams, prefetched?: PrefetchedGra
   const handleApprove = useCallback(async () => {
     if (!flowState.session) return
 
-    // If not authenticated, defer to auth (auto-approve effect will resume)
-    if (!isAuthenticated || !walletAddress) {
-      setAuthPending(true)
-      transitionFlow("auth-required")
-      return
-    }
+    const initialGate = resolveInitialApprovalGate({
+      isAuthenticated,
+      walletAddress,
+      personalServerPort: personalServer.port,
+      personalServerTunnelUrl: personalServer.tunnelUrl,
+    })
 
-    // If Personal Server isn't fully ready yet (port + tunnel), defer.
-    // The auto-approve effect will resume once both are available.
-    // The tunnel is required so the builder app can reach the server externally.
-    if (!personalServer.port || !personalServer.tunnelUrl) {
+    if (initialGate.type !== "ready") {
       setAuthPending(true)
-      transitionFlow("creating-grant")
+      transitionFlow(initialGate.status)
       return
     }
 
     setIsApproving(true)
 
     try {
-      // Skip grant creation + session approval for demo sessions
-      if (isDemoSession(flowState.sessionId)) {
-        transitionFlow("success")
-        return
-      }
-
-      // Check session expiry before proceeding — better UX than waiting
-      // for the server to reject the request.
-      if (flowState.session.expiresAt) {
-        const expiresAt = new Date(flowState.session.expiresAt).getTime()
-        if (!Number.isNaN(expiresAt) && Date.now() > expiresAt) {
-          throw new SessionRelayError(
-            "This session has expired. Please start a new request from the app.",
-          )
-        }
-      }
-
-      // Step: Create grant via Personal Server
-      transitionFlow("creating-grant")
-
-      const expiresAtNum = flowState.session.expiresAt
-        ? Math.floor(new Date(flowState.session.expiresAt).getTime() / 1000)
-        : undefined
-
-      const { grantId } = await createGrant(personalServer.port, {
-        granteeAddress: flowState.session.granteeAddress,
-        scopes: flowState.session.scopes,
-        expiresAt: expiresAtNum,
-      }, personalServer.devToken)
-
-      dispatchFlow({ type: "set-grant-id", grantId })
-
-      // Fetch the Personal Server's own address so the builder can resolve
-      // the server via Gateway (registered under this address, not the user's).
-      const { address: serverAddress } = await fetchServerIdentity(personalServer.port)
-
-      // Step: Approve session via Session Relay
-      transitionFlow("approving")
-
-      if (!flowState.secret) {
-        throw new SessionRelayError(
-          "Cannot approve session: secret is missing from the flow state. " +
-          "The builder will not be notified of this grant.",
-        )
-      }
-
-      // Persist pending approval so we can retry if approve fails.
-      // Without this, a split failure leaves the grant on Gateway
-      // but the builder never learns about it.
-      savePendingApproval({
-        sessionId: flowState.sessionId,
-        grantId,
-        secret: flowState.secret,
-        userAddress: walletAddress,
-        serverAddress,
-        scopes: flowState.session.scopes,
-        createdAt: new Date().toISOString(),
+      await runGrantApprovalPipeline({
+        flowState,
+        walletAddress,
+        personalServer: {
+          port: personalServer.port,
+          devToken: personalServer.devToken,
+        },
+        dispatch,
+        dispatchFlow,
+        transitionFlow,
+        isDemoSession,
       })
-
-      await approveSession(flowState.sessionId, {
-        secret: flowState.secret,
-        grantId,
-        userAddress: walletAddress,
-        serverAddress,
-        scopes: flowState.session.scopes,
-      })
-
-      clearPendingApproval()
-
-      // Persist as connected app in Redux for immediate UI update
-      dispatch(
-        addConnectedApp({
-          id: grantId,
-          name:
-            flowState.builderManifest?.name ??
-            flowState.session?.appName ??
-            `App ${flowState.session.granteeAddress.slice(0, 6)}…${flowState.session.granteeAddress.slice(-4)}`,
-          icon: flowState.builderManifest?.icons?.[0]?.src,
-          permissions: flowState.session.scopes,
-          connectedAt: new Date().toISOString(),
-        })
-      )
-
-      transitionFlow("success")
     } catch (error) {
       console.error("[GrantFlow] Approve failed:", error)
       dispatchFlow({
         type: "fail",
         sessionId: flowState.sessionId,
         secret: flowState.secret,
-        error:
-          error instanceof SessionRelayError ||
-          error instanceof PersonalServerError
-            ? error.message
-            : "Failed to complete the grant flow",
+        error: mapGrantApprovalError(error),
       })
     } finally {
       setIsApproving(false)
@@ -504,40 +292,34 @@ export function useGrantFlow(params: GrantFlowParams, prefetched?: PrefetchedGra
   }, [flowState.status])
 
   useEffect(() => {
-    if (!authPending || !isAuthenticated || !walletAddress) return
-    if (personalServer.status === "error") {
+    const gateResult = resolveAuthResumeGate({
+      authPending,
+      isAuthenticated,
+      walletAddress,
+      personalServerStatus: personalServer.status,
+      personalServerError: personalServer.error,
+      personalServerPort: personalServer.port,
+      personalServerTunnelUrl: personalServer.tunnelUrl,
+      personalServerRestarting: personalServer.restartingRef.current,
+      tunnelTimedOut,
+      isDemoSession: isDemoSession(flowState.sessionId),
+      sessionId: flowState.sessionId,
+      secret: flowState.secret,
+    })
+
+    if (gateResult.type === "noop") return
+
+    if (gateResult.type === "fail") {
       setAuthPending(false)
-      dispatchFlow({
-        type: "fail",
-        sessionId: flowState.sessionId,
-        secret: flowState.secret,
-        error: personalServer.error || "Personal Server failed to start.",
-      })
+      dispatchFlow(gateResult.action)
       return
     }
-    const isDemo = isDemoSession(flowState.sessionId)
-    // During Phase 2 restart, wait for the server to come back up.
-    // restartingRef is set synchronously during render so we see it
-    // before any stale tunnelFailed state from Phase 1.
-    if (!isDemo && personalServer.restartingRef.current) {
-      transitionFlow("preparing-server")
+
+    if (gateResult.type === "wait") {
+      transitionFlow(gateResult.status)
       return
     }
-    // If the tunnel timed out (90s), surface the error.
-    if (tunnelTimedOut) {
-      setAuthPending(false)
-      dispatchFlow({
-        type: "fail",
-        sessionId: flowState.sessionId,
-        secret: flowState.secret,
-        error: "Could not establish a public tunnel for the Personal Server. The requesting app won't be able to access your data.",
-      })
-      return
-    }
-    if (!isDemo && (!personalServer.port || !personalServer.tunnelUrl)) {
-      transitionFlow("preparing-server")
-      return
-    }
+
     setAuthPending(false)
     void handleApprove()
   }, [authPending, handleApprove, isAuthenticated, walletAddress, personalServer.port, personalServer.tunnelUrl, tunnelTimedOut, personalServer.status, personalServer.error, flowState.sessionId, flowState.secret, dispatchFlow, transitionFlow])

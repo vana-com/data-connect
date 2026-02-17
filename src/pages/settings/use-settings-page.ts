@@ -214,36 +214,57 @@ export function useSettingsPage() {
       return
     }
 
-    authUnlistenRef.current?.()
-    authUnlistenRef.current = await listen<AuthResultPayload>("auth-complete", event => {
-      const result = event.payload
-      if (result.success && result.user) {
-        const session = {
-          user: {
-            id: result.user.id,
-            email: result.user.email || undefined,
-          },
-          walletAddress: result.walletAddress || null,
-          masterKeySignature: result.masterKeySignature || null,
+    const subscribeAuthComplete = async () => {
+      authUnlistenRef.current = await listen<AuthResultPayload>("auth-complete", event => {
+        const result = event.payload
+        if (result.success && result.user) {
+          const session = {
+            user: {
+              id: result.user.id,
+              email: result.user.email || undefined,
+            },
+            walletAddress: result.walletAddress || null,
+            masterKeySignature: result.masterKeySignature || null,
+          }
+          dispatch(
+            setAuthenticated({
+              user: session.user,
+              walletAddress: session.walletAddress,
+              masterKeySignature: session.masterKeySignature,
+            })
+          )
+          void saveAuthSession(session)
         }
-        dispatch(
-          setAuthenticated({
-            user: session.user,
-            walletAddress: session.walletAddress,
-            masterKeySignature: session.masterKeySignature,
-          })
-        )
-        void saveAuthSession(session)
-      }
-      authUnlistenRef.current?.()
-      authUnlistenRef.current = null
-    })
+        authUnlistenRef.current?.()
+        authUnlistenRef.current = null
+      })
+    }
+
+    authUnlistenRef.current?.()
+    authUnlistenRef.current = null
+    let listenerReady = false
+    try {
+      await subscribeAuthComplete()
+      listenerReady = true
+    } catch (error) {
+      console.error("Failed to subscribe to auth-complete before sign-in:", error)
+    }
 
     try {
       await invoke("start_browser_auth", {
         privyAppId,
         privyClientId,
       })
+      if (!listenerReady) {
+        try {
+          await subscribeAuthComplete()
+        } catch (retryError) {
+          console.error(
+            "Failed to subscribe to auth-complete after starting sign-in:",
+            retryError
+          )
+        }
+      }
     } catch (error) {
       authUnlistenRef.current?.()
       authUnlistenRef.current = null

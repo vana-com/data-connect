@@ -1,3 +1,6 @@
+use base64::Engine as _;
+use rand::rngs::OsRng;
+use rand::RngCore;
 use serde::{Deserialize, Serialize};
 use dirs::home_dir;
 use std::fs;
@@ -41,6 +44,7 @@ pub struct DurableAuthSession {
 }
 
 const CALLBACK_STATE_TTL_MS: u64 = 5 * 60 * 1000;
+const CALLBACK_STATE_TOKEN_BYTES: usize = 32;
 const AUTH_SESSION_FILENAME: &str = "auth-session.json";
 
 #[derive(Debug, Clone)]
@@ -98,7 +102,9 @@ fn now_ms() -> u64 {
 
 fn new_callback_state() -> CallbackState {
     let issued_at_ms = now_ms();
-    let token = format!("auth-{}-{}", std::process::id(), issued_at_ms);
+    let mut random = [0u8; CALLBACK_STATE_TOKEN_BYTES];
+    OsRng.fill_bytes(&mut random);
+    let token = base64::engine::general_purpose::URL_SAFE_NO_PAD.encode(random);
     CallbackState {
         token,
         expires_at_ms: issued_at_ms.saturating_add(CALLBACK_STATE_TTL_MS),
@@ -861,6 +867,18 @@ mod tests {
         let second =
             parse_auth_callback_payload(&valid_payload("expected-state"), &mut callback_state, 101);
         assert!(matches!(second, Err(CallbackRejectReason::ReplayedState)));
+    }
+
+    #[test]
+    fn new_callback_state_tokens_are_high_entropy_and_unique() {
+        let first = new_callback_state();
+        let second = new_callback_state();
+
+        assert_eq!(first.token.len(), 43);
+        assert_eq!(second.token.len(), 43);
+        assert_ne!(first.token, second.token);
+        assert!(!first.token.starts_with("auth-"));
+        assert!(!second.token.starts_with("auth-"));
     }
 
     #[test]

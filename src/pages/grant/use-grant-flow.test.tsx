@@ -1,7 +1,7 @@
 import { beforeEach, describe, expect, it, vi } from "vitest"
 import { act, renderHook, waitFor } from "@testing-library/react"
-import { invoke } from "@tauri-apps/api/core"
 import { useGrantFlow } from "./use-grant-flow"
+import { getPendingGrantRedirect } from "@/lib/storage"
 
 const mockNavigate = vi.fn()
 const mockClaimSession = vi.fn()
@@ -30,22 +30,8 @@ let personalServerState = {
   restartingRef: { current: false },
 }
 
-let authCompleteHandler: ((event: { payload: any }) => void) | null = null
-const tauriWindow = window as Window & { __TAURI__?: unknown; __TAURI_INTERNALS__?: unknown }
-
-vi.mock("@tauri-apps/api/core", () => ({
-  invoke: vi.fn(),
-}))
-
 vi.mock("@tauri-apps/api/event", () => ({
-  listen: vi.fn(
-    (eventName: string, handler: (event: { payload: any }) => void) => {
-      if (eventName === "auth-complete") {
-        authCompleteHandler = handler
-      }
-      return Promise.resolve(() => {})
-    }
-  ),
+  listen: vi.fn(() => Promise.resolve(() => {})),
 }))
 
 vi.mock("react-redux", () => ({
@@ -105,9 +91,6 @@ beforeEach(() => {
   mockCreateGrant.mockReset()
   mockFetchServerIdentity.mockReset()
   mockFetchServerIdentity.mockResolvedValue({ address: "0xserver", publicKey: "pk", serverId: null })
-  authCompleteHandler = null
-  delete tauriWindow.__TAURI__
-  delete tauriWindow.__TAURI_INTERNALS__
   authState = {
     isAuthenticated: false,
     isLoading: false,
@@ -125,6 +108,7 @@ beforeEach(() => {
     restartServer: vi.fn(),
     restartingRef: { current: false },
   }
+  localStorage.clear()
 })
 
 describe("useGrantFlow", () => {
@@ -148,12 +132,8 @@ describe("useGrantFlow", () => {
     expect(result.current.builderName).toBe("Demo App")
   })
 
-  it("starts auth only after approval and auto-approves on auth completion", async () => {
-    tauriWindow.__TAURI_INTERNALS__ = {}
-    const mockedInvoke = vi.mocked(invoke)
-    mockedInvoke.mockResolvedValue("https://auth.vana.test")
-
-    const { result, rerender } = renderHook(() =>
+  it("routes home when approve is clicked while unauthenticated", async () => {
+    const { result } = renderHook(() =>
       useGrantFlow({
         sessionId: "grant-session-456",
       })
@@ -163,43 +143,18 @@ describe("useGrantFlow", () => {
       expect(result.current.flowState.status).toBe("consent")
     })
 
-    // Click Allow while not authenticated → should go to auth-required
+    // Click Allow while not authenticated -> route to root sign-in page
     await act(async () => {
       await result.current.handleApprove()
     })
 
-    await waitFor(() => {
-      expect(result.current.flowState.status).toBe("auth-required")
-    })
-    expect(mockedInvoke).toHaveBeenCalledWith("start_browser_auth", {
-      privyAppId: expect.any(String),
-      privyClientId: expect.any(String),
-    })
-
-    // Simulate auth completion
-    await act(async () => {
-      authState = {
-        isAuthenticated: true,
-        isLoading: false,
-        walletAddress: "0xabc",
-      }
-      authCompleteHandler?.({
-        payload: {
-          success: true,
-          user: { id: "user-1", email: "test@vana.org" },
-          walletAddress: "0xabc",
-        },
-      })
-      rerender()
-    })
-
-    // Demo sessions skip grant creation → go straight to success
-    await waitFor(() => {
-      expect(result.current.flowState.status).toBe("success")
-    })
+    expect(getPendingGrantRedirect()?.route).toContain(
+      "/grant?sessionId=grant-session-456"
+    )
+    expect(mockNavigate).toHaveBeenCalledWith("/")
   })
 
-  it("waits for Personal Server port and tunnel before auto-approving after auth", async () => {
+  it("waits for Personal Server port and tunnel before approving", async () => {
     // Start with server still starting (port and tunnel null)
     personalServerState = {
       ...personalServerState,
@@ -208,10 +163,11 @@ describe("useGrantFlow", () => {
       tunnelUrl: null,
       devToken: "test-dev-token",
     }
-
-    tauriWindow.__TAURI_INTERNALS__ = {}
-    const mockedInvoke = vi.mocked(invoke)
-    mockedInvoke.mockResolvedValue("https://auth.vana.test")
+    authState = {
+      isAuthenticated: true,
+      isLoading: false,
+      walletAddress: "0xuser",
+    }
 
     // Use pre-fetched data for a real (non-demo) session to skip claim+verify
     const prefetched = {
@@ -241,30 +197,9 @@ describe("useGrantFlow", () => {
       expect(result.current.flowState.status).toBe("consent")
     })
 
-    // Click Allow while not authenticated → auth-required
+    // Click Allow with authenticated user while server isn't ready.
     await act(async () => {
       await result.current.handleApprove()
-    })
-
-    await waitFor(() => {
-      expect(result.current.flowState.status).toBe("auth-required")
-    })
-
-    // Simulate auth completion (server port still null)
-    await act(async () => {
-      authState = {
-        isAuthenticated: true,
-        isLoading: false,
-        walletAddress: "0xuser",
-      }
-      authCompleteHandler?.({
-        payload: {
-          success: true,
-          user: { id: "user-1", email: "test@vana.org" },
-          walletAddress: "0xuser",
-        },
-      })
-      rerender()
     })
 
     // Auto-approve should NOT have fired — server port is still null
@@ -670,7 +605,7 @@ describe("useGrantFlow", () => {
     expect(result.current.flowState.error).toContain("secret is missing")
   })
 
-  it("calls denySession when canceling from auth-required state", async () => {
+  it("calls denySession when canceling from consent state", async () => {
     mockClaimSession.mockResolvedValue({
       granteeAddress: "0xbuilder",
       scopes: ["chatgpt.conversations"],
@@ -692,16 +627,7 @@ describe("useGrantFlow", () => {
       expect(result.current.flowState.status).toBe("consent")
     })
 
-    // Click Allow while not authenticated → transitions to auth-required
-    await act(async () => {
-      await result.current.handleApprove()
-    })
-
-    await waitFor(() => {
-      expect(result.current.flowState.status).toBe("auth-required")
-    })
-
-    // Cancel from auth-required — should call denySession and navigate away
+    // Cancel from consent should call denySession and navigate away.
     await act(async () => {
       await result.current.handleDeny()
     })

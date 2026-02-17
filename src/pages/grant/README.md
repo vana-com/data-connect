@@ -28,9 +28,9 @@ Behavior:
 1. `/connect` runs the connector and routes to `/grant` with `sessionId`, `appId`, `scopes`.
 2. `/grant` loads session data in `useGrantFlow` and moves to `consent`.
 3. Clicking **Allow**:
-   - If unauthenticated, `useGrantFlow.handleApprove` sets status `auth-required` and triggers `start_browser_auth`.
-   - External auth page opens in a new tab.
-   - On `auth-complete`, the flow resumes and approval continues.
+   - If unauthenticated, `useGrantFlow.handleApprove` saves a pending grant redirect and routes to `/`.
+   - Home starts the browser auth flow (`start_browser_auth` in Tauri, direct Passport URL fallback in browser-only dev).
+   - On `auth-complete`, app-global auth state updates and Home resumes the pending grant route.
 4. Clicking **Cancel** returns to **Data Apps** (`/apps`).
 5. Deep-link success: `/grant?...&status=success` renders the Step 4 success UI.
 
@@ -42,10 +42,8 @@ Data-source label:
 
 Dev flow visibility:
 
-- **Tauri dev:** `start_browser_auth` serves `src-tauri/auth-page` and opens the browser.
-- **Web dev (mock-only):** the auth page does not auto-open. Click "Open Sign-In Page" or
-  open `http://localhost:5175` manually.
-  - Run `npm run auth:dev` to start the auth page dev server.
+- **Tauri dev:** `start_browser_auth` opens external Passport with a callback port to the local auth callback server.
+- **Web dev (mock-only):** root/login opens external Passport URL directly (no local callback server).
 
 ## Mocking the Grant URL
 
@@ -58,14 +56,7 @@ Use these in the browser when testing the grant flow directly:
 - Step 4 success:
   `http://localhost:5173/grant?sessionId=grant-session-123&appId=rickroll&scopes=%5B%22read:chatgpt-conversations%22%5D&status=success`
 
-When you click **Allow** in the browser, open the auth page dev server at
-`http://localhost:5175`. Run this first:
-
-```
-npm run auth:dev
-```
-
-Run the app in another tab:
+Run the app:
 
 ```
 npm run dev:app

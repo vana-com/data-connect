@@ -82,10 +82,11 @@ Acceptance:
 ### D) Strict contract-gated resolution closure
 
 **Priority:** P2  
-**Status:** Open (external dependency + local closure work)
+**Status:** Blocked pending team contract agreement (external dependency + local closure work)
 
 Scope:
 
+- Do not implement strict contract-gated closure work until auth/grants owners explicitly agree and freeze the incoming param contract.
 - Finalize param contract with upstream auth/grants owners.
 - Replace open-ended non-canonical passthrough with strict allowlisted behavior once contract is frozen.
 - Keep any compatibility toggle explicit and temporary.
@@ -114,7 +115,7 @@ Acceptance:
 
 1. **A** callback authenticity closure (blocker)
 2. **B** split `start_browser_auth`
-3. **D** strict contract-gated resolution closure
+3. **D** strict contract-gated resolution closure (only after team param contract is agreed/frozen)
 4. **C** `useGrantFlow` decomposition
 5. **E** logging cleanup
 

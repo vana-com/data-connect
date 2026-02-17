@@ -136,15 +136,17 @@ describe("Connect", () => {
       expect(screen.getByText("Connect your ChatGPT")).toBeTruthy()
     })
 
-    it("shows '(again)' suffix when platform is already connected", () => {
+    it("auto-navigates to grant when platform is already connected", async () => {
       mockUsePlatforms.mockReturnValue(
         defaultPlatforms({
           platforms: [CHATGPT_PLATFORM],
           isPlatformConnected: vi.fn(() => true),
         })
       )
-      renderConnect(REAL_SESSION_SEARCH)
-      expect(screen.getByText("Connect your ChatGPT (again)")).toBeTruthy()
+      const { router } = renderConnect(REAL_SESSION_SEARCH)
+      await waitFor(() => {
+        expect(router.state.location.pathname).toBe(ROUTES.grant)
+      })
     })
   })
 

@@ -9,7 +9,7 @@ import type { BuilderManifest, GrantSession } from "../../types"
 import { GrantWarning } from "./grant-warning"
 import { ActionPanel } from "@/components/typography/button-action"
 
-// Note: `isApproving` maps to the "creating-grant" / "approving" states.
+// Note: `isApproving` maps to the "creating-grant" state.
 // The consent screen stays visible while the Allow button shows a loading spinner.
 interface GrantConsentStateProps {
   session?: GrantSession

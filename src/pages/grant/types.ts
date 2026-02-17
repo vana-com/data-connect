@@ -34,7 +34,6 @@ export interface GrantFlowState {
     | "auth-required"
     | "preparing-server"
     | "creating-grant"
-    | "approving"
     | "success"
     | "error"
   error?: string

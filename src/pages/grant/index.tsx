@@ -65,8 +65,7 @@ export function Grant() {
     : flowState
   const resolvedAuthLoading = isDebugging ? false : authLoading
   const resolvedIsApproving = isDebugging
-    ? activeDebugStatus === "creating-grant" ||
-      activeDebugStatus === "approving"
+    ? activeDebugStatus === "creating-grant"
     : isApproving
   const resolvedBuilderName = isDebugging
     ? debugSession.appName
@@ -118,7 +117,7 @@ export function Grant() {
       />
     )
   } else {
-    // consent, creating-grant, approving all show consent UI
+    // consent + creating-grant both show consent UI
     content = (
       <GrantConsentState
         session={resolvedFlowState.session}

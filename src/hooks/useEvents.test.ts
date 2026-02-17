@@ -1,6 +1,6 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { renderHook } from '@testing-library/react';
-import { setAuthenticated } from '../state/store';
+import { clearAuth, setAuthenticated, store } from '../state/store';
 import { getPersistedAuthSession } from '../lib/storage';
 import { useEvents } from './useEvents';
 
@@ -33,6 +33,7 @@ describe('useEvents auth-complete guard', () => {
     mockDispatch.mockClear();
     listeners.clear();
     localStorage.clear();
+    store.dispatch(clearAuth());
   });
 
   it('clears persisted auth and does not authenticate when walletAddress is missing', () => {
@@ -74,11 +75,61 @@ describe('useEvents auth-complete guard', () => {
     expect(getPersistedAuthSession()).toMatchObject({
       user: { id: 'user-1', email: 'test@vana.org' },
       walletAddress: '0xabc',
-      masterKeySignature: '0xsig',
     });
     expect(mockDispatch).toHaveBeenCalledWith(
       setAuthenticated({
         user: { id: 'user-1', email: 'test@vana.org' },
+        walletAddress: '0xabc',
+        masterKeySignature: '0xsig',
+      })
+    );
+  });
+
+  it('is idempotent for duplicate auth-complete payloads', () => {
+    renderHook(() => useEvents());
+    const payload = {
+      success: true,
+      user: { id: 'user-1', email: 'test@vana.org' },
+      walletAddress: '0xabc',
+      masterKeySignature: '0xsig',
+    };
+
+    emit('auth-complete', payload);
+    store.dispatch(
+      setAuthenticated({
+        user: { id: 'user-1', email: 'test@vana.org' },
+        walletAddress: '0xabc',
+        masterKeySignature: '0xsig',
+      })
+    );
+    emit('auth-complete', payload);
+
+    const authDispatches = mockDispatch.mock.calls.filter(
+      ([action]) => action?.type === setAuthenticated.type
+    );
+    expect(authDispatches).toHaveLength(1);
+  });
+
+  it('dispatches auth update when email changes for same identity tuple', () => {
+    renderHook(() => useEvents());
+    store.dispatch(
+      setAuthenticated({
+        user: { id: 'user-1', email: 'old@vana.org' },
+        walletAddress: '0xabc',
+        masterKeySignature: '0xsig',
+      })
+    );
+
+    emit('auth-complete', {
+      success: true,
+      user: { id: 'user-1', email: 'new@vana.org' },
+      walletAddress: '0xabc',
+      masterKeySignature: '0xsig',
+    });
+
+    expect(mockDispatch).toHaveBeenCalledWith(
+      setAuthenticated({
+        user: { id: 'user-1', email: 'new@vana.org' },
         walletAddress: '0xabc',
         masterKeySignature: '0xsig',
       })

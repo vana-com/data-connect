@@ -21,6 +21,14 @@ export const CONTRACT_GATED_PARAM_KEYS = [
   "appName",
 ] as const
 
+const CANONICAL_GRANT_PARAM_KEYS = new Set([
+  "sessionId",
+  "secret",
+  "appId",
+  "scopes",
+  "status",
+])
+
 function isValidScopes(value: unknown): value is string[] {
   return Array.isArray(value) && value.every(item => typeof item === "string")
 }
@@ -67,9 +75,8 @@ export function getGrantParamsFromSearchParams(
   const status =
     searchParams.get("status") === "success" ? ("success" as const) : undefined
   const contractGatedParams: Record<string, string> = {}
-  for (const key of CONTRACT_GATED_PARAM_KEYS) {
-    const value = searchParams.get(key)
-    if (value) {
+  for (const [key, value] of searchParams.entries()) {
+    if (!CANONICAL_GRANT_PARAM_KEYS.has(key) && value) {
       contractGatedParams[key] = value
     }
   }
@@ -110,9 +117,8 @@ export function buildGrantSearchParams(params: GrantParams): URLSearchParams {
 
   // TODO(contract-gated): remove passthrough once upstream launch contract is frozen.
   if (params.contractGatedParams) {
-    for (const key of CONTRACT_GATED_PARAM_KEYS) {
-      const value = params.contractGatedParams[key]
-      if (value) {
+    for (const [key, value] of Object.entries(params.contractGatedParams)) {
+      if (!CANONICAL_GRANT_PARAM_KEYS.has(key) && value) {
         searchParams.set(key, value)
       }
     }

@@ -17,6 +17,7 @@ afterEach(() => {
 });
 
 const pendingApprovalKey = 'v1_pending_approval';
+const pendingRedirectKey = 'v1_pending_grant_redirect';
 const authSessionKey = 'v1_auth_session';
 
 const basePending: PendingApproval = {
@@ -83,6 +84,29 @@ describe('pendingApproval', () => {
   });
 });
 
+describe('pendingGrantRedirect', () => {
+  it('strips secret query params before persisting redirect route', () => {
+    storage.savePendingGrantRedirect(
+      '/grant?sessionId=sess-1&secret=super-secret&deepLinkUrl=vana%3A%2F%2Fconnect'
+    );
+
+    const persisted = storage.getPendingGrantRedirect();
+    expect(persisted?.route).toBe(
+      '/grant?sessionId=sess-1&deepLinkUrl=vana%3A%2F%2Fconnect'
+    );
+  });
+
+  it('stores redirect payload with createdAt metadata', () => {
+    storage.savePendingGrantRedirect('/grant?sessionId=sess-1');
+    const raw = localStorage.getItem(pendingRedirectKey);
+
+    expect(raw).not.toBeNull();
+    const parsed = JSON.parse(raw as string);
+    expect(parsed.route).toBe('/grant?sessionId=sess-1');
+    expect(typeof parsed.createdAt).toBe('string');
+  });
+});
+
 describe('persistedAuthSession', () => {
   it('saves and retrieves persisted auth session', () => {
     storage.savePersistedAuthSession({
@@ -91,7 +115,6 @@ describe('persistedAuthSession', () => {
         email: 'test@vana.org',
       },
       walletAddress: '0xabc',
-      masterKeySignature: '0xsig',
     });
 
     const retrieved = storage.getPersistedAuthSession();
@@ -100,7 +123,6 @@ describe('persistedAuthSession', () => {
       email: 'test@vana.org',
     });
     expect(retrieved?.walletAddress).toBe('0xabc');
-    expect(retrieved?.masterKeySignature).toBe('0xsig');
     expect(typeof retrieved?.createdAt).toBe('string');
   });
 
@@ -108,7 +130,6 @@ describe('persistedAuthSession', () => {
     storage.savePersistedAuthSession({
       user: { id: 'user-2' },
       walletAddress: '0xdef',
-      masterKeySignature: null,
     });
     expect(storage.getPersistedAuthSession()).not.toBeNull();
 
@@ -141,7 +162,6 @@ describe('persistedAuthSession', () => {
       JSON.stringify({
         user: { id: 'user-1' },
         walletAddress: '0xabc',
-        masterKeySignature: null,
         createdAt: '2026-02-15T00:00:00.000Z',
       })
     );
@@ -149,5 +169,23 @@ describe('persistedAuthSession', () => {
     expect(storage.getPersistedAuthSession()).toBeNull();
     expect(localStorage.getItem(authSessionKey)).toBeNull();
     vi.useRealTimers();
+  });
+
+  it('drops masterKeySignature from persisted auth records', () => {
+    localStorage.setItem(
+      authSessionKey,
+      JSON.stringify({
+        user: { id: 'user-legacy' },
+        walletAddress: '0xlegacy',
+        masterKeySignature: 'should-not-be-loaded',
+        createdAt: new Date().toISOString(),
+      })
+    );
+
+    expect(storage.getPersistedAuthSession()).toEqual({
+      user: { id: 'user-legacy' },
+      walletAddress: '0xlegacy',
+      createdAt: expect.any(String),
+    });
   });
 });

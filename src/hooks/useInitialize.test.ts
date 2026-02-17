@@ -47,7 +47,7 @@ describe("useInitialize", () => {
             email: "test@vana.org",
           },
           walletAddress: "0xabc",
-          masterKeySignature: "0xsig",
+          masterKeySignature: null,
         })
       )
     })

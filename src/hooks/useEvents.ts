@@ -135,13 +135,25 @@ export function useEvents() {
         return;
       }
 
+      const authState = store.getState().app.auth;
+      const incomingSignature = result.masterKeySignature || null;
+      const incomingEmail = result.user.email || undefined;
+      if (
+        authState.isAuthenticated &&
+        authState.user?.id === result.user.id &&
+        (authState.user?.email || undefined) === incomingEmail &&
+        authState.walletAddress === result.walletAddress &&
+        authState.masterKeySignature === incomingSignature
+      ) {
+        return;
+      }
+
       savePersistedAuthSession({
         user: {
           id: result.user.id,
           email: result.user.email || undefined,
         },
         walletAddress: result.walletAddress,
-        masterKeySignature: result.masterKeySignature || null,
       });
       dispatch(
         setAuthenticated({

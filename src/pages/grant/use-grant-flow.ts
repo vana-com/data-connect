@@ -30,6 +30,12 @@ import type {
 } from "./types"
 import { ROUTES } from "@/config/routes"
 import { buildGrantSearchParams } from "@/lib/grant-params"
+import {
+  clearPendingGrantSecret,
+  consumePendingGrantSecret,
+  hasPendingGrantSecret,
+  stashPendingGrantSecret,
+} from "@/lib/pending-grant-secret"
 
 // Demo mode: sessions starting with "grant-session-" use mock data (dev only)
 function isDemoSession(sessionId: string): boolean {
@@ -72,15 +78,32 @@ export function useGrantFlow(params: GrantFlowParams, prefetched?: PrefetchedGra
   const [retryCount, setRetryCount] = useState(0)
 
   const sessionId = params?.sessionId
-  const secret = params?.secret
+  const [resumedSecret, setResumedSecret] = useState<string | undefined>(undefined)
+  const secret = params?.secret ?? resumedSecret
+  // Intentional behavior:
+  // If a secret is stashed for this sessionId, wait one render cycle to consume it
+  // before running the main flow. This avoids a transient "missing secret" error
+  // while still keeping the secret out of URL/localStorage.
+  const waitingForResumedSecret =
+    Boolean(sessionId) &&
+    !params?.secret &&
+    !resumedSecret &&
+    hasPendingGrantSecret(sessionId)
   const hasSuccessOverride = params?.status === "success"
   const contractGatedParamKeys = useMemo(
     () => Object.keys(params?.contractGatedParams ?? {}),
     [params?.contractGatedParams]
   )
   const contractGatedParamSignature = useMemo(
-    () => [...contractGatedParamKeys].sort().join(","),
-    [contractGatedParamKeys]
+    () =>
+      Object.entries(params?.contractGatedParams ?? {})
+        .sort(([aKey, aValue], [bKey, bValue]) => {
+          if (aKey === bKey) return aValue.localeCompare(bValue)
+          return aKey.localeCompare(bKey)
+        })
+        .map(([key, value]) => `${key}=${value}`)
+        .join("&"),
+    [params?.contractGatedParams]
   )
   const contractGatedParamsSnapshot = useMemo(
     () => ({ ...(params?.contractGatedParams ?? {}) }),
@@ -92,8 +115,22 @@ export function useGrantFlow(params: GrantFlowParams, prefetched?: PrefetchedGra
     setApprovalPending(false)
   }, [sessionId])
 
+  useEffect(() => {
+    if (!sessionId) {
+      setResumedSecret(undefined)
+      return
+    }
+    if (params?.secret) {
+      setResumedSecret(undefined)
+      clearPendingGrantSecret(sessionId)
+      return
+    }
+    setResumedSecret(consumePendingGrantSecret(sessionId))
+  }, [params?.secret, sessionId])
+
   // --- Main flow: load → claim → verify builder → consent ---
   useEffect(() => {
+    if (waitingForResumedSecret) return
     if (!sessionId) {
       setFlowState({
         sessionId: "",
@@ -270,7 +307,7 @@ export function useGrantFlow(params: GrantFlowParams, prefetched?: PrefetchedGra
 
     return () => { cancelled = true }
     // eslint-disable-next-line react-hooks/exhaustive-deps -- prefetched is stable from navigation state
-  }, [sessionId, secret, retryCount, contractGatedParamSignature, contractGatedParamsSnapshot])
+  }, [sessionId, secret, retryCount, waitingForResumedSecret, contractGatedParamSignature, contractGatedParamsSnapshot])
 
   // Handle success override (when returning from connect page)
   useEffect(() => {
@@ -285,7 +322,16 @@ export function useGrantFlow(params: GrantFlowParams, prefetched?: PrefetchedGra
 
     // Grant-time auth is removed. Route users to the root sign-in entrypoint.
     if (!isAuthenticated || !walletAddress) {
-      const resumeSearch = buildGrantSearchParams(params).toString()
+      // Intentional behavior/security tradeoff:
+      // - Never persist grant secret in URL/localStorage.
+      // - Secret is stashed in process memory only for same-process resume.
+      // - If the app fully restarts before auth returns, auto-resume loses secret
+      //   and approval must be restarted by the requester.
+      stashPendingGrantSecret(sessionId, secret)
+      const resumeSearch = buildGrantSearchParams({
+        ...params,
+        secret: undefined,
+      }).toString()
       const resumeRoute = `${ROUTES.grant}${resumeSearch ? `?${resumeSearch}` : ""}`
       savePendingGrantRedirect(resumeRoute)
       navigate(ROUTES.home)

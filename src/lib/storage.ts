@@ -94,13 +94,31 @@ const PendingGrantRedirectSchema = z.object({
 
 export function savePendingGrantRedirect(route: string): void {
   if (!route) return;
+  const sanitizedRoute = sanitizeGrantRedirectRoute(route);
   safeSetItem(
     PENDING_GRANT_REDIRECT_KEY,
     JSON.stringify({
-      route,
+      route: sanitizedRoute,
       createdAt: new Date().toISOString(),
     } satisfies PendingGrantRedirect),
   );
+}
+
+function sanitizeGrantRedirectRoute(route: string): string {
+  try {
+    const url = new URL(route, "https://databridge.local");
+    url.searchParams.delete("secret");
+    return `${url.pathname}${url.search}${url.hash}`;
+  } catch {
+    return route
+      .replace(/([?&])secret=[^&]*(&)?/g, (_match, prefix: string, hasTrailing: string) => {
+        if (prefix === "?" && hasTrailing) return "?";
+        if (prefix === "&" && hasTrailing) return "&";
+        return "";
+      })
+      .replace(/\?&/, "?")
+      .replace(/[?&]$/, "");
+  }
 }
 
 export function getPendingGrantRedirect(): PendingGrantRedirect | null {
@@ -129,7 +147,6 @@ export interface PersistedAuthSession {
     email?: string;
   };
   walletAddress: string;
-  masterKeySignature: string | null;
   createdAt: string;
 }
 
@@ -139,7 +156,6 @@ const PersistedAuthSessionSchema = z.object({
     email: z.string().optional(),
   }),
   walletAddress: z.string().min(1),
-  masterKeySignature: z.string().nullable(),
   createdAt: z.string().datetime(),
 });
 

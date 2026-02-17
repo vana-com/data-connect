@@ -2,6 +2,7 @@ import { beforeEach, describe, expect, it, vi } from "vitest"
 import { act, renderHook, waitFor } from "@testing-library/react"
 import { useGrantFlow } from "./use-grant-flow"
 import { getPendingGrantRedirect } from "@/lib/storage"
+import { __unsafeClearAllPendingGrantSecretsForTests } from "@/lib/pending-grant-secret"
 
 const mockNavigate = vi.fn()
 const mockClaimSession = vi.fn()
@@ -109,6 +110,7 @@ beforeEach(() => {
     restartingRef: { current: false },
   }
   localStorage.clear()
+  __unsafeClearAllPendingGrantSecretsForTests()
 })
 
 describe("useGrantFlow", () => {
@@ -155,11 +157,197 @@ describe("useGrantFlow", () => {
     expect(getPendingGrantRedirect()?.route).toContain(
       "/grant?sessionId=grant-session-456"
     )
-    expect(getPendingGrantRedirect()?.route).toContain("secret=secret-456")
+    expect(getPendingGrantRedirect()?.route).not.toContain("secret=")
     expect(getPendingGrantRedirect()?.route).toContain(
       "deepLinkUrl=vana%3A%2F%2Fconnect%3FsessionId%3Dgrant-session-456"
     )
     expect(mockNavigate).toHaveBeenCalledWith("/")
+  })
+
+  it("re-runs flow when contract-gated param values change with same keys", async () => {
+    mockClaimSession.mockResolvedValue({
+      sessionId: "real-session-cg",
+      granteeAddress: "0xbuilder",
+      scopes: ["chatgpt.conversations"],
+      expiresAt: "2030-01-01T00:00:00.000Z",
+    })
+    mockVerifyBuilder.mockResolvedValue({
+      name: "Contract Gated Builder",
+      appUrl: "https://test.example.com",
+    })
+
+    const { rerender } = renderHook((props: { deepLinkUrl: string }) =>
+      useGrantFlow({
+        sessionId: "real-session-cg",
+        secret: "test-secret",
+        contractGatedParams: {
+          deepLinkUrl: props.deepLinkUrl,
+        },
+      })
+    , {
+      initialProps: { deepLinkUrl: "vana://connect?sessionId=real-session-cg" },
+    })
+
+    await waitFor(() => {
+      expect(mockClaimSession).toHaveBeenCalledTimes(1)
+    })
+
+    rerender({ deepLinkUrl: "vana://connect?sessionId=real-session-cg-v2" })
+
+    await waitFor(() => {
+      expect(mockClaimSession).toHaveBeenCalledTimes(2)
+    })
+  })
+
+  it("restores in-memory secret after auth redirect and completes approval", async () => {
+    const prefetched = {
+      session: {
+        id: "resume-session-1",
+        granteeAddress: "0xbuilder",
+        scopes: ["chatgpt.conversations"],
+        expiresAt: "2030-01-01T00:00:00.000Z",
+      },
+      builderManifest: {
+        name: "Resume Builder",
+        appUrl: "https://resume.example.com",
+      },
+    }
+
+    // First pass: unauthenticated Allow stashes secret and redirects home.
+    authState = {
+      isAuthenticated: false,
+      isLoading: false,
+      walletAddress: null,
+    }
+    const first = renderHook(() =>
+      useGrantFlow(
+        {
+          sessionId: "resume-session-1",
+          secret: "resume-secret-1",
+        },
+        prefetched
+      )
+    )
+
+    await waitFor(() => {
+      expect(first.result.current.flowState.status).toBe("consent")
+    })
+
+    await act(async () => {
+      await first.result.current.handleApprove()
+    })
+    expect(mockNavigate).toHaveBeenCalledWith("/")
+    first.unmount()
+
+    // Second pass: authenticated return to /grant without secret in URL.
+    authState = {
+      isAuthenticated: true,
+      isLoading: false,
+      walletAddress: "0xuser",
+    }
+    mockCreateGrant.mockResolvedValue({ grantId: "grant-resume-1" })
+
+    const second = renderHook(() =>
+      useGrantFlow(
+        {
+          sessionId: "resume-session-1",
+        },
+        prefetched
+      )
+    )
+
+    await waitFor(() => {
+      expect(second.result.current.flowState.status).toBe("consent")
+    })
+
+    await act(async () => {
+      await second.result.current.handleApprove()
+    })
+
+    await waitFor(() => {
+      expect(second.result.current.flowState.status).toBe("success")
+    })
+    expect(mockApproveSession).toHaveBeenCalledWith("resume-session-1", {
+      secret: "resume-secret-1",
+      grantId: "grant-resume-1",
+      userAddress: "0xuser",
+      serverAddress: "0xserver",
+      scopes: ["chatgpt.conversations"],
+    })
+  })
+
+  it("resumes without prefetched state using consumed in-memory secret", async () => {
+    mockClaimSession.mockResolvedValue({
+      sessionId: "resume-real-session-1",
+      granteeAddress: "0xbuilder",
+      scopes: ["chatgpt.conversations"],
+      expiresAt: "2030-01-01T00:00:00.000Z",
+    })
+    mockVerifyBuilder.mockResolvedValue({
+      name: "Resume Real Builder",
+      appUrl: "https://resume-real.example.com",
+    })
+    mockCreateGrant.mockResolvedValue({ grantId: "grant-resume-real-1" })
+
+    authState = {
+      isAuthenticated: false,
+      isLoading: false,
+      walletAddress: null,
+    }
+
+    const first = renderHook(() =>
+      useGrantFlow({
+        sessionId: "resume-real-session-1",
+        secret: "resume-real-secret-1",
+      })
+    )
+
+    await waitFor(() => {
+      expect(first.result.current.flowState.status).toBe("consent")
+    })
+
+    await act(async () => {
+      await first.result.current.handleApprove()
+    })
+    expect(mockNavigate).toHaveBeenCalledWith("/")
+    first.unmount()
+
+    authState = {
+      isAuthenticated: true,
+      isLoading: false,
+      walletAddress: "0xuser",
+    }
+
+    const second = renderHook(() =>
+      useGrantFlow({
+        sessionId: "resume-real-session-1",
+      })
+    )
+
+    await waitFor(() => {
+      expect(second.result.current.flowState.status).toBe("consent")
+    })
+
+    await act(async () => {
+      await second.result.current.handleApprove()
+    })
+
+    await waitFor(() => {
+      expect(second.result.current.flowState.status).toBe("success")
+    })
+
+    expect(mockClaimSession).toHaveBeenCalledTimes(2)
+    expect(mockClaimSession).toHaveBeenLastCalledWith({
+      sessionId: "resume-real-session-1",
+      secret: "resume-real-secret-1",
+    })
+    expect(mockApproveSession).toHaveBeenCalledWith("resume-real-session-1", {
+      secret: "resume-real-secret-1",
+      grantId: "grant-resume-real-1",
+      userAddress: "0xuser",
+      serverAddress: "0xserver",
+      scopes: ["chatgpt.conversations"],
+    })
   })
 
   it("waits for Personal Server port and tunnel before approving", async () => {

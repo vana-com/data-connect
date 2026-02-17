@@ -75,6 +75,7 @@ describe("grant-params", () => {
       contractGatedParams: {
         deepLinkUrl: "vana://connect?sessionId=sess-1",
         appName: "Test Builder",
+        builderTheme: "dark",
       },
     })
 
@@ -85,6 +86,7 @@ describe("grant-params", () => {
     expect(roundTrip.contractGatedParams).toEqual({
       deepLinkUrl: "vana://connect?sessionId=sess-1",
       appName: "Test Builder",
+      builderTheme: "dark",
     })
     expect(roundTrip.sessionId).toBe("sess-1")
     expect(roundTrip.secret).toBe("secret-1")

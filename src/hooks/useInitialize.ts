@@ -37,7 +37,7 @@ export function useInitialize() {
         setAuthenticated({
           user: persistedAuth.user,
           walletAddress: persistedAuth.walletAddress,
-          masterKeySignature: persistedAuth.masterKeySignature,
+          masterKeySignature: null,
         })
       );
     } else if (persistedAuth) {

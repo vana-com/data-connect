@@ -425,7 +425,6 @@ describe("useGrantFlow", () => {
     expect(mockSavePendingApproval).toHaveBeenCalledWith({
       sessionId: "real-session-2",
       grantId: "grant-123",
-      secret: "test-secret",
       userAddress: "0xuser",
       serverAddress: "0xserver",
       scopes: ["chatgpt.conversations"],

@@ -3,6 +3,9 @@ import { renderHook, waitFor } from "@testing-library/react"
 import { usePendingApprovalRetry } from "./usePendingApproval"
 import * as storage from "../lib/storage"
 import * as sessionRelay from "../services/sessionRelay"
+import {
+  setPendingApprovalSecret,
+} from "../services/pending-approval-secret-bridge"
 
 vi.mock("../services/sessionRelay", () => ({
   approveSession: vi.fn(),
@@ -29,13 +32,13 @@ describe("usePendingApprovalRetry", () => {
     const pending: storage.PendingApproval = {
       sessionId: "sess-retry",
       grantId: "grant-retry",
-      secret: "secret-retry",
       userAddress: "0xabc",
       scopes: ["chatgpt.conversations"],
       createdAt: new Date().toISOString(),
     }
 
     storage.savePendingApproval(pending)
+    setPendingApprovalSecret("sess-retry", "secret-retry")
     ;(sessionRelay.approveSession as Mock).mockResolvedValue(undefined)
 
     const consoleSpy = vi.spyOn(console, "info").mockImplementation(() => {})
@@ -60,7 +63,6 @@ describe("usePendingApprovalRetry", () => {
     const pending: storage.PendingApproval = {
       sessionId: "sess-server",
       grantId: "grant-server",
-      secret: "secret-server",
       userAddress: "0xabc",
       serverAddress: "0xserver",
       scopes: ["chatgpt.conversations"],
@@ -68,6 +70,7 @@ describe("usePendingApprovalRetry", () => {
     }
 
     storage.savePendingApproval(pending)
+    setPendingApprovalSecret("sess-server", "secret-server")
     ;(sessionRelay.approveSession as Mock).mockResolvedValue(undefined)
 
     const consoleSpy = vi.spyOn(console, "info").mockImplementation(() => {})
@@ -92,13 +95,13 @@ describe("usePendingApprovalRetry", () => {
     const pending: storage.PendingApproval = {
       sessionId: "sess-no-server",
       grantId: "grant-no-server",
-      secret: "secret-no-server",
       userAddress: "0xdef",
       scopes: ["chatgpt.conversations"],
       createdAt: new Date().toISOString(),
     }
 
     storage.savePendingApproval(pending)
+    setPendingApprovalSecret("sess-no-server", "secret-no-server")
     ;(sessionRelay.approveSession as Mock).mockResolvedValue(undefined)
 
     const consoleSpy = vi.spyOn(console, "info").mockImplementation(() => {})
@@ -126,13 +129,13 @@ describe("usePendingApprovalRetry", () => {
     const pending: storage.PendingApproval = {
       sessionId: "sess-expired",
       grantId: "grant-expired",
-      secret: "secret-expired",
       userAddress: "0xdef",
       scopes: ["chatgpt.conversations"],
       createdAt: new Date().toISOString(),
     }
 
     storage.savePendingApproval(pending)
+    setPendingApprovalSecret("sess-expired", "secret-expired")
     ;(sessionRelay.approveSession as Mock).mockRejectedValue(
       new Error("Session expired")
     )
@@ -147,6 +150,27 @@ describe("usePendingApprovalRetry", () => {
 
     // Should still clear — don't retry forever on expired sessions
     expect(storage.getPendingApproval()).toBeNull()
+    consoleSpy.mockRestore()
+  })
+
+  it("retry_requires_runtime_secret_bridge_and_skips_without_secret", async () => {
+    const pending: storage.PendingApproval = {
+      sessionId: "sess-no-secret",
+      grantId: "grant-no-secret",
+      userAddress: "0xdef",
+      scopes: ["chatgpt.conversations"],
+      createdAt: new Date().toISOString(),
+    }
+
+    storage.savePendingApproval(pending)
+    const consoleSpy = vi.spyOn(console, "warn").mockImplementation(() => {})
+
+    renderHook(() => usePendingApprovalRetry())
+
+    await waitFor(() => {
+      expect(storage.getPendingApproval()).toBeNull()
+    })
+    expect(sessionRelay.approveSession).not.toHaveBeenCalled()
     consoleSpy.mockRestore()
   })
 })

@@ -1,6 +1,10 @@
 import { useEffect, useRef } from "react"
 import { getPendingApproval, clearPendingApproval } from "../lib/storage"
 import { approveSession } from "../services/sessionRelay"
+import {
+  clearPendingApprovalSecret,
+  getPendingApprovalSecret,
+} from "../services/pending-approval-secret-bridge"
 
 /**
  * On app startup, checks for a pending session approval left over from a
@@ -19,9 +23,19 @@ export function usePendingApprovalRetry() {
     if (!pending) return
 
     const retry = async () => {
+      const secret = getPendingApprovalSecret(pending.sessionId)
+      if (!secret) {
+        console.warn(
+          "[PendingApproval] Missing runtime secret bridge; skipping retry and clearing pending record:",
+          pending.sessionId,
+        )
+        clearPendingApproval()
+        return
+      }
+
       try {
         await approveSession(pending.sessionId, {
-          secret: pending.secret,
+          secret,
           grantId: pending.grantId,
           userAddress: pending.userAddress,
           ...(pending.serverAddress && { serverAddress: pending.serverAddress }),
@@ -39,6 +53,7 @@ export function usePendingApprovalRetry() {
           err
         )
       } finally {
+        clearPendingApprovalSecret(pending.sessionId)
         clearPendingApproval()
       }
     }

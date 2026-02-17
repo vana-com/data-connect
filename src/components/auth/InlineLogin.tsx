@@ -5,6 +5,7 @@ import { invoke } from '@tauri-apps/api/core';
 import { listen } from '@tauri-apps/api/event';
 import { Loader, ExternalLink } from 'lucide-react';
 import { setAuthenticated } from '../../state/store';
+import { saveAuthSession } from '../../services/auth-session';
 
 const PRIVY_APP_ID = import.meta.env.VITE_PRIVY_APP_ID;
 const PRIVY_CLIENT_ID = import.meta.env.VITE_PRIVY_CLIENT_ID;
@@ -40,16 +41,22 @@ export function InlineLogin() {
       const result = event.payload;
 
       if (result.success && result.user) {
+        const session = {
+          user: {
+            id: result.user.id,
+            email: result.user.email,
+          },
+          walletAddress: result.walletAddress || null,
+          masterKeySignature: result.masterKeySignature || null,
+        };
         dispatch(
           setAuthenticated({
-            user: {
-              id: result.user.id,
-              email: result.user.email,
-            },
-            walletAddress: result.walletAddress || null,
-            masterKeySignature: result.masterKeySignature || null,
+            user: session.user,
+            walletAddress: session.walletAddress,
+            masterKeySignature: session.masterKeySignature,
           })
         );
+        void saveAuthSession(session);
         navigate(-1); // Go back to grant flow
       } else {
         setError(result.error || 'Authentication failed. Please try again.');

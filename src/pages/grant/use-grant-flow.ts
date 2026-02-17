@@ -26,6 +26,7 @@ import {
   resolveAuthResumeGate,
   resolveInitialApprovalGate,
 } from "./grant-flow-auth-bridge"
+import { saveAuthSession } from "../../services/auth-session"
 
 const PRIVY_APP_ID = import.meta.env.VITE_PRIVY_APP_ID
 const PRIVY_CLIENT_ID = import.meta.env.VITE_PRIVY_CLIENT_ID
@@ -190,13 +191,19 @@ export function useGrantFlow(params: GrantFlowParams, prefetched?: PrefetchedGra
     }>("auth-complete", event => {
       const result = event.payload
       if (result.success && result.user) {
+        const session = {
+          user: { id: result.user.id, email: result.user.email || undefined },
+          walletAddress: result.walletAddress || null,
+          masterKeySignature: result.masterKeySignature || null,
+        }
         dispatch(
           setAuthenticated({
-            user: { id: result.user.id, email: result.user.email || undefined },
-            walletAddress: result.walletAddress || null,
-            masterKeySignature: result.masterKeySignature || null,
+            user: session.user,
+            walletAddress: session.walletAddress,
+            masterKeySignature: session.masterKeySignature,
           })
         )
+        void saveAuthSession(session)
       }
     })
     return () => {
@@ -226,9 +233,9 @@ export function useGrantFlow(params: GrantFlowParams, prefetched?: PrefetchedGra
     try {
       await runGrantApprovalPipeline({
         flowState,
-        walletAddress,
+        walletAddress: initialGate.walletAddress,
         personalServer: {
-          port: personalServer.port,
+          port: initialGate.personalServerPort,
           devToken: personalServer.devToken,
         },
         dispatch,

@@ -11,7 +11,7 @@ interface ResolveInitialApprovalGateArgs {
 export type InitialApprovalGate =
   | { type: "defer-auth"; status: GrantFlowStatus }
   | { type: "defer-server"; status: GrantFlowStatus }
-  | { type: "ready" }
+  | { type: "ready"; walletAddress: string; personalServerPort: number }
 
 export function resolveInitialApprovalGate({
   isAuthenticated,
@@ -27,7 +27,11 @@ export function resolveInitialApprovalGate({
     return { type: "defer-server", status: "creating-grant" }
   }
 
-  return { type: "ready" }
+  return {
+    type: "ready",
+    walletAddress,
+    personalServerPort,
+  }
 }
 
 interface ResolveAuthResumeGateArgs {

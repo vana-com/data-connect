@@ -37,7 +37,6 @@ const PENDING_APPROVAL_KEY = `${STORAGE_VERSION}_pending_approval`;
 export interface PendingApproval {
   sessionId: string;
   grantId: string;
-  secret: string;
   userAddress: string;
   serverAddress?: string;
   scopes: string[];
@@ -47,11 +46,14 @@ export interface PendingApproval {
 const PendingApprovalSchema = z.object({
   sessionId: z.string().min(1),
   grantId: z.string().min(1),
-  secret: z.string().min(1),
   userAddress: z.string().min(1),
   serverAddress: z.string().optional(),
   scopes: z.array(z.string()),
   createdAt: z.string(),
+});
+
+const LegacyPendingApprovalSchema = PendingApprovalSchema.extend({
+  secret: z.string().min(1),
 });
 
 export function savePendingApproval(approval: PendingApproval): void {
@@ -64,7 +66,22 @@ export function getPendingApproval(): PendingApproval | null {
   try {
     const parsed = JSON.parse(raw);
     const result = PendingApprovalSchema.safeParse(parsed);
-    return result.success ? result.data : null;
+    if (result.success) {
+      if (typeof parsed?.secret === "string") {
+        safeSetItem(PENDING_APPROVAL_KEY, JSON.stringify(result.data));
+      }
+      return result.data;
+    }
+
+    const legacyResult = LegacyPendingApprovalSchema.safeParse(parsed);
+    if (legacyResult.success) {
+      const { secret: _secret, ...migrated } = legacyResult.data;
+      // One-shot migration away from persisting secret at rest.
+      safeSetItem(PENDING_APPROVAL_KEY, JSON.stringify(migrated));
+      return migrated;
+    }
+
+    return null;
   } catch {
     return null;
   }

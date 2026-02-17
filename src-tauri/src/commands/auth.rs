@@ -1,7 +1,9 @@
 use serde::{Deserialize, Serialize};
+use dirs::home_dir;
+use std::fs;
 use std::io::{BufRead, BufReader, Read, Write};
 use std::net::TcpListener;
-use std::path::PathBuf;
+use std::path::{Path, PathBuf};
 use std::sync::mpsc;
 use std::thread;
 use std::time::{SystemTime, UNIX_EPOCH};
@@ -27,7 +29,19 @@ pub struct AuthUser {
     pub email: Option<String>,
 }
 
+#[derive(Debug, Serialize, Deserialize, Clone)]
+pub struct DurableAuthSession {
+    pub user: AuthUser,
+    #[serde(rename = "walletAddress")]
+    pub wallet_address: Option<String>,
+    #[serde(rename = "masterKeySignature")]
+    pub master_key_signature: Option<String>,
+    #[serde(rename = "savedAtMs")]
+    pub saved_at_ms: u64,
+}
+
 const CALLBACK_STATE_TTL_MS: u64 = 5 * 60 * 1000;
+const AUTH_SESSION_FILENAME: &str = "auth-session.json";
 
 #[derive(Debug, Clone)]
 struct CallbackState {
@@ -116,6 +130,61 @@ fn build_callback_reject_response(reason: CallbackRejectReason) -> String {
         reason_json.len(),
         reason_json
     )
+}
+
+fn get_auth_session_path() -> Result<PathBuf, String> {
+    let home = home_dir().ok_or("Failed to get home directory")?;
+    Ok(home.join(".databridge").join(AUTH_SESSION_FILENAME))
+}
+
+fn save_auth_session_at_path(path: &Path, session: &DurableAuthSession) -> Result<(), String> {
+    if let Some(parent) = path.parent() {
+        fs::create_dir_all(parent)
+            .map_err(|e| format!("Failed to create auth session directory: {}", e))?;
+    }
+
+    let content = serde_json::to_string_pretty(session)
+        .map_err(|e| format!("Failed to serialize auth session: {}", e))?;
+    fs::write(path, content).map_err(|e| format!("Failed to write auth session: {}", e))?;
+    Ok(())
+}
+
+fn load_auth_session_at_path(path: &Path) -> Result<Option<DurableAuthSession>, String> {
+    if !path.exists() {
+        return Ok(None);
+    }
+
+    let content = fs::read_to_string(path).map_err(|e| format!("Failed to read auth session: {}", e))?;
+    let session = serde_json::from_str::<DurableAuthSession>(&content)
+        .map_err(|e| format!("Failed to parse auth session: {}", e))?;
+    Ok(Some(session))
+}
+
+fn clear_auth_session_at_path(path: &Path) -> Result<(), String> {
+    if !path.exists() {
+        return Ok(());
+    }
+
+    fs::remove_file(path).map_err(|e| format!("Failed to clear auth session: {}", e))?;
+    Ok(())
+}
+
+#[tauri::command]
+pub async fn save_auth_session(session: DurableAuthSession) -> Result<(), String> {
+    let path = get_auth_session_path()?;
+    save_auth_session_at_path(&path, &session)
+}
+
+#[tauri::command]
+pub async fn load_auth_session() -> Result<Option<DurableAuthSession>, String> {
+    let path = get_auth_session_path()?;
+    load_auth_session_at_path(&path)
+}
+
+#[tauri::command]
+pub async fn clear_auth_session() -> Result<(), String> {
+    let path = get_auth_session_path()?;
+    clear_auth_session_at_path(&path)
 }
 
 fn parse_auth_callback_payload(
@@ -780,6 +849,34 @@ mod tests {
         let second =
             parse_auth_callback_payload(&valid_payload("expected-state"), &mut callback_state, 101);
         assert!(matches!(second, Err(CallbackRejectReason::ReplayedState)));
+    }
+
+    #[test]
+    fn save_load_clear_auth_session_roundtrip() {
+        let nanos = SystemTime::now()
+            .duration_since(UNIX_EPOCH)
+            .expect("clock should be after unix epoch")
+            .as_nanos();
+        let path = std::env::temp_dir().join(format!("auth_session_roundtrip_{}.json", nanos));
+
+        let session = DurableAuthSession {
+            user: AuthUser {
+                id: "user-1".to_string(),
+                email: Some("user@vana.org".to_string()),
+            },
+            wallet_address: Some("0xabc".to_string()),
+            master_key_signature: Some("sig-1".to_string()),
+            saved_at_ms: 123,
+        };
+
+        save_auth_session_at_path(&path, &session).expect("save should succeed");
+        let loaded = load_auth_session_at_path(&path).expect("load should succeed");
+        assert!(loaded.is_some());
+        assert_eq!(loaded.unwrap().user.id, "user-1");
+
+        clear_auth_session_at_path(&path).expect("clear should succeed");
+        let after_clear = load_auth_session_at_path(&path).expect("load after clear should succeed");
+        assert!(after_clear.is_none());
     }
 }
 

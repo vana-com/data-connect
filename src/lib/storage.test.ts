@@ -21,7 +21,6 @@ const pendingApprovalKey = 'v1_pending_approval';
 const basePending: PendingApproval = {
   sessionId: 'sess-123',
   grantId: 'grant-456',
-  secret: 'secret-abc',
   userAddress: '0x1234567890abcdef1234567890abcdef12345678',
   scopes: ['chatgpt.conversations'],
   createdAt: '2025-01-15T12:00:00Z',
@@ -79,5 +78,22 @@ describe('pendingApproval', () => {
       JSON.stringify({ sessionId: '', grantId: '' })
     );
     expect(storage.getPendingApproval()).toBeNull();
+  });
+
+  it('pending_approval_does_not_persist_secret_after_migration', () => {
+    localStorage.setItem(
+      pendingApprovalKey,
+      JSON.stringify({
+        ...basePending,
+        secret: 'legacy-secret',
+      })
+    );
+
+    const retrieved = storage.getPendingApproval();
+    expect(retrieved).toEqual(basePending);
+
+    const storedAfterRead = localStorage.getItem(pendingApprovalKey);
+    expect(storedAfterRead).not.toContain('legacy-secret');
+    expect(storedAfterRead).not.toContain('"secret"');
   });
 });

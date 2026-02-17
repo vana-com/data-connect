@@ -16,6 +16,36 @@
 
 ## Loopback Execution Updates
 
+- 2026-02-17 (current loop): completed **Slices 3.1 + 3.2 - Durable auth session service + remove pending-approval secret-at-rest**.
+  - Added durable auth persistence boundary:
+    - New frontend service `src/services/auth-session.ts` with Tauri-backed `save/load/clear` calls, session shape validation, and stale-session eviction.
+    - New startup hydration hook `src/hooks/useAuthSessionHydration.ts` wired into `src/App.tsx` so auth state restores before grant resume logic.
+    - Updated auth writers to persist durable session on successful callback (`src/pages/grant/use-grant-flow.ts`, `src/components/auth/InlineLogin.tsx`) and logout to clear durable auth (`src/hooks/useAuth.ts`).
+  - Added native session commands in `src-tauri/src/commands/auth.rs` and command wiring in `src-tauri/src/lib.rs`:
+    - `save_auth_session`
+    - `load_auth_session`
+    - `clear_auth_session`
+    - Added Rust roundtrip test `save_load_clear_auth_session_roundtrip`.
+  - Removed secret-at-rest from pending approval persistence:
+    - `src/lib/storage.ts`: removed `PendingApproval.secret` schema field; added one-shot legacy migration that strips persisted `secret`.
+    - `src/services/pending-approval-secret-bridge.ts`: introduced process-scoped in-memory secret bridge keyed by `sessionId`.
+    - `src/pages/grant/grant-flow-approval.ts`: stores runtime secret in bridge and persists only non-secret approval metadata.
+    - `src/hooks/usePendingApproval.ts`: retry now requires runtime secret bridge; skips/clears when secret is unavailable; always clears bridge key after retry path.
+  - Added/updated tests:
+    - New: `src/services/auth-session.test.ts`
+      - `hydrates_valid_session_on_startup`
+      - `evicts_invalid_or_stale_session`
+      - `logout_clears_durable_and_memory_state`
+    - Updated: `src/lib/storage.test.ts`
+      - `pending_approval_does_not_persist_secret_after_migration`
+    - Updated: `src/hooks/usePendingApproval.test.ts`
+      - `retry_requires_runtime_secret_bridge_and_skips_without_secret`
+    - Updated: `src/pages/grant/use-grant-flow.test.tsx` pending-approval payload assertion (no persisted secret).
+  - Why this slice now: Phase 3 is the primary remaining acceptance gap, and secret-at-rest removal is prerequisite for restart-safe auth/resume semantics without persistence policy violations.
+  - Validation completed (slice + relevant phase regression):
+    - `npx vitest run --maxWorkers=1 src/services/auth-session.test.ts src/lib/storage.test.ts src/hooks/usePendingApproval.test.ts src/pages/grant/use-grant-flow.test.tsx` (pass)
+    - `cargo test --manifest-path src-tauri/Cargo.toml auth::tests` (pass)
+
 - 2026-02-17 (current loop): completed **Slice 2.2 - Split bootstrap and approval pipelines** for `src/pages/grant/use-grant-flow.ts`.
   - Added `src/pages/grant/grant-flow-bootstrap.ts`:
     - Extracted bootstrap orchestration for demo, pre-fetched, pre-fetched-session-only, and fresh claim/verify paths into a dedicated module.

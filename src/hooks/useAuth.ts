@@ -2,6 +2,7 @@ import { useCallback, useEffect } from 'react';
 import { useDispatch, useSelector } from 'react-redux';
 import { clearAuth, setAuthLoading } from '../state/store';
 import type { RootState } from '../state/store';
+import { clearAuthSession } from '../services/auth-session';
 
 const PRIVY_APP_ID = import.meta.env.VITE_PRIVY_APP_ID;
 
@@ -19,6 +20,7 @@ export function useAuth() {
   }, [dispatch, auth.isLoading]);
 
   const logout = useCallback(async () => {
+    await clearAuthSession();
     dispatch(clearAuth());
   }, [dispatch]);
 

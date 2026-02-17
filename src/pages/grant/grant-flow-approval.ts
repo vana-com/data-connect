@@ -7,6 +7,10 @@ import {
   savePendingApproval,
   clearPendingApproval,
 } from "../../lib/storage"
+import {
+  clearPendingApprovalSecret,
+  setPendingApprovalSecret,
+} from "../../services/pending-approval-secret-bridge"
 import type { GrantFlowAction } from "./grant-flow-machine"
 import type {
   BuilderManifest,
@@ -103,12 +107,12 @@ export async function runGrantApprovalPipeline({
   savePendingApproval({
     sessionId: flowState.sessionId,
     grantId,
-    secret: flowState.secret,
     userAddress: walletAddress,
     serverAddress,
     scopes: flowState.session.scopes,
     createdAt: new Date().toISOString(),
   })
+  setPendingApprovalSecret(flowState.sessionId, flowState.secret)
 
   await approveSession(flowState.sessionId, {
     secret: flowState.secret,
@@ -119,6 +123,7 @@ export async function runGrantApprovalPipeline({
   })
 
   clearPendingApproval()
+  clearPendingApprovalSecret(flowState.sessionId)
 
   dispatch(
     addConnectedApp({

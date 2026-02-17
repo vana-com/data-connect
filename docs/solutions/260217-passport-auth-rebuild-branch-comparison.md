@@ -19,7 +19,7 @@ Comparison goal: validate whether the rebuild did a better job against `docs/pla
 
 The prior branch reached similar product behavior, but changes were delivered with broader early-scope refactors and mixed concerns in the same windows (legacy removals, docs/archive, auth/grant boundaries), increasing review burden and regression risk.
 
-The rebuild branch was intentionally executed as a phase-gated reimplementation, but introduced one callback token entropy regression that must be corrected.
+The rebuild branch was intentionally executed as a phase-gated reimplementation and briefly introduced a callback token entropy regression, which was corrected in `e23acdf`.
 
 ## Final fix
 
@@ -27,7 +27,7 @@ Branch-comparison findings and verdict:
 
 ### Findings (ordered by severity)
 
-- **P1 security regression on current branch:** `new_callback_state()` in `src-tauri/src/commands/auth.rs` now builds token as `auth-<pid>-<timestamp>`, which is low-entropy/predictable compared to old branch’s `OsRng + Sha256` generation.
+- **P1 security regression found and fixed:** `new_callback_state()` had temporarily moved to predictable `auth-<pid>-<timestamp>` and was restored to CSPRNG-backed URL-safe base64 token generation in `e23acdf` (with regression test coverage).
 - **Old branch sequencing is riskier:** starts with broad legacy auth surface removal (`e0ed5a5`) before callback hardening / seam extraction / gate tests, so blast radius is high early.
 - **Current branch is more phase-gated and reviewable:** commits map closely to plan phases (`9254214 -> 3607f33 -> 9edada2 -> 1ac0973 -> ad5e8e6/7b97ad0 -> bbd8e1f`) with tests interleaved.
 - **Phase 4 quality is better on current:** old branch kept contract-gated pass-through TODO path in `use-deep-link.ts`; current adds explicit normalizer seam and strict allowlist gate.
@@ -35,7 +35,7 @@ Branch-comparison findings and verdict:
 
 ### Phase-by-phase winner
 
-- **Phase 1 (callback boundary hardening):** Current (narrow win) for method-contract tests + reject reasons + exactly-once behavior coverage, but blocked by callback token entropy regression.
+- **Phase 1 (callback boundary hardening):** Current (clear win) for method-contract tests + reject reasons + exactly-once behavior coverage; callback token entropy regression is now fixed in `e23acdf`.
 - **Phase 2 (grant-flow architecture):** Current (clean seam extraction and decomposition sequence).
 - **Phase 3 (durable auth + resume boundaries):** Current (clearer service/bridge boundaries and less scattered orchestration).
 - **Phase 4 (deep-link normalization + contract gate):** Current (deterministic normalization + strict gate path beats pass-through TODO).
@@ -46,7 +46,7 @@ Branch-comparison findings and verdict:
 
 | Phase | Current branch evidence | Old branch evidence | Winner | Why |
 | --- | --- | --- | --- | --- |
-| Phase 1: callback boundary hardening | `9254214` (one-time callback state), `4b03498` (POST-only contract tests in `auth.rs`) | `9f06b38`, `e2e63a9`, `0d1dff9` | Current (narrow) | Better gate-first sequencing and explicit callback contract tests, but current has token entropy regression to fix. |
+| Phase 1: callback boundary hardening | `9254214` (one-time callback state), `4b03498` (POST-only contract tests in `auth.rs`), `e23acdf` (CSPRNG callback token restore + entropy test) | `9f06b38`, `e2e63a9`, `0d1dff9` | Current | Better gate-first sequencing, explicit callback contract tests, and restored high-entropy callback token generation. |
 | Phase 2: grant-flow architecture | `3607f33` (machine seam), `9edada2` (bootstrap/approval/auth bridge split), `6bbcb5d` (exactly-once test) | `7ab95d6`, `d0a1cd4` | Current | Cleaner separation trajectory with tighter phase mapping and less mixed scope. |
 | Phase 3: durable auth + resume semantics | `1ac0973` (`auth-session` service, `pending-approval-secret-bridge`, hydration hooks) | `4bb096b`, `08e3cab`, `d001bbc` | Current | More explicit module boundaries and clearer no-secret-at-rest behavior shape. |
 | Phase 4: deep-link normalization + contract gate | `ad5e8e6` (`grant-param-normalizer` seam), `7b97ad0` (strict allowlist gate), tests in `use-deep-link.test.tsx` and `grant-param-normalizer.test.ts` | `b31f270` (contract-gated pass-through + TODO logging) | Current | Deterministic canonicalization + enforceable strict mode beats deferred warning-only path. |
@@ -56,8 +56,7 @@ Branch-comparison findings and verdict:
 ### Verdict
 
 The rebuild branch is the better engineering effort for mergeability, reviewability, and plan fidelity.
-
-Non-negotiable follow-up before declaring strict superiority: restore cryptographically strong callback state token generation in `src-tauri/src/commands/auth.rs` (keep one-time consume + TTL semantics).
+The previously identified callback token entropy regression has been resolved in `e23acdf`.
 
 ## Why this approach
 
@@ -81,6 +80,8 @@ This makes the result defensible in review and reusable for future rebuild-vs-or
 - [x] `git log --left-right --cherry-pick --oneline callum1/bui-178-refactor-connectgrant-flow-in-dc...callum1/bui-178-passport-auth-conversion-rebuild`
 - [x] `git show callum1/bui-178-passport-auth-conversion-rebuild:src-tauri/src/commands/auth.rs | rg -n "state|signature|verify|authentic|Sha256|Digest"`
 - [x] `git show callum1/bui-178-refactor-connectgrant-flow-in-dc:src-tauri/src/commands/auth.rs | rg -n "state|signature|verify|authentic|Sha256|Digest"`
+- [x] `cargo test --manifest-path src-tauri/Cargo.toml new_callback_state_tokens_are_high_entropy_and_unique`
+- [x] `cargo check --manifest-path src-tauri/Cargo.toml`
 
 ## Reusable rule extracted
 
@@ -92,5 +93,4 @@ When doing a rebuild-vs-original comparison for auth/security-sensitive work:
 
 ## Follow-ups
 
-- Restore CSPRNG-backed callback state token generation on current branch.
-- Add an explicit test assertion for callback token unpredictability properties (length/format/uniqueness expectations and non-derivation from pid/time).
+- (Completed in `e23acdf`) Restore CSPRNG-backed callback state token generation on current branch and add explicit callback token entropy regression coverage.

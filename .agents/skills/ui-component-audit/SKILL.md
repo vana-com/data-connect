@@ -1,9 +1,9 @@
 ---
 name: ui-component-audit
-description: Audit and refactor React UI components to match DataBridge UI implementation rules (Text component, tokens, Tailwind, naming) and Vercel React/composition guidance. Use when the user asks for a UI audit, React audit, composition review, or to fix UI implementation issues in components.
+description: Audit and refactor React UI components to match DataConnect UI implementation rules (Text component, tokens, Tailwind, naming) and Vercel React/composition guidance. Use when the user asks for a UI audit, React audit, composition review, or to fix UI implementation issues in components.
 ---
 
-# UI Component Audit (DataBridge)
+# UI Component Audit (DataConnect)
 
 ## Scope
 

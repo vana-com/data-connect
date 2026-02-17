@@ -53,12 +53,12 @@ pub struct Platform {
     pub runtime: Option<String>,
 }
 
-/// Get the user connectors directory (~/.databridge/connectors/)
+/// Get the user connectors directory (~/.dataconnect/connectors/)
 fn get_user_connectors_dir() -> Option<PathBuf> {
     let home = std::env::var("HOME")
         .or_else(|_| std::env::var("USERPROFILE"))
         .ok()?;
-    let path = PathBuf::from(home).join(".databridge").join("connectors");
+    let path = PathBuf::from(home).join(".dataconnect").join("connectors");
     if path.exists() {
         log::info!("Found user connectors at: {:?}", path);
         Some(path)
@@ -95,7 +95,7 @@ fn get_connectors_dir(app: &AppHandle) -> PathBuf {
 
     // Try relative to executable location (development fallback)
     if let Ok(exe_path) = std::env::current_exe() {
-        // In dev: exe is at src-tauri/target/debug/databridge
+        // In dev: exe is at src-tauri/target/debug/dataconnect
         // Project root is 4 levels up
         if let Some(project_root) = exe_path
             .parent()  // target/debug
@@ -570,8 +570,8 @@ async fn start_playwright_run(
 
             // Set simulate no chrome flag for testing
             if simulate_no_chrome.unwrap_or(false) {
-                log::info!("Setting DATABRIDGE_SIMULATE_NO_CHROME=1");
-                cmd.env("DATABRIDGE_SIMULATE_NO_CHROME", "1");
+                log::info!("Setting DATACONNECT_SIMULATE_NO_CHROME=1");
+                cmd.env("DATACONNECT_SIMULATE_NO_CHROME", "1");
             }
 
             log::info!("Spawning Playwright runner...");
@@ -612,8 +612,8 @@ async fn start_playwright_run(
 
         // Set simulate no chrome flag for testing
         if simulate_no_chrome.unwrap_or(false) {
-            log::info!("Setting DATABRIDGE_SIMULATE_NO_CHROME=1 (dev mode)");
-            cmd.env("DATABRIDGE_SIMULATE_NO_CHROME", "1");
+            log::info!("Setting DATACONNECT_SIMULATE_NO_CHROME=1 (dev mode)");
+            cmd.env("DATACONNECT_SIMULATE_NO_CHROME", "1");
         }
 
         cmd.spawn()
@@ -814,7 +814,7 @@ pub async fn start_connector_run(
     // Build the connector API injection script
     let api_script = format!(
         r#"
-        // DataBridge Connector API
+        // DataConnect Connector API
         const __RUN_ID__ = "{}";
         const __PLATFORM_ID__ = "{}";
         const __FILENAME__ = "{}";
@@ -822,11 +822,11 @@ pub async fn start_connector_run(
         const __NAME__ = "{}";
 
         // Define log function first so other functions can reference it
-        const __databridgeLog = function(...args) {{
+        const __dataconnectLog = function(...args) {{
             const stringArgs = args.map(arg =>
                 typeof arg === 'object' ? JSON.stringify(arg) : String(arg)
             );
-            console.log('[DataBridge]', ...stringArgs);
+            console.log('[DataConnect]', ...stringArgs);
             if (window.__TAURI__ && window.__TAURI__.event) {{
                 window.__TAURI__.event.emit('connector-log', {{
                     runId: __RUN_ID__,
@@ -836,11 +836,11 @@ pub async fn start_connector_run(
             }}
         }};
 
-        window.__DATABRIDGE_API__ = {{
-            log: __databridgeLog,
+        window.__DATACONNECT_API__ = {{
+            log: __dataconnectLog,
             waitForElement: function(selector, elementName, multipleElements = false, timeout = 10000) {{
                 if (!multipleElements) {{
-                    __databridgeLog('Waiting for ' + elementName);
+                    __dataconnectLog('Waiting for ' + elementName);
                 }}
                 return new Promise((resolve) => {{
                     const startTime = Date.now();
@@ -850,11 +850,11 @@ pub async fn start_connector_run(
                             : document.querySelector(selector);
                         if (element && (multipleElements ? element.length > 0 : true)) {{
                             if (!multipleElements) {{
-                                __databridgeLog('Found ' + elementName);
+                                __dataconnectLog('Found ' + elementName);
                             }}
                             resolve(element);
                         }} else if (Date.now() - startTime >= timeout) {{
-                            __databridgeLog('Timeout waiting for ' + elementName);
+                            __dataconnectLog('Timeout waiting for ' + elementName);
                             resolve(null);
                         }} else {{
                             setTimeout(checkElement, 100);
@@ -867,7 +867,7 @@ pub async fn start_connector_run(
                 return new Promise(resolve => setTimeout(resolve, seconds * 1000));
             }},
             sendStatus: function(status) {{
-                __databridgeLog('Status: ' + (typeof status === 'string' ? status : JSON.stringify(status)));
+                __dataconnectLog('Status: ' + (typeof status === 'string' ? status : JSON.stringify(status)));
                 if (window.__TAURI__ && window.__TAURI__.event) {{
                     window.__TAURI__.event.emit('connector-status', {{
                         runId: __RUN_ID__,
@@ -877,7 +877,7 @@ pub async fn start_connector_run(
                 }}
             }},
             navigate: function(url) {{
-                __databridgeLog('Navigating to: ' + url);
+                __dataconnectLog('Navigating to: ' + url);
                 window.location.assign(url);
             }},
             getRunId: function() {{ return __RUN_ID__; }},
@@ -890,19 +890,19 @@ pub async fn start_connector_run(
             }}
         }};
 
-        window.__DATABRIDGE_RUN_ID__ = __RUN_ID__;
-        window.__DATABRIDGE_PLATFORM_ID__ = __PLATFORM_ID__;
-        window.__DATABRIDGE_FILENAME__ = __FILENAME__;
-        window.__DATABRIDGE_COMPANY__ = __COMPANY__;
-        window.__DATABRIDGE_NAME__ = __NAME__;
+        window.__DATACONNECT_RUN_ID__ = __RUN_ID__;
+        window.__DATACONNECT_PLATFORM_ID__ = __PLATFORM_ID__;
+        window.__DATACONNECT_FILENAME__ = __FILENAME__;
+        window.__DATACONNECT_COMPANY__ = __COMPANY__;
+        window.__DATACONNECT_NAME__ = __NAME__;
 
-        console.log('[DataBridge] API initialized for run:', __RUN_ID__);
+        console.log('[DataConnect] API initialized for run:', __RUN_ID__);
         "#,
         run_id, platform_id, filename, company, name
     );
 
     // Combine the API script with the connector script
-    // The connector script runs after page loads and stores results in window.__DATABRIDGE_RESULT__
+    // The connector script runs after page loads and stores results in window.__DATACONNECT_RESULT__
     // For playwright runtime, we also inject network capture and page API scripts
     let full_script = format!(
         r#"
@@ -921,9 +921,9 @@ pub async fn start_connector_run(
                     try {{
                         {}
                     }} catch (e) {{
-                        console.error('[DataBridge] Connector error:', e);
-                        window.__DATABRIDGE_STATUS__ = {{ type: 'ERROR', message: e.message }};
-                        window.__DATABRIDGE_RESULT__ = {{ error: e.message }};
+                        console.error('[DataConnect] Connector error:', e);
+                        window.__DATACONNECT_STATUS__ = {{ type: 'ERROR', message: e.message }};
+                        window.__DATACONNECT_RESULT__ = {{ error: e.message }};
                     }}
                 }}, 2000);
             }});
@@ -932,9 +932,9 @@ pub async fn start_connector_run(
                 try {{
                     {}
                 }} catch (e) {{
-                    console.error('[DataBridge] Connector error:', e);
-                    window.__DATABRIDGE_STATUS__ = {{ type: 'ERROR', message: e.message }};
-                    window.__DATABRIDGE_RESULT__ = {{ error: e.message }};
+                    console.error('[DataConnect] Connector error:', e);
+                    window.__DATACONNECT_STATUS__ = {{ type: 'ERROR', message: e.message }};
+                    window.__DATACONNECT_RESULT__ = {{ error: e.message }};
                 }}
             }}, 2000);
         }}
@@ -944,7 +944,7 @@ pub async fn start_connector_run(
 
     // Create the webview window
     let webview = WebviewWindowBuilder::new(&app, &window_label, WebviewUrl::External(connect_url.parse().map_err(|e| format!("Invalid URL: {}", e))?))
-        .title(format!("DataBridge - {}", name))
+        .title(format!("DataConnect - {}", name))
         .inner_size(1024.0, 768.0)
         .initialization_script(&full_script)
         .build()
@@ -1027,32 +1027,32 @@ async fn poll_connector_result(
         let check_script = r#"
             (function() {
                 try {
-                    var result = window.__DATABRIDGE_RESULT__;
-                    var status = window.__DATABRIDGE_STATUS__;
+                    var result = window.__DATACONNECT_RESULT__;
+                    var status = window.__DATACONNECT_STATUS__;
 
-                    if (result && !window.__DATABRIDGE_HASH_SET__) {
-                        window.__DATABRIDGE_HASH_SET__ = true;
+                    if (result && !window.__DATACONNECT_HASH_SET__) {
+                        window.__DATACONNECT_HASH_SET__ = true;
                         var encoded = btoa(unescape(encodeURIComponent(JSON.stringify({
                             type: 'RESULT',
                             data: result
                         }))));
-                        window.location.hash = 'DATABRIDGE_' + encoded;
+                        window.location.hash = 'DATACONNECT_' + encoded;
                         return;
                     }
 
-                    if (status && status.type && !window.__DATABRIDGE_HASH_SET__) {
+                    if (status && status.type && !window.__DATACONNECT_HASH_SET__) {
                         var statusKey = status.type + '_' + (status.message || '');
-                        if (window.__DATABRIDGE_LAST_STATUS_KEY__ !== statusKey) {
-                            window.__DATABRIDGE_LAST_STATUS_KEY__ = statusKey;
+                        if (window.__DATACONNECT_LAST_STATUS_KEY__ !== statusKey) {
+                            window.__DATACONNECT_LAST_STATUS_KEY__ = statusKey;
                             var encoded = btoa(unescape(encodeURIComponent(JSON.stringify({
                                 type: 'STATUS',
                                 data: status
                             }))));
-                            window.location.hash = 'DATABRIDGE_' + encoded;
+                            window.location.hash = 'DATACONNECT_' + encoded;
                         }
                     }
                 } catch(e) {
-                    console.error('[DataBridge Poll] Error:', e);
+                    console.error('[DataConnect Poll] Error:', e);
                 }
             })();
         "#;
@@ -1065,8 +1065,8 @@ async fn poll_connector_result(
         // Read the URL to check the hash
         if let Ok(url) = webview.url() {
             let url_str = url.to_string();
-            if let Some(hash_pos) = url_str.find("#DATABRIDGE_") {
-                let hash = &url_str[hash_pos + 12..]; // Skip "#DATABRIDGE_"
+            if let Some(hash_pos) = url_str.find("#DATACONNECT_") {
+                let hash = &url_str[hash_pos + 12..]; // Skip "#DATACONNECT_"
 
                 // Skip if we've already processed this hash
                 if hash == last_status_hash {
@@ -1368,13 +1368,13 @@ pub async fn test_nodejs(app: AppHandle) -> Result<serde_json::Value, String> {
     Err("No response from Node.js runtime".to_string())
 }
 
-/// Get downloaded Chromium path from ~/.databridge/browsers
+/// Get downloaded Chromium path from ~/.dataconnect/browsers
 fn get_downloaded_chromium_path() -> Option<PathBuf> {
     let home = std::env::var("HOME")
         .or_else(|_| std::env::var("USERPROFILE"))
         .ok()?;
 
-    let browsers_dir = PathBuf::from(&home).join(".databridge").join("browsers");
+    let browsers_dir = PathBuf::from(&home).join(".dataconnect").join("browsers");
     if !browsers_dir.exists() {
         return None;
     }
@@ -1496,7 +1496,7 @@ pub async fn list_browser_sessions() -> Result<Vec<BrowserSessionInfo>, String> 
         .map_err(|_| "Could not determine home directory".to_string())?;
 
     let profiles_dir = PathBuf::from(&home)
-        .join(".databridge")
+        .join(".dataconnect")
         .join("browser-profiles");
 
     if !profiles_dir.exists() {
@@ -1553,7 +1553,7 @@ pub async fn clear_browser_session(connector_id: String) -> Result<(), String> {
         .map_err(|_| "Could not determine home directory".to_string())?;
 
     let profile_dir = PathBuf::from(&home)
-        .join(".databridge")
+        .join(".dataconnect")
         .join("browser-profiles")
         .join(&connector_id);
 
@@ -1563,7 +1563,7 @@ pub async fn clear_browser_session(connector_id: String) -> Result<(), String> {
 
     // Verify the path is within browser-profiles to prevent directory traversal
     let profiles_parent = PathBuf::from(&home)
-        .join(".databridge")
+        .join(".dataconnect")
         .join("browser-profiles");
     if !profile_dir.starts_with(&profiles_parent) {
         return Err("Invalid connector ID".to_string());
@@ -1592,7 +1592,7 @@ pub async fn download_chromium_rust(app: AppHandle) -> Result<String, String> {
         .or_else(|_| std::env::var("USERPROFILE"))
         .map_err(|_| "Could not determine home directory")?;
 
-    let browsers_dir = PathBuf::from(&home).join(".databridge").join("browsers");
+    let browsers_dir = PathBuf::from(&home).join(".dataconnect").join("browsers");
     std::fs::create_dir_all(&browsers_dir)
         .map_err(|e| format!("Failed to create browsers directory: {}", e))?;
 

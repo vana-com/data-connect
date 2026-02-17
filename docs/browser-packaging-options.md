@@ -1,4 +1,4 @@
-# Browser Packaging Options for DataBridge
+# Browser Packaging Options for DataConnect
 
 ## Current Approach: Lazy-Load Chromium
 

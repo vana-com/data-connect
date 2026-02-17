@@ -1,5 +1,5 @@
 /**
- * Personal Server wrapper for DataBridge (CJS entry for pkg)
+ * Personal Server wrapper for DataConnect (CJS entry for pkg)
  *
  * Runs as a subprocess managed by the Tauri backend.
  * Communicates status via JSON lines on stdout.

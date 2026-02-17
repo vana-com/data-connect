@@ -1,6 +1,6 @@
 # Privy Vanilla JavaScript SDK (`@privy-io/js-sdk-core`) Documentation
 
-> Reference documentation for integrating Privy authentication and wallet infrastructure using the vanilla JS SDK. This is the low-level SDK used by DataBridge's self-contained auth page (not the React SDK).
+> Reference documentation for integrating Privy authentication and wallet infrastructure using the vanilla JS SDK. This is the low-level SDK used by DataConnect's self-contained auth page (not the React SDK).
 
 **Package:** `@privy-io/js-sdk-core`
 **Docs:** https://docs.privy.io/recipes/core-js
@@ -24,7 +24,7 @@
    - [Using Wallets (Signing & Transactions)](#using-wallets)
 8. [User Management](#user-management)
 9. [Security Model](#security-model)
-10. [DataBridge-Specific Notes](#databridge-specific-notes)
+10. [DataConnect-Specific Notes](#dataconnect-specific-notes)
 11. [API Quick Reference](#api-quick-reference)
 12. [Troubleshooting](#troubleshooting)
 
@@ -38,14 +38,14 @@
 - **Embedded wallets** — Self-custodial Ethereum and Solana wallets provisioned client-side
 - **User management** — Link multiple auth methods to a single user account
 
-Privy explicitly notes this is a low-level library and recommends contacting their team before using it (vs. the React SDK). DataBridge uses it because the auth page is a standalone HTML file served by Rust, not a React app.
+Privy explicitly notes this is a low-level library and recommends contacting their team before using it (vs. the React SDK). DataConnect uses it because the auth page is a standalone HTML file served by Rust, not a React app.
 
 ---
 
 ## Prerequisites
 
 - A **Privy App ID** and **Client ID** from the [Privy Dashboard](https://dashboard.privy.io)
-- Configure allowed origins in the dashboard (e.g., `http://localhost:3083` for DataBridge dev)
+- Configure allowed origins in the dashboard (e.g., `http://localhost:3083` for DataConnect dev)
 - Configure allowed OAuth redirect URLs in the dashboard
 
 ---
@@ -56,7 +56,7 @@ Privy explicitly notes this is a low-level library and recommends contacting the
 npm install @privy-io/js-sdk-core@latest
 ```
 
-For CDN usage (as DataBridge does in the bundled auth page):
+For CDN usage (as DataConnect does in the bundled auth page):
 
 ```html
 <script type="module">
@@ -88,7 +88,7 @@ const privy = new Privy({
 | `LocalStorage` | Default, works for OAuth flows | Requires stable origin (fixed port) |
 | `InMemoryCache` | Email/SMS OTP only | Breaks OAuth — state lost on redirect |
 
-For DataBridge's localhost server, a **fixed port (3083)** is required so localStorage persists across the OAuth redirect cycle.
+For DataConnect's localhost server, a **fixed port (3083)** is required so localStorage persists across the OAuth redirect cycle.
 
 ---
 
@@ -300,9 +300,9 @@ Supported chains: All EVM-compatible (Ethereum, Base, Arbitrum, HyperEVM, etc.),
 
 ---
 
-## DataBridge-Specific Notes
+## DataConnect-Specific Notes
 
-DataBridge uses the vanilla JS SDK in a self-contained HTML page served by Rust:
+DataConnect uses the vanilla JS SDK in a self-contained HTML page served by Rust:
 
 ### Auth Flow
 

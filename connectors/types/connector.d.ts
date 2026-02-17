@@ -1,5 +1,5 @@
 /**
- * DataBridge Connector Type Definitions
+ * DataConnect Connector Type Definitions
  *
  * These types define the interface for building connectors that export
  * data from various platforms.
@@ -116,12 +116,12 @@ export interface ConnectorModule {
 /** Global augmentation for the injected API */
 declare global {
   interface Window {
-    __DATABRIDGE_API__: ConnectorAPI;
-    __DATABRIDGE_RUN_ID__: string;
-    __DATABRIDGE_PLATFORM_ID__: string;
-    __DATABRIDGE_FILENAME__: string;
-    __DATABRIDGE_COMPANY__: string;
-    __DATABRIDGE_NAME__: string;
+    __DATACONNECT_API__: ConnectorAPI;
+    __DATACONNECT_RUN_ID__: string;
+    __DATACONNECT_PLATFORM_ID__: string;
+    __DATACONNECT_FILENAME__: string;
+    __DATACONNECT_COMPANY__: string;
+    __DATACONNECT_NAME__: string;
   }
 }
 

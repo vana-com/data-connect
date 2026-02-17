@@ -1,4 +1,4 @@
-# DataBridge
+# DataConnect
 
 Desktop app for exporting your data from various platforms.
 
@@ -11,7 +11,7 @@ Download the latest release from [Releases](../../releases).
 The app is not code-signed yet. After installing, run:
 
 ```bash
-xattr -cr /Applications/DataBridge.app
+xattr -cr /Applications/DataConnect.app
 ```
 
 Then open the app normally.
@@ -26,12 +26,12 @@ Use the `.deb` or `.AppImage` package.
 
 ## Browser Requirements
 
-DataBridge uses browser automation to export your data. On first launch:
+DataConnect uses browser automation to export your data. On first launch:
 
 1. **If you have Chrome/Edge installed:** The app uses your existing browser (recommended)
 2. **If no browser is found:** The app downloads Chromium (~160 MB) automatically
 
-The downloaded browser is stored in `~/.databridge/browsers/` and persists across app updates.
+The downloaded browser is stored in `~/.dataconnect/browsers/` and persists across app updates.
 
 ## Supported Platforms
 
@@ -113,7 +113,7 @@ npm run release:github -- --version X.Y.Z
 
 ```
 ┌─────────────────────────────────────────────────────────┐
-│                    DataBridge App                        │
+│                    DataConnect App                        │
 │  ┌─────────────┐  ┌─────────────┐  ┌─────────────────┐  │
 │  │   React UI  │  │ Tauri/Rust  │  │ Playwright      │  │
 │  │  (Frontend) │◄─►│  (Backend)  │◄─►│ Runner          │  │
@@ -132,7 +132,7 @@ npm run release:github -- --version X.Y.Z
 
 1. **System Chrome** - `/Applications/Google Chrome.app` (macOS)
 2. **System Edge** - Available on Windows
-3. **Downloaded Chromium** - `~/.databridge/browsers/`
+3. **Downloaded Chromium** - `~/.dataconnect/browsers/`
 4. **Auto-download** - If nothing found, downloads Chromium on first run
 
 ## Connectors

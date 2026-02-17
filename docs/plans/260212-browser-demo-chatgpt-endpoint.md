@@ -2,7 +2,7 @@
 
 ## Goal
 
-Get a browser-only external demo app live in hours by exposing the latest ChatGPT parsed export over localhost HTTP from a running DataBridge instance, without touching core personal-server implementation.
+Get a browser-only external demo app live in hours by exposing the latest ChatGPT parsed export over localhost HTTP from a running DataConnect instance, without touching core personal-server implementation.
 
 Success criteria for this iteration:
 - A standalone sidecar demo server serves `GET /v1/demo/chatgpt/latest`.
@@ -92,7 +92,7 @@ Out of scope for this launch:
 ## Later polish (explicitly not part of fast launch)
 
 1. **Auth hardening**
-   - Add bearer token guard (`DATABRIDGE_DEMO_TOKEN` or reuse existing `devToken` model).
+   - Add bearer token guard (`DATACONNECT_DEMO_TOKEN` or reuse existing `devToken` model).
    - Define token distribution/rotation strategy for demo app.
 
 2. **CORS hardening**

@@ -8,12 +8,12 @@ updated: 2026-02-10
 
 ## Overview
 
-DataBridge is a desktop client that coordinates data export runs and app grants.
+DataConnect is a desktop client that coordinates data export runs and app grants.
 It is not a protocol participant; if a Personal Server is bundled, that server is
 the on-chain participant.
 
 This architecture exists to implement the Data Portability Protocol:
-`docs/260121-data-portability-protocol-spec.md`. DataBridge extracts and stores
+`docs/260121-data-portability-protocol-spec.md`. DataConnect extracts and stores
 personal data locally so it can be used via the protocol, while keeping protocol
 participation and on-chain responsibilities in the Personal Server.
 

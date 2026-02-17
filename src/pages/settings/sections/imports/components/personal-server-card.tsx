@@ -1,4 +1,3 @@
-import { useNavigate } from "react-router"
 import {
   CheckCircleIcon,
   ExternalLinkIcon,
@@ -12,21 +11,20 @@ import { OpenExternalLink } from "@/components/typography/link-open-external"
 import { Text } from "@/components/typography/text"
 import { Button } from "@/components/ui/button"
 import { cn } from "@/lib/classes"
-import { ROUTES } from "@/config/routes"
 
 export interface PersonalServerCardProps {
   isAuthenticated: boolean
   personalServer: ReturnType<typeof usePersonalServer>
   serverId: string | null
+  onSignIn: () => void
 }
 
 export function PersonalServerCard({
   isAuthenticated,
   personalServer,
   serverId,
+  onSignIn,
 }: PersonalServerCardProps) {
-  const navigate = useNavigate()
-
   const isRunning = personalServer.status === "running"
   const isStarting = personalServer.status === "starting"
   const statusKey = isRunning
@@ -65,7 +63,7 @@ export function PersonalServerCard({
             type="button"
             variant="accent"
             size="sm"
-            onClick={() => navigate(ROUTES.login)}
+            onClick={onSignIn}
           >
             <LogInIcon aria-hidden="true" className="size-4" />
             Sign in

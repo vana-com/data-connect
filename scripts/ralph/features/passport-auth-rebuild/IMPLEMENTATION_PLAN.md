@@ -16,6 +16,24 @@
 
 ## Loopback Execution Updates
 
+- 2026-02-17 (current loop): completed **Slice 5.1 - Legacy route/surface removal**.
+  - Removed legacy auth UI surfaces and routing:
+    - Deleted `src/components/auth/InlineLogin.tsx`.
+    - Deleted `src/pages/browser-login/*`.
+    - Removed `ROUTES.login` and `ROUTES.browserLogin` from `src/config/routes.ts`.
+    - Removed related route wiring/imports from `src/App.tsx`.
+  - Kept `start_browser_auth` + `src/auth-page/*` as the single auth runtime path.
+  - Rewired settings sign-in to use canonical browser-auth command directly:
+    - `src/pages/settings/use-settings-page.ts` now launches `start_browser_auth`, listens for `auth-complete`, and persists auth state/session via `setAuthenticated` + `saveAuthSession`.
+    - This preserves non-grant sign-in entrypoints without resurrecting legacy `/login` route surface.
+  - Updated stale route-coupled UI artifact:
+    - `src/pages/settings/sections/imports/components/personal-server-card.tsx` now accepts an `onSignIn` callback instead of navigating to removed `ROUTES.login`.
+  - Why this slice now: this closes the remaining Phase 5 functional gap by removing dead auth entry surfaces while preserving the replacement auth boundary (`start_browser_auth` -> `auth-complete`).
+  - Validation completed (slice + relevant phase gate checks):
+    - `npx vitest run --maxWorkers=1 src/pages/connect/index.test.tsx src/pages/grant/use-grant-flow.test.tsx` (pass)
+    - `npx vitest run --maxWorkers=1 src/auth-page/auth.test.ts` (pass)
+    - `npx tsc -b` (pass)
+
 - 2026-02-17 (current loop): completed **Slice 5.2 - Logging polish**.
   - Added explicit debug gate for verbose auth/connect logs:
     - `src/config/dev-flags.ts` now exposes `DEV_FLAGS.verboseAuthLogs` from `VITE_VERBOSE_AUTH_LOGS`.
@@ -191,7 +209,7 @@ Phases are preserved from `docs/plans/260217-passport-auth-rebuild-plan.md` and 
 | Grant flow decomposed with transition tests | Partial: transition tests exist; orchestration is monolithic in one hook | `src/pages/grant/use-grant-flow.ts` (`useGrantFlow`, `runFlow`, `handleApprove`), `src/pages/grant/use-grant-flow.test.tsx` | Split into page-local modules (bootstrap/approval/auth-resume reducer seam) while preserving behavior |
 | Durable auth + resume without secret-at-rest | Missing/violating: auth is Redux-memory only; pending approval stores `secret` in localStorage | `src/state/store.ts`, `src/hooks/useAuth.ts`, `src/lib/storage.ts` (`PendingApproval.secret`), `src/hooks/usePendingApproval.ts` | Add durable auth session store + bootstrap; remove at-rest `secret` persistence, replace with process-scoped bridge |
 | Deep-link normalization deterministic + bounded compatibility while strict allowlist blocked | Partial: normalization exists with tests; no strict allowlist mode and compatibility bounds are implicit | `src/hooks/use-deep-link.ts` (`parseDeepLinkUrl`, fallback redirect), `src/lib/grant-params.ts` | Introduce explicit normalizer contract + compat parser; add strict-mode gate flag and blocked-item tracking |
-| Legacy auth surfaces removed only after replacement validation | Missing: `src/auth-page/*`, `src/pages/browser-login/*`, `ROUTES.browserLogin`, `InlineLogin` still active | `src/auth-page/auth.ts`, `src/pages/browser-login/use-browser-login.ts`, `src/config/routes.ts`, `src/App.tsx`, `src/components/auth/InlineLogin.tsx` | Remove legacy surfaces in final phase after replacement gate passes and regression tests are green |
+| Legacy auth surfaces removed only after replacement validation | Completed: `src/pages/browser-login/*` and `InlineLogin` removed; `start_browser_auth` + `src/auth-page/*` remain as canonical auth path | `src/auth-page/auth.ts`, `src/config/routes.ts`, `src/App.tsx`, `src/pages/settings/use-settings-page.ts` | Removed legacy route surfaces and rewired settings sign-in to canonical browser auth command |
 | Each delivered slice satisfies phase exit gate with tests | Partial: tests exist but not structured by phase gate for callback/security/durable-auth contracts | Existing test files + new Rust tests | Add gate-mapped tests and enforce per-slice command set |
 
 ## Phase 0 - Freeze Invariants First (No Behavior Change)
@@ -584,8 +602,8 @@ Run the full set at each phase boundary (and before merge). Expected outcome is 
   - Expected: canonical parse/normalize round-trips pass.
 - `npx vitest run src/lib/storage.test.ts src/hooks/usePendingApproval.test.ts`
   - Expected: persistence schema and retry semantics pass (no secret-at-rest in target state).
-- `npx vitest run src/auth-page/auth.test.ts src/pages/browser-login/index.test.tsx`
-  - Expected: only while legacy surfaces still exist; remove from gate once deleted.
+- `npx vitest run src/auth-page/auth.test.ts`
+  - Expected: auth callback page behavior remains green through replacement-only path.
 - `cargo test --manifest-path src-tauri/Cargo.toml`
   - Expected: Rust callback validation tests pass (including replay/expiry/one-time cases).
 - `npx tsc -b`

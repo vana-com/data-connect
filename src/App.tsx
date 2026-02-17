@@ -1,13 +1,11 @@
 import { lazy, Suspense } from "react"
-import { BrowserRouter, Routes, Route, useLocation } from "react-router-dom"
+import { BrowserRouter, Routes, Route } from "react-router-dom"
 import { Provider } from "react-redux"
 import { store } from "./state/store"
 import { useEvents } from "./hooks/useEvents"
 import { useInitialize } from "./hooks/useInitialize"
 import { TopNav } from "./components/top-nav"
 import { PrivyProvider } from "./components/providers/PrivyProvider"
-import { InlineLogin } from "./components/auth/InlineLogin"
-import { BrowserLogin } from "./pages/browser-login"
 import { useDeepLink } from "./hooks/use-deep-link"
 import { usePersonalServer } from "./hooks/usePersonalServer"
 import { usePendingApprovalRetry } from "./hooks/usePendingApproval"
@@ -86,25 +84,12 @@ function AppContent() {
               <Route path={ROUTES.settings} element={<Settings />} />
               <Route path={ROUTES.connect} element={<Connect />} />
               <Route path={ROUTES.grant} element={<Grant />} />
-              <Route path={ROUTES.login} element={<InlineLogin />} />
             </Routes>
           </Suspense>
         </main>
       </div>
     </div>
   )
-}
-
-// Router wrapper that handles both app content and standalone browser login
-function AppRouter() {
-  const location = useLocation()
-
-  // Browser login page is standalone (for external browser auth flow)
-  if (location.pathname === ROUTES.browserLogin) {
-    return <BrowserLogin />
-  }
-
-  return <AppContent />
 }
 
 function App() {
@@ -115,7 +100,6 @@ function App() {
           <BrowserRouter>
             <Suspense fallback={<div className="p-8">Loading...</div>}>
               <Routes>
-                <Route path={ROUTES.browserLogin} element={<BrowserLogin />} />
                 <Route
                   path={ROUTES.rickrollMockRoot}
                   element={<RickrollMockRoot />}
@@ -130,7 +114,7 @@ function App() {
                 <Route path={ROUTES.demoAuth} element={<DemoAuth />} />
                 <Route path={ROUTES.demoConsent} element={<DemoConsent />} />
                 <Route path={ROUTES.demoSuccess} element={<DemoSuccess />} />
-                <Route path="/*" element={<AppRouter />} />
+                <Route path="/*" element={<AppContent />} />
               </Routes>
             </Suspense>
           </BrowserRouter>

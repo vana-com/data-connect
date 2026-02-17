@@ -1,6 +1,8 @@
 import { getVersion } from "@tauri-apps/api/app"
 import { invoke } from "@tauri-apps/api/core"
-import { useCallback, useEffect, useState } from "react"
+import { listen } from "@tauri-apps/api/event"
+import { useCallback, useEffect, useRef, useState } from "react"
+import { useDispatch } from "react-redux"
 import { useNavigate, useSearchParams } from "react-router"
 import { useAuth } from "@/hooks/useAuth"
 import { usePersonalServer } from "@/hooks/usePersonalServer"
@@ -8,6 +10,8 @@ import { useConnectedApps } from "@/hooks/useConnectedApps"
 import { ROUTES } from "@/config/routes"
 import { openLocalPath } from "@/lib/open-resource"
 import { getUserDataPath } from "@/lib/tauri-paths"
+import { setAuthenticated } from "@/state/store"
+import { saveAuthSession } from "@/services/auth-session"
 import type { BrowserSession, BrowserStatus, NodeJsTestResult, SettingsSection } from "./types"
 import {
   DEFAULT_SETTINGS_SECTION,
@@ -16,9 +20,22 @@ import {
 } from "./url"
 
 const IMPORTS_SECTION: SettingsSection = "imports"
+const PRIVY_APP_ID = import.meta.env.VITE_PRIVY_APP_ID
+const PRIVY_CLIENT_ID = import.meta.env.VITE_PRIVY_CLIENT_ID
+
+interface AuthResultPayload {
+  success: boolean
+  user?: {
+    id: string
+    email: string | null
+  }
+  walletAddress?: string | null
+  masterKeySignature?: string | null
+}
 
 export function useSettingsPage() {
   const navigate = useNavigate()
+  const dispatch = useDispatch()
   const [searchParams, setSearchParams] = useSearchParams()
   const { user, logout, isAuthenticated, walletAddress } = useAuth()
   const personalServer = usePersonalServer()
@@ -38,6 +55,7 @@ export function useSettingsPage() {
   const [browserStatus, setBrowserStatus] = useState<BrowserStatus | null>(null)
   const [browserSessions, setBrowserSessions] = useState<BrowserSession[]>([])
   const [simulateNoChrome, setSimulateNoChrome] = useState(false)
+  const authUnlistenRef = useRef<(() => void) | null>(null)
 
   useEffect(() => {
     let cancelled = false
@@ -116,6 +134,13 @@ export function useSettingsPage() {
   }, [simulateNoChrome])
 
   useEffect(() => {
+    return () => {
+      authUnlistenRef.current?.()
+      authUnlistenRef.current = null
+    }
+  }, [])
+
+  useEffect(() => {
     let cancelled = false
 
     const checkBrowser = async () => {
@@ -182,9 +207,48 @@ export function useSettingsPage() {
     navigate(ROUTES.home)
   }, [logout, navigate])
 
-  const handleSignIn = useCallback(() => {
-    navigate(ROUTES.login)
-  }, [navigate])
+  const handleSignIn = useCallback(async () => {
+    if (!PRIVY_APP_ID || !PRIVY_CLIENT_ID) {
+      console.error("Missing VITE_PRIVY_APP_ID or VITE_PRIVY_CLIENT_ID.")
+      return
+    }
+
+    authUnlistenRef.current?.()
+    authUnlistenRef.current = await listen<AuthResultPayload>("auth-complete", event => {
+      const result = event.payload
+      if (result.success && result.user) {
+        const session = {
+          user: {
+            id: result.user.id,
+            email: result.user.email || undefined,
+          },
+          walletAddress: result.walletAddress || null,
+          masterKeySignature: result.masterKeySignature || null,
+        }
+        dispatch(
+          setAuthenticated({
+            user: session.user,
+            walletAddress: session.walletAddress,
+            masterKeySignature: session.masterKeySignature,
+          })
+        )
+        void saveAuthSession(session)
+      }
+      authUnlistenRef.current?.()
+      authUnlistenRef.current = null
+    })
+
+    try {
+      await invoke("start_browser_auth", {
+        privyAppId: PRIVY_APP_ID,
+        privyClientId: PRIVY_CLIENT_ID,
+      })
+    } catch (error) {
+      authUnlistenRef.current?.()
+      authUnlistenRef.current = null
+      console.error("Failed to start browser auth:", error)
+    }
+  }, [dispatch])
 
   const setActiveSection = useCallback(
     (nextSection: SettingsSection) => {

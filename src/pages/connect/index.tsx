@@ -29,6 +29,7 @@ import { verifyBuilder } from "@/services/builder"
 import type { RootState } from "@/types"
 import type { PrefetchedGrantData, GrantSession } from "@/pages/grant/types"
 import { cn } from "@/lib/classes"
+import { stashPendingGrantPrefetch } from "@/lib/pending-grant-prefetch"
 
 /*
   NB! If you’re running the web build (not Tauri), invoke fails → no platforms.
@@ -112,6 +113,7 @@ export function Connect() {
           sessionId: params.sessionId,
           builderName: builderManifest?.name,
         });
+        stashPendingGrantPrefetch(params.sessionId, result)
         setPrefetched(result)
         return result
       } catch (err) {
@@ -121,6 +123,7 @@ export function Connect() {
           error: err,
         })
         const result: PrefetchedGrantData = { session }
+        stashPendingGrantPrefetch(params.sessionId, result)
         setPrefetched(result)
         return result
       }
@@ -210,11 +213,8 @@ export function Connect() {
     const grantHref = grantSearch
       ? `${ROUTES.grant}?${grantSearch}`
       : ROUTES.grant
-    navigate(grantHref, {
-      replace: true,
-      state: prefetched ? { prefetched } : undefined,
-    })
-  }, [platformsLoaded, isAlreadyConnected, grantSearch, navigate, prefetched])
+    navigate(grantHref, { replace: true })
+  }, [platformsLoaded, isAlreadyConnected, grantSearch, navigate])
 
   // When the connector run succeeds, move into `/grant`.
   // Pass pre-fetched session + builder data via navigation state so the
@@ -232,9 +232,7 @@ export function Connect() {
         grantHref,
       });
       setConnectRunId(null)
-      navigate(grantHref, {
-        state: prefetched ? { prefetched } : undefined,
-      })
+      navigate(grantHref)
     }
     if (activeRun.status === "error" || activeRun.status === "stopped") {
       setConnectRunId(null)
@@ -252,9 +250,7 @@ export function Connect() {
     const grantHref = grantSearch
       ? `${ROUTES.grant}?${grantSearch}`
       : ROUTES.grant
-    navigate(grantHref, {
-      state: prefetched ? { prefetched } : undefined,
-    })
+    navigate(grantHref)
   }
 
   return (

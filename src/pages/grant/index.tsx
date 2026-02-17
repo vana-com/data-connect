@@ -1,6 +1,7 @@
 import { useState } from "react"
-import { useSearchParams, useLocation } from "react-router-dom"
+import { useSearchParams } from "react-router-dom"
 import { getGrantParamsFromSearchParams } from "@/lib/grant-params"
+import { consumePendingGrantPrefetch } from "@/lib/pending-grant-prefetch"
 import { useBrowserStatus } from "./use-browser-status"
 import { useGrantFlow } from "./use-grant-flow"
 import { BrowserSetupSection } from "./components/browser-setup-section"
@@ -26,17 +27,18 @@ function getDebugSession(): GrantSession {
 export function Grant() {
   const browserStatus = useBrowserStatus()
   const [searchParams] = useSearchParams()
-  const location = useLocation()
   const params = getGrantParamsFromSearchParams(searchParams)
-  // Pre-fetched session + builder data passed from the connect page via navigation state.
+  // Pre-fetched session + builder data from process-scoped handoff cache.
   // When available, the grant flow skips claim + verify steps (already done in background).
-  const prefetched = (location.state as { prefetched?: PrefetchedGrantData } | null)?.prefetched
-  console.log("[Grant] Extracted prefetched from location.state", {
+  const [prefetched] = useState<PrefetchedGrantData | undefined>(() =>
+    consumePendingGrantPrefetch(params?.sessionId)
+  )
+  console.log("[Grant] Consumed pending prefetch cache", {
     hasPrefetched: prefetched !== undefined,
     hasSession: Boolean(prefetched?.session),
     hasBuilderManifest: Boolean(prefetched?.builderManifest),
     sessionId: prefetched?.session?.id,
-    locationStateKeys: location.state ? Object.keys(location.state as object) : null,
+    source: "pending-grant-prefetch",
   });
   const [debugStatus, setDebugStatus] = useState<
     GrantFlowState["status"] | null

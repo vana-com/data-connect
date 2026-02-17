@@ -1,10 +1,8 @@
 use serde::{Deserialize, Serialize};
 use std::io::{BufRead, BufReader, Read, Write};
 use std::net::TcpListener;
-use std::path::PathBuf;
 use std::sync::mpsc;
 use std::thread;
-use tauri::path::BaseDirectory;
 use tauri::{AppHandle, Emitter, Manager};
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
@@ -30,10 +28,10 @@ pub struct AuthUser {
 #[tauri::command]
 pub async fn start_browser_auth(
     app: AppHandle,
-    privy_app_id: String,
-    privy_client_id: Option<String>,
+    _privy_app_id: String,
+    _privy_client_id: Option<String>,
 ) -> Result<String, String> {
-    log::info!("Starting browser auth flow with Privy app ID: {}", privy_app_id);
+    log::info!("Starting browser auth flow");
 
     // Try to bind to fixed port 3083 (whitelisted in Privy dashboard)
     // Fall back to 5173 or random port if unavailable
@@ -59,24 +57,9 @@ pub async fn start_browser_auth(
     let (tx, _rx) = mpsc::channel::<AuthResult>();
 
     let app_handle = app.clone();
-    let privy_app_id_clone = privy_app_id.clone();
-    let privy_client_id_clone = privy_client_id.unwrap_or_default();
-
     // Spawn callback server thread
     thread::spawn(move || {
         log::info!("Auth callback server thread started");
-
-        let resource_dir = app_handle
-            .path()
-            .resolve("auth-page", BaseDirectory::Resource)
-            .ok()
-            .filter(|path| path.exists());
-
-        let auth_dir = resource_dir.unwrap_or_else(|| {
-            PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("auth-page")
-        });
-
-        log::info!("Auth page directory: {}", auth_dir.display());
 
         for stream in listener.incoming() {
             match stream {
@@ -103,52 +86,13 @@ pub async fn start_browser_auth(
 
                     match method {
                         "GET" if path == "/" || path.starts_with("/?") => {
-                            let index_path = auth_dir.join("index.html");
-                            match std::fs::read_to_string(&index_path) {
-                                Ok(html) => {
-                                    let resolved_html = html
-                                        .replace("%PRIVY_APP_ID%", &privy_app_id_clone)
-                                        .replace("%PRIVY_CLIENT_ID%", &privy_client_id_clone);
-                                    let response = format!(
-                                        "HTTP/1.1 200 OK\r\nContent-Type: text/html; charset=utf-8\r\nCache-Control: no-store\r\nContent-Length: {}\r\n\r\n{}",
-                                        resolved_html.len(),
-                                        resolved_html
-                                    );
-                                    let _ = stream.write_all(response.as_bytes());
-                                }
-                                Err(err) => {
-                                    log::error!(
-                                        "Failed to read auth page index.html: {}",
-                                        err
-                                    );
-                                    let response = "HTTP/1.1 500 Internal Server Error\r\n\r\n";
-                                    let _ = stream.write_all(response.as_bytes());
-                                }
-                            }
-                        }
-                        "GET"
-                            if request_path.starts_with("/assets/")
-                                || request_path.starts_with("/fonts/")
-                                || request_path == "/favicon.ico" =>
-                        {
-                            let asset_path = auth_dir.join(request_path.trim_start_matches('/'));
-                            match std::fs::read(&asset_path) {
-                                Ok(bytes) => {
-                                    let mime =
-                                        mime_guess::from_path(&asset_path).first_or_octet_stream();
-                                    let header = format!(
-                                        "HTTP/1.1 200 OK\r\nContent-Type: {}\r\nCache-Control: no-store\r\nContent-Length: {}\r\n\r\n",
-                                        mime,
-                                        bytes.len()
-                                    );
-                                    let _ = stream.write_all(header.as_bytes());
-                                    let _ = stream.write_all(&bytes);
-                                }
-                                Err(_) => {
-                                    let response = "HTTP/1.1 404 Not Found\r\n\r\n";
-                                    let _ = stream.write_all(response.as_bytes());
-                                }
-                            }
+                            let body = "DataBridge auth callback server is running.";
+                            let response = format!(
+                                "HTTP/1.1 200 OK\r\nContent-Type: text/plain; charset=utf-8\r\nCache-Control: no-store\r\nContent-Length: {}\r\n\r\n{}",
+                                body.len(),
+                                body
+                            );
+                            let _ = stream.write_all(response.as_bytes());
                         }
                         "POST" if path == "/auth-callback" || path == "/" => {
                             // Read headers to get content length
@@ -453,8 +397,15 @@ p { font-size: 14px; color: #6b7280; }
         log::info!("Auth callback server thread ended");
     });
 
-    // Open browser to the self-contained auth page served by our localhost server
-    let auth_url = format!("http://localhost:{}", callback_port);
+    // Open browser to external Passport auth flow.
+    // Keep callbackPort in query so the external flow can post to local endpoints.
+    let base_auth_url =
+        std::env::var("DATABRIDGE_EXTERNAL_AUTH_URL").unwrap_or_else(|_| "https://passport.vana.org".to_string());
+    let separator = if base_auth_url.contains('?') { '&' } else { '?' };
+    let auth_url = format!(
+        "{}{}mode=return_to_app&callbackPort={}",
+        base_auth_url, separator, callback_port
+    );
     log::info!("Opening browser to: {}", auth_url);
 
     #[cfg(target_os = "macos")]

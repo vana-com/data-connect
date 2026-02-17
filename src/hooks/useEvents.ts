@@ -20,6 +20,7 @@ import type {
   ProgressPhase,
 } from '../types';
 import { normalizeExportData } from '../lib/export-data';
+import { savePersistedAuthSession } from '../lib/storage';
 import { getScopeForPlatform, ingestData } from '../services/personalServerIngest';
 
 // Extended connector status event that can handle both string and object status
@@ -127,6 +128,14 @@ export function useEvents() {
       masterKeySignature?: string;
     }>('auth-complete', (result) => {
       if (!result.success || !result.user) return;
+      savePersistedAuthSession({
+        user: {
+          id: result.user.id,
+          email: result.user.email || undefined,
+        },
+        walletAddress: result.walletAddress || null,
+        masterKeySignature: result.masterKeySignature || null,
+      });
       dispatch(
         setAuthenticated({
           user: {

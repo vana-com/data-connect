@@ -17,6 +17,7 @@ afterEach(() => {
 });
 
 const pendingApprovalKey = 'v1_pending_approval';
+const authSessionKey = 'v1_auth_session';
 
 const basePending: PendingApproval = {
   sessionId: 'sess-123',
@@ -79,5 +80,55 @@ describe('pendingApproval', () => {
       JSON.stringify({ sessionId: '', grantId: '' })
     );
     expect(storage.getPendingApproval()).toBeNull();
+  });
+});
+
+describe('persistedAuthSession', () => {
+  it('saves and retrieves persisted auth session', () => {
+    storage.savePersistedAuthSession({
+      user: {
+        id: 'user-1',
+        email: 'test@vana.org',
+      },
+      walletAddress: '0xabc',
+      masterKeySignature: '0xsig',
+    });
+
+    const retrieved = storage.getPersistedAuthSession();
+    expect(retrieved?.user).toEqual({
+      id: 'user-1',
+      email: 'test@vana.org',
+    });
+    expect(retrieved?.walletAddress).toBe('0xabc');
+    expect(retrieved?.masterKeySignature).toBe('0xsig');
+    expect(typeof retrieved?.createdAt).toBe('string');
+  });
+
+  it('clears persisted auth session', () => {
+    storage.savePersistedAuthSession({
+      user: { id: 'user-2' },
+      walletAddress: null,
+      masterKeySignature: null,
+    });
+    expect(storage.getPersistedAuthSession()).not.toBeNull();
+
+    storage.clearPersistedAuthSession();
+    expect(storage.getPersistedAuthSession()).toBeNull();
+  });
+
+  it('returns null for corrupt auth session payload', () => {
+    localStorage.setItem(authSessionKey, '{not json');
+    expect(storage.getPersistedAuthSession()).toBeNull();
+  });
+
+  it('returns null for invalid auth session schema', () => {
+    localStorage.setItem(
+      authSessionKey,
+      JSON.stringify({
+        user: { id: '' },
+        walletAddress: 123,
+      })
+    );
+    expect(storage.getPersistedAuthSession()).toBeNull();
   });
 });

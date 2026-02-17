@@ -34,6 +34,7 @@ function safeSetItem(key: string, value: string): boolean {
 
 const PENDING_APPROVAL_KEY = `${STORAGE_VERSION}_pending_approval`;
 const PENDING_GRANT_REDIRECT_KEY = `${STORAGE_VERSION}_pending_grant_redirect`;
+const AUTH_SESSION_KEY = `${STORAGE_VERSION}_auth_session`;
 
 export interface PendingApproval {
   sessionId: string;
@@ -114,4 +115,56 @@ export function getPendingGrantRedirect(): PendingGrantRedirect | null {
 
 export function clearPendingGrantRedirect(): void {
   localStorage.removeItem(PENDING_GRANT_REDIRECT_KEY);
+}
+
+// --- Durable auth session ---
+// Persist minimal auth identity so app restarts can restore signed-in state
+// without waiting for another browser callback.
+
+export interface PersistedAuthSession {
+  user: {
+    id: string;
+    email?: string;
+  };
+  walletAddress: string | null;
+  masterKeySignature: string | null;
+  createdAt: string;
+}
+
+const PersistedAuthSessionSchema = z.object({
+  user: z.object({
+    id: z.string().min(1),
+    email: z.string().optional(),
+  }),
+  walletAddress: z.string().nullable(),
+  masterKeySignature: z.string().nullable(),
+  createdAt: z.string(),
+});
+
+export function savePersistedAuthSession(
+  session: Omit<PersistedAuthSession, "createdAt">
+): void {
+  safeSetItem(
+    AUTH_SESSION_KEY,
+    JSON.stringify({
+      ...session,
+      createdAt: new Date().toISOString(),
+    } satisfies PersistedAuthSession)
+  );
+}
+
+export function getPersistedAuthSession(): PersistedAuthSession | null {
+  const raw = localStorage.getItem(AUTH_SESSION_KEY);
+  if (!raw) return null;
+  try {
+    const parsed = JSON.parse(raw);
+    const result = PersistedAuthSessionSchema.safeParse(parsed);
+    return result.success ? result.data : null;
+  } catch {
+    return null;
+  }
+}
+
+export function clearPersistedAuthSession(): void {
+  localStorage.removeItem(AUTH_SESSION_KEY);
 }

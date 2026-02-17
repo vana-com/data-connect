@@ -304,7 +304,7 @@ describe("usePersonalServer", () => {
     expect(result.current.error).toContain("crashed repeatedly")
   })
 
-  it("preserves error status in shared state after max crash restarts (remount)", async () => {
+  it("preserves error status and message across remounts after max crash restarts", async () => {
     const usePersonalServer = await importHook()
 
     const { result, unmount } = renderHook(() => usePersonalServer())
@@ -313,7 +313,6 @@ describe("usePersonalServer", () => {
       await vi.runAllTimersAsync()
     })
 
-    // Server starts and is ready
     act(() => {
       emit("personal-server-ready", { port: 8080 })
     })
@@ -339,8 +338,7 @@ describe("usePersonalServer", () => {
     expect(result.current.status).toBe("error")
     expect(result.current.error).toContain("crashed repeatedly")
 
-    // Simulate navigation: unmount then remount (new hook instance
-    // reads from module-level _sharedStatus to initialize)
+    // Simulate navigation: unmount then remount
     unmount()
     const { result: result2 } = renderHook(() => usePersonalServer())
 
@@ -348,9 +346,11 @@ describe("usePersonalServer", () => {
       await vi.runAllTimersAsync()
     })
 
-    // After remount, status should reflect the error — not be stuck
-    // on stale 'starting' from the last auto-restart's startServer() call
+    // Both status and error message should survive remount
     expect(result2.current.status).toBe("error")
+    expect(result2.current.error).toBe(
+      "Personal Server crashed repeatedly and could not be restarted"
+    )
   })
 
   it("resets restart count on successful ready event", async () => {

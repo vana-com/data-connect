@@ -2,9 +2,9 @@ import { useEffect, useRef, useState } from "react"
 import { useLocation, useNavigate } from "react-router-dom"
 import {
   buildGrantSearchParams,
-  getGrantParamsFromSearchParams,
   type GrantParams,
 } from "../lib/grant-params"
+import { normalizeGrantParams } from "../lib/grant-param-normalizer"
 import { ROUTES } from "@/config/routes"
 
 /**
@@ -14,10 +14,9 @@ import { ROUTES } from "@/config/routes"
 function parseDeepLinkUrl(url: string): GrantParams | null {
   try {
     const parsed = new URL(url)
-    const searchParams = parsed.searchParams
-    const params = getGrantParamsFromSearchParams(searchParams)
-    if (params.sessionId || params.appId) {
-      return params
+    const normalized = normalizeGrantParams(parsed.searchParams)
+    if (normalized.hasGrantParams) {
+      return normalized.params
     }
   } catch {
     // Not a valid URL
@@ -101,14 +100,13 @@ export function useDeepLink() {
 
   // Fallback: check URL query params (dev mode, direct navigation)
   useEffect(() => {
-    const urlParams = new URLSearchParams(location.search)
-    const params = getGrantParamsFromSearchParams(urlParams)
+    const normalized = normalizeGrantParams(new URLSearchParams(location.search))
+    const { params, hasGrantParams, normalizedSearch } = normalized
 
-    if (params.sessionId || params.appId) {
+    if (hasGrantParams) {
       setDeepLinkParams(params)
       setIsDeepLink(true)
 
-      const normalizedSearch = buildGrantSearchParams(params).toString()
       const targetSearch = normalizedSearch ? `?${normalizedSearch}` : ""
       const targetRoute =
         params.status === "success" ? ROUTES.grant : ROUTES.connect

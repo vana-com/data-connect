@@ -1,8 +1,10 @@
 import { describe, expect, it } from "vitest"
 import {
   buildGrantSearchParams,
+  extractGrantParamsFromSearchParams,
   getGrantParamsFromSearchParams,
   parseScopesParam,
+  parseScopesParamWithSource,
 } from "./grant-params"
 
 describe("grant-params", () => {
@@ -21,6 +23,21 @@ describe("grant-params", () => {
   it("returns undefined for invalid scopes", () => {
     expect(parseScopesParam("")).toBeUndefined()
     expect(parseScopesParam("[1]")).toBeUndefined()
+  })
+
+  it("tracks scope parse source across canonical and compat forms", () => {
+    expect(parseScopesParamWithSource('["read:a","read:b"]')).toEqual({
+      scopes: ["read:a", "read:b"],
+      source: "canonical-json-array",
+    })
+    expect(parseScopesParamWithSource('"read:a,read:b"')).toEqual({
+      scopes: ["read:a", "read:b"],
+      source: "compat-json-string",
+    })
+    expect(parseScopesParamWithSource("read:a,read:b")).toEqual({
+      scopes: ["read:a", "read:b"],
+      source: "compat-csv",
+    })
   })
 
   it("builds and reads grant search params", () => {
@@ -66,5 +83,34 @@ describe("grant-params", () => {
 
     const roundTrip = getGrantParamsFromSearchParams(searchParams)
     expect(roundTrip.secret).toBeUndefined()
+  })
+
+  it("serializes params in deterministic canonical key order", () => {
+    const searchParams = buildGrantSearchParams({
+      sessionId: "sess-42",
+      secret: "sec-42",
+      appId: "app-42",
+      scopes: ["read:a"],
+      status: "success",
+    })
+
+    expect(searchParams.toString()).toBe(
+      "sessionId=sess-42&secret=sec-42&appId=app-42&scopes=%5B%22read%3Aa%22%5D&status=success"
+    )
+  })
+
+  it("extracts params with parse source metadata", () => {
+    const parsed = extractGrantParamsFromSearchParams(
+      new URLSearchParams("sessionId=sess-1&scopes=read%3Aa%2Cread%3Ab")
+    )
+
+    expect(parsed.params).toEqual({
+      sessionId: "sess-1",
+      secret: undefined,
+      appId: undefined,
+      scopes: ["read:a", "read:b"],
+      status: undefined,
+    })
+    expect(parsed.scopeParseSource).toBe("compat-csv")
   })
 })

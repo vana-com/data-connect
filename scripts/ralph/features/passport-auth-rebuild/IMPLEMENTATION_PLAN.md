@@ -16,6 +16,33 @@
 
 ## Loopback Execution Updates
 
+- 2026-02-17 (current loop): completed **Slice 4.1 - Deep-link normalizer module**.
+  - Added explicit normalizer seam:
+    - New module `src/lib/grant-param-normalizer.ts` with deterministic canonicalization contract:
+      - parses `URLSearchParams` to `GrantParams`
+      - computes canonical query string via `buildGrantSearchParams`
+      - returns `hasGrantParams` gate and `scopeParseSource` metadata
+  - Extended grant-param parsing metadata without behavior drift:
+    - `src/lib/grant-params.ts`:
+      - new `parseScopesParamWithSource`
+      - new `extractGrantParamsFromSearchParams`
+      - preserved `getGrantParamsFromSearchParams` compatibility by delegating to extractor
+  - Refactored `src/hooks/use-deep-link.ts` to consume the new normalizer for both:
+    - `vana://` native deep-link intake
+    - URL fallback intake (`location.search`)
+    - This removes duplicated parse/normalize logic and keeps redirect semantics (`replace`) unchanged.
+  - Added/updated tests:
+    - `src/hooks/use-deep-link.test.tsx`
+      - `normalization_is_idempotent`
+    - `src/lib/grant-params.test.ts`
+      - `tracks scope parse source across canonical and compat forms`
+      - `serializes params in deterministic canonical key order`
+      - `extracts params with parse source metadata`
+  - Why this slice now: it is the highest-priority remaining acceptance gap after completed Phases 0-3 and unlocks Phase 4.2 strict-allowlist gating on top of a single normalizer source of truth.
+  - Validation completed (slice + relevant gate check):
+    - `npx vitest run --maxWorkers=1 src/hooks/use-deep-link.test.tsx src/lib/grant-params.test.ts` (pass)
+    - `npx tsc -b` (pass)
+
 - 2026-02-17 (current loop): completed **Slices 3.1 + 3.2 - Durable auth session service + remove pending-approval secret-at-rest**.
   - Added durable auth persistence boundary:
     - New frontend service `src/services/auth-session.ts` with Tauri-backed `save/load/clear` calls, session shape validation, and stale-session eviction.

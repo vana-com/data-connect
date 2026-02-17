@@ -76,6 +76,45 @@ describe("useDeepLink", () => {
     expect(searchParams.get("scopes")).toBe('["read:a","read:b"]')
   })
 
+  it("normalization_is_idempotent", async () => {
+    const deepLink = await import("@tauri-apps/plugin-deep-link")
+    ;(deepLink.getCurrent as Mock).mockResolvedValue(null)
+    ;(deepLink.onOpenUrl as Mock).mockResolvedValue(() => {})
+
+    let latestPathname = ""
+    let latestSearch = ""
+
+    const router = createMemoryRouter(
+      [
+        {
+          path: "*",
+          element: (
+            <DeepLinkHarness
+              onChange={(pathname, search) => {
+                latestPathname = pathname
+                latestSearch = search
+              }}
+            />
+          ),
+        },
+      ],
+      {
+        initialEntries: [
+          `${ROUTES.home}?appId=rickroll&sessionId=grant-session-1&scopes=read:a,read:b&unknown=ignored`,
+        ],
+      }
+    )
+
+    render(<RouterProvider router={router} />)
+
+    await waitFor(() => {
+      expect(latestPathname).toBe(ROUTES.connect)
+      expect(latestSearch).toBe(
+        "?sessionId=grant-session-1&appId=rickroll&scopes=%5B%22read%3Aa%22%2C%22read%3Ab%22%5D"
+      )
+    })
+  })
+
   it("does not redirect when already on canonical /grant URL", async () => {
     const deepLink = await import("@tauri-apps/plugin-deep-link")
     ;(deepLink.getCurrent as Mock).mockResolvedValue(null)

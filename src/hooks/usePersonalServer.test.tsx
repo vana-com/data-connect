@@ -304,6 +304,55 @@ describe("usePersonalServer", () => {
     expect(result.current.error).toContain("crashed repeatedly")
   })
 
+  it("preserves error status in shared state after max crash restarts (remount)", async () => {
+    const usePersonalServer = await importHook()
+
+    const { result, unmount } = renderHook(() => usePersonalServer())
+
+    await act(async () => {
+      await vi.runAllTimersAsync()
+    })
+
+    // Server starts and is ready
+    act(() => {
+      emit("personal-server-ready", { port: 8080 })
+    })
+
+    expect(result.current.status).toBe("running")
+
+    // Crash 3 times with auto-restart
+    for (let i = 1; i <= 3; i++) {
+      act(() => {
+        emit("personal-server-exited", { exitCode: 1, crashed: true })
+      })
+
+      await act(async () => {
+        await vi.advanceTimersByTimeAsync(Math.pow(2, i) * 1000)
+      })
+    }
+
+    // 4th crash — exceeds MAX_RESTART_ATTEMPTS
+    act(() => {
+      emit("personal-server-exited", { exitCode: 1, crashed: true })
+    })
+
+    expect(result.current.status).toBe("error")
+    expect(result.current.error).toContain("crashed repeatedly")
+
+    // Simulate navigation: unmount then remount (new hook instance
+    // reads from module-level _sharedStatus to initialize)
+    unmount()
+    const { result: result2 } = renderHook(() => usePersonalServer())
+
+    await act(async () => {
+      await vi.runAllTimersAsync()
+    })
+
+    // After remount, status should reflect the error — not be stuck
+    // on stale 'starting' from the last auto-restart's startServer() call
+    expect(result2.current.status).toBe("error")
+  })
+
   it("resets restart count on successful ready event", async () => {
     const usePersonalServer = await importHook()
 

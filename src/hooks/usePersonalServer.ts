@@ -16,6 +16,7 @@ let _sharedStatus: 'stopped' | 'starting' | 'running' | 'error' = 'stopped';
 let _sharedTunnelUrl: string | null = null;
 let _sharedTunnelFailed = false;
 let _sharedDevToken: string | null = null;
+let _sharedError: string | null = null;
 const isTauriRuntime = () =>
   typeof window !== 'undefined' &&
   ('__TAURI__' in window || '__TAURI_INTERNALS__' in window);
@@ -33,7 +34,7 @@ export function usePersonalServer() {
   const [tunnelUrl, setTunnelUrl] = useState<string | null>(_sharedTunnelUrl);
   const [tunnelFailed, setTunnelFailed] = useState(_sharedTunnelFailed);
   const [devToken, setDevToken] = useState<string | null>(_sharedDevToken);
-  const [error, setError] = useState<string | null>(null);
+  const [error, setError] = useState<string | null>(_sharedError);
   const running = useRef(_sharedStatus === 'starting' || _sharedStatus === 'running');
   const restartingRef = useRef(false);
   const startServerRef = useRef<(wallet?: string | null) => Promise<void>>(null!);
@@ -43,6 +44,7 @@ export function usePersonalServer() {
     if (running.current) return;
     running.current = true;
     _sharedStatus = 'starting';
+    _sharedError = null;
     setStatus('starting');
     setError(null);
 
@@ -63,8 +65,9 @@ export function usePersonalServer() {
       console.error('[PersonalServer] Failed to start:', err);
       running.current = false;
       _sharedStatus = 'error';
+      _sharedError = err instanceof Error ? err.message : String(err);
       setStatus('error');
-      setError(err instanceof Error ? err.message : String(err));
+      setError(_sharedError);
     }
   }, [walletAddress, masterKeySignature]);
 
@@ -119,6 +122,7 @@ export function usePersonalServer() {
       console.error('[PersonalServer] Error:', event.payload.message);
       running.current = false;
       _sharedStatus = 'error';
+      _sharedError = event.payload.message;
       setStatus('error');
       setError(event.payload.message);
     }).then((fn) => unlisteners.push(fn));
@@ -147,8 +151,9 @@ export function usePersonalServer() {
         } else {
           console.error('[PersonalServer] Max restart attempts reached, giving up');
           _sharedStatus = 'error';
+          _sharedError = 'Personal Server crashed repeatedly and could not be restarted';
           setStatus('error');
-          setError('Personal Server crashed repeatedly and could not be restarted');
+          setError(_sharedError);
         }
       } else {
         setStatus('stopped');

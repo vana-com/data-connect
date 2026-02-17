@@ -7,6 +7,7 @@ import {
   useLocation,
 } from "react-router-dom"
 import { ROUTES } from "@/config/routes"
+import { DEV_FLAGS } from "@/config/dev-flags"
 import { useDeepLink } from "./use-deep-link"
 
 // Mock the Tauri deep-link plugin
@@ -30,9 +31,15 @@ function DeepLinkHarness({
   return null
 }
 
+const mutableFlags = DEV_FLAGS as {
+  strictGrantParamAllowlist: boolean
+}
+const originalFlags = { ...mutableFlags }
+
 describe("useDeepLink", () => {
   beforeEach(() => {
     vi.clearAllMocks()
+    Object.assign(mutableFlags, originalFlags)
   })
 
   it("normalizes deep link params into /connect URL", async () => {
@@ -113,6 +120,87 @@ describe("useDeepLink", () => {
         "?sessionId=grant-session-1&appId=rickroll&scopes=%5B%22read%3Aa%22%2C%22read%3Ab%22%5D"
       )
     })
+  })
+
+  it("strict_allowlist_rejects_unknown_params_when_enabled", async () => {
+    mutableFlags.strictGrantParamAllowlist = true
+    const deepLink = await import("@tauri-apps/plugin-deep-link")
+    ;(deepLink.getCurrent as Mock).mockResolvedValue(null)
+    ;(deepLink.onOpenUrl as Mock).mockResolvedValue(() => {})
+
+    let latestPathname = ""
+    let latestSearch = ""
+
+    const router = createMemoryRouter(
+      [
+        {
+          path: "*",
+          element: (
+            <DeepLinkHarness
+              onChange={(pathname, search) => {
+                latestPathname = pathname
+                latestSearch = search
+              }}
+            />
+          ),
+        },
+      ],
+      {
+        initialEntries: [
+          `${ROUTES.home}?sessionId=grant-session-1&appId=rickroll&scopes=%5B%22read%3Aa%22%2C%22read%3Ab%22%5D&unknown=blocked`,
+        ],
+      }
+    )
+
+    render(<RouterProvider router={router} />)
+
+    await waitFor(() => {
+      expect(latestPathname).toBe(ROUTES.home)
+    })
+
+    expect(latestSearch).toBe(
+      '?sessionId=grant-session-1&appId=rickroll&scopes=%5B%22read%3Aa%22%2C%22read%3Ab%22%5D&unknown=blocked'
+    )
+  })
+
+  it("compat_mode_accepts_legacy_scopes_payload", async () => {
+    mutableFlags.strictGrantParamAllowlist = false
+    const deepLink = await import("@tauri-apps/plugin-deep-link")
+    ;(deepLink.getCurrent as Mock).mockResolvedValue(null)
+    ;(deepLink.onOpenUrl as Mock).mockResolvedValue(() => {})
+
+    let latestPathname = ""
+    let latestSearch = ""
+
+    const router = createMemoryRouter(
+      [
+        {
+          path: "*",
+          element: (
+            <DeepLinkHarness
+              onChange={(pathname, search) => {
+                latestPathname = pathname
+                latestSearch = search
+              }}
+            />
+          ),
+        },
+      ],
+      {
+        initialEntries: [
+          `${ROUTES.home}?sessionId=grant-session-1&appId=rickroll&scopes=read:a,read:b`,
+        ],
+      }
+    )
+
+    render(<RouterProvider router={router} />)
+
+    await waitFor(() => {
+      expect(latestPathname).toBe(ROUTES.connect)
+    })
+
+    const searchParams = new URLSearchParams(latestSearch)
+    expect(searchParams.get("scopes")).toBe('["read:a","read:b"]')
   })
 
   it("does not redirect when already on canonical /grant URL", async () => {

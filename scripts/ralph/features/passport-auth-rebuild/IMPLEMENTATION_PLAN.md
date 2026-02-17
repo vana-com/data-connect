@@ -16,6 +16,29 @@
 
 ## Loopback Execution Updates
 
+- 2026-02-17 (current loop): completed **Slice 4.2 - Strict allowlist gate (disabled by default)**.
+  - Added strict-mode gate on top of the Phase 4.1 normalizer seam:
+    - `src/lib/grant-param-normalizer.ts` now accepts `strictAllowlist` option and tracks:
+      - `unknownParams`
+      - `strictRejected`
+      - `strictRejectReason` (`unknown-params` or `non-canonical-scopes`)
+    - Strict mode rejects non-canonical intake (unknown query keys or compatibility scopes parsing) by clearing `hasGrantParams` while keeping strict mode disabled by default.
+  - Wired runtime toggle (default off):
+    - `src/config/dev-flags.ts` adds `DEV_FLAGS.strictGrantParamAllowlist` from `VITE_STRICT_GRANT_PARAM_ALLOWLIST`.
+    - `src/hooks/use-deep-link.ts` now calls `normalizeGrantParams(..., { strictAllowlist })` for both native `vana://` events and URL fallback.
+  - Added tests for strict + compat behavior:
+    - New: `src/lib/grant-param-normalizer.test.ts`
+      - `keeps compatibility parsing when strict allowlist is disabled`
+      - `rejects unknown params when strict allowlist is enabled`
+      - `rejects compatibility scopes when strict allowlist is enabled`
+    - Updated: `src/hooks/use-deep-link.test.tsx`
+      - `strict_allowlist_rejects_unknown_params_when_enabled`
+      - `compat_mode_accepts_legacy_scopes_payload`
+  - Why this slice now: this is the next phase-ordered gap after 4.1 and closes the remaining Phase 4 contract gate work while preserving the external-contract freeze constraint by leaving strict mode off by default.
+  - Validation completed (slice + relevant phase gate check):
+    - `npx vitest run --maxWorkers=1 src/hooks/use-deep-link.test.tsx src/lib/grant-params.test.ts src/lib/grant-param-normalizer.test.ts` (pass)
+    - `npx tsc -b` (pass)
+
 - 2026-02-17 (current loop): completed **Slice 4.1 - Deep-link normalizer module**.
   - Added explicit normalizer seam:
     - New module `src/lib/grant-param-normalizer.ts` with deterministic canonicalization contract:

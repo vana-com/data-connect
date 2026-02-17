@@ -6,6 +6,7 @@ import {
 } from "../lib/grant-params"
 import { normalizeGrantParams } from "../lib/grant-param-normalizer"
 import { ROUTES } from "@/config/routes"
+import { DEV_FLAGS } from "@/config/dev-flags"
 
 /**
  * Parse a vana:// deep link URL into GrantParams.
@@ -14,7 +15,9 @@ import { ROUTES } from "@/config/routes"
 function parseDeepLinkUrl(url: string): GrantParams | null {
   try {
     const parsed = new URL(url)
-    const normalized = normalizeGrantParams(parsed.searchParams)
+    const normalized = normalizeGrantParams(parsed.searchParams, {
+      strictAllowlist: DEV_FLAGS.strictGrantParamAllowlist,
+    })
     if (normalized.hasGrantParams) {
       return normalized.params
     }
@@ -100,7 +103,9 @@ export function useDeepLink() {
 
   // Fallback: check URL query params (dev mode, direct navigation)
   useEffect(() => {
-    const normalized = normalizeGrantParams(new URLSearchParams(location.search))
+    const normalized = normalizeGrantParams(new URLSearchParams(location.search), {
+      strictAllowlist: DEV_FLAGS.strictGrantParamAllowlist,
+    })
     const { params, hasGrantParams, normalizedSearch } = normalized
 
     if (hasGrantParams) {

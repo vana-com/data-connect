@@ -4,9 +4,22 @@ export type GrantParams = {
   appId?: string
   scopes?: string[]
   status?: GrantStatusParam
+  contractGatedParams?: Record<string, string>
 }
 
 export type GrantStatusParam = "success"
+
+/**
+ * Contract-gated params are preserved in URLs but not used for final grant
+ * decisions yet. This keeps launch context intact while upstream contract
+ * semantics are still being finalized across repos.
+ */
+export const CONTRACT_GATED_PARAM_KEYS = [
+  "deepLinkUrl",
+  "deep_link_url",
+  "app",
+  "appName",
+] as const
 
 function isValidScopes(value: unknown): value is string[] {
   return Array.isArray(value) && value.every(item => typeof item === "string")
@@ -53,6 +66,13 @@ export function getGrantParamsFromSearchParams(
   const scopes = parseScopesParam(searchParams.get("scopes"))
   const status =
     searchParams.get("status") === "success" ? ("success" as const) : undefined
+  const contractGatedParams: Record<string, string> = {}
+  for (const key of CONTRACT_GATED_PARAM_KEYS) {
+    const value = searchParams.get(key)
+    if (value) {
+      contractGatedParams[key] = value
+    }
+  }
 
   return {
     sessionId,
@@ -60,6 +80,8 @@ export function getGrantParamsFromSearchParams(
     appId,
     scopes,
     status,
+    contractGatedParams:
+      Object.keys(contractGatedParams).length > 0 ? contractGatedParams : undefined,
   }
 }
 
@@ -84,6 +106,16 @@ export function buildGrantSearchParams(params: GrantParams): URLSearchParams {
 
   if (params.status) {
     searchParams.set("status", params.status)
+  }
+
+  // TODO(contract-gated): remove passthrough once upstream launch contract is frozen.
+  if (params.contractGatedParams) {
+    for (const key of CONTRACT_GATED_PARAM_KEYS) {
+      const value = params.contractGatedParams[key]
+      if (value) {
+        searchParams.set(key, value)
+      }
+    }
   }
 
   return searchParams

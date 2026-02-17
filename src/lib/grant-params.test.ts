@@ -67,4 +67,26 @@ describe("grant-params", () => {
     const roundTrip = getGrantParamsFromSearchParams(searchParams)
     expect(roundTrip.secret).toBeUndefined()
   })
+
+  it("round-trips contract-gated params without using them for decisions", () => {
+    const searchParams = buildGrantSearchParams({
+      sessionId: "sess-1",
+      secret: "secret-1",
+      contractGatedParams: {
+        deepLinkUrl: "vana://connect?sessionId=sess-1",
+        appName: "Test Builder",
+      },
+    })
+
+    expect(searchParams.get("deepLinkUrl")).toBe("vana://connect?sessionId=sess-1")
+    expect(searchParams.get("appName")).toBe("Test Builder")
+
+    const roundTrip = getGrantParamsFromSearchParams(searchParams)
+    expect(roundTrip.contractGatedParams).toEqual({
+      deepLinkUrl: "vana://connect?sessionId=sess-1",
+      appName: "Test Builder",
+    })
+    expect(roundTrip.sessionId).toBe("sess-1")
+    expect(roundTrip.secret).toBe("secret-1")
+  })
 })

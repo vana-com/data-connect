@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useRef, useState } from "react"
+import { useCallback, useEffect, useMemo, useRef, useState } from "react"
 import { useNavigate } from "react-router-dom"
 import { useDispatch } from "react-redux"
 import { useAuth } from "../../hooks/useAuth"
@@ -74,6 +74,18 @@ export function useGrantFlow(params: GrantFlowParams, prefetched?: PrefetchedGra
   const sessionId = params?.sessionId
   const secret = params?.secret
   const hasSuccessOverride = params?.status === "success"
+  const contractGatedParamKeys = useMemo(
+    () => Object.keys(params?.contractGatedParams ?? {}),
+    [params?.contractGatedParams]
+  )
+  const contractGatedParamSignature = useMemo(
+    () => [...contractGatedParamKeys].sort().join(","),
+    [contractGatedParamKeys]
+  )
+  const contractGatedParamsSnapshot = useMemo(
+    () => ({ ...(params?.contractGatedParams ?? {}) }),
+    [contractGatedParamSignature]
+  )
 
   // Reset auth state when sessionId changes
   useEffect(() => {
@@ -97,6 +109,17 @@ export function useGrantFlow(params: GrantFlowParams, prefetched?: PrefetchedGra
     let cancelled = false
 
     const runFlow = async () => {
+      if (contractGatedParamKeys.length > 0) {
+        // TODO(contract-gated): keep passthrough behavior until upstream launch
+        // contract is frozen; do not enforce strict URL-only assumptions yet.
+        console.warn(
+          "[GrantFlow][TODO] Contract-gated launch params detected; final strict resolution is intentionally deferred.",
+          {
+            keys: contractGatedParamKeys,
+            params: contractGatedParamsSnapshot,
+          }
+        )
+      }
       console.log("[GrantFlow] runFlow starting", {
         sessionId,
         hasSecret: Boolean(secret),
@@ -247,7 +270,7 @@ export function useGrantFlow(params: GrantFlowParams, prefetched?: PrefetchedGra
 
     return () => { cancelled = true }
     // eslint-disable-next-line react-hooks/exhaustive-deps -- prefetched is stable from navigation state
-  }, [sessionId, secret, retryCount])
+  }, [sessionId, secret, retryCount, contractGatedParamSignature, contractGatedParamsSnapshot])
 
   // Handle success override (when returning from connect page)
   useEffect(() => {

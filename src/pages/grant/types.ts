@@ -49,6 +49,7 @@ export interface GrantFlowParams {
   appId?: string
   scopes?: string[]
   status?: "success"
+  contractGatedParams?: Record<string, string>
 }
 
 /** Pre-fetched session + builder data passed via navigation state from the connect page.

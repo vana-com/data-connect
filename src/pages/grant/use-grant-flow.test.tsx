@@ -136,6 +136,10 @@ describe("useGrantFlow", () => {
     const { result } = renderHook(() =>
       useGrantFlow({
         sessionId: "grant-session-456",
+        secret: "secret-456",
+        contractGatedParams: {
+          deepLinkUrl: "vana://connect?sessionId=grant-session-456",
+        },
       })
     )
 
@@ -150,6 +154,10 @@ describe("useGrantFlow", () => {
 
     expect(getPendingGrantRedirect()?.route).toContain(
       "/grant?sessionId=grant-session-456"
+    )
+    expect(getPendingGrantRedirect()?.route).toContain("secret=secret-456")
+    expect(getPendingGrantRedirect()?.route).toContain(
+      "deepLinkUrl=vana%3A%2F%2Fconnect%3FsessionId%3Dgrant-session-456"
     )
     expect(mockNavigate).toHaveBeenCalledWith("/")
   })

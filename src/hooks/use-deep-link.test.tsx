@@ -76,6 +76,48 @@ describe("useDeepLink", () => {
     expect(searchParams.get("scopes")).toBe('["read:a","read:b"]')
   })
 
+  it("preserves contract-gated launch params during normalization", async () => {
+    const deepLink = await import("@tauri-apps/plugin-deep-link")
+    ;(deepLink.getCurrent as Mock).mockResolvedValue(null)
+    ;(deepLink.onOpenUrl as Mock).mockResolvedValue(() => {})
+
+    let latestPathname = ""
+    let latestSearch = ""
+
+    const router = createMemoryRouter(
+      [
+        {
+          path: "*",
+          element: (
+            <DeepLinkHarness
+              onChange={(pathname, search) => {
+                latestPathname = pathname
+                latestSearch = search
+              }}
+            />
+          ),
+        },
+      ],
+      {
+        initialEntries: [
+          `${ROUTES.home}?sessionId=grant-session-4&secret=s4&deepLinkUrl=vana%3A%2F%2Fconnect%3Ffoo%3Dbar&appName=Rickroll`,
+        ],
+      }
+    )
+
+    render(<RouterProvider router={router} />)
+
+    await waitFor(() => {
+      expect(latestPathname).toBe(ROUTES.connect)
+    })
+
+    const searchParams = new URLSearchParams(latestSearch)
+    expect(searchParams.get("sessionId")).toBe("grant-session-4")
+    expect(searchParams.get("secret")).toBe("s4")
+    expect(searchParams.get("deepLinkUrl")).toBe("vana://connect?foo=bar")
+    expect(searchParams.get("appName")).toBe("Rickroll")
+  })
+
   it("does not redirect when already on canonical /grant URL", async () => {
     const deepLink = await import("@tauri-apps/plugin-deep-link")
     ;(deepLink.getCurrent as Mock).mockResolvedValue(null)

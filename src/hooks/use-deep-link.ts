@@ -25,6 +25,22 @@ function parseDeepLinkUrl(url: string): GrantParams | null {
   return null
 }
 
+function logContractGatedParams(params: GrantParams) {
+  const contractGated = params.contractGatedParams
+  if (!contractGated) return
+  const keys = Object.keys(contractGated)
+  if (keys.length === 0) return
+
+  // TODO(contract-gated): strict launch contract enforcement is deferred.
+  console.warn(
+    "[DeepLink][TODO] Contract-gated launch params present; preserving pass-through while upstream contract finalizes.",
+    {
+      keys,
+      preservedParams: contractGated,
+    }
+  )
+}
+
 /**
  * Try to import the Tauri deep-link plugin.
  * Returns null in non-Tauri environments (tests, browser dev).
@@ -47,6 +63,7 @@ export function useDeepLink() {
 
   // Navigate to the appropriate route based on grant params
   const handleGrantParams = (params: GrantParams) => {
+    logContractGatedParams(params)
     setDeepLinkParams(params)
     setIsDeepLink(true)
 
@@ -105,6 +122,7 @@ export function useDeepLink() {
     const params = getGrantParamsFromSearchParams(urlParams)
 
     if (params.sessionId || params.appId) {
+      logContractGatedParams(params)
       setDeepLinkParams(params)
       setIsDeepLink(true)
 

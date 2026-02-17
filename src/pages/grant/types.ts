@@ -26,22 +26,24 @@ export interface GrantSession {
 export interface GrantFlowState {
   sessionId: string
   secret?: string
-  status:
-    | "loading"
-    | "claiming"
-    | "verifying-builder"
-    | "consent"
-    | "auth-required"
-    | "preparing-server"
-    | "creating-grant"
-    | "approving"
-    | "success"
-    | "error"
+  status: GrantFlowStatus
   error?: string
   session?: GrantSession
   builderManifest?: BuilderManifest
   grantId?: string
 }
+
+export type GrantFlowStatus =
+  | "loading"
+  | "claiming"
+  | "verifying-builder"
+  | "consent"
+  | "auth-required"
+  | "preparing-server"
+  | "creating-grant"
+  | "approving"
+  | "success"
+  | "error"
 
 export interface GrantFlowParams {
   sessionId?: string

@@ -467,6 +467,45 @@ describe("useGrantFlow", () => {
     expect(result.current.builderName).toBe("Pre-fetched Builder")
   })
 
+  it("verifies builder but skips claim when only pre-fetched session is provided", async () => {
+    const prefetched = {
+      session: {
+        id: "prefetch-session-only-1",
+        granteeAddress: "0xsessiononlybuilder",
+        scopes: ["chatgpt.conversations"],
+        expiresAt: "2030-01-01T00:00:00.000Z",
+        webhookUrl: "https://builder.example.com/webhook",
+      },
+    }
+
+    mockVerifyBuilder.mockResolvedValue({
+      name: "Session Only Builder",
+      appUrl: "https://session-only.example.com",
+      privacyPolicyUrl: "https://session-only.example.com/privacy",
+    })
+
+    const { result } = renderHook(() =>
+      useGrantFlow(
+        {
+          sessionId: "prefetch-session-only-1",
+          secret: "prefetch-secret",
+        },
+        prefetched
+      )
+    )
+
+    await waitFor(() => {
+      expect(result.current.flowState.status).toBe("consent")
+    })
+
+    expect(mockClaimSession).not.toHaveBeenCalled()
+    expect(mockVerifyBuilder).toHaveBeenCalledWith(
+      "0xsessiononlybuilder",
+      "https://builder.example.com/webhook",
+    )
+    expect(result.current.builderName).toBe("Session Only Builder")
+  })
+
   it("handles deny flow — calls deny API and navigates to apps", async () => {
     mockClaimSession.mockResolvedValue({
       sessionId: "deny-session-1",

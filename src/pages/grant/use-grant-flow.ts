@@ -26,10 +26,12 @@ import type {
   BuilderManifest,
   GrantFlowParams,
   GrantFlowState,
+  GrantFlowStatus,
   GrantSession,
   PrefetchedGrantData,
 } from "./types"
 import { ROUTES } from "@/config/routes"
+import { createInitialGrantFlowState, reduceGrantFlowState } from "./grant-flow-machine"
 
 const PRIVY_APP_ID = import.meta.env.VITE_PRIVY_APP_ID
 const PRIVY_CLIENT_ID = import.meta.env.VITE_PRIVY_CLIENT_ID
@@ -70,10 +72,7 @@ export function useGrantFlow(params: GrantFlowParams, prefetched?: PrefetchedGra
   const dispatch = useDispatch()
   const { isAuthenticated, isLoading: authLoading, walletAddress } = useAuth()
   const personalServer = usePersonalServer()
-  const [flowState, setFlowState] = useState<GrantFlowState>({
-    sessionId: "",
-    status: "loading",
-  })
+  const [flowState, setFlowState] = useState<GrantFlowState>(createInitialGrantFlowState())
   const authTriggered = useRef(false)
   const [isApproving, setIsApproving] = useState(false)
   const [authPending, setAuthPending] = useState(false)
@@ -84,6 +83,12 @@ export function useGrantFlow(params: GrantFlowParams, prefetched?: PrefetchedGra
   const sessionId = params?.sessionId
   const secret = params?.secret
   const hasSuccessOverride = params?.status === "success"
+  const dispatchFlow = useCallback((action: Parameters<typeof reduceGrantFlowState>[1]) => {
+    setFlowState(prev => reduceGrantFlowState(prev, action))
+  }, [])
+  const transitionFlow = useCallback((status: GrantFlowStatus) => {
+    dispatchFlow({ type: "transition", status })
+  }, [dispatchFlow])
 
   // Reset auth state when sessionId changes
   useEffect(() => {
@@ -96,9 +101,9 @@ export function useGrantFlow(params: GrantFlowParams, prefetched?: PrefetchedGra
   // --- Main flow: load → claim → verify builder → consent ---
   useEffect(() => {
     if (!sessionId) {
-      setFlowState({
+      dispatchFlow({
+        type: "fail",
         sessionId: "",
-        status: "error",
         error: "No session ID provided. Please restart the flow from the app.",
       })
       return
@@ -118,18 +123,15 @@ export function useGrantFlow(params: GrantFlowParams, prefetched?: PrefetchedGra
         prefetchedHasBuilder: Boolean(prefetched?.builderManifest),
         isDemoSession: isDemoSession(sessionId),
       });
-      setFlowState({ sessionId, secret, status: "loading" })
+      dispatchFlow({ type: "start", sessionId, secret })
 
       // --- Demo mode ---
       if (isDemoSession(sessionId)) {
         const session = createDemoSession(sessionId)
         const builderManifest = createDemoBuilderManifest()
-        setFlowState(prev => ({
-          ...prev,
-          status: "consent",
-          session,
-          builderManifest,
-        }))
+        dispatchFlow({ type: "set-session", session })
+        dispatchFlow({ type: "set-builder-manifest", builderManifest })
+        transitionFlow("consent")
 
         return
       }
@@ -140,12 +142,9 @@ export function useGrantFlow(params: GrantFlowParams, prefetched?: PrefetchedGra
           sessionId: prefetched.session.id,
           builderName: prefetched.builderManifest.name,
         });
-        setFlowState(prev => ({
-          ...prev,
-          status: "consent",
-          session: prefetched.session,
-          builderManifest: prefetched.builderManifest,
-        }))
+        dispatchFlow({ type: "set-session", session: prefetched.session })
+        dispatchFlow({ type: "set-builder-manifest", builderManifest: prefetched.builderManifest })
+        transitionFlow("consent")
 
         return
       }
@@ -155,27 +154,27 @@ export function useGrantFlow(params: GrantFlowParams, prefetched?: PrefetchedGra
         console.log("[GrantFlow] Using pre-fetched session (skipping claim, verifying builder)", {
           sessionId: prefetched.session.id,
         });
-        setFlowState(prev => ({ ...prev, session: prefetched.session }))
+        dispatchFlow({ type: "set-session", session: prefetched.session })
 
         try {
-          setFlowState(prev => ({ ...prev, status: "verifying-builder" }))
+          transitionFlow("verifying-builder")
           const builderManifest = await verifyBuilder(
             prefetched.session.granteeAddress,
             prefetched.session.webhookUrl,
           )
           if (cancelled) return
-          setFlowState(prev => ({ ...prev, builderManifest }))
-          setFlowState(prev => ({ ...prev, status: "consent" }))
+          dispatchFlow({ type: "set-builder-manifest", builderManifest })
+          transitionFlow("consent")
         } catch (error) {
           if (cancelled) return
           console.error("[GrantFlow] Builder verification failed (pre-fetched session)", {
             sessionId: prefetched.session.id,
             message: error instanceof Error ? error.message : String(error),
           });
-          setFlowState({
+          dispatchFlow({
+            type: "fail",
             sessionId,
             secret,
-            status: "error",
             error:
               error instanceof BuilderVerificationError
                 ? error.message
@@ -188,9 +187,9 @@ export function useGrantFlow(params: GrantFlowParams, prefetched?: PrefetchedGra
 
       // --- Real flow (no pre-fetched data) ---
       if (!secret) {
-        setFlowState({
+        dispatchFlow({
+          type: "fail",
           sessionId,
-          status: "error",
           error:
             "No secret provided. The deep link URL is missing the secret parameter.",
         })
@@ -200,7 +199,7 @@ export function useGrantFlow(params: GrantFlowParams, prefetched?: PrefetchedGra
       // Step 1: Claim session
       try {
         console.log("[GrantFlow] Falling back to fresh claim (no pre-fetched data)", { sessionId });
-        setFlowState(prev => ({ ...prev, status: "claiming" }))
+        transitionFlow("claiming")
         const claimed = await claimSession({ sessionId, secret })
         if (cancelled) return
         const session: GrantSession = {
@@ -216,21 +215,21 @@ export function useGrantFlow(params: GrantFlowParams, prefetched?: PrefetchedGra
           granteeAddress: claimed.granteeAddress,
           scopes: claimed.scopes,
         });
-        setFlowState(prev => ({ ...prev, session }))
+        dispatchFlow({ type: "set-session", session })
 
         // Step 2: Verify builder
         // Protocol spec: "If manifest discovery or signature verification fails,
         // the Desktop App MUST NOT render the consent screen and MUST fail the session flow."
-        setFlowState(prev => ({ ...prev, status: "verifying-builder" }))
+        transitionFlow("verifying-builder")
         const builderManifest = await verifyBuilder(
           claimed.granteeAddress,
           claimed.webhookUrl,
         )
         if (cancelled) return
-        setFlowState(prev => ({ ...prev, builderManifest }))
+        dispatchFlow({ type: "set-builder-manifest", builderManifest })
 
         // Advance to consent (data export already completed on the connect page)
-        setFlowState(prev => ({ ...prev, status: "consent" }))
+        transitionFlow("consent")
 
       } catch (error) {
         if (cancelled) return
@@ -243,10 +242,10 @@ export function useGrantFlow(params: GrantFlowParams, prefetched?: PrefetchedGra
             statusCode: error.statusCode,
           }),
         });
-        setFlowState({
+        dispatchFlow({
+          type: "fail",
           sessionId,
           secret,
-          status: "error",
           error:
             error instanceof SessionRelayError ||
             error instanceof BuilderVerificationError
@@ -260,14 +259,14 @@ export function useGrantFlow(params: GrantFlowParams, prefetched?: PrefetchedGra
 
     return () => { cancelled = true }
     // eslint-disable-next-line react-hooks/exhaustive-deps -- prefetched is stable from navigation state
-  }, [sessionId, secret, retryCount])
+  }, [sessionId, secret, retryCount, prefetched, dispatchFlow, transitionFlow])
 
   // Handle success override (when returning from connect page)
   useEffect(() => {
     if (!hasSuccessOverride || !flowState.session) return
     if (flowState.status === "success") return
-    setFlowState(prev => ({ ...prev, status: "success" }))
-  }, [flowState.session, flowState.status, hasSuccessOverride])
+    transitionFlow("success")
+  }, [flowState.session, flowState.status, hasSuccessOverride, transitionFlow])
 
   // --- Auth ---
   const startBrowserAuth = useCallback(async () => {
@@ -345,7 +344,7 @@ export function useGrantFlow(params: GrantFlowParams, prefetched?: PrefetchedGra
     // If not authenticated, defer to auth (auto-approve effect will resume)
     if (!isAuthenticated || !walletAddress) {
       setAuthPending(true)
-      setFlowState(prev => ({ ...prev, status: "auth-required" }))
+      transitionFlow("auth-required")
       return
     }
 
@@ -354,7 +353,7 @@ export function useGrantFlow(params: GrantFlowParams, prefetched?: PrefetchedGra
     // The tunnel is required so the builder app can reach the server externally.
     if (!personalServer.port || !personalServer.tunnelUrl) {
       setAuthPending(true)
-      setFlowState(prev => ({ ...prev, status: "creating-grant" }))
+      transitionFlow("creating-grant")
       return
     }
 
@@ -363,7 +362,7 @@ export function useGrantFlow(params: GrantFlowParams, prefetched?: PrefetchedGra
     try {
       // Skip grant creation + session approval for demo sessions
       if (isDemoSession(flowState.sessionId)) {
-        setFlowState(prev => ({ ...prev, status: "success" }))
+        transitionFlow("success")
         return
       }
 
@@ -379,7 +378,7 @@ export function useGrantFlow(params: GrantFlowParams, prefetched?: PrefetchedGra
       }
 
       // Step: Create grant via Personal Server
-      setFlowState(prev => ({ ...prev, status: "creating-grant" }))
+      transitionFlow("creating-grant")
 
       const expiresAtNum = flowState.session.expiresAt
         ? Math.floor(new Date(flowState.session.expiresAt).getTime() / 1000)
@@ -391,14 +390,14 @@ export function useGrantFlow(params: GrantFlowParams, prefetched?: PrefetchedGra
         expiresAt: expiresAtNum,
       }, personalServer.devToken)
 
-      setFlowState(prev => ({ ...prev, grantId }))
+      dispatchFlow({ type: "set-grant-id", grantId })
 
       // Fetch the Personal Server's own address so the builder can resolve
       // the server via Gateway (registered under this address, not the user's).
       const { address: serverAddress } = await fetchServerIdentity(personalServer.port)
 
       // Step: Approve session via Session Relay
-      setFlowState(prev => ({ ...prev, status: "approving" }))
+      transitionFlow("approving")
 
       if (!flowState.secret) {
         throw new SessionRelayError(
@@ -444,18 +443,19 @@ export function useGrantFlow(params: GrantFlowParams, prefetched?: PrefetchedGra
         })
       )
 
-      setFlowState(prev => ({ ...prev, status: "success" }))
+      transitionFlow("success")
     } catch (error) {
       console.error("[GrantFlow] Approve failed:", error)
-      setFlowState(prev => ({
-        ...prev,
-        status: "error",
+      dispatchFlow({
+        type: "fail",
+        sessionId: flowState.sessionId,
+        secret: flowState.secret,
         error:
           error instanceof SessionRelayError ||
           error instanceof PersonalServerError
             ? error.message
             : "Failed to complete the grant flow",
-      }))
+      })
     } finally {
       setIsApproving(false)
     }
@@ -507,11 +507,12 @@ export function useGrantFlow(params: GrantFlowParams, prefetched?: PrefetchedGra
     if (!authPending || !isAuthenticated || !walletAddress) return
     if (personalServer.status === "error") {
       setAuthPending(false)
-      setFlowState(prev => ({
-        ...prev,
-        status: "error",
+      dispatchFlow({
+        type: "fail",
+        sessionId: flowState.sessionId,
+        secret: flowState.secret,
         error: personalServer.error || "Personal Server failed to start.",
-      }))
+      })
       return
     }
     const isDemo = isDemoSession(flowState.sessionId)
@@ -519,26 +520,27 @@ export function useGrantFlow(params: GrantFlowParams, prefetched?: PrefetchedGra
     // restartingRef is set synchronously during render so we see it
     // before any stale tunnelFailed state from Phase 1.
     if (!isDemo && personalServer.restartingRef.current) {
-      setFlowState(prev => prev.status === "preparing-server" ? prev : { ...prev, status: "preparing-server" })
+      transitionFlow("preparing-server")
       return
     }
     // If the tunnel timed out (90s), surface the error.
     if (tunnelTimedOut) {
       setAuthPending(false)
-      setFlowState(prev => ({
-        ...prev,
-        status: "error",
+      dispatchFlow({
+        type: "fail",
+        sessionId: flowState.sessionId,
+        secret: flowState.secret,
         error: "Could not establish a public tunnel for the Personal Server. The requesting app won't be able to access your data.",
-      }))
+      })
       return
     }
     if (!isDemo && (!personalServer.port || !personalServer.tunnelUrl)) {
-      setFlowState(prev => prev.status === "preparing-server" ? prev : { ...prev, status: "preparing-server" })
+      transitionFlow("preparing-server")
       return
     }
     setAuthPending(false)
     void handleApprove()
-  }, [authPending, handleApprove, isAuthenticated, walletAddress, personalServer.port, personalServer.tunnelUrl, tunnelTimedOut, personalServer.status, personalServer.error, flowState.sessionId])
+  }, [authPending, handleApprove, isAuthenticated, walletAddress, personalServer.port, personalServer.tunnelUrl, tunnelTimedOut, personalServer.status, personalServer.error, flowState.sessionId, flowState.secret, dispatchFlow, transitionFlow])
 
   // --- Retry from error ---
   // Bumps retryCount which re-triggers the main flow effect (claim → verify → consent).

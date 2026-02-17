@@ -16,6 +16,26 @@
 
 ## Loopback Execution Updates
 
+- 2026-02-17 (current loop): completed **Slice 2.1 - Grant machine seam** for `src/pages/grant/use-grant-flow.ts`.
+  - Added pure transition module: `src/pages/grant/grant-flow-machine.ts`.
+    - Centralized valid status edges (`loading -> ... -> success/error`) and mutation actions (`start`, `transition`, `set-session`, `set-builder-manifest`, `set-grant-id`, `fail`).
+    - Added no-op guard for same-status transitions to prevent render loops in waiting states (notably repeated `preparing-server` transitions while auth-pending).
+  - Refactored `useGrantFlow` to drive state via machine actions instead of ad-hoc object patching.
+    - Preserved external hook API and route/UX behavior.
+    - Retained existing auth + approve semantics; reducer now enforces deterministic state progression.
+  - Added new tests:
+    - `src/pages/grant/grant-flow-machine.test.ts` for transition table and reducer mutation behavior.
+    - `src/pages/grant/use-grant-flow.test.tsx` case: `verifies builder but skips claim when only pre-fetched session is provided`.
+  - Why this slice now: this creates a stable seam for Phase 2.2 extraction (bootstrap/approval/auth-bridge split) and reduces future regression risk by making status edges explicit and testable.
+  - Validation completed (slice + relevant phase regression):
+    - `npx vitest run --maxWorkers=1 src/pages/grant/grant-flow-machine.test.ts src/pages/grant/use-grant-flow.test.tsx` (pass)
+    - `npx vitest run src/pages/connect/index.test.tsx` (fails, unrelated to touched files; see blocker below)
+  - Unrelated failure documented (not expanded scope):
+    - Repro: `npx vitest run src/pages/connect/index.test.tsx`
+    - Failing case: `Connect > title and copy > shows '(again)' suffix when platform is already connected`
+    - Observed failure: test rendered grant route sentinel (`data-testid="grant-page"`) and could not find `"Connect your ChatGPT (again)"`.
+    - Notes: no code changes in `src/pages/connect/*` in this slice; treat as pre-existing or concurrent-branch drift unless it blocks upcoming phase work.
+
 - 2026-02-17 (current loop): completed callback hardening slice for `src-tauri/src/commands/auth.rs` + `src/auth-page/auth.ts`.
   - Added callback state lifecycle contract in native layer: one-time consume, TTL expiry, explicit reject reasons, and strict `POST /auth-callback` acceptance (removed `POST /` callback acceptance).
   - Added Rust helper-level tests for abuse paths and valid-once behavior:

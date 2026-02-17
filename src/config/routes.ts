@@ -8,7 +8,6 @@ export const ROUTES = {
   connect: "/connect",
   grant: "/grant",
   login: "/login",
-  browserLogin: "/browser-login",
   rickrollMockRoot: "/rickroll",
   rickrollMockSignIn: "/rickroll/signin",
   // Demo flow (throwaway — for video recording)

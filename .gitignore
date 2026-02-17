@@ -33,7 +33,6 @@ read-only-for-reference/
 
 # Tauri
 src-tauri/target/
-src-tauri/auth-page/
 
 # Devcontainer (local dev environment)
 .devcontainer/

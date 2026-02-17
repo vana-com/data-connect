@@ -2,7 +2,7 @@
 @import "tw-animate-css";
 @import "shadcn/tailwind.css";
 
-/* Tailwind 4: ensure auth-page build scans shared UI/components. */
+/* Tailwind 4: ensure shared UI/components are scanned. */
 @source "../**/*.{ts,tsx,js,jsx,html}";
 
 /* import custom styles */

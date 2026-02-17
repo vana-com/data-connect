@@ -23,7 +23,7 @@
 - `npx tsc -b`
 - `cargo check --manifest-path src-tauri/Cargo.toml`
 
-## Remaining scope (next slices)
-- **Commit A:** contract-gated deep-link normalization stubs in `src/hooks/use-deep-link.ts` and `src/pages/grant/use-grant-flow.ts`.
-- **Commit B:** durable auth session persistence + startup hydration + logout clear semantics.
-- Final strict URL-only grant resolution waits on upstream launch-complete param contract confirmation.
+## Remaining scope (status update)
+- **Commit A:** complete (see `docs/solutions/260217-passport-auth-conversion-phase-2.md`).
+- **Commit B:** complete (see `docs/solutions/260217-passport-auth-conversion-phase-2.md`).
+- Final strict URL-only grant resolution still waits on upstream launch-complete param contract confirmation.

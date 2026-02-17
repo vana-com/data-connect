@@ -1,5 +1,13 @@
 # Passport auth + web grants conversion plan
 
+## Status update (2026-02-17)
+
+- Commit A + B scoped work is complete and documented in:
+  - `docs/solutions/260217-passport-auth-conversion-phase-1.md`
+  - `docs/solutions/260217-passport-auth-conversion-phase-2.md`
+- Remaining closure dependency is external:
+  - strict URL-only grant resolution stays deferred until upstream launch-complete query-param contract is finalized.
+
 ## Goal
 
 Refactor Data Connect to match the canonical external flow:

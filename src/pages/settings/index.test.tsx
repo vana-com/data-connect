@@ -235,4 +235,62 @@ describe("Settings", () => {
       expect(unlisten).toHaveBeenCalledTimes(1)
     })
   })
+
+  it("cleans up auth listener when start_browser_auth fails", async () => {
+    vi.stubEnv("VITE_PRIVY_APP_ID", "test-app-id")
+    vi.stubEnv("VITE_PRIVY_CLIENT_ID", "test-client-id")
+
+    const unlisten = vi.fn()
+    mockListen.mockResolvedValue(unlisten)
+    mockInvoke.mockImplementation((command: string) => {
+      if (command === "start_browser_auth") {
+        return Promise.reject(new Error("start failed"))
+      }
+      if (command === "get_user_data_path") {
+        return Promise.resolve("/tmp/databridge")
+      }
+      if (command === "check_browser_available") {
+        return Promise.resolve({
+          available: false,
+          browser_type: "system",
+          needs_download: false,
+        })
+      }
+      return Promise.resolve(null)
+    })
+
+    const { getAllByRole } = renderSettings()
+    const [signInButton] = getAllByRole("button", { name: "Sign in" })
+    fireEvent.click(signInButton)
+
+    await waitFor(() => {
+      expect(mockInvoke).toHaveBeenCalledWith("start_browser_auth", {
+        privyAppId: "test-app-id",
+        privyClientId: "test-client-id",
+      })
+      expect(unlisten).toHaveBeenCalledTimes(1)
+    })
+  })
+
+  it("retries auth listener subscription after sign-in starts when initial subscribe fails", async () => {
+    vi.stubEnv("VITE_PRIVY_APP_ID", "test-app-id")
+    vi.stubEnv("VITE_PRIVY_CLIENT_ID", "test-client-id")
+
+    const unlisten = vi.fn()
+    mockListen
+      .mockRejectedValueOnce(new Error("initial subscribe failed"))
+      .mockResolvedValueOnce(unlisten)
+
+    const { getAllByRole } = renderSettings()
+    const [signInButton] = getAllByRole("button", { name: "Sign in" })
+    fireEvent.click(signInButton)
+
+    await waitFor(() => {
+      expect(mockInvoke).toHaveBeenCalledWith("start_browser_auth", {
+        privyAppId: "test-app-id",
+        privyClientId: "test-client-id",
+      })
+      expect(mockListen).toHaveBeenCalledTimes(2)
+    })
+  })
 })

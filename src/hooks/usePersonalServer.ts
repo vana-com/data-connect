@@ -24,6 +24,7 @@ const isTauriRuntime = () =>
 const MAX_RESTART_ATTEMPTS = 3;
 let _restartCount = 0;
 let _lastStartedWallet: string | null = null;
+let _pendingTunnelRestart = false;
 
 export function usePersonalServer() {
   const { walletAddress, masterKeySignature } = useSelector(
@@ -75,9 +76,10 @@ export function usePersonalServer() {
 
   const stopServer = useCallback(async () => {
     if (!isTauriRuntime()) return;
+    running.current = false;
+    _pendingTunnelRestart = false;
     try {
       await invoke('stop_personal_server');
-      running.current = false;
       _sharedStatus = 'stopped';
       _sharedPort = null;
       _sharedTunnelUrl = null;
@@ -96,6 +98,7 @@ export function usePersonalServer() {
   const restartServer = useCallback(async (wallet?: string | null) => {
     console.log('[PersonalServer] Restarting with wallet:', wallet ?? 'none');
     _restartCount = 0; // Reset crash counter for explicit restarts
+    _pendingTunnelRestart = false;
     await stopServer();
     // Brief wait for port release (stop_personal_server already waits up to 3s,
     // but add a small buffer for OS-level cleanup)
@@ -113,9 +116,22 @@ export function usePersonalServer() {
       _sharedStatus = 'running';
       _sharedPort = event.payload.port;
       _restartCount = 0;
-      restartingRef.current = false;
       setStatus('running');
       setPort(event.payload.port);
+
+      if (_pendingTunnelRestart) {
+        _pendingTunnelRestart = false;
+        console.log('[PersonalServer] Deferred tunnel restart triggered...');
+        // Don't clear restartingRef — we're about to restart again
+        _restartCount = 0;
+        setTimeout(() => {
+          void stopServer().then(() => {
+            setTimeout(() => startServerRef.current(_lastStartedWallet), 500);
+          });
+        }, 1000);
+      } else {
+        restartingRef.current = false;
+      }
     }).then((fn) => unlisteners.push(fn));
 
     listen<{ message: string }>('personal-server-error', (event) => {
@@ -123,6 +139,7 @@ export function usePersonalServer() {
       running.current = false;
       _sharedStatus = 'error';
       _sharedError = event.payload.message;
+      _pendingTunnelRestart = false;
       setStatus('error');
       setError(event.payload.message);
     }).then((fn) => unlisteners.push(fn));
@@ -185,6 +202,13 @@ export function usePersonalServer() {
       }
       if (!_lastStartedWallet) {
         console.log('[PersonalServer] No wallet available, skipping restart');
+        return;
+      }
+      // If Phase 2 is still in progress, defer the tunnel restart
+      if (_sharedStatus !== 'running') {
+        console.log('[PersonalServer] Phase 2 in progress, deferring tunnel restart...');
+        _pendingTunnelRestart = true;
+        restartingRef.current = true;
         return;
       }
       console.log('[PersonalServer] Restarting to establish tunnel...');

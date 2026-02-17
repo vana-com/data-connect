@@ -443,6 +443,132 @@ describe("usePersonalServer", () => {
     expect(result.current.port).toBe(9090)
   })
 
+  it("stopServer failure does not prevent subsequent startServer", async () => {
+    const usePersonalServer = await importHook()
+
+    const { result } = renderHook(() => usePersonalServer())
+
+    await act(async () => {
+      await vi.runAllTimersAsync()
+    })
+
+    act(() => {
+      emit("personal-server-ready", { port: 8080 })
+    })
+
+    expect(result.current.status).toBe("running")
+
+    // Make stop_personal_server throw
+    mockInvoke.mockImplementation((cmd: string) => {
+      if (cmd === "stop_personal_server") {
+        return Promise.reject(new Error("stop failed"))
+      }
+      if (cmd === "start_personal_server") {
+        return Promise.resolve({ running: true, port: 8080 })
+      }
+      return Promise.resolve()
+    })
+
+    // Call stopServer (which will fail)
+    await act(async () => {
+      await result.current.stopServer()
+    })
+
+    // Now startServer should still work despite stop failure
+    mockInvoke.mockClear()
+    await act(async () => {
+      await result.current.startServer(null)
+    })
+
+    expect(mockInvoke).toHaveBeenCalledWith(
+      "start_personal_server",
+      expect.any(Object)
+    )
+  })
+
+  it("defers tunnel restart when server-registered fires during Phase 2", async () => {
+    const usePersonalServer = await importHook()
+
+    const { result, rerender } = renderHook(() => usePersonalServer())
+
+    // Phase 1: unauthenticated start
+    await act(async () => {
+      await vi.runAllTimersAsync()
+    })
+
+    act(() => {
+      emit("personal-server-ready", { port: 8080 })
+    })
+
+    expect(result.current.status).toBe("running")
+    mockInvoke.mockClear()
+
+    // Sign in → Phase 2 begins
+    authState = { walletAddress: "0xabc", masterKeySignature: "sig123" }
+    rerender()
+
+    // Let Phase 2 stop + 500ms + start proceed, but DON'T emit ready yet
+    await act(async () => {
+      await vi.runAllTimersAsync()
+    })
+
+    // Phase 2 has called stop + start, server is 'starting'
+    expect(result.current.status).toBe("starting")
+    expect(result.current.restartingRef.current).toBe(true)
+
+    // Record how many times stop was called so far (1 from Phase 2)
+    const stopCallsAfterPhase2 = mockInvoke.mock.calls.filter(
+      (c) => c[0] === "stop_personal_server"
+    ).length
+
+    // Gateway registration completes while Phase 2 is still starting
+    act(() => {
+      emit("server-registered", { status: 200, serverId: "srv-123" })
+    })
+
+    // Advance any timers the handler may have scheduled
+    await act(async () => {
+      await vi.runAllTimersAsync()
+    })
+
+    // stop should NOT have been called again (restart was deferred)
+    const stopCallsAfterRegistered = mockInvoke.mock.calls.filter(
+      (c) => c[0] === "stop_personal_server"
+    ).length
+    expect(stopCallsAfterRegistered).toBe(stopCallsAfterPhase2)
+
+    mockInvoke.mockClear()
+
+    // Phase 2 completes — ready event fires
+    act(() => {
+      emit("personal-server-ready", { port: 9090 })
+    })
+
+    // restartingRef should still be true (tunnel restart is about to happen)
+    expect(result.current.restartingRef.current).toBe(true)
+
+    // Let the deferred tunnel restart proceed (1s delay + stop + 500ms + start)
+    await act(async () => {
+      await vi.runAllTimersAsync()
+    })
+
+    // Tunnel restart should have called stop + start
+    expect(mockInvoke).toHaveBeenCalledWith("stop_personal_server")
+    expect(mockInvoke).toHaveBeenCalledWith("start_personal_server", {
+      port: null,
+      masterKeySignature: "sig123",
+      gatewayUrl: null,
+      ownerAddress: "0xabc",
+    })
+
+    // Final ready event — tunnel established
+    act(() => {
+      emit("personal-server-ready", { port: 9090 })
+    })
+
+    expect(result.current.restartingRef.current).toBe(false)
+  })
+
   it("sets status to stopped on graceful exit (not crash)", async () => {
     const usePersonalServer = await importHook()
 

@@ -127,6 +127,9 @@ export function useEvents() {
       walletAddress?: string;
       masterKeySignature?: string;
     }>('auth-complete', (result) => {
+      // TODO(auth-hardening): This validates payload shape/freshness only.
+      // It does NOT cryptographically verify callback authenticity yet
+      // (for example state/nonce binding and one-time replay protection).
       if (!result.success || !result.user?.id || !result.walletAddress) {
         clearPersistedAuthSession();
         return;

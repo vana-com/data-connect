@@ -323,6 +323,78 @@ describe("useGrantFlow", () => {
     )
   })
 
+  it("auth_complete_event_applies_once_per_auth_cycle", async () => {
+    tauriWindow.__TAURI_INTERNALS__ = {}
+    const mockedInvoke = vi.mocked(invoke)
+    mockedInvoke.mockResolvedValue("https://auth.vana.test")
+
+    const prefetched = {
+      session: {
+        id: "auth-once-session-1",
+        granteeAddress: "0xbuilder",
+        scopes: ["chatgpt.conversations"],
+        expiresAt: "2030-01-01T00:00:00.000Z",
+      },
+      builderManifest: {
+        name: "Auth Once Builder",
+        appUrl: "https://auth-once.example.com",
+        privacyPolicyUrl: "https://auth-once.example.com/privacy",
+      },
+    }
+
+    mockCreateGrant.mockResolvedValue({ grantId: "grant-auth-once-1" })
+
+    const { result, rerender } = renderHook(() =>
+      useGrantFlow(
+        { sessionId: "auth-once-session-1", secret: "auth-once-secret" },
+        prefetched,
+      ),
+    )
+
+    await waitFor(() => {
+      expect(result.current.flowState.status).toBe("consent")
+    })
+
+    await act(async () => {
+      await result.current.handleApprove()
+    })
+
+    await waitFor(() => {
+      expect(result.current.flowState.status).toBe("auth-required")
+    })
+
+    await act(async () => {
+      authState = {
+        isAuthenticated: true,
+        isLoading: false,
+        walletAddress: "0xauthonce",
+      }
+      authCompleteHandler?.({
+        payload: {
+          success: true,
+          user: { id: "user-1", email: "test@vana.org" },
+          walletAddress: "0xauthonce",
+        },
+      })
+      authCompleteHandler?.({
+        payload: {
+          success: true,
+          user: { id: "user-1", email: "test@vana.org" },
+          walletAddress: "0xauthonce",
+        },
+      })
+      rerender()
+    })
+
+    await waitFor(() => {
+      expect(result.current.flowState.status).toBe("success")
+    })
+
+    expect(mockCreateGrant).toHaveBeenCalledTimes(1)
+    expect(mockApproveSession).toHaveBeenCalledTimes(1)
+    expect(mockClearPendingApproval).toHaveBeenCalledTimes(1)
+  })
+
   it("forces success when status param is success", async () => {
     const { result } = renderHook(() =>
       useGrantFlow({

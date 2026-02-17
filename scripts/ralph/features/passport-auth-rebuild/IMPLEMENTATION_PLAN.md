@@ -16,6 +16,18 @@
 
 ## Loopback Execution Updates
 
+- 2026-02-17 (current loop): completed **Slice 0.1 follow-up - auth completion exactly-once regression coverage**.
+  - Finding:
+    - Phase 0 required `auth_complete_event_applies_once_per_auth_cycle`, but the test contract existed only in the plan and was not implemented in `src/pages/grant/use-grant-flow.test.tsx`.
+  - Implemented change:
+    - Added `auth_complete_event_applies_once_per_auth_cycle` to `src/pages/grant/use-grant-flow.test.tsx`.
+    - The test emits duplicate `auth-complete` events in a single auth cycle and asserts approval side effects remain single-fire (`createGrant`, `approveSession`, and pending-approval clear all execute once).
+  - Why this slice now:
+    - This closes a phase-critical invariant gap for auth resume safety and protects against regressions where repeated callback events could duplicate approval side effects.
+  - Validation completed (slice + relevant phase gate check):
+    - `npx vitest run --maxWorkers=1 src/pages/grant/use-grant-flow.test.tsx` (pass)
+    - `npx vitest run --maxWorkers=1 src/auth-page/auth.test.ts` (pass)
+
 - 2026-02-17 (current loop): completed **Slice 1.3 - Callback method contract regression coverage**.
   - Finding:
     - Phase 0/1 callback abuse-path matrix listed `rejects_non_post_auth_callback`, but the Rust callback tests only covered state lifecycle (`missing/expired/replayed/valid-once`) and did not explicitly lock the method contract in a dedicated test.

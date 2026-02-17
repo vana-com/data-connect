@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useRef, useState, type RefObject } from "react"
 import PrivyClient, { LocalStorage } from "@privy-io/js-sdk-core"
 import type { AuthConfig, AuthResult, AuthView } from "./types"
+import { DEV_FLAGS } from "@/config/dev-flags"
 
 type PrivyLinkedAccount = {
   type: string
@@ -48,6 +49,10 @@ type UseAuthPageState = {
 const MASTER_KEY_MESSAGE = "vana-master-key-v1"
 const LOGIN_ERROR_MESSAGE = "Auth init failed."
 const CALLBACK_STATE_STORAGE_KEY = "vana.auth.callback_state"
+const debugLog = (...args: unknown[]) => {
+  if (!DEV_FLAGS.verboseAuthLogs) return
+  console.log(...args)
+}
 
 type CloseTabActions = {
   close?: () => void
@@ -194,7 +199,7 @@ export const useAuthPage = (): UseAuthPageState => {
         try {
           await privy.initialize()
         } catch (initErr) {
-          console.log("Privy init (may be expected):", initErr)
+          debugLog("Privy init (may be expected):", initErr)
         }
       }
 
@@ -204,7 +209,7 @@ export const useAuthPage = (): UseAuthPageState => {
   )
 
   const sendAuthResult = useCallback(async (result: AuthResult) => {
-    console.log("Sending auth result:", JSON.stringify(result))
+    debugLog("Sending auth result:", JSON.stringify(result))
     try {
       const resp = await fetch("/auth-callback", {
         method: "POST",
@@ -214,7 +219,7 @@ export const useAuthPage = (): UseAuthPageState => {
           state: getCallbackState(),
         }),
       })
-      console.log("Auth callback response:", resp.status)
+      debugLog("Auth callback response:", resp.status)
       return resp.ok
     } catch (err) {
       console.error("Failed to send auth result:", err)
@@ -225,10 +230,10 @@ export const useAuthPage = (): UseAuthPageState => {
   const setupWalletIframe = useCallback(
     async (privy: PrivyClient) => {
       try {
-        console.log("[AUTH] setupWalletIframe: starting...")
+        debugLog("[AUTH] setupWalletIframe: starting...")
 
         const iframeUrl = privy.embeddedWallet.getURL()
-        console.log("[AUTH] iframe URL:", iframeUrl)
+        debugLog("[AUTH] iframe URL:", iframeUrl)
         setWalletIframeUrl(iframeUrl)
 
         await new Promise<void>(resolve => {
@@ -257,7 +262,7 @@ export const useAuthPage = (): UseAuthPageState => {
             // after commit and may miss early messages from the iframe.
             if (!messageHandlerInstalledRef.current) {
               messageHandlerInstalledRef.current = true
-              console.log("[AUTH] Installing message forwarder")
+              debugLog("[AUTH] Installing message forwarder")
               window.addEventListener("message", (event: MessageEvent) => {
                 const currentIframe = walletIframeRef.current
                 if (!currentIframe?.contentWindow) return
@@ -274,7 +279,7 @@ export const useAuthPage = (): UseAuthPageState => {
 
             const handleLoad = () => {
               if (resolved) return
-              console.log("[AUTH] iframe loaded")
+              debugLog("[AUTH] iframe loaded")
               setWalletMessagePoster(privy)
               window.setTimeout(resolveOnce, 2000)
             }
@@ -297,7 +302,7 @@ export const useAuthPage = (): UseAuthPageState => {
           attachListeners()
         })
 
-        console.log("[AUTH] setupWalletIframe: done")
+        debugLog("[AUTH] setupWalletIframe: done")
       } catch (err) {
         console.error("[AUTH] Embedded wallet iframe setup failed:", err)
       }
@@ -311,7 +316,7 @@ export const useAuthPage = (): UseAuthPageState => {
       walletAddress: string,
       walletAccount: PrivyLinkedAccount
     ) => {
-      console.log("[AUTH] registerPersonalServer: starting...")
+      debugLog("[AUTH] registerPersonalServer: starting...")
       showLoading("Starting server...")
 
       let identity: Record<string, unknown> | null = null
@@ -319,13 +324,13 @@ export const useAuthPage = (): UseAuthPageState => {
       for (let i = 0; i < 30; i += 1) {
         await new Promise(resolve => setTimeout(resolve, 2000))
         try {
-          console.log("[AUTH] Polling /server-identity attempt", i + 1)
+          debugLog("[AUTH] Polling /server-identity attempt", i + 1)
           const resp = await fetch("/server-identity")
-          console.log("[AUTH] /server-identity response:", resp.status)
+          debugLog("[AUTH] /server-identity response:", resp.status)
           if (resp.ok) {
             const data = await resp.json()
             identity = data
-            console.log(
+            debugLog(
               "[AUTH] Server identity:",
               JSON.stringify(identity).substring(0, 200)
             )
@@ -338,7 +343,7 @@ export const useAuthPage = (): UseAuthPageState => {
             if (addr.identity?.address || addr.address) {
               break
             }
-            console.log("[AUTH] Identity available but no address yet")
+            debugLog("[AUTH] Identity available but no address yet")
           }
         } catch (err) {
           console.warn("[AUTH] /server-identity fetch error:", err)
@@ -378,7 +383,7 @@ export const useAuthPage = (): UseAuthPageState => {
         return
       }
 
-      console.log("[AUTH] Using derived tunnel URL:", tunnelPublicUrl)
+      debugLog("[AUTH] Using derived tunnel URL:", tunnelPublicUrl)
 
       if (serverId) {
         // Check if existing registration has the correct URL
@@ -392,13 +397,13 @@ export const useAuthPage = (): UseAuthPageState => {
               gatewayData as { data?: { serverUrl?: string } }
             )?.data?.serverUrl
             if (currentUrl === tunnelPublicUrl) {
-              console.log(
+              debugLog(
                 "[AUTH] Server already registered with correct URL:",
                 serverId
               )
               return
             }
-            console.log(
+            debugLog(
               "[AUTH] Server registered with wrong URL:",
               currentUrl,
               "→ need:",
@@ -520,7 +525,7 @@ export const useAuthPage = (): UseAuthPageState => {
         params: [walletAddress, JSON.stringify(typedData)],
       })
 
-      console.log(
+      debugLog(
         "[AUTH] Server registration signed:",
         signature?.substring(0, 20) + "..."
       )
@@ -532,7 +537,7 @@ export const useAuthPage = (): UseAuthPageState => {
       })
 
       if (regResp.status === 409) {
-        console.log("[AUTH] Server already registered (409)")
+        debugLog("[AUTH] Server already registered (409)")
         return
       }
 
@@ -541,7 +546,7 @@ export const useAuthPage = (): UseAuthPageState => {
         throw new Error(`Registration failed (${regResp.status}): ${errText}`)
       }
 
-      console.log("[AUTH] Server registered successfully")
+      debugLog("[AUTH] Server registered successfully")
     },
     [showLoading, setupWalletIframe]
   )
@@ -555,7 +560,7 @@ export const useAuthPage = (): UseAuthPageState => {
       showLoading("Wallet setup...")
 
       const accounts = user.linked_accounts || user.linkedAccounts || []
-      console.log(
+      debugLog(
         "[AUTH] linked_accounts (" + accounts.length + "):",
         JSON.stringify(
           accounts.map(a => ({
@@ -578,7 +583,7 @@ export const useAuthPage = (): UseAuthPageState => {
 
       let embeddedWallet = findEmbeddedWallet(accounts)
       let walletAddress = embeddedWallet?.address ?? null
-      console.log(
+      debugLog(
         "[AUTH] Initial find - walletAddress:",
         walletAddress,
         "embeddedWallet:",
@@ -587,11 +592,11 @@ export const useAuthPage = (): UseAuthPageState => {
 
       if (!walletAddress) {
         try {
-          console.log("[AUTH] No wallet found, setting up iframe for create...")
+          debugLog("[AUTH] No wallet found, setting up iframe for create...")
           await setupWalletIframe(privy)
-          console.log("[AUTH] Calling embeddedWallet.create()...")
+          debugLog("[AUTH] Calling embeddedWallet.create()...")
           const result = await privy.embeddedWallet.create({})
-          console.log(
+          debugLog(
             "[AUTH] create() returned, keys:",
             Object.keys(result || {})
           )
@@ -599,7 +604,7 @@ export const useAuthPage = (): UseAuthPageState => {
           if (createdUser) {
             const createdAccounts =
               createdUser.linked_accounts || createdUser.linkedAccounts || []
-            console.log(
+            debugLog(
               "[AUTH] create() user linked_accounts (" +
                 createdAccounts.length +
                 "):",
@@ -615,7 +620,7 @@ export const useAuthPage = (): UseAuthPageState => {
             embeddedWallet = findEmbeddedWallet(createdAccounts)
           } else {
             // create() might return user at root level (not nested)
-            console.log(
+            debugLog(
               "[AUTH] create() result has no .user, checking root:",
               JSON.stringify(result).substring(0, 300)
             )
@@ -627,7 +632,7 @@ export const useAuthPage = (): UseAuthPageState => {
             }
           }
           walletAddress = embeddedWallet?.address ?? null
-          console.log(
+          debugLog(
             "[AUTH] After create - walletAddress:",
             walletAddress,
             "embeddedWallet:",
@@ -648,7 +653,7 @@ export const useAuthPage = (): UseAuthPageState => {
       }
 
       let masterKeySignature: string | null = null
-      console.log(
+      debugLog(
         "[AUTH] Pre-signing check - walletAddress:",
         walletAddress,
         "embeddedWallet truthy:",
@@ -657,25 +662,25 @@ export const useAuthPage = (): UseAuthPageState => {
       if (walletAddress && embeddedWallet) {
         try {
           showLoading("Signing key...")
-          console.log(
+          debugLog(
             "[AUTH] Embedded wallet account:",
             JSON.stringify(embeddedWallet)
           )
           await setupWalletIframe(privy)
-          console.log(
+          debugLog(
             "[AUTH] Getting provider for wallet:",
             embeddedWallet.address
           )
           // eslint-disable-next-line @typescript-eslint/no-explicit-any -- PrivyLinkedAccount is a subset of the SDK's full type
           const provider =
             await privy.embeddedWallet.getProvider(embeddedWallet as any)
-          console.log("[AUTH] Provider obtained:", provider ? "ok" : "null")
-          console.log("[AUTH] Requesting personal_sign...")
+          debugLog("[AUTH] Provider obtained:", provider ? "ok" : "null")
+          debugLog("[AUTH] Requesting personal_sign...")
           masterKeySignature = await provider.request({
             method: "personal_sign",
             params: [toHexMessage(MASTER_KEY_MESSAGE), walletAddress],
           })
-          console.log(
+          debugLog(
             "[AUTH] Master key signed:",
             masterKeySignature?.substring(0, 20) + "..."
           )
@@ -881,21 +886,21 @@ export const useAuthPage = (): UseAuthPageState => {
 
         if (oauthCode && oauthState) {
           showLoading("Finishing sign-in...")
-          console.log(
+          debugLog(
             "[AUTH] OAuth callback detected, code:",
             oauthCode.substring(0, 8) + "..."
           )
           try {
-            console.log("[AUTH] Calling loginWithCode...")
+            debugLog("[AUTH] Calling loginWithCode...")
             const session = (await privy.auth.oauth.loginWithCode(
               oauthCode,
               oauthState
             )) as PrivySession
 
             try {
-              console.log("[AUTH] Initializing SDK after login...")
+              debugLog("[AUTH] Initializing SDK after login...")
               await privy.initialize()
-              console.log("[AUTH] SDK initialized successfully")
+              debugLog("[AUTH] SDK initialized successfully")
             } catch (initErr) {
               console.warn("[AUTH] Post-login initialize (may be ok):", initErr)
             }

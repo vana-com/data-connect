@@ -12,4 +12,7 @@ export const DEV_FLAGS = {
   strictGrantParamAllowlist: parseEnvFlag(
     import.meta.env.VITE_STRICT_GRANT_PARAM_ALLOWLIST
   ),
+  // .env.local: VITE_VERBOSE_AUTH_LOGS=true
+  // Enable verbose auth/connect diagnostic logs in hot paths.
+  verboseAuthLogs: parseEnvFlag(import.meta.env.VITE_VERBOSE_AUTH_LOGS),
 } as const

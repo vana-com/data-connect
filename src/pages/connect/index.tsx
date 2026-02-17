@@ -26,6 +26,7 @@ import {
 } from "@/lib/platform/utils"
 import { claimSession } from "@/services/sessionRelay"
 import { verifyBuilder } from "@/services/builder"
+import { DEV_FLAGS } from "@/config/dev-flags"
 import type { RootState } from "@/types"
 import type { PrefetchedGrantData, GrantSession } from "@/pages/grant/types"
 import { cn } from "@/lib/classes"
@@ -57,6 +58,10 @@ export function Connect() {
   // the connect/export page (Screen 1), so the grant page can skip straight to consent.
   const prefetchedSessionRef = useRef<string | null>(null)
   const [prefetched, setPrefetched] = useState<PrefetchedGrantData | null>(null)
+  const debugLog = (...args: unknown[]) => {
+    if (!DEV_FLAGS.verboseAuthLogs) return
+    console.log(...args)
+  }
 
   useEffect(() => {
     // Only pre-fetch for real sessions (not demo, needs secret)
@@ -68,20 +73,20 @@ export function Connect() {
       // Step 1: Claim session
       let session: GrantSession
       try {
-        console.log("[Connect] Pre-fetch: claiming session", {
+        debugLog("[Connect] Pre-fetch: claiming session", {
           sessionId: params.sessionId,
           hasSecret: Boolean(params.secret),
           timestamp: Date.now(),
-        });
+        })
         const claimed = await claimSession({
           sessionId: params.sessionId!,
           secret: params.secret!,
         })
-        console.log("[Connect] Pre-fetch: claim succeeded", {
+        debugLog("[Connect] Pre-fetch: claim succeeded", {
           sessionId: params.sessionId,
           granteeAddress: claimed.granteeAddress,
           scopes: claimed.scopes,
-        });
+        })
         session = {
           id: params.sessionId!,
           granteeAddress: claimed.granteeAddress,
@@ -108,10 +113,10 @@ export function Connect() {
           session.webhookUrl,
         )
         const result = { session, builderManifest }
-        console.log("[Connect] Pre-fetch: builder verified, prefetched data ready", {
+        debugLog("[Connect] Pre-fetch: builder verified, prefetched data ready", {
           sessionId: params.sessionId,
           builderName: builderManifest?.name,
-        });
+        })
         setPrefetched(result)
         return result
       } catch (err) {
@@ -225,12 +230,12 @@ export function Connect() {
       const grantHref = grantSearch
         ? `${ROUTES.grant}?${grantSearch}`
         : ROUTES.grant
-      console.log("[Connect] Navigating to /grant", {
+      debugLog("[Connect] Navigating to /grant", {
         hasPrefetched: prefetched !== null,
         prefetchedSession: prefetched?.session?.id,
         prefetchedBuilder: prefetched?.builderManifest?.name,
         grantHref,
-      });
+      })
       setConnectRunId(null)
       navigate(grantHref, {
         state: prefetched ? { prefetched } : undefined,

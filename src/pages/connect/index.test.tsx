@@ -141,9 +141,10 @@ describe("Connect", () => {
         defaultPlatforms({
           platforms: [CHATGPT_PLATFORM],
           isPlatformConnected: vi.fn(() => true),
+          platformsLoaded: false,
         })
       )
-      renderConnect(REAL_SESSION_SEARCH)
+      renderConnect()
       expect(screen.getByText("Connect your ChatGPT (again)")).toBeTruthy()
     })
   })

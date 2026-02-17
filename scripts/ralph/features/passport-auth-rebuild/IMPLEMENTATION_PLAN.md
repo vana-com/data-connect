@@ -16,6 +16,18 @@
 
 ## Loopback Execution Updates
 
+- 2026-02-17 (current loop): completed **Slice 5.2 - Logging polish**.
+  - Added explicit debug gate for verbose auth/connect logs:
+    - `src/config/dev-flags.ts` now exposes `DEV_FLAGS.verboseAuthLogs` from `VITE_VERBOSE_AUTH_LOGS`.
+    - `src/pages/connect/index.tsx` now routes hot-path diagnostics (`pre-fetch` and `navigate to /grant`) through a gated `debugLog` helper.
+    - `src/auth-page/auth.ts` now routes noisy OAuth/wallet/server-registration `console.log` output through the same gated debug path while preserving `warn`/`error` observability.
+  - Test hardening discovered and resolved during validation:
+    - `src/pages/connect/index.test.tsx` case `shows '(again)' suffix when platform is already connected` raced with intended auto-navigation to `/grant` when already connected.
+    - Updated the test fixture to keep `platformsLoaded: false` for this one rendering assertion so the title-copy expectation remains deterministic while existing navigation tests continue to cover redirect behavior.
+  - Why this slice now: Phase 5 requires reducing hot-path log noise without changing runtime behavior; this lowers signal loss in production diagnostics while preserving opt-in deep debugging during auth/connect bring-up.
+  - Validation completed (slice + relevant phase gate checks):
+    - `npx vitest run --maxWorkers=1 src/auth-page/auth.test.ts src/pages/connect/index.test.tsx src/pages/grant/use-grant-flow.test.tsx` (pass)
+
 - 2026-02-17 (current loop): completed **Slice 4.2 - Strict allowlist gate (disabled by default)**.
   - Added strict-mode gate on top of the Phase 4.1 normalizer seam:
     - `src/lib/grant-param-normalizer.ts` now accepts `strictAllowlist` option and tracks:

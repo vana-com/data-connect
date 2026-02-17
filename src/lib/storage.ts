@@ -33,6 +33,7 @@ function safeSetItem(key: string, value: string): boolean {
 // the grant exists on Gateway but the builder never learns about it.
 
 const PENDING_APPROVAL_KEY = `${STORAGE_VERSION}_pending_approval`;
+const PENDING_GRANT_REDIRECT_KEY = `${STORAGE_VERSION}_pending_grant_redirect`;
 
 export interface PendingApproval {
   sessionId: string;
@@ -72,4 +73,45 @@ export function getPendingApproval(): PendingApproval | null {
 
 export function clearPendingApproval(): void {
   localStorage.removeItem(PENDING_APPROVAL_KEY);
+}
+
+// --- Pending grant redirect ---
+// When a user clicks Allow while logged out, we route them to the root auth
+// entrypoint first. Persist the grant URL so we can resume after auth succeeds.
+
+export interface PendingGrantRedirect {
+  route: string;
+  createdAt: string;
+}
+
+const PendingGrantRedirectSchema = z.object({
+  route: z.string().min(1),
+  createdAt: z.string(),
+});
+
+export function savePendingGrantRedirect(route: string): void {
+  if (!route) return;
+  safeSetItem(
+    PENDING_GRANT_REDIRECT_KEY,
+    JSON.stringify({
+      route,
+      createdAt: new Date().toISOString(),
+    } satisfies PendingGrantRedirect),
+  );
+}
+
+export function getPendingGrantRedirect(): PendingGrantRedirect | null {
+  const raw = localStorage.getItem(PENDING_GRANT_REDIRECT_KEY);
+  if (!raw) return null;
+  try {
+    const parsed = JSON.parse(raw);
+    const result = PendingGrantRedirectSchema.safeParse(parsed);
+    return result.success ? result.data : null;
+  } catch {
+    return null;
+  }
+}
+
+export function clearPendingGrantRedirect(): void {
+  localStorage.removeItem(PENDING_GRANT_REDIRECT_KEY);
 }

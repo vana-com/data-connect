@@ -9,6 +9,7 @@ import {
   updateRunConnected,
   updateRunExportData,
   markRunSynced,
+  setAuthenticated,
   store,
 } from '../state/store';
 import type {
@@ -115,6 +116,27 @@ export function useEvents() {
     addListener<ConnectorLogEvent>('connector-log', ({ runId, message }) => {
       console.log('[Connector Log]', message);
       dispatch(updateRunLogs({ runId, logs: message }));
+    });
+
+    // Listen for auth completion from the external browser flow.
+    // This must be app-global (not grant-page scoped) so root login works.
+    addListener<{
+      success: boolean;
+      user?: { id: string; email: string | null };
+      walletAddress?: string;
+      masterKeySignature?: string;
+    }>('auth-complete', (result) => {
+      if (!result.success || !result.user) return;
+      dispatch(
+        setAuthenticated({
+          user: {
+            id: result.user.id,
+            email: result.user.email || undefined,
+          },
+          walletAddress: result.walletAddress || null,
+          masterKeySignature: result.masterKeySignature || null,
+        })
+      );
     });
 
     // Listen for connector status events

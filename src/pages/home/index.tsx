@@ -3,6 +3,7 @@ import { MotionConfig } from "motion/react"
 import { useNavigate } from "react-router-dom"
 import { useSelector } from "react-redux"
 import { usePlatforms } from "@/hooks/usePlatforms"
+import { useAuth } from "@/hooks/useAuth"
 import { useConnector } from "@/hooks/useConnector"
 import { useConnectorUpdates } from "@/hooks/useConnectorUpdates"
 import { useConnectedApps } from "@/hooks/useConnectedApps"
@@ -17,6 +18,11 @@ import { ConnectorUpdates } from "@/pages/home/components/connector-updates"
 import { Text } from "@/components/typography/text"
 import { Button } from "@/components/ui/button"
 import { ROUTES } from "@/config/routes"
+import { startBrowserAuthFlow } from "@/lib/start-browser-auth"
+import {
+  clearPendingGrantRedirect,
+  getPendingGrantRedirect,
+} from "@/lib/storage"
 import { buildSettingsUrl } from "@/pages/settings/url"
 import {
   buildGrantSearchParams,
@@ -32,6 +38,7 @@ import {
 
 export function Home() {
   const navigate = useNavigate()
+  const { isAuthenticated } = useAuth()
   const { platforms, isPlatformConnected, loadPlatforms } = usePlatforms()
   const { startExport } = useConnector()
   const { checkForUpdates } = useConnectorUpdates()
@@ -41,6 +48,7 @@ export function Home() {
   const [activeTab, setActiveTab] = useState("sources")
   const [enableTabMotion, setEnableTabMotion] = useState(false)
   const [deepLinkInput, setDeepLinkInput] = useState("")
+  const [authError, setAuthError] = useState<string | null>(null)
 
   const tabs = [
     { value: "sources", label: "Your data" },
@@ -77,6 +85,14 @@ export function Home() {
     const frame = requestAnimationFrame(() => setEnableTabMotion(true))
     return () => cancelAnimationFrame(frame)
   }, [])
+
+  useEffect(() => {
+    if (!isAuthenticated) return
+    const pendingGrant = getPendingGrantRedirect()
+    if (!pendingGrant) return
+    clearPendingGrantRedirect()
+    navigate(pendingGrant.route, { replace: true })
+  }, [isAuthenticated, navigate])
 
   const handleExport = async (platform: Platform) => {
     console.log(
@@ -123,6 +139,42 @@ export function Home() {
     }
     return displayPlatforms
   }, [displayPlatforms, platforms.length])
+
+  if (!isAuthenticated) {
+    return (
+      <div className="grid min-h-[calc(100vh-var(--spacing-nav-with-banner))] place-items-center p-6">
+        <div className="w-full max-w-mobile-width rounded-card bg-background p-10 shadow-md">
+          <div className="space-y-4 text-center">
+            <Text as="h1" intent="heading">
+              Sign in to Data Connect
+            </Text>
+            <Text as="p" intent="body" color="mutedForeground">
+              To continue, sign in with Vana Passport in your browser.
+            </Text>
+          </div>
+          {authError ? (
+            <Text as="p" intent="small" color="destructive" className="mt-4 text-center">
+              {authError}
+            </Text>
+          ) : null}
+          <div className="mt-8 flex justify-center">
+            <Button
+              type="button"
+              onClick={async () => {
+                setAuthError(null)
+                const result = await startBrowserAuthFlow()
+                if (!result) {
+                  setAuthError("Failed to start sign-in flow. Please try again.")
+                }
+              }}
+            >
+              Sign in with Vana Passport
+            </Button>
+          </div>
+        </div>
+      </div>
+    )
+  }
 
   return (
     <div className="container py-w16">

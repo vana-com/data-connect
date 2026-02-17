@@ -1,10 +1,8 @@
 import { useCallback, useEffect, useRef, useState } from "react"
 import { useNavigate } from "react-router-dom"
-import { invoke } from "@tauri-apps/api/core"
-import { listen } from "@tauri-apps/api/event"
 import { useDispatch } from "react-redux"
 import { useAuth } from "../../hooks/useAuth"
-import { setAuthenticated, addConnectedApp } from "../../state/store"
+import { addConnectedApp } from "../../state/store"
 import {
   claimSession,
   approveSession,
@@ -21,6 +19,7 @@ import { usePersonalServer } from "../../hooks/usePersonalServer"
 import {
   savePendingApproval,
   clearPendingApproval,
+  savePendingGrantRedirect,
 } from "../../lib/storage"
 import type {
   BuilderManifest,
@@ -30,13 +29,7 @@ import type {
   PrefetchedGrantData,
 } from "./types"
 import { ROUTES } from "@/config/routes"
-
-const PRIVY_APP_ID = import.meta.env.VITE_PRIVY_APP_ID
-const PRIVY_CLIENT_ID = import.meta.env.VITE_PRIVY_CLIENT_ID
-const DEV_AUTH_PAGE_URL = "http://localhost:5175"
-const isTauriRuntime = () =>
-  typeof window !== "undefined" &&
-  ("__TAURI__" in window || "__TAURI_INTERNALS__" in window)
+import { buildGrantSearchParams } from "@/lib/grant-params"
 
 // Demo mode: sessions starting with "grant-session-" use mock data (dev only)
 function isDemoSession(sessionId: string): boolean {
@@ -74,11 +67,8 @@ export function useGrantFlow(params: GrantFlowParams, prefetched?: PrefetchedGra
     sessionId: "",
     status: "loading",
   })
-  const authTriggered = useRef(false)
   const [isApproving, setIsApproving] = useState(false)
-  const [authPending, setAuthPending] = useState(false)
-  const [authUrl, setAuthUrl] = useState<string | null>(null)
-  const [authError, setAuthError] = useState<string | null>(null)
+  const [approvalPending, setApprovalPending] = useState(false)
   const [retryCount, setRetryCount] = useState(0)
 
   const sessionId = params?.sessionId
@@ -87,10 +77,7 @@ export function useGrantFlow(params: GrantFlowParams, prefetched?: PrefetchedGra
 
   // Reset auth state when sessionId changes
   useEffect(() => {
-    authTriggered.current = false
-    setAuthUrl(null)
-    setAuthError(null)
-    setAuthPending(false)
+    setApprovalPending(false)
   }, [sessionId])
 
   // --- Main flow: load → claim → verify builder → consent ---
@@ -269,83 +256,16 @@ export function useGrantFlow(params: GrantFlowParams, prefetched?: PrefetchedGra
     setFlowState(prev => ({ ...prev, status: "success" }))
   }, [flowState.session, flowState.status, hasSuccessOverride])
 
-  // --- Auth ---
-  const startBrowserAuth = useCallback(async () => {
-    if (import.meta.env.DEV && !isTauriRuntime()) {
-      setAuthError(null)
-      setAuthUrl(DEV_AUTH_PAGE_URL)
-      return
-    }
-    if (!PRIVY_APP_ID || !PRIVY_CLIENT_ID) {
-      setAuthError("Missing VITE_PRIVY_APP_ID or VITE_PRIVY_CLIENT_ID.")
-      return
-    }
-
-    setAuthError(null)
-    try {
-      const url = await invoke<string>("start_browser_auth", {
-        privyAppId: PRIVY_APP_ID,
-        privyClientId: PRIVY_CLIENT_ID,
-      })
-      setAuthUrl(url)
-    } catch (err) {
-      if (import.meta.env.DEV) {
-        setAuthUrl(null)
-        setAuthError(
-          `Auth dev server runs at ${DEV_AUTH_PAGE_URL}. Switch to that tab to continue.`
-        )
-        return
-      }
-      console.error("Failed to start browser auth:", err)
-      setAuthError(
-        err instanceof Error
-          ? err.message
-          : "Failed to open browser for authentication."
-      )
-      authTriggered.current = false
-    }
-  }, [])
-
-  // Auto-start browser auth when auth is required
-  useEffect(() => {
-    if (flowState.status !== "auth-required" || authTriggered.current) return
-    authTriggered.current = true
-    startBrowserAuth()
-  }, [flowState.status, startBrowserAuth])
-
-  // Listen for auth completion from browser
-  useEffect(() => {
-    const unlisten = listen<{
-      success: boolean
-      user?: { id: string; email: string | null }
-      walletAddress?: string
-      masterKeySignature?: string
-      error?: string
-    }>("auth-complete", event => {
-      const result = event.payload
-      if (result.success && result.user) {
-        dispatch(
-          setAuthenticated({
-            user: { id: result.user.id, email: result.user.email || undefined },
-            walletAddress: result.walletAddress || null,
-            masterKeySignature: result.masterKeySignature || null,
-          })
-        )
-      }
-    })
-    return () => {
-      unlisten.then(fn => fn())
-    }
-  }, [dispatch])
-
   // --- Approve flow ---
   const handleApprove = useCallback(async () => {
     if (!flowState.session) return
 
-    // If not authenticated, defer to auth (auto-approve effect will resume)
+    // Grant-time auth is removed. Route users to the root sign-in entrypoint.
     if (!isAuthenticated || !walletAddress) {
-      setAuthPending(true)
-      setFlowState(prev => ({ ...prev, status: "auth-required" }))
+      const resumeSearch = buildGrantSearchParams(params).toString()
+      const resumeRoute = `${ROUTES.grant}${resumeSearch ? `?${resumeSearch}` : ""}`
+      savePendingGrantRedirect(resumeRoute)
+      navigate(ROUTES.home)
       return
     }
 
@@ -353,7 +273,7 @@ export function useGrantFlow(params: GrantFlowParams, prefetched?: PrefetchedGra
     // The auto-approve effect will resume once both are available.
     // The tunnel is required so the builder app can reach the server externally.
     if (!personalServer.port || !personalServer.tunnelUrl) {
-      setAuthPending(true)
+      setApprovalPending(true)
       setFlowState(prev => ({ ...prev, status: "creating-grant" }))
       return
     }
@@ -472,7 +392,6 @@ export function useGrantFlow(params: GrantFlowParams, prefetched?: PrefetchedGra
     dispatch,
   ])
 
-  // Auto-approve after auth completes (if user had clicked Allow before auth).
   // For non-demo sessions, wait until the Personal Server is fully ready
   // (port + tunnel) so handleApprove doesn't throw and the builder can reach
   // the server externally. If the server errors out, surface the error
@@ -504,9 +423,9 @@ export function useGrantFlow(params: GrantFlowParams, prefetched?: PrefetchedGra
   }, [flowState.status])
 
   useEffect(() => {
-    if (!authPending || !isAuthenticated || !walletAddress) return
+    if (!approvalPending || !isAuthenticated || !walletAddress) return
     if (personalServer.status === "error") {
-      setAuthPending(false)
+      setApprovalPending(false)
       setFlowState(prev => ({
         ...prev,
         status: "error",
@@ -524,7 +443,7 @@ export function useGrantFlow(params: GrantFlowParams, prefetched?: PrefetchedGra
     }
     // If the tunnel timed out (90s), surface the error.
     if (tunnelTimedOut) {
-      setAuthPending(false)
+      setApprovalPending(false)
       setFlowState(prev => ({
         ...prev,
         status: "error",
@@ -536,17 +455,16 @@ export function useGrantFlow(params: GrantFlowParams, prefetched?: PrefetchedGra
       setFlowState(prev => prev.status === "preparing-server" ? prev : { ...prev, status: "preparing-server" })
       return
     }
-    setAuthPending(false)
+    setApprovalPending(false)
     void handleApprove()
-  }, [authPending, handleApprove, isAuthenticated, walletAddress, personalServer.port, personalServer.tunnelUrl, tunnelTimedOut, personalServer.status, personalServer.error, flowState.sessionId])
+  }, [approvalPending, handleApprove, isAuthenticated, walletAddress, personalServer.port, personalServer.tunnelUrl, tunnelTimedOut, personalServer.status, personalServer.error, flowState.sessionId])
 
   // --- Retry from error ---
   // Bumps retryCount which re-triggers the main flow effect (claim → verify → consent).
   // For errors during grant creation/approval, the user returns to consent
   // and can click Allow again.
   const handleRetry = useCallback(() => {
-    authTriggered.current = false
-    setAuthPending(false)
+    setApprovalPending(false)
     setRetryCount(c => c + 1)
   }, [])
 
@@ -578,9 +496,6 @@ export function useGrantFlow(params: GrantFlowParams, prefetched?: PrefetchedGra
   return {
     flowState,
     isApproving,
-    authUrl,
-    authError,
-    startBrowserAuth,
     handleApprove,
     handleDeny,
     handleRetry,

@@ -16,6 +16,22 @@
 
 ## Loopback Execution Updates
 
+- 2026-02-17 (current loop): completed **Slice 5.4 - Settings sign-in replacement path regression coverage**.
+  - Finding:
+    - Legacy `/login`/`/browser-login` route coverage existed, but the replacement settings sign-in entrypoint (`start_browser_auth` + `auth-complete` handling in `useSettingsPage`) had no direct regression assertions.
+    - During test authoring, this exposed a functional drift: `SettingsAccount` still preferred `LINKS.passportSignInStub` (`https://passport.vana.org`) instead of invoking the canonical in-app auth command path.
+  - Implemented change:
+    - `src/pages/settings/components/settings-account.tsx` now always routes Sign in through `onSignIn` (canonical `start_browser_auth` flow) and no longer branches to the temporary external URL stub.
+    - `src/pages/settings/index.test.tsx` now covers:
+      - `starts_browser_auth_from_settings_sign_in` (asserts `start_browser_auth` invoke payload and event-listener wiring)
+      - `persists_auth_session_after_auth_complete_success_event` (asserts durable session write and listener cleanup on success callback)
+    - `src/pages/settings/use-settings-page.ts` now reads `VITE_PRIVY_APP_ID` / `VITE_PRIVY_CLIENT_ID` at sign-in call time, keeping runtime behavior unchanged while making the replacement path testable and environment-stable.
+  - Why this slice now:
+    - Phase 5 removal validation should prove real replacement entrypoints keep working; this closes the highest-risk uncovered auth surface after legacy route deletion.
+  - Validation completed (slice + relevant phase gate check):
+    - `npx vitest run --maxWorkers=1 src/pages/settings/index.test.tsx` (pass)
+    - `npx vitest run --maxWorkers=1 src/config/routes.test.ts src/pages/connect/index.test.tsx src/pages/grant/use-grant-flow.test.tsx src/auth-page/auth.test.ts` (pass)
+
 - 2026-02-17 (current loop): completed **Slice 0.1 follow-up - auth completion exactly-once regression coverage**.
   - Finding:
     - Phase 0 required `auth_complete_event_applies_once_per_auth_cycle`, but the test contract existed only in the plan and was not implemented in `src/pages/grant/use-grant-flow.test.tsx`.

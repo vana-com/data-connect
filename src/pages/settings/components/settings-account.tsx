@@ -2,8 +2,6 @@ import { MonitorIcon } from "lucide-react"
 import type { AuthUser } from "@/types"
 import { Text } from "@/components/typography/text"
 import { Button } from "@/components/ui/button"
-import { LINKS } from "@/config/links"
-import { openExternalUrl } from "@/lib/open-resource"
 import {
   SettingsCard,
   SettingsCardStack,
@@ -41,11 +39,7 @@ export function SettingsAccount({
   const otherSessionLabel = "Vana iOS"
   const otherSessionLastSeen = "Brisbane, AU  Last seen about 4 hours ago"
   const handlePassportSignIn = () => {
-    if (!LINKS.passportSignInStub) {
-      onSignIn()
-      return
-    }
-    void openExternalUrl(LINKS.passportSignInStub)
+    onSignIn()
   }
 
   return (

@@ -20,8 +20,6 @@ import {
 } from "./url"
 
 const IMPORTS_SECTION: SettingsSection = "imports"
-const PRIVY_APP_ID = import.meta.env.VITE_PRIVY_APP_ID
-const PRIVY_CLIENT_ID = import.meta.env.VITE_PRIVY_CLIENT_ID
 
 interface AuthResultPayload {
   success: boolean
@@ -208,7 +206,10 @@ export function useSettingsPage() {
   }, [logout, navigate])
 
   const handleSignIn = useCallback(async () => {
-    if (!PRIVY_APP_ID || !PRIVY_CLIENT_ID) {
+    const privyAppId = import.meta.env.VITE_PRIVY_APP_ID
+    const privyClientId = import.meta.env.VITE_PRIVY_CLIENT_ID
+
+    if (!privyAppId || !privyClientId) {
       console.error("Missing VITE_PRIVY_APP_ID or VITE_PRIVY_CLIENT_ID.")
       return
     }
@@ -240,8 +241,8 @@ export function useSettingsPage() {
 
     try {
       await invoke("start_browser_auth", {
-        privyAppId: PRIVY_APP_ID,
-        privyClientId: PRIVY_CLIENT_ID,
+        privyAppId,
+        privyClientId,
       })
     } catch (error) {
       authUnlistenRef.current?.()

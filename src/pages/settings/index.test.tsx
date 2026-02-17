@@ -1,5 +1,5 @@
 import { describe, expect, it, beforeEach, vi } from "vitest"
-import { cleanup, fireEvent, render } from "@testing-library/react"
+import { cleanup, fireEvent, render, waitFor } from "@testing-library/react"
 import { createMemoryRouter, RouterProvider, useLocation } from "react-router"
 import { Provider } from "react-redux"
 import { ROUTES } from "@/config/routes"
@@ -12,6 +12,8 @@ const mockUsePersonalServer = vi.fn()
 const mockUseConnectedApps = vi.fn()
 const mockInvoke = vi.fn()
 const mockGetVersion = vi.fn()
+const mockListen = vi.fn()
+const mockSaveAuthSession = vi.fn()
 
 vi.mock("react-router", async () => {
   const actual = await vi.importActual<object>("react-router")
@@ -39,6 +41,14 @@ vi.mock("@tauri-apps/api/app", () => ({
 
 vi.mock("@tauri-apps/api/core", () => ({
   invoke: (...args: unknown[]) => mockInvoke(...args),
+}))
+
+vi.mock("@tauri-apps/api/event", () => ({
+  listen: (...args: unknown[]) => mockListen(...args),
+}))
+
+vi.mock("@/services/auth-session", () => ({
+  saveAuthSession: (...args: unknown[]) => mockSaveAuthSession(...args),
 }))
 
 function SettingsRouteHarness() {
@@ -71,6 +81,7 @@ const renderSettings = (initialEntry: string = ROUTES.settings) => {
 beforeEach(() => {
   cleanup()
   vi.clearAllMocks()
+  vi.unstubAllEnvs()
   mockUseAuth.mockReturnValue({
     user: null,
     logout: vi.fn(),
@@ -103,6 +114,7 @@ beforeEach(() => {
     }
     return Promise.resolve(null)
   })
+  mockListen.mockResolvedValue(vi.fn())
 })
 
 describe("Settings", () => {
@@ -156,5 +168,71 @@ describe("Settings", () => {
     fireEvent.click(accountButton)
 
     expect(getByTestId("search").textContent).toBe("")
+  })
+
+  it("starts browser auth from settings sign in", async () => {
+    vi.stubEnv("VITE_PRIVY_APP_ID", "test-app-id")
+    vi.stubEnv("VITE_PRIVY_CLIENT_ID", "test-client-id")
+
+    const { getAllByRole } = renderSettings()
+    const [signInButton] = getAllByRole("button", { name: "Sign in" })
+    fireEvent.click(signInButton)
+
+    await waitFor(() => {
+      expect(mockListen).toHaveBeenCalledWith("auth-complete", expect.any(Function))
+      expect(mockInvoke).toHaveBeenCalledWith("start_browser_auth", {
+        privyAppId: "test-app-id",
+        privyClientId: "test-client-id",
+      })
+    })
+  })
+
+  it("persists auth session after auth-complete success event", async () => {
+    vi.stubEnv("VITE_PRIVY_APP_ID", "test-app-id")
+    vi.stubEnv("VITE_PRIVY_CLIENT_ID", "test-client-id")
+
+    const unlisten = vi.fn()
+    mockListen.mockResolvedValue(unlisten)
+
+    const { getAllByRole } = renderSettings()
+    const [signInButton] = getAllByRole("button", { name: "Sign in" })
+    fireEvent.click(signInButton)
+
+    await waitFor(() => {
+      expect(mockListen).toHaveBeenCalledWith("auth-complete", expect.any(Function))
+    })
+
+    const callback = mockListen.mock.calls[0][1] as (event: {
+      payload: {
+        success: boolean
+        user?: { id: string; email: string | null }
+        walletAddress?: string | null
+        masterKeySignature?: string | null
+      }
+    }) => void
+
+    callback({
+      payload: {
+        success: true,
+        user: {
+          id: "did:privy:test-user",
+          email: "test@databridge.dev",
+        },
+        walletAddress: "0xabc",
+        masterKeySignature: "sig",
+      },
+    })
+
+    await waitFor(() => {
+      expect(mockSaveAuthSession).toHaveBeenCalledWith({
+        user: {
+          id: "did:privy:test-user",
+          email: "test@databridge.dev",
+        },
+        walletAddress: "0xabc",
+        masterKeySignature: "sig",
+      })
+      expect(unlisten).toHaveBeenCalledTimes(1)
+    })
   })
 })

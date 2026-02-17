@@ -33,13 +33,6 @@ export function Grant() {
   const [prefetched] = useState<PrefetchedGrantData | undefined>(() =>
     consumePendingGrantPrefetch(params?.sessionId)
   )
-  console.log("[Grant] Consumed pending prefetch cache", {
-    hasPrefetched: prefetched !== undefined,
-    hasSession: Boolean(prefetched?.session),
-    hasBuilderManifest: Boolean(prefetched?.builderManifest),
-    sessionId: prefetched?.session?.id,
-    source: "pending-grant-prefetch",
-  });
   const [debugStatus, setDebugStatus] = useState<
     GrantFlowState["status"] | null
   >(null)

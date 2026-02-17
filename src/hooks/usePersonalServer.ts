@@ -141,10 +141,12 @@ export function usePersonalServer() {
         if (_restartCount <= MAX_RESTART_ATTEMPTS) {
           const delay = Math.pow(2, _restartCount) * 1000; // 2s, 4s, 8s
           console.log(`[PersonalServer] Auto-restart attempt ${_restartCount}/${MAX_RESTART_ATTEMPTS} in ${delay}ms`);
+          _sharedStatus = 'starting';
           setStatus('starting');
           setTimeout(() => startServerRef.current(), delay);
         } else {
           console.error('[PersonalServer] Max restart attempts reached, giving up');
+          _sharedStatus = 'error';
           setStatus('error');
           setError('Personal Server crashed repeatedly and could not be restarted');
         }
@@ -211,6 +213,7 @@ export function usePersonalServer() {
   useEffect(() => {
     if (startedUnauthed.current) return;
     if (running.current) return;
+    if (_restartCount > MAX_RESTART_ATTEMPTS) return;
     startedUnauthed.current = true;
     startServer(null);
     // eslint-disable-next-line react-hooks/exhaustive-deps

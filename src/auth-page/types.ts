@@ -16,6 +16,7 @@ export interface AuthResult {
   walletAddress?: string | null
   authToken?: string | null
   masterKeySignature?: string | null
+  state?: string | null
   error?: string
 }
 

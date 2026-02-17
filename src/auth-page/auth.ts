@@ -47,6 +47,7 @@ type UseAuthPageState = {
 
 const MASTER_KEY_MESSAGE = "vana-master-key-v1"
 const LOGIN_ERROR_MESSAGE = "Auth init failed."
+const CALLBACK_STATE_STORAGE_KEY = "vana.auth.callback_state"
 
 type CloseTabActions = {
   close?: () => void
@@ -106,6 +107,18 @@ const parseAuthConfig = (): { error: string } | { config: AuthConfig } => {
   }
 
   return { config: { privyAppId, privyClientId } satisfies AuthConfig }
+}
+
+const getCallbackState = (): string | null => {
+  const params = new URLSearchParams(window.location.search)
+  const fromQuery = params.get("auth_state")?.trim() || null
+  if (fromQuery) {
+    sessionStorage.setItem(CALLBACK_STATE_STORAGE_KEY, fromQuery)
+    return fromQuery
+  }
+
+  const fromSession = sessionStorage.getItem(CALLBACK_STATE_STORAGE_KEY)?.trim() || null
+  return fromSession || null
 }
 
 export const useAuthPage = (): UseAuthPageState => {
@@ -196,7 +209,10 @@ export const useAuthPage = (): UseAuthPageState => {
       const resp = await fetch("/auth-callback", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(result),
+        body: JSON.stringify({
+          ...result,
+          state: getCallbackState(),
+        }),
       })
       console.log("Auth callback response:", resp.status)
       return resp.ok

@@ -14,6 +14,22 @@
   - Strong transition and parsing tests exist (`use-grant-flow`, `connect`, `deep-link`, `grant-params`, `storage`, `sessionRelay`, `builder`, `personalServer`).
   - No auth callback boundary tests in Rust for `start_browser_auth` / `/auth-callback` abuse paths.
 
+## Loopback Execution Updates
+
+- 2026-02-17 (current loop): completed callback hardening slice for `src-tauri/src/commands/auth.rs` + `src/auth-page/auth.ts`.
+  - Added callback state lifecycle contract in native layer: one-time consume, TTL expiry, explicit reject reasons, and strict `POST /auth-callback` acceptance (removed `POST /` callback acceptance).
+  - Added Rust helper-level tests for abuse paths and valid-once behavior:
+    - `rejects_missing_state`
+    - `rejects_expired_state`
+    - `rejects_replayed_state`
+    - `accepts_valid_state_once`
+  - Added auth-page callback-state propagation so OAuth round-trip posts `state` back to `/auth-callback` using query bootstrap + sessionStorage fallback.
+  - Why this slice first: callback boundary was the highest-risk unguarded security surface and Phase 1 blocks durable auth/resume work in later phases.
+  - Validation completed:
+    - `cargo test --manifest-path src-tauri/Cargo.toml auth::tests` (pass)
+    - `npx vitest run src/auth-page/auth.test.ts src/pages/grant/use-grant-flow.test.tsx` (pass)
+  - Operational finding captured in `scripts/ralph/AGENTS.md`: run `npm run auth:build` before Rust tests if Tauri resource glob fails for `auth-page/*`.
+
 ## Phase Derivation
 
 Phases are preserved from `docs/plans/260217-passport-auth-rebuild-plan.md` and aligned to the spec acceptance criteria:

@@ -4,6 +4,7 @@ use std::net::TcpListener;
 use std::path::PathBuf;
 use std::sync::mpsc;
 use std::thread;
+use std::time::{SystemTime, UNIX_EPOCH};
 use tauri::path::BaseDirectory;
 use tauri::{AppHandle, Emitter, Manager};
 
@@ -26,6 +27,133 @@ pub struct AuthUser {
     pub email: Option<String>,
 }
 
+const CALLBACK_STATE_TTL_MS: u64 = 5 * 60 * 1000;
+
+#[derive(Debug, Clone)]
+struct CallbackState {
+    token: String,
+    expires_at_ms: u64,
+    consumed: bool,
+}
+
+#[derive(Debug, PartialEq, Eq)]
+enum CallbackRejectReason {
+    InvalidPayload,
+    MissingState,
+    InvalidState,
+    ExpiredState,
+    ReplayedState,
+}
+
+impl CallbackRejectReason {
+    fn status_code(&self) -> u16 {
+        match self {
+            Self::InvalidPayload | Self::MissingState => 400,
+            Self::InvalidState | Self::ExpiredState => 401,
+            Self::ReplayedState => 409,
+        }
+    }
+
+    fn code(&self) -> &'static str {
+        match self {
+            Self::InvalidPayload => "INVALID_PAYLOAD",
+            Self::MissingState => "MISSING_STATE",
+            Self::InvalidState => "INVALID_STATE",
+            Self::ExpiredState => "EXPIRED_STATE",
+            Self::ReplayedState => "REPLAYED_STATE",
+        }
+    }
+
+    fn message(&self) -> &'static str {
+        match self {
+            Self::InvalidPayload => "Invalid callback payload",
+            Self::MissingState => "Missing callback state",
+            Self::InvalidState => "Invalid callback state",
+            Self::ExpiredState => "Callback state expired",
+            Self::ReplayedState => "Callback state already consumed",
+        }
+    }
+}
+
+fn now_ms() -> u64 {
+    SystemTime::now()
+        .duration_since(UNIX_EPOCH)
+        .map(|duration| duration.as_millis() as u64)
+        .unwrap_or(0)
+}
+
+fn new_callback_state() -> CallbackState {
+    let issued_at_ms = now_ms();
+    let token = format!("auth-{}-{}", std::process::id(), issued_at_ms);
+    CallbackState {
+        token,
+        expires_at_ms: issued_at_ms.saturating_add(CALLBACK_STATE_TTL_MS),
+        consumed: false,
+    }
+}
+
+fn build_callback_reject_response(reason: CallbackRejectReason) -> String {
+    let status = reason.status_code();
+    let reason_json = serde_json::json!({
+        "ok": false,
+        "code": reason.code(),
+        "message": reason.message(),
+    })
+    .to_string();
+
+    format!(
+        "HTTP/1.1 {} {}\r\nContent-Type: application/json\r\nAccess-Control-Allow-Origin: *\r\nAccess-Control-Allow-Methods: POST, OPTIONS\r\nAccess-Control-Allow-Headers: Content-Type\r\nContent-Length: {}\r\n\r\n{}",
+        status,
+        if status == 400 {
+            "Bad Request"
+        } else if status == 401 {
+            "Unauthorized"
+        } else if status == 409 {
+            "Conflict"
+        } else {
+            "Error"
+        },
+        reason_json.len(),
+        reason_json
+    )
+}
+
+fn parse_auth_callback_payload(
+    body: &str,
+    callback_state: &mut CallbackState,
+    now_ms: u64,
+) -> Result<AuthResult, CallbackRejectReason> {
+    let value: serde_json::Value =
+        serde_json::from_str(body).map_err(|_| CallbackRejectReason::InvalidPayload)?;
+
+    let payload_obj = value
+        .as_object()
+        .ok_or(CallbackRejectReason::InvalidPayload)?;
+
+    let callback_state_value = payload_obj
+        .get("state")
+        .and_then(|v| v.as_str())
+        .ok_or(CallbackRejectReason::MissingState)?;
+
+    if callback_state.consumed {
+        return Err(CallbackRejectReason::ReplayedState);
+    }
+
+    if now_ms > callback_state.expires_at_ms {
+        return Err(CallbackRejectReason::ExpiredState);
+    }
+
+    if callback_state_value != callback_state.token {
+        return Err(CallbackRejectReason::InvalidState);
+    }
+
+    let auth_result = serde_json::from_value::<AuthResult>(value)
+        .map_err(|_| CallbackRejectReason::InvalidPayload)?;
+
+    callback_state.consumed = true;
+    Ok(auth_result)
+}
+
 /// Start the external browser auth flow
 #[tauri::command]
 pub async fn start_browser_auth(
@@ -33,7 +161,12 @@ pub async fn start_browser_auth(
     privy_app_id: String,
     privy_client_id: Option<String>,
 ) -> Result<String, String> {
-    log::info!("Starting browser auth flow with Privy app ID: {}", privy_app_id);
+    log::info!(
+        "Starting browser auth flow with Privy app ID: {}",
+        privy_app_id
+    );
+    let callback_state = new_callback_state();
+    let callback_state_token = callback_state.token.clone();
 
     // Try to bind to fixed port 3083 (whitelisted in Privy dashboard)
     // Fall back to 5173 or random port if unavailable
@@ -46,10 +179,14 @@ pub async fn start_browser_auth(
     } else {
         let l = TcpListener::bind("127.0.0.1:0")
             .map_err(|e| format!("Failed to bind to any port: {}", e))?;
-        let port = l.local_addr()
+        let port = l
+            .local_addr()
             .map_err(|e| format!("Failed to get local address: {}", e))?
             .port();
-        log::warn!("Using random port {} - auth may fail if not whitelisted in Privy", port);
+        log::warn!(
+            "Using random port {} - auth may fail if not whitelisted in Privy",
+            port
+        );
         (l, port)
     };
 
@@ -65,6 +202,7 @@ pub async fn start_browser_auth(
     // Spawn callback server thread
     thread::spawn(move || {
         log::info!("Auth callback server thread started");
+        let mut callback_state = callback_state;
 
         let resource_dir = app_handle
             .path()
@@ -72,9 +210,8 @@ pub async fn start_browser_auth(
             .ok()
             .filter(|path| path.exists());
 
-        let auth_dir = resource_dir.unwrap_or_else(|| {
-            PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("auth-page")
-        });
+        let auth_dir = resource_dir
+            .unwrap_or_else(|| PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("auth-page"));
 
         log::info!("Auth page directory: {}", auth_dir.display());
 
@@ -117,10 +254,7 @@ pub async fn start_browser_auth(
                                     let _ = stream.write_all(response.as_bytes());
                                 }
                                 Err(err) => {
-                                    log::error!(
-                                        "Failed to read auth page index.html: {}",
-                                        err
-                                    );
+                                    log::error!("Failed to read auth page index.html: {}", err);
                                     let response = "HTTP/1.1 500 Internal Server Error\r\n\r\n";
                                     let _ = stream.write_all(response.as_bytes());
                                 }
@@ -150,7 +284,7 @@ pub async fn start_browser_auth(
                                 }
                             }
                         }
-                        "POST" if path == "/auth-callback" || path == "/" => {
+                        "POST" if request_path == "/auth-callback" => {
                             // Read headers to get content length
                             let mut content_length: usize = 0;
                             let mut line = String::new();
@@ -172,17 +306,30 @@ pub async fn start_browser_auth(
                                 if let Ok(body_str) = String::from_utf8(body) {
                                     log::info!("Auth callback received: {}", body_str);
 
-                                    // Parse auth result
-                                    if let Ok(auth_result) = serde_json::from_str::<AuthResult>(&body_str) {
-                                        // Send to channel
-                                        let _ = tx.send(auth_result.clone());
+                                    match parse_auth_callback_payload(
+                                        &body_str,
+                                        &mut callback_state,
+                                        now_ms(),
+                                    ) {
+                                        Ok(auth_result) => {
+                                            let _ = tx.send(auth_result.clone());
+                                            let _ = app_handle.emit("auth-complete", auth_result);
 
-                                        // Emit event to frontend
-                                        let _ = app_handle.emit("auth-complete", auth_result);
-
-                                        // Focus the app window
-                                        if let Some(window) = app_handle.get_webview_window("main") {
-                                            let _ = window.set_focus();
+                                            if let Some(window) =
+                                                app_handle.get_webview_window("main")
+                                            {
+                                                let _ = window.set_focus();
+                                            }
+                                        }
+                                        Err(reason) => {
+                                            log::warn!(
+                                                "Rejected auth callback: {} ({})",
+                                                reason.code(),
+                                                reason.message()
+                                            );
+                                            let response = build_callback_reject_response(reason);
+                                            let _ = stream.write_all(response.as_bytes());
+                                            continue;
                                         }
                                     }
                                 }
@@ -198,10 +345,16 @@ pub async fn start_browser_auth(
                             // Proxy the personal server health check to avoid CORS
                             log::info!("Server identity request received");
                             let cors = "Access-Control-Allow-Origin: *\r\nAccess-Control-Allow-Methods: GET, POST, OPTIONS\r\nAccess-Control-Allow-Headers: Content-Type";
-                            let port_opt = super::server::PERSONAL_SERVER_PORT.lock().ok().and_then(|g| *g);
+                            let port_opt = super::server::PERSONAL_SERVER_PORT
+                                .lock()
+                                .ok()
+                                .and_then(|g| *g);
                             log::info!("Personal server port: {:?}", port_opt);
                             if let Some(port) = port_opt {
-                                match reqwest::blocking::get(format!("http://localhost:{}/health", port)) {
+                                match reqwest::blocking::get(format!(
+                                    "http://localhost:{}/health",
+                                    port
+                                )) {
                                     Ok(resp) if resp.status().is_success() => {
                                         let body = resp.text().unwrap_or_default();
                                         let resp_str = format!(
@@ -211,12 +364,16 @@ pub async fn start_browser_auth(
                                         let _ = stream.write_all(resp_str.as_bytes());
                                     }
                                     _ => {
-                                        let resp_str = format!("HTTP/1.1 503 Service Unavailable\r\n{}\r\n\r\n", cors);
+                                        let resp_str = format!(
+                                            "HTTP/1.1 503 Service Unavailable\r\n{}\r\n\r\n",
+                                            cors
+                                        );
                                         let _ = stream.write_all(resp_str.as_bytes());
                                     }
                                 }
                             } else {
-                                let resp_str = format!("HTTP/1.1 503 Service Unavailable\r\n{}\r\n\r\n", cors);
+                                let resp_str =
+                                    format!("HTTP/1.1 503 Service Unavailable\r\n{}\r\n\r\n", cors);
                                 let _ = stream.write_all(resp_str.as_bytes());
                             }
                         }
@@ -238,15 +395,19 @@ pub async fn start_browser_auth(
 
                             let cors = "Access-Control-Allow-Origin: *\r\nAccess-Control-Allow-Methods: GET, POST, OPTIONS\r\nAccess-Control-Allow-Headers: Content-Type";
                             let mut body = vec![0u8; content_length];
-                            let gateway_url = "https://data-gateway-env-dev-opendatalabs.vercel.app";
+                            let gateway_url =
+                                "https://data-gateway-env-dev-opendatalabs.vercel.app";
 
                             if reader.read_exact(&mut body).is_ok() {
                                 if let Ok(body_str) = String::from_utf8(body) {
                                     log::info!("Register server request: {}", body_str);
 
                                     // Parse { signature, message }
-                                    if let Ok(reg) = serde_json::from_str::<serde_json::Value>(&body_str) {
-                                        let signature = reg["signature"].as_str().unwrap_or_default();
+                                    if let Ok(reg) =
+                                        serde_json::from_str::<serde_json::Value>(&body_str)
+                                    {
+                                        let signature =
+                                            reg["signature"].as_str().unwrap_or_default();
                                         let message = &reg["message"];
 
                                         // POST to gateway
@@ -254,24 +415,41 @@ pub async fn start_browser_auth(
                                         match client
                                             .post(format!("{}/v1/servers", gateway_url))
                                             .header("Content-Type", "application/json")
-                                            .header("Authorization", format!("Web3Signed {}", signature))
+                                            .header(
+                                                "Authorization",
+                                                format!("Web3Signed {}", signature),
+                                            )
                                             .json(message)
                                             .send()
                                         {
                                             Ok(resp) => {
                                                 let status = resp.status().as_u16();
                                                 let resp_body = resp.text().unwrap_or_default();
-                                                log::info!("Gateway register response: {} {}", status, resp_body);
+                                                log::info!(
+                                                    "Gateway register response: {} {}",
+                                                    status,
+                                                    resp_body
+                                                );
 
                                                 if status == 200 || status == 201 || status == 409 {
                                                     // Extract serverId from response and include in event
-                                                    let server_id = serde_json::from_str::<serde_json::Value>(&resp_body)
+                                                    let server_id =
+                                                        serde_json::from_str::<serde_json::Value>(
+                                                            &resp_body,
+                                                        )
                                                         .ok()
-                                                        .and_then(|v| v["serverId"].as_str().map(|s| s.to_string()));
-                                                    let _ = app_handle.emit("server-registered", serde_json::json!({
-                                                        "status": status,
-                                                        "serverId": server_id
-                                                    }));
+                                                        .and_then(|v| {
+                                                            v["serverId"]
+                                                                .as_str()
+                                                                .map(|s| s.to_string())
+                                                        });
+                                                    let _ = app_handle.emit(
+                                                        "server-registered",
+                                                        serde_json::json!({
+                                                            "status": status,
+                                                            "serverId": server_id
+                                                        }),
+                                                    );
                                                 }
 
                                                 let resp_str = format!(
@@ -296,8 +474,15 @@ pub async fn start_browser_auth(
                         "GET" if request_path == "/check-server-url" => {
                             // Proxy GET /v1/servers/{address} to gateway
                             let cors = "Access-Control-Allow-Origin: *\r\nAccess-Control-Allow-Methods: GET, POST, DELETE, OPTIONS\r\nAccess-Control-Allow-Headers: Content-Type, Authorization";
-                            let gateway_url = "https://data-gateway-env-dev-opendatalabs.vercel.app";
-                            let address = path.split("address=").nth(1).unwrap_or("").split('&').next().unwrap_or("");
+                            let gateway_url =
+                                "https://data-gateway-env-dev-opendatalabs.vercel.app";
+                            let address = path
+                                .split("address=")
+                                .nth(1)
+                                .unwrap_or("")
+                                .split('&')
+                                .next()
+                                .unwrap_or("");
 
                             if address.is_empty() {
                                 let resp_str = format!(
@@ -314,7 +499,11 @@ pub async fn start_browser_auth(
                                     Ok(resp) => {
                                         let status = resp.status().as_u16();
                                         let resp_body = resp.text().unwrap_or_default();
-                                        log::info!("Gateway check-server-url response: {} {}", status, &resp_body[..resp_body.len().min(200)]);
+                                        log::info!(
+                                            "Gateway check-server-url response: {} {}",
+                                            status,
+                                            &resp_body[..resp_body.len().min(200)]
+                                        );
                                         let resp_str = format!(
                                             "HTTP/1.1 {} OK\r\nContent-Type: application/json\r\n{}\r\nContent-Length: {}\r\n\r\n{}",
                                             status, cors, resp_body.len(), resp_body
@@ -349,17 +538,23 @@ pub async fn start_browser_auth(
                             }
 
                             let cors = "Access-Control-Allow-Origin: *\r\nAccess-Control-Allow-Methods: GET, POST, DELETE, OPTIONS\r\nAccess-Control-Allow-Headers: Content-Type, Authorization";
-                            let gateway_url = "https://data-gateway-env-dev-opendatalabs.vercel.app";
+                            let gateway_url =
+                                "https://data-gateway-env-dev-opendatalabs.vercel.app";
                             let mut body = vec![0u8; content_length];
 
                             if reader.read_exact(&mut body).is_ok() {
                                 if let Ok(body_str) = String::from_utf8(body) {
                                     log::info!("Deregister server request: {}", body_str);
 
-                                    if let Ok(dereg) = serde_json::from_str::<serde_json::Value>(&body_str) {
-                                        let server_address = dereg["serverAddress"].as_str().unwrap_or_default();
-                                        let signature = dereg["signature"].as_str().unwrap_or_default();
-                                        let owner_address = dereg["ownerAddress"].as_str().unwrap_or_default();
+                                    if let Ok(dereg) =
+                                        serde_json::from_str::<serde_json::Value>(&body_str)
+                                    {
+                                        let server_address =
+                                            dereg["serverAddress"].as_str().unwrap_or_default();
+                                        let signature =
+                                            dereg["signature"].as_str().unwrap_or_default();
+                                        let owner_address =
+                                            dereg["ownerAddress"].as_str().unwrap_or_default();
                                         let deadline = dereg["deadline"].as_u64().unwrap_or(0);
 
                                         let delete_body = serde_json::json!({
@@ -369,16 +564,26 @@ pub async fn start_browser_auth(
 
                                         let client = reqwest::blocking::Client::new();
                                         match client
-                                            .delete(format!("{}/v1/servers/{}", gateway_url, server_address))
+                                            .delete(format!(
+                                                "{}/v1/servers/{}",
+                                                gateway_url, server_address
+                                            ))
                                             .header("Content-Type", "application/json")
-                                            .header("Authorization", format!("Web3Signed {}", signature))
+                                            .header(
+                                                "Authorization",
+                                                format!("Web3Signed {}", signature),
+                                            )
                                             .json(&delete_body)
                                             .send()
                                         {
                                             Ok(resp) => {
                                                 let status = resp.status().as_u16();
                                                 let resp_body = resp.text().unwrap_or_default();
-                                                log::info!("Gateway deregister response: {} {}", status, resp_body);
+                                                log::info!(
+                                                    "Gateway deregister response: {} {}",
+                                                    status,
+                                                    resp_body
+                                                );
                                                 let resp_str = format!(
                                                     "HTTP/1.1 {} OK\r\nContent-Type: application/json\r\n{}\r\nContent-Length: {}\r\n\r\n{}",
                                                     status, cors, resp_body.len(), resp_body
@@ -454,7 +659,10 @@ p { font-size: 14px; color: #6b7280; }
     });
 
     // Open browser to the self-contained auth page served by our localhost server
-    let auth_url = format!("http://localhost:{}", callback_port);
+    let auth_url = format!(
+        "http://localhost:{}?auth_state={}",
+        callback_port, callback_state_token
+    );
     log::info!("Opening browser to: {}", auth_url);
 
     #[cfg(target_os = "macos")]
@@ -486,9 +694,93 @@ p { font-size: 14px; color: #6b7280; }
         "auth-started",
         serde_json::json!({ "callbackPort": callback_port, "authUrl": auth_url }),
     )
-        .map_err(|e| format!("Failed to emit event: {}", e))?;
+    .map_err(|e| format!("Failed to emit event: {}", e))?;
 
     Ok(auth_url)
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    fn valid_payload(state: &str) -> String {
+        serde_json::json!({
+            "success": true,
+            "state": state,
+            "user": {
+                "id": "user-1",
+                "email": "user@vana.org"
+            },
+            "walletAddress": "0xabc"
+        })
+        .to_string()
+    }
+
+    #[test]
+    fn rejects_missing_state() {
+        let mut callback_state = CallbackState {
+            token: "expected-state".to_string(),
+            expires_at_ms: 10_000,
+            consumed: false,
+        };
+        let payload = serde_json::json!({
+            "success": true,
+            "user": { "id": "user-1" }
+        })
+        .to_string();
+
+        let result = parse_auth_callback_payload(&payload, &mut callback_state, 100);
+
+        assert!(matches!(result, Err(CallbackRejectReason::MissingState)));
+        assert!(!callback_state.consumed);
+    }
+
+    #[test]
+    fn rejects_expired_state() {
+        let mut callback_state = CallbackState {
+            token: "expected-state".to_string(),
+            expires_at_ms: 100,
+            consumed: false,
+        };
+
+        let result =
+            parse_auth_callback_payload(&valid_payload("expected-state"), &mut callback_state, 101);
+
+        assert!(matches!(result, Err(CallbackRejectReason::ExpiredState)));
+        assert!(!callback_state.consumed);
+    }
+
+    #[test]
+    fn rejects_replayed_state() {
+        let mut callback_state = CallbackState {
+            token: "expected-state".to_string(),
+            expires_at_ms: 10_000,
+            consumed: true,
+        };
+
+        let result =
+            parse_auth_callback_payload(&valid_payload("expected-state"), &mut callback_state, 100);
+
+        assert!(matches!(result, Err(CallbackRejectReason::ReplayedState)));
+    }
+
+    #[test]
+    fn accepts_valid_state_once() {
+        let mut callback_state = CallbackState {
+            token: "expected-state".to_string(),
+            expires_at_ms: 10_000,
+            consumed: false,
+        };
+
+        let first =
+            parse_auth_callback_payload(&valid_payload("expected-state"), &mut callback_state, 100);
+        assert!(first.is_ok());
+        assert!(callback_state.consumed);
+
+        let second =
+            parse_auth_callback_payload(&valid_payload("expected-state"), &mut callback_state, 101);
+        assert!(matches!(second, Err(CallbackRejectReason::ReplayedState)));
+    }
 }
 
 /// Cancel the auth flow

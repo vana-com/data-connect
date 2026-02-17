@@ -28,6 +28,35 @@ When resolved, update and remove the item.
 4. When tests pass, update `__FEATURE_ROOT__/IMPLEMENTATION_PLAN.md`, then
 `git add <paths>` (explicit paths only) then `git commit` with a message
 describing the changes. Do not push unless explicitly asked.
+5. Treat `Open Questions / External Blockers` in
+`__FEATURE_ROOT__/IMPLEMENTATION_PLAN.md` as active plan state, not a passive log.
+When discovering a question/blocker, either:
+  - convert it into an explicit slice/validation item in the plan, or
+  - keep it in `Open Questions / External Blockers` with structured fields:
+    - `status: open|resolved|deferred`
+    - `impact: blocking-current-slice|blocking-future-slice|non-blocking`
+    - `owner`
+    - `next_action`
+    - `evidence` (commit/test/doc reference)
+6. Completion protocol (mandatory): before ending a build iteration, classify
+overall plan state in `__FEATURE_ROOT__/IMPLEMENTATION_PLAN.md` under a
+`Final Status` section as exactly one of:
+  - `PLAN_STATUS: IN_PROGRESS`
+  - `PLAN_STATUS: COMPLETE`
+  - `PLAN_STATUS: COMPLETE_WITH_OPEN_QUESTIONS`
+  - `PLAN_STATUS: BLOCKED`
+Use these rules:
+  - `COMPLETE_WITH_OPEN_QUESTIONS` when implementation + required validations
+    are done and remaining questions are non-blocking or external timing/ownership
+    decisions.
+  - `BLOCKED` only when a current required slice cannot proceed or validate due to
+    an unresolved dependency.
+  - Do not mark `BLOCKED` solely because open questions exist.
+7. When `PLAN_STATUS` is `COMPLETE` or `COMPLETE_WITH_OPEN_QUESTIONS`, append
+`Completion Evidence` in the plan:
+  - final slice(s) landed (commit SHA + short description)
+  - validation commands run + pass/fail
+  - remaining open questions (if any) with ownership and next action
 
 99999. Important: When authoring documentation, capture the why — tests and
 implementation importance.

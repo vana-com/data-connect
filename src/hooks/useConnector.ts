@@ -30,7 +30,7 @@ export function useConnector() {
 
       try {
         // Check if simulate no chrome is enabled (for testing download flow)
-        const simulateNoChrome = localStorage.getItem('databridge_simulate_no_chrome') === 'true';
+        const simulateNoChrome = localStorage.getItem('dataconnect_simulate_no_chrome') === 'true';
 
         await invoke('start_connector_run', {
           runId,

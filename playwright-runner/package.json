@@ -1,7 +1,7 @@
 {
-  "name": "databridge-playwright-runner",
+  "name": "dataconnect-playwright-runner",
   "version": "1.0.0",
-  "description": "Playwright sidecar for DataBridge connectors",
+  "description": "Playwright sidecar for DataConnect connectors",
   "main": "index.cjs",
   "type": "module",
   "scripts": {

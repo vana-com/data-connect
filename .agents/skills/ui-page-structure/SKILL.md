@@ -1,6 +1,6 @@
 ---
 name: ui-page-structure
-description: Standardize DataBridge route/page layout, logic/JSX separation, tests, and README expectations. Use when organizing pages/routes, refactoring page structure, or discussing file structure conventions.
+description: Standardize DataConnect route/page layout, logic/JSX separation, tests, and README expectations. Use when organizing pages/routes, refactoring page structure, or discussing file structure conventions.
 ---
 
 # UI Page Structure

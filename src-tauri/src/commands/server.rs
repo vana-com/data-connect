@@ -3,6 +3,59 @@ use std::path::PathBuf;
 use std::sync::Mutex;
 use tauri::{AppHandle, Emitter, Manager};
 
+/// Send a signal to an entire process group (negative PID).
+/// Falls back to single-process signal if pgid lookup fails.
+#[cfg(unix)]
+pub fn kill_process_group(pid: u32, signal: libc::c_int) {
+    let pgid = unsafe { libc::getpgid(pid as libc::pid_t) };
+    if pgid > 0 {
+        log::info!("Sending signal {} to process group {}", signal, pgid);
+        unsafe { libc::kill(-pgid, signal) };
+    } else {
+        log::warn!("Could not get pgid for pid {}, sending to pid directly", pid);
+        unsafe { libc::kill(pid as libc::pid_t, signal) };
+    }
+}
+
+/// Kill any stale personal-server process from a previous run that is still
+/// holding a port. This prevents EADDRINUSE on startup after unclean exits.
+#[cfg(unix)]
+fn kill_stale_server_on_port(port: u16) {
+    use std::process::Command;
+
+    // Use lsof to find PIDs listening on this port
+    let output = match Command::new("lsof")
+        .args(["-ti", &format!("tcp:{}", port), "-sTCP:LISTEN"])
+        .output()
+    {
+        Ok(o) => o,
+        Err(e) => {
+            log::warn!("Failed to run lsof to check port {}: {}", port, e);
+            return;
+        }
+    };
+
+    if !output.status.success() || output.stdout.is_empty() {
+        return; // No process on this port
+    }
+
+    let pids_str = String::from_utf8_lossy(&output.stdout);
+    for pid_str in pids_str.split_whitespace() {
+        if let Ok(pid) = pid_str.parse::<i32>() {
+            log::warn!(
+                "Found stale process {} on port {}, sending SIGKILL",
+                pid,
+                port
+            );
+            unsafe {
+                libc::kill(pid, libc::SIGKILL);
+            }
+            // Brief wait for it to release the port
+            std::thread::sleep(std::time::Duration::from_millis(200));
+        }
+    }
+}
+
 static PERSONAL_SERVER_PROCESS: Mutex<Option<std::process::Child>> = Mutex::new(None);
 pub static PERSONAL_SERVER_PORT: Mutex<Option<u16>> = Mutex::new(None);
 static PERSONAL_SERVER_STARTING: Mutex<bool> = Mutex::new(false);
@@ -108,6 +161,19 @@ pub async fn start_personal_server(
         }
     };
 
+    // Kill any stale personal-server from a previous unclean exit
+    #[cfg(unix)]
+    {
+        let ports_to_check: &[u16] = if let Some(p) = port {
+            &[p]
+        } else {
+            &[8080, 8081, 8082, 8083, 8084, 8085]
+        };
+        for &p in ports_to_check {
+            kill_stale_server_on_port(p);
+        }
+    }
+
     let port = if let Some(p) = port {
         p
     } else {
@@ -184,6 +250,13 @@ pub async fn start_personal_server(
             .stdout(Stdio::piped())
             .stderr(Stdio::piped());
 
+        // Create a new process group so we can kill all children at once
+        #[cfg(unix)]
+        {
+            use std::os::unix::process::CommandExt;
+            cmd.process_group(0);
+        }
+
         for (key, val) in &env_vars {
             cmd.env(key, val);
         }
@@ -229,6 +302,12 @@ pub async fn start_personal_server(
                 .stdout(Stdio::piped())
                 .stderr(Stdio::piped());
 
+            #[cfg(unix)]
+            {
+                use std::os::unix::process::CommandExt;
+                cmd.process_group(0);
+            }
+
             for (key, val) in &env_vars {
                 cmd.env(key, val);
             }
@@ -244,6 +323,12 @@ pub async fn start_personal_server(
                 .stdin(Stdio::null())
                 .stdout(Stdio::piped())
                 .stderr(Stdio::piped());
+
+            #[cfg(unix)]
+            {
+                use std::os::unix::process::CommandExt;
+                cmd.process_group(0);
+            }
 
             for (key, val) in &env_vars {
                 cmd.env(key, val);
@@ -439,12 +524,11 @@ pub async fn stop_personal_server() -> Result<(), String> {
     if let Some(mut child) = guard.take() {
         log::info!("Stopping personal server...");
 
-        // Try graceful shutdown first
+        // Try graceful shutdown — signal the entire process group so
+        // children (frpc tunnel, etc.) also receive SIGTERM.
         #[cfg(unix)]
         {
-            unsafe {
-                libc::kill(child.id() as libc::pid_t, libc::SIGTERM);
-            }
+            kill_process_group(child.id(), libc::SIGTERM);
         }
 
         // Wait for process to exit (up to 5s)
@@ -538,8 +622,8 @@ pub fn cleanup_personal_server() {
         if let Some(mut child) = guard.take() {
             log::info!("Cleaning up personal server on app exit...");
             #[cfg(unix)]
-            unsafe {
-                libc::kill(child.id() as libc::pid_t, libc::SIGTERM);
+            {
+                kill_process_group(child.id(), libc::SIGTERM);
             }
             // Brief wait then force kill
             for _ in 0..10 {
@@ -549,7 +633,14 @@ pub fn cleanup_personal_server() {
                 }
                 std::thread::sleep(std::time::Duration::from_millis(100));
             }
-            let _ = child.kill();
+            #[cfg(unix)]
+            {
+                kill_process_group(child.id(), libc::SIGKILL);
+            }
+            #[cfg(not(unix))]
+            {
+                let _ = child.kill();
+            }
             let _ = child.wait();
             log::info!("Personal server force-killed on cleanup");
         }

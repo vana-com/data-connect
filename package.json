@@ -1,5 +1,5 @@
 {
-  "name": "databridge",
+  "name": "dataconnect",
   "private": true,
   "version": "0.0.0",
   "type": "module",
@@ -22,8 +22,8 @@
     "preview": "vite preview",
     "tauri": "tauri",
     "tauri:dev": "node scripts/sync-connectors-dev.js && tauri dev",
-    "demo:chatgpt-endpoint": "sh -c 'PORT=${DATABRIDGE_DEMO_PORT:-8787}; lsof -ti tcp:$PORT -sTCP:LISTEN | xargs kill -9 2>/dev/null || true; DATABRIDGE_DEMO_PORT=$PORT node --watch scripts/demo-chatgpt-endpoint.mjs'",
-    "demo:chatgpt-endpoint:once": "sh -c 'PORT=${DATABRIDGE_DEMO_PORT:-8787}; lsof -ti tcp:$PORT -sTCP:LISTEN | xargs kill -9 2>/dev/null || true; DATABRIDGE_DEMO_PORT=$PORT node scripts/demo-chatgpt-endpoint.mjs'",
+    "demo:chatgpt-endpoint": "sh -c 'PORT=${DATACONNECT_DEMO_PORT:-8787}; lsof -ti tcp:$PORT -sTCP:LISTEN | xargs kill -9 2>/dev/null || true; DATACONNECT_DEMO_PORT=$PORT node --watch scripts/demo-chatgpt-endpoint.mjs'",
+    "demo:chatgpt-endpoint:once": "sh -c 'PORT=${DATACONNECT_DEMO_PORT:-8787}; lsof -ti tcp:$PORT -sTCP:LISTEN | xargs kill -9 2>/dev/null || true; DATACONNECT_DEMO_PORT=$PORT node scripts/demo-chatgpt-endpoint.mjs'",
     "tauri:build": "node scripts/build-prod.js",
     "release:github": "node scripts/release-github.mjs",
     "release:versions": "node scripts/release-github.mjs --show-versions",

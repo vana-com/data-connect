@@ -155,7 +155,7 @@ jobs:
           APPLE_API_ISSUER: ${{ secrets.APPLE_ASC_API_KEY_ISSUER_UUID }}
         with:
           tagName: ${{ github.ref_name }}
-          releaseName: 'DataBridge v__VERSION__'
+          releaseName: 'DataConnect v__VERSION__'
           releaseBody: 'See the assets to download this version and install.'
           releaseDraft: false
           prerelease: false
@@ -275,8 +275,8 @@ jobs:
               mkdir -p "$mount_point"
               hdiutil attach "$dmg_path" -mountpoint "$mount_point" -nobrowse -quiet
               ls -la "$mount_point/"
-              ls -la "$mount_point/DataBridge.app/Contents/Resources/personal-server/dist/" || echo "WARNING: dist not in mounted DMG"
-              ls -la "$mount_point/DataBridge.app/Contents/Resources/personal-server/dist/node_modules/" || { hdiutil detach "$mount_point" -quiet; echo "ERROR: node_modules NOT in final DMG!"; exit 1; }
+              ls -la "$mount_point/DataConnect.app/Contents/Resources/personal-server/dist/" || echo "WARNING: dist not in mounted DMG"
+              ls -la "$mount_point/DataConnect.app/Contents/Resources/personal-server/dist/node_modules/" || { hdiutil detach "$mount_point" -quiet; echo "ERROR: node_modules NOT in final DMG!"; exit 1; }
               hdiutil detach "$mount_point" -quiet
               echo "=== DMG verification passed ==="
 

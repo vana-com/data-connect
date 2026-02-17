@@ -92,7 +92,7 @@ beforeEach(() => {
   mockGetVersion.mockResolvedValue("1.2.3")
   mockInvoke.mockImplementation((command: string) => {
     if (command === "get_user_data_path") {
-      return Promise.resolve("/tmp/databridge")
+      return Promise.resolve("/tmp/dataconnect")
     }
     if (command === "check_browser_available") {
       return Promise.resolve({
@@ -125,7 +125,7 @@ describe("Settings", () => {
 
   it("shows sign out when authenticated", () => {
     mockUseAuth.mockReturnValue({
-      user: { email: "test@databridge.dev" },
+      user: { email: "test@dataconnect.dev" },
       logout: vi.fn(),
       isAuthenticated: true,
       walletAddress: null,

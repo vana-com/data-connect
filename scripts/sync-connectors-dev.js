@@ -1,9 +1,9 @@
 #!/usr/bin/env node
 
 /**
- * Syncs project connectors to ~/.databridge/connectors/ for dev mode.
+ * Syncs project connectors to ~/.dataconnect/connectors/ for dev mode.
  *
- * The Rust backend checks ~/.databridge/connectors/ first (user overrides),
+ * The Rust backend checks ~/.dataconnect/connectors/ first (user overrides),
  * falling back to the project's connectors/ directory. In production this
  * allows OTA updates, but in dev it means local edits are shadowed by stale
  * copies. This script copies the project connectors into the user directory
@@ -17,7 +17,7 @@ import { homedir } from 'os';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const PROJECT_CONNECTORS = join(__dirname, '..', 'connectors');
-const USER_CONNECTORS = join(homedir(), '.databridge', 'connectors');
+const USER_CONNECTORS = join(homedir(), '.dataconnect', 'connectors');
 
 function log(msg) {
   console.log(`[sync-connectors-dev] ${msg}`);

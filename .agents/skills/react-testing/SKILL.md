@@ -1,6 +1,6 @@
 ---
 name: react-testing
-description: Pragmatic React/Vitest testing workflow for DataBridge. Use when writing or updating React/UI code, deciding what tests to add, running tests for a change, or before commit.
+description: Pragmatic React/Vitest testing workflow for DataConnect. Use when writing or updating React/UI code, deciding what tests to add, running tests for a change, or before commit.
 ---
 
 # React Testing

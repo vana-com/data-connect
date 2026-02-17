@@ -6,7 +6,7 @@ import { join } from "node:path";
 import { existsSync, readdirSync, readFileSync, statSync } from "node:fs";
 
 const HOST = "127.0.0.1";
-const PORT = Number(process.env.DATABRIDGE_DEMO_PORT || 8787);
+const PORT = Number(process.env.DATACONNECT_DEMO_PORT || 8787);
 const ROUTE = "/v1/demo/chatgpt/latest";
 
 function json(res, status, body) {
@@ -21,8 +21,8 @@ function json(res, status, body) {
 
 function getChatgptRootCandidates() {
   const home = homedir();
-  const appDataEnv = process.env.DATABRIDGE_APP_DATA_DIR;
-  const explicitRoot = process.env.DATABRIDGE_CHATGPT_ROOT;
+  const appDataEnv = process.env.DATACONNECT_APP_DATA_DIR;
+  const explicitRoot = process.env.DATACONNECT_CHATGPT_ROOT;
 
   return [
     explicitRoot,
@@ -31,7 +31,7 @@ function getChatgptRootCandidates() {
       home,
       "Library",
       "Application Support",
-      "dev.databridge",
+      "dev.dataconnect",
       "exported_data",
       "OpenAI",
       "ChatGPT",
@@ -40,23 +40,23 @@ function getChatgptRootCandidates() {
       home,
       "Library",
       "Application Support",
-      "databridge",
+      "dataconnect",
       "exported_data",
       "OpenAI",
       "ChatGPT",
     ),
-    join(home, ".local", "share", "dev.databridge", "exported_data", "OpenAI", "ChatGPT"),
-    join(home, ".local", "share", "databridge", "exported_data", "OpenAI", "ChatGPT"),
+    join(home, ".local", "share", "dev.dataconnect", "exported_data", "OpenAI", "ChatGPT"),
+    join(home, ".local", "share", "dataconnect", "exported_data", "OpenAI", "ChatGPT"),
     join(
       home,
       "AppData",
       "Roaming",
-      "dev.databridge",
+      "dev.dataconnect",
       "exported_data",
       "OpenAI",
       "ChatGPT",
     ),
-    join(home, "AppData", "Roaming", "databridge", "exported_data", "OpenAI", "ChatGPT"),
+    join(home, "AppData", "Roaming", "dataconnect", "exported_data", "OpenAI", "ChatGPT"),
   ].filter((candidate) => typeof candidate === "string");
 }
 

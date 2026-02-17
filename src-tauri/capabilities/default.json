@@ -1,7 +1,7 @@
 {
   "$schema": "../gen/schemas/desktop-schema.json",
   "identifier": "default",
-  "description": "Default capabilities for DataBridge",
+  "description": "Default capabilities for DataConnect",
   "windows": ["main", "connector-*"],
   "permissions": [
     "core:default",

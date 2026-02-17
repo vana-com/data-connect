@@ -2,7 +2,7 @@
 
 This folder contains mock external apps used to validate the Data Apps handoff
 and deep-link flow during development. These pages simulate a third‑party web
-app that opens in the user's browser and then deep‑links back into DataBridge.
+app that opens in the user's browser and then deep‑links back into DataConnect.
 
 Important:
 
@@ -28,7 +28,7 @@ Usage:
 
 Why "Launch Data Connect" may do nothing right now (non‑dev):
 
-- The `dataconnect://` scheme is an OS‑level protocol. If the DataBridge desktop
+- The `dataconnect://` scheme is an OS‑level protocol. If the DataConnect desktop
   app isn't registered as the handler (installed / running with deep‑link
   registration), the browser has nowhere to send the link.
 - Even when the OS passes the deep link to Tauri, the frontend currently only

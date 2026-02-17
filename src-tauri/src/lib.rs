@@ -3,14 +3,14 @@ mod processors;
 
 use commands::{
     cancel_browser_auth, check_browser_available, check_connected_platforms, check_connector_updates,
-    cleanup_personal_server, clear_browser_session, debug_connector_paths, download_browser,
-    download_chromium_rust, download_connector, get_app_config, get_installed_connectors,
-    get_personal_server_status, get_platforms, get_registry_url, get_run_files, get_user_data_path,
-    handle_download, list_browser_sessions, load_latest_source_export_full,
-    load_latest_source_export_preview, load_run_export_data, load_runs, mark_export_synced,
-    open_folder, open_platform_export_folder, set_app_config, start_browser_auth,
-    start_personal_server, start_connector_run, stop_connector_run, stop_personal_server,
-    test_nodejs, write_export_data,
+    cleanup_personal_server, cleanup_playwright_processes, clear_browser_session,
+    debug_connector_paths, download_browser, download_chromium_rust, download_connector,
+    get_app_config, get_installed_connectors, get_personal_server_status, get_platforms,
+    get_registry_url, get_run_files, get_user_data_path, handle_download, list_browser_sessions,
+    load_latest_source_export_full, load_latest_source_export_preview, load_run_export_data,
+    load_runs, mark_export_synced, open_folder, open_platform_export_folder, set_app_config,
+    start_browser_auth, start_personal_server, start_connector_run, stop_connector_run,
+    stop_personal_server, test_nodejs, write_export_data,
 };
 use tauri::{Listener, Manager};
 
@@ -93,6 +93,7 @@ pub fn run() {
         .run(|_app, event| {
             if let tauri::RunEvent::Exit = event {
                 cleanup_personal_server();
+                cleanup_playwright_processes();
             }
         });
 }

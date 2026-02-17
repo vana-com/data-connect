@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 
 /**
- * Production build script for DataBridge
+ * Production build script for DataConnect
  *
  * This script:
  * 1. Builds the playwright-runner into a standalone binary
@@ -70,7 +70,7 @@ function findAppBundle() {
 }
 
 async function build() {
-  log('Building DataBridge for production...');
+  log('Building DataConnect for production...');
 
   // 1. Install playwright-runner dependencies
   log('Installing playwright-runner dependencies...');
@@ -121,7 +121,7 @@ async function build() {
   if (PLAT === 'darwin') {
     const version = getVersion();
     const archName = arch() === 'arm64' ? 'aarch64' : 'x64';
-    const dmgName = `DataBridge_${version}_${archName}.dmg`;
+    const dmgName = `DataConnect_${version}_${archName}.dmg`;
     const dmgDir = join(ROOT, 'src-tauri', 'target', 'release', 'bundle', 'dmg');
     const dmgPath = join(dmgDir, dmgName);
 
@@ -138,7 +138,7 @@ async function build() {
 
     // Create compressed DMG
     execSync(
-      `hdiutil create -volname "DataBridge" -srcfolder "${stagingDir}" -ov -format UDZO "${dmgPath}"`,
+      `hdiutil create -volname "DataConnect" -srcfolder "${stagingDir}" -ov -format UDZO "${dmgPath}"`,
       { stdio: 'inherit' },
     );
 

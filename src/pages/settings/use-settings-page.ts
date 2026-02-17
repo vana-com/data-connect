@@ -109,9 +109,9 @@ export function useSettingsPage() {
   // Remove the key when false so a fresh profile starts with the correct default.
   useEffect(() => {
     if (simulateNoChrome) {
-      localStorage.setItem("databridge_simulate_no_chrome", "true")
+      localStorage.setItem("dataconnect_simulate_no_chrome", "true")
     } else {
-      localStorage.removeItem("databridge_simulate_no_chrome")
+      localStorage.removeItem("dataconnect_simulate_no_chrome")
     }
   }, [simulateNoChrome])
 

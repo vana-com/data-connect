@@ -1,8 +1,8 @@
-# OAuth/Auth Callback Architecture for DataBridge
+# OAuth/Auth Callback Architecture for DataConnect
 
 ## The Problem
 
-DataBridge is a Tauri desktop app. For user authentication we use Privy, which supports Google OAuth. Two constraints make this hard:
+DataConnect is a Tauri desktop app. For user authentication we use Privy, which supports Google OAuth. Two constraints make this hard:
 
 1. **Google blocks OAuth in webviews/iframes** — their policy explicitly forbids it
 2. **Privy's React web SDK (`@privy-io/react-auth`) only supports HTTPS redirect URLs** — no custom protocol schemes
@@ -19,7 +19,7 @@ This means authentication must happen in the user's real browser, and we need a 
 
 Privy's **native mobile SDKs** (Expo, Swift, Android, Flutter) do support custom URL schemes. You register them in the Privy dashboard under Settings > Clients > Allowed URL schemes. This is what Privy's docs AI was likely referencing.
 
-However, the **React web SDK** (which DataBridge uses):
+However, the **React web SDK** (which DataConnect uses):
 - Routes OAuth through Privy's servers, which redirect back to an HTTPS web URL
 - Does not expose a `redirectUrl` parameter for custom protocols in `initOAuth()`
 - Dashboard-configured allowed OAuth redirect URLs require HTTPS — no wildcards, no custom schemes
@@ -73,9 +73,9 @@ Privy also has no REST API endpoint to initiate OAuth flows — their REST API i
 |------|----------|------------|
 | Deep link handler not registered (first launch, OS issues) | Medium | Fallback: show "copy this code" manual flow |
 | Auth data in URL (visible in browser history) | Medium | Use one-time code exchange: page stores auth server-side, passes only code via deep link, app exchanges code for data via HTTPS |
-| `vana://` scheme conflicts with other apps | Low | Use unique scheme like `com.vana.databridge://` |
+| `vana://` scheme conflicts with other apps | Low | Use unique scheme like `com.vana.dataconnect://` |
 | Hosted page is a new piece of infrastructure | Medium | Very minimal — single HTML file with Privy SDK |
-| Browser may prompt "Open DataBridge?" confirmation | Low | Expected UX, users are accustomed to this |
+| Browser may prompt "Open DataConnect?" confirmation | Low | Expected UX, users are accustomed to this |
 | Deep link may not bring app to foreground on all OS | Low | macOS/Windows handle this well, Linux varies |
 
 **Pros:** Cleaner UX (deep link brings app to foreground). No localhost server. Industry standard (Slack, Discord, VS Code, Figma, Spotify all use this).

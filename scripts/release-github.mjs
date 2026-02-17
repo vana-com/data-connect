@@ -238,7 +238,7 @@ function main() {
 
   const version = parseVersion(args.version);
   const tagName = `v${version}`;
-  const releaseTitle = args.title || `DataBridge v${version}`;
+  const releaseTitle = args.title || `DataConnect v${version}`;
   const releaseNotes = args.notes || `Release v${version}`;
   assertVersionOrdering(version, currentTauriVersion, latestRemoteTagVersion);
 

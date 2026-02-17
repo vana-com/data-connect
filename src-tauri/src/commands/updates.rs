@@ -68,12 +68,12 @@ struct LocalConnectorMetadata {
     name: String,
 }
 
-/// Get the user connectors directory (~/.databridge/connectors/)
+/// Get the user connectors directory (~/.dataconnect/connectors/)
 fn get_user_connectors_dir() -> Option<PathBuf> {
     let home = std::env::var("HOME")
         .or_else(|_| std::env::var("USERPROFILE"))
         .ok()?;
-    Some(PathBuf::from(home).join(".databridge").join("connectors"))
+    Some(PathBuf::from(home).join(".dataconnect").join("connectors"))
 }
 
 /// Get the bundled connectors directory
@@ -205,7 +205,7 @@ fn get_registry_cache_path() -> Option<PathBuf> {
         .ok()?;
     Some(
         PathBuf::from(home)
-            .join(".databridge")
+            .join(".dataconnect")
             .join("cache")
             .join("registry.json"),
     )

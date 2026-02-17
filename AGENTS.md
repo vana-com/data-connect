@@ -1,6 +1,6 @@
-# DataBridge
+# DataConnect
 
-Data Connect is software that enables users to interact with the Vana protocol. Analogous to an email client. This app (Databridge aka Data Connect) is the reference implementation. NOT a protocol participant (not registered on-chain). It may bundle a Personal Server; in that case the Personal Server (not the client) is the protocol participant and must be registered on-chain.
+Data Connect is software that enables users to interact with the Vana protocol. Analogous to an email client. This app, Data Connect is the reference implementation. NOT a protocol participant (not registered on-chain). It may bundle a Personal Server; in that case the Personal Server (not the client) is the protocol participant and must be registered on-chain.
 
 ## Architecture (Source of Truth)
 

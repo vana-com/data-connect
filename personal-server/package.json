@@ -1,7 +1,7 @@
 {
-  "name": "databridge-personal-server",
+  "name": "dataconnect-personal-server",
   "version": "1.0.0",
-  "description": "Personal Server wrapper for DataBridge",
+  "description": "Personal Server wrapper for DataConnect",
   "main": "index.cjs",
   "type": "module",
   "scripts": {

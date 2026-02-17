@@ -342,7 +342,7 @@ export function SettingsAbout({
         <SettingsCard divided>
           <SettingsResourceLink href="https://github.com" label="GitHub Repository" />
           <SettingsResourceLink
-            href="https://docs.databridge.dev"
+            href="https://docs.dataconnect.dev"
             label="Documentation"
           />
         </SettingsCard>

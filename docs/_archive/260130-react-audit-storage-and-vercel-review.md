@@ -1,7 +1,7 @@
 ---
 title: React Audit + Storage Review (Vercel Patterns)
 date: 2026-01-30
-scope: DataBridge React frontend
+scope: DataConnect React frontend
 ---
 
 # React Audit + Storage Review (Vercel Patterns)

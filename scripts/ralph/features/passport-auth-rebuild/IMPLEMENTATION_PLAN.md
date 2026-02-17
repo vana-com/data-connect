@@ -16,6 +16,15 @@
 
 ## Loopback Execution Updates
 
+- 2026-02-17 (current loop): completed **Slice 5.3 - Legacy route contract regression coverage**.
+  - Added focused route-contract tests:
+    - New `src/config/routes.test.ts` asserts removed legacy auth route keys/paths stay absent (`login`, `browserLogin`, `/login`, `/browser-login`).
+    - Also asserts canonical auth flow route surfaces remain present (`/connect`, `/grant`, `/settings`) so contract drift is caught in one suite.
+  - Why this slice now:
+    - Phase 5.1 exit criteria call for legacy-route removal verification; this closes the explicit route-surface coverage gap left after functional deletion.
+  - Validation completed (slice + relevant phase gate checks):
+    - `npx vitest run --maxWorkers=1 src/config/routes.test.ts src/pages/connect/index.test.tsx src/pages/grant/use-grant-flow.test.tsx` (pass)
+
 - 2026-02-17 (current loop): completed **Slice 5.1 - Legacy route/surface removal**.
   - Removed legacy auth UI surfaces and routing:
     - Deleted `src/components/auth/InlineLogin.tsx`.

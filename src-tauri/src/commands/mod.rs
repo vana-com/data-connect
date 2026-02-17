@@ -1,3 +1,4 @@
+mod auth_proxy;
 pub mod auth;
 pub mod connector;
 pub mod download;

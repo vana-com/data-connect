@@ -689,6 +689,23 @@ pub async fn set_app_config(config: AppConfig) -> Result<(), String> {
     Ok(())
 }
 
+/// Returns the path to the app log directory so the user can locate and share log files.
+#[tauri::command]
+pub async fn get_log_path(app: AppHandle) -> Result<String, String> {
+    let log_dir = app
+        .path()
+        .app_log_dir()
+        .map_err(|e| format!("Failed to get log directory: {}", e))?;
+
+    // Ensure the directory exists so the path is always valid to display
+    if !log_dir.exists() {
+        std::fs::create_dir_all(&log_dir)
+            .map_err(|e| format!("Failed to create log directory: {}", e))?;
+    }
+
+    Ok(log_dir.to_string_lossy().to_string())
+}
+
 #[cfg(test)]
 mod tests {
     use super::build_source_export_preview;

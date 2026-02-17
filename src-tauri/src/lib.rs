@@ -5,7 +5,7 @@ use commands::{
     cancel_browser_auth, check_browser_available, check_connected_platforms, check_connector_updates,
     cleanup_personal_server, cleanup_playwright_processes, clear_browser_session,
     debug_connector_paths, download_browser, download_chromium_rust, download_connector,
-    get_app_config, get_installed_connectors, get_personal_server_status, get_platforms,
+    get_app_config, get_installed_connectors, get_log_path, get_personal_server_status, get_platforms,
     get_registry_url, get_run_files, get_user_data_path, handle_download, list_browser_sessions,
     load_latest_source_export_full, load_latest_source_export_preview, load_run_export_data,
     load_runs, mark_export_synced, open_folder, open_platform_export_folder, set_app_config,
@@ -29,10 +29,16 @@ pub fn run() {
 
     builder
         .setup(|app| {
-            // Enable logging in both debug and release builds
+            // Enable logging in both debug and release builds, writing to both stdout and a file
             app.handle().plugin(
                 tauri_plugin_log::Builder::default()
                     .level(log::LevelFilter::Info)
+                    .target(tauri_plugin_log::Target::new(
+                        tauri_plugin_log::TargetKind::Stdout,
+                    ))
+                    .target(tauri_plugin_log::Target::new(
+                        tauri_plugin_log::TargetKind::LogDir { file_name: None },
+                    ))
                     .build(),
             )?;
 
@@ -79,6 +85,7 @@ pub fn run() {
             get_installed_connectors,
             get_app_config,
             set_app_config,
+            get_log_path,
             start_browser_auth,
             cancel_browser_auth,
             start_personal_server,

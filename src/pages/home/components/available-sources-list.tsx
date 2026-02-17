@@ -33,11 +33,15 @@ export function AvailableSourcesList({
     () => new Set(connectedPlatformIds),
     [connectedPlatformIds]
   )
-  const connectingPlatformIds = useMemo(
-    () =>
-      new Set(
-        runs.filter(run => run.status === "running").map(run => run.platformId)
-      ),
+  // Maps platformId → statusMessage (undefined if no message yet)
+  const connectingPlatforms = useMemo(
+    () => {
+      const map = new Map<string, string | undefined>()
+      runs.filter(run => run.status === "running").forEach(run => {
+        map.set(run.platformId, run.statusMessage)
+      })
+      return map
+    },
     [runs]
   )
 
@@ -60,8 +64,11 @@ export function AvailableSourcesList({
               stackPrimaryColor: getPlatformPrimaryColor(entry),
               isAvailable: state === "available",
               isConnecting: platform
-                ? connectingPlatformIds.has(platform.id)
+                ? connectingPlatforms.has(platform.id)
                 : false,
+              connectingStatusMessage: platform
+                ? connectingPlatforms.get(platform.id)
+                : undefined,
               onClick:
                 state === "available" && platform
                   ? () => onExport(platform)
@@ -82,6 +89,7 @@ export function AvailableSourcesList({
               stackPrimaryColor,
               isAvailable,
               isConnecting,
+              connectingStatusMessage,
               onClick,
             }) => (
               <ActionButton
@@ -99,6 +107,7 @@ export function AvailableSourcesList({
                   label={label}
                   stackPrimaryColor={stackPrimaryColor}
                   showArrow={isAvailable}
+                  bottomClassName={isConnecting ? "opacity-0" : undefined}
                   trailingSlot={
                     isAvailable ? null : (
                       <EyebrowBadge
@@ -123,7 +132,7 @@ export function AvailableSourcesList({
                         className="size-4 animate-spin motion-reduce:animate-none"
                         aria-hidden="true"
                       />
-                      Opening browser…
+                      {connectingStatusMessage ?? "Opening browser…"}
                     </span>
                   </div>
                 ) : null}

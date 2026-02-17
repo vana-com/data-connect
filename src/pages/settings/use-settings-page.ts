@@ -29,6 +29,7 @@ export function useSettingsPage() {
     : DEFAULT_SETTINGS_SECTION
   const [dataPath, setDataPath] = useState<string>("")
   const [appVersion, setAppVersion] = useState<string>("")
+  const [logPath, setLogPath] = useState<string>("")
   const [nodeTestStatus, setNodeTestStatus] = useState<
     "idle" | "testing" | "success" | "error"
   >("idle")
@@ -43,9 +44,10 @@ export function useSettingsPage() {
     let cancelled = false
 
     const loadSettings = async () => {
-      const [dataPathResult, versionResult] = await Promise.allSettled([
+      const [dataPathResult, versionResult, logPathResult] = await Promise.allSettled([
         getUserDataPath(),
         getVersion(),
+        invoke<string>("get_log_path"),
       ])
 
       if (cancelled) return
@@ -61,6 +63,12 @@ export function useSettingsPage() {
       } else {
         console.error("Failed to get app version:", versionResult.reason)
       }
+
+      if (logPathResult.status === "fulfilled") {
+        setLogPath(logPathResult.value)
+      } else {
+        console.error("Failed to get log path:", logPathResult.reason)
+      }
     }
 
     loadSettings()
@@ -74,6 +82,11 @@ export function useSettingsPage() {
     if (!dataPath) return
     await openLocalPath(dataPath)
   }, [dataPath])
+
+  const openLogFolder = useCallback(async () => {
+    if (!logPath) return
+    await invoke("open_folder", { path: logPath })
+  }, [logPath])
 
   const testNodeJs = useCallback(async () => {
     setNodeTestStatus("testing")
@@ -207,6 +220,7 @@ export function useSettingsPage() {
     setActiveSection,
     dataPath,
     appVersion,
+    logPath,
     nodeTestStatus,
     nodeTestResult,
     nodeTestError,
@@ -220,6 +234,7 @@ export function useSettingsPage() {
     isAuthenticated,
     walletAddress,
     onOpenDataFolder: openDataFolder,
+    onOpenLogFolder: openLogFolder,
     onTestNodeJs: testNodeJs,
     onDebugPaths: debugPaths,
     onCheckBrowserStatus: checkBrowserStatus,

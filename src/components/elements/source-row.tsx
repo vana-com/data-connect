@@ -19,6 +19,7 @@ export interface SourceRowProps {
 export interface SourceStackProps extends SourceRowProps {
   stackPrimaryColor?: string
   trailingSlot?: ReactNode
+  bottomClassName?: string
 }
 
 export const sourceRowActionStyle =
@@ -78,6 +79,7 @@ export function SourceStack({
   arrowClassName,
   stackPrimaryColor,
   trailingSlot,
+  bottomClassName,
 }: SourceStackProps) {
   const shouldShowArrow = showArrow ?? Boolean(meta)
   const shouldRenderMetaSection =
@@ -109,7 +111,8 @@ export function SourceStack({
         className={cn(
           "flex items-center justify-between",
           fieldHeight.default,
-          "px-4"
+          "px-4",
+          bottomClassName
         )}
       >
         <Text as="span" intent="button" weight="medium" color={labelColor}>

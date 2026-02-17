@@ -25,6 +25,10 @@ const MAX_RESTART_ATTEMPTS = 3;
 let _restartCount = 0;
 let _lastStartedWallet: string | null = null;
 let _pendingTunnelRestart = false;
+// Prevents multiple Phase 3 (tunnel) restarts from duplicate server-registered events.
+// Set when a tunnel restart is scheduled; cleared when tunnel connects, server exits,
+// or a new auth session begins (Phase 2 restart with new wallet).
+let _tunnelRestartScheduled = false;
 
 export function usePersonalServer() {
   const { walletAddress, masterKeySignature } = useSelector(
@@ -99,6 +103,7 @@ export function usePersonalServer() {
     console.log('[PersonalServer] Restarting with wallet:', wallet ?? 'none');
     _restartCount = 0; // Reset crash counter for explicit restarts
     _pendingTunnelRestart = false;
+    _tunnelRestartScheduled = false; // Explicit restart — allow fresh tunnel restart
     await stopServer();
     // Brief wait for port release (stop_personal_server already waits up to 3s,
     // but add a small buffer for OS-level cleanup)
@@ -121,6 +126,7 @@ export function usePersonalServer() {
 
       if (_pendingTunnelRestart) {
         _pendingTunnelRestart = false;
+        _tunnelRestartScheduled = true;
         console.log('[PersonalServer] Deferred tunnel restart triggered...');
         // Don't clear restartingRef — we're about to restart again
         _restartCount = 0;
@@ -151,6 +157,7 @@ export function usePersonalServer() {
       running.current = false;
       _sharedTunnelUrl = null;
       _sharedTunnelFailed = false;
+      _tunnelRestartScheduled = false;
       _sharedDevToken = null;
       setTunnelUrl(null);
       setTunnelFailed(false);
@@ -181,6 +188,7 @@ export function usePersonalServer() {
       console.log('[PersonalServer] Tunnel:', event.payload.url);
       _sharedTunnelUrl = event.payload.url;
       _sharedTunnelFailed = false;
+      _tunnelRestartScheduled = false;
       setTunnelUrl(event.payload.url);
       setTunnelFailed(false);
     }).then((fn) => unlisteners.push(fn));
@@ -204,6 +212,13 @@ export function usePersonalServer() {
         console.log('[PersonalServer] No wallet available, skipping restart');
         return;
       }
+      // Deduplicate: if a tunnel restart is already in flight, ignore subsequent
+      // server-registered events (e.g. from the auth page re-registering after each
+      // server restart cycle). Clear when tunnel connects or server exits.
+      if (_tunnelRestartScheduled) {
+        console.log('[PersonalServer] Tunnel restart already scheduled, ignoring duplicate server-registered');
+        return;
+      }
       // If Phase 2 is still in progress, defer the tunnel restart
       if (_sharedStatus !== 'running') {
         console.log('[PersonalServer] Phase 2 in progress, deferring tunnel restart...');
@@ -212,6 +227,7 @@ export function usePersonalServer() {
         return;
       }
       console.log('[PersonalServer] Restarting to establish tunnel...');
+      _tunnelRestartScheduled = true;
       restartingRef.current = true;
       _restartCount = 0;
       // Small delay to let the gateway propagate the registration
@@ -261,6 +277,7 @@ export function usePersonalServer() {
     if (!walletAddress || !masterKeySignature) return;
     if (_lastStartedWallet === walletAddress) return;
     _lastStartedWallet = walletAddress;
+    _tunnelRestartScheduled = false; // New auth session — allow a fresh tunnel restart
     console.log('[PersonalServer] Credentials available, restarting for identity...');
     _restartCount = 0;
     void stopServer().then(() => {

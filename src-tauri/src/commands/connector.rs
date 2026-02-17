@@ -532,10 +532,21 @@ async fn start_playwright_run(
     log::info!("Starting Playwright run for {} (platform: {}, company: {}, filename: {})",
         run_id, platform_id, company, filename);
 
-    // Check if browser is available before starting
+    // Phase 1: Check browser availability
+    let _ = app.emit("connector-status", serde_json::json!({
+        "runId": run_id,
+        "status": { "type": "STARTED", "message": "Checking browser..." },
+        "timestamp": chrono_timestamp()
+    }));
+
     let browser_status = check_browser_available(simulate_no_chrome).await?;
     if !browser_status.available {
         log::info!("No browser available, downloading Chromium...");
+        let _ = app.emit("connector-status", serde_json::json!({
+            "runId": run_id,
+            "status": { "type": "STARTED", "message": "Downloading browser (~170 MB)..." },
+            "timestamp": chrono_timestamp()
+        }));
         let _ = app.emit("connector-log", serde_json::json!({
             "runId": run_id,
             "message": "No browser found. Downloading Chromium (~170MB)...",
@@ -553,7 +564,7 @@ async fn start_playwright_run(
         }));
     }
 
-    // Find the connector script (check user dir first, then bundled)
+    // Phase 2: Find the connector script (check user dir first, then bundled)
     let company_lower = company.to_lowercase();
     let connector_path = if let Some(user_dir) = get_user_connectors_dir() {
         let user_path = user_dir.join(&company_lower).join(format!("{}.js", filename));
@@ -584,6 +595,13 @@ async fn start_playwright_run(
     }
 
     log::info!("Connector script found at: {:?}, looking for Playwright runner...", connector_path);
+
+    // Phase 3: Launch browser
+    let _ = app.emit("connector-status", serde_json::json!({
+        "runId": run_id,
+        "status": { "type": "STARTED", "message": "Launching browser..." },
+        "timestamp": chrono_timestamp()
+    }));
 
     // In debug mode, always use node directly (avoids macOS code signing issues with copied binaries)
     // In release mode, use the bundled binary
@@ -737,6 +755,11 @@ async fn start_playwright_run(
                 match msg_type {
                     "ready" => {
                         log::info!("Playwright runner ready for {}", run_id_for_stdout);
+                        let _ = app_clone.emit("connector-status", serde_json::json!({
+                            "runId": run_id_for_stdout,
+                            "status": { "type": "STARTED", "message": "Authorizing..." },
+                            "timestamp": chrono_timestamp()
+                        }));
                     }
                     "log" => {
                         if let Some(message) = msg.get("message").and_then(|v| v.as_str()) {

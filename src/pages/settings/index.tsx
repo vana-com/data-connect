@@ -51,6 +51,7 @@ export function Settings() {
     setActiveSection,
     dataPath,
     appVersion,
+    logPath,
     nodeTestStatus,
     nodeTestResult,
     nodeTestError,
@@ -64,6 +65,7 @@ export function Settings() {
     isAuthenticated,
     walletAddress,
     onOpenDataFolder,
+    onOpenLogFolder,
     onTestNodeJs,
     onDebugPaths,
     onCheckBrowserStatus,
@@ -115,6 +117,7 @@ export function Settings() {
     content = (
       <SettingsAbout
         appVersion={appVersion}
+        logPath={logPath}
         nodeTestStatus={nodeTestStatus}
         nodeTestResult={nodeTestResult}
         nodeTestError={nodeTestError}
@@ -132,6 +135,7 @@ export function Settings() {
         onRestartPersonalServer={personalServer.startServer}
         onStopPersonalServer={personalServer.stopServer}
         onSimulateNoChromeChange={onSimulateNoChromeChange}
+        onOpenLogFolder={onOpenLogFolder}
       />
     )
   } else if (activeSection === "imports") {

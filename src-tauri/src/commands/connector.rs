@@ -378,6 +378,46 @@ static PLAYWRIGHT_PROCESSES: std::sync::LazyLock<
     std::sync::Mutex<HashMap<String, std::process::Child>>,
 > = std::sync::LazyLock::new(|| std::sync::Mutex::new(HashMap::new()));
 
+/// Kill all active Playwright processes on app exit (sync, best-effort).
+/// Uses process group kills so spawned Chrome children are also reaped.
+pub fn cleanup_playwright_processes() {
+    if let Ok(mut guard) = PLAYWRIGHT_PROCESSES.lock() {
+        if guard.is_empty() {
+            return;
+        }
+        log::info!("Cleaning up {} Playwright process(es) on app exit...", guard.len());
+        for (run_id, mut child) in guard.drain() {
+            #[cfg(unix)]
+            {
+                use crate::commands::server::kill_process_group;
+                kill_process_group(child.id(), libc::SIGTERM);
+            }
+            // Brief wait then force kill
+            let mut exited = false;
+            for _ in 0..10 {
+                if let Ok(Some(_)) = child.try_wait() {
+                    exited = true;
+                    break;
+                }
+                std::thread::sleep(std::time::Duration::from_millis(100));
+            }
+            if !exited {
+                #[cfg(unix)]
+                {
+                    use crate::commands::server::kill_process_group;
+                    kill_process_group(child.id(), libc::SIGKILL);
+                }
+                #[cfg(not(unix))]
+                {
+                    let _ = child.kill();
+                }
+                let _ = child.wait();
+            }
+            log::info!("Playwright process for run {} cleaned up", run_id);
+        }
+    }
+}
+
 /// Get the path to the bundled Playwright runner binary (production) or None (dev)
 fn get_bundled_playwright_runner(app: &AppHandle) -> Option<(PathBuf, Option<PathBuf>)> {
     // In production, the binary is in the resources directory
@@ -492,10 +532,21 @@ async fn start_playwright_run(
     log::info!("Starting Playwright run for {} (platform: {}, company: {}, filename: {})",
         run_id, platform_id, company, filename);
 
-    // Check if browser is available before starting
+    // Phase 1: Check browser availability
+    let _ = app.emit("connector-status", serde_json::json!({
+        "runId": run_id,
+        "status": { "type": "STARTED", "message": "Checking browser..." },
+        "timestamp": chrono_timestamp()
+    }));
+
     let browser_status = check_browser_available(simulate_no_chrome).await?;
     if !browser_status.available {
         log::info!("No browser available, downloading Chromium...");
+        let _ = app.emit("connector-status", serde_json::json!({
+            "runId": run_id,
+            "status": { "type": "STARTED", "message": "Downloading browser (~170 MB)..." },
+            "timestamp": chrono_timestamp()
+        }));
         let _ = app.emit("connector-log", serde_json::json!({
             "runId": run_id,
             "message": "No browser found. Downloading Chromium (~170MB)...",
@@ -513,7 +564,7 @@ async fn start_playwright_run(
         }));
     }
 
-    // Find the connector script (check user dir first, then bundled)
+    // Phase 2: Find the connector script (check user dir first, then bundled)
     let company_lower = company.to_lowercase();
     let connector_path = if let Some(user_dir) = get_user_connectors_dir() {
         let user_path = user_dir.join(&company_lower).join(format!("{}.js", filename));
@@ -545,6 +596,13 @@ async fn start_playwright_run(
 
     log::info!("Connector script found at: {:?}, looking for Playwright runner...", connector_path);
 
+    // Phase 3: Launch browser
+    let _ = app.emit("connector-status", serde_json::json!({
+        "runId": run_id,
+        "status": { "type": "STARTED", "message": "Launching browser..." },
+        "timestamp": chrono_timestamp()
+    }));
+
     // In debug mode, always use node directly (avoids macOS code signing issues with copied binaries)
     // In release mode, use the bundled binary
     #[cfg(debug_assertions)]
@@ -561,6 +619,13 @@ async fn start_playwright_run(
             cmd.stdin(Stdio::piped())
                 .stdout(Stdio::piped())
                 .stderr(Stdio::piped());
+
+            // Create a new process group so we can kill all children (Chrome) at once
+            #[cfg(unix)]
+            {
+                use std::os::unix::process::CommandExt;
+                cmd.process_group(0);
+            }
 
             // Set browser path if bundled
             if let Some(ref browsers) = browsers_path {
@@ -609,6 +674,12 @@ async fn start_playwright_run(
             .stdin(Stdio::piped())
             .stdout(Stdio::piped())
             .stderr(Stdio::piped());
+
+        #[cfg(unix)]
+        {
+            use std::os::unix::process::CommandExt;
+            cmd.process_group(0);
+        }
 
         // Set simulate no chrome flag for testing
         if simulate_no_chrome.unwrap_or(false) {
@@ -684,6 +755,11 @@ async fn start_playwright_run(
                 match msg_type {
                     "ready" => {
                         log::info!("Playwright runner ready for {}", run_id_for_stdout);
+                        let _ = app_clone.emit("connector-status", serde_json::json!({
+                            "runId": run_id_for_stdout,
+                            "status": { "type": "STARTED", "message": "Authorizing..." },
+                            "timestamp": chrono_timestamp()
+                        }));
                     }
                     "log" => {
                         if let Some(message) = msg.get("message").and_then(|v| v.as_str()) {
@@ -1166,7 +1242,24 @@ pub async fn stop_connector_run(app: AppHandle, run_id: String) -> Result<(), St
     // Try to stop Playwright process first
     if let Some(mut process) = PLAYWRIGHT_PROCESSES.lock().unwrap().remove(&run_id) {
         log::info!("Killing Playwright process for run {}", run_id);
-        let _ = process.kill();
+        #[cfg(unix)]
+        {
+            use crate::commands::server::kill_process_group;
+            kill_process_group(process.id(), libc::SIGTERM);
+            // Brief wait for graceful shutdown, then force kill
+            for _ in 0..20 {
+                if let Ok(Some(_)) = process.try_wait() {
+                    return Ok(());
+                }
+                std::thread::sleep(std::time::Duration::from_millis(100));
+            }
+            kill_process_group(process.id(), libc::SIGKILL);
+        }
+        #[cfg(not(unix))]
+        {
+            let _ = process.kill();
+        }
+        let _ = process.wait();
         return Ok(());
     }
 

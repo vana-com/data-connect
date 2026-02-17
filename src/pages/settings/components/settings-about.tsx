@@ -1,5 +1,7 @@
 import {
   ExternalLinkIcon,
+  FileTextIcon,
+  FolderOpenIcon,
   InfoIcon,
   PlayIcon,
   CheckCircleIcon,
@@ -9,11 +11,13 @@ import {
 import { Text } from "@/components/typography/text"
 import { Button } from "@/components/ui/button"
 import { cn } from "@/lib/classes"
+import { useState } from "react"
 import type { BrowserStatus, NodeJsTestResult, PersonalServerInfo } from "../types"
 import { SettingsCard, SettingsRow, SettingsSection } from "./settings-shared"
 
 interface SettingsAboutProps {
   appVersion: string
+  logPath: string
   nodeTestStatus: "idle" | "testing" | "success" | "error"
   nodeTestResult: NodeJsTestResult | null
   nodeTestError: string | null
@@ -27,6 +31,7 @@ interface SettingsAboutProps {
   onRestartPersonalServer: () => void
   onStopPersonalServer: () => void
   onSimulateNoChromeChange: (value: boolean) => void
+  onOpenLogFolder: () => void
 }
 
 const statusStyles = {
@@ -38,6 +43,7 @@ const statusStyles = {
 
 export function SettingsAbout({
   appVersion,
+  logPath,
   nodeTestStatus,
   nodeTestResult,
   nodeTestError,
@@ -51,7 +57,16 @@ export function SettingsAbout({
   onRestartPersonalServer,
   onStopPersonalServer,
   onSimulateNoChromeChange,
+  onOpenLogFolder,
 }: SettingsAboutProps) {
+  const [copied, setCopied] = useState(false)
+
+  const handleCopyLogPath = async () => {
+    if (!logPath) return
+    await navigator.clipboard.writeText(logPath)
+    setCopied(true)
+    setTimeout(() => setCopied(false), 2000)
+  }
   const nodeStatusKey: keyof typeof statusStyles =
     nodeTestStatus === "success"
       ? "success"
@@ -336,6 +351,59 @@ export function SettingsAbout({
             </div>
           )}
         </SettingsCard>
+      </SettingsSection>
+
+      <SettingsSection title="Logs">
+        <SettingsCard divided>
+          <SettingsRow
+            iconContainerClassName="bg-muted"
+            icon={
+              <FileTextIcon aria-hidden="true" className="size-5 text-muted-foreground" />
+            }
+            title={
+              <Text as="div" intent="small" weight="medium">
+                Application Logs
+              </Text>
+            }
+            description={
+              <Text
+                as="div"
+                intent="fine"
+                color="mutedForeground"
+                className="max-w-[280px] truncate"
+                title={logPath || undefined}
+              >
+                {logPath || "Loading..."}
+              </Text>
+            }
+            right={
+              <div className="flex shrink-0 gap-2">
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  onClick={handleCopyLogPath}
+                  disabled={!logPath}
+                >
+                  {copied ? "Copied!" : "Copy path"}
+                </Button>
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  onClick={onOpenLogFolder}
+                  disabled={!logPath}
+                >
+                  <FolderOpenIcon aria-hidden="true" className="size-4" />
+                  Open
+                </Button>
+              </div>
+            }
+          />
+        </SettingsCard>
+        <Text as="p" intent="fine" color="mutedForeground" className="px-1">
+          Share these logs with support when reporting issues.
+        </Text>
       </SettingsSection>
 
       <SettingsSection title="Resources">

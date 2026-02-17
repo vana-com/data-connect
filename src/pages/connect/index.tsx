@@ -276,7 +276,7 @@ export function Connect() {
             className="relative gap-3 group disabled:opacity-100"
           >
             <PlatformIcon iconName={dataSourceLabel ?? "Data"} />
-            <span>{connectCta}</span>
+            <span className={cn(isBusy ? "opacity-0" : undefined)}>{connectCta}</span>
             {!connectPlatform && !isBusy ? (
               <EyebrowBadge
                 variant="outline"
@@ -287,7 +287,10 @@ export function Connect() {
             ) : (
               <ButtonArrow
                 icon={ChevronRight}
-                className="size-[1.5em] text-muted-foreground group-hover:text-foreground"
+                className={cn(
+                  "size-[1.5em] text-muted-foreground group-hover:text-foreground",
+                  isBusy ? "opacity-0" : undefined
+                )}
                 aria-hidden="true"
               />
             )}
@@ -306,7 +309,7 @@ export function Connect() {
                   />
                   {isCheckingPlatforms
                     ? "Checking connectors..."
-                    : "Opening browser..."}
+                    : (activeRun?.statusMessage ?? "Opening browser...")}
                 </span>
               </span>
             ) : null}

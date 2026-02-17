@@ -263,8 +263,10 @@ pub async fn start_browser_auth(
                                                 let resp_body = resp.text().unwrap_or_default();
                                                 log::info!("Gateway register response: {} {}", status, resp_body);
 
-                                                if status == 200 || status == 201 || status == 409 {
-                                                    // Extract serverId from response and include in event
+                                                if status == 200 || status == 201 {
+                                                    // Emit only for genuine new registrations.
+                                                    // 409 (already registered) does NOT trigger a restart —
+                                                    // the frontend would loop if it restarted on every re-registration.
                                                     let server_id = serde_json::from_str::<serde_json::Value>(&resp_body)
                                                         .ok()
                                                         .and_then(|v| v["serverId"].as_str().map(|s| s.to_string()));

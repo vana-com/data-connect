@@ -16,7 +16,7 @@ set -euo pipefail
 # - Default agent is Cursor CLI (override via RALPH_AGENT or RALPH_AGENT_CMD).
 # - Toggle agent: RALPH_AGENT=cursor|claude (or set RALPH_AGENT_CMD for a custom command).
 # - Prompt mode: RALPH_AGENT_PROMPT_MODE=arg|stdin.
-# - Cursor model: RALPH_AGENT_MODEL=gpt-5.2-codex (default).
+# - Cursor model: RALPH_AGENT_MODEL=gpt-5.3-codex (default).
 # - We intentionally keep this script close to the Ralph playbook: dumb outer loop,
 #   shared state in files + git, minimal orchestration.
 
@@ -60,7 +60,7 @@ if [[ ! -f "$PROMPT_FILE" ]]; then
   fi
 fi
 
-CURSOR_AGENT_MODEL_DEFAULT="gpt-5.2-codex"
+CURSOR_AGENT_MODEL_DEFAULT="gpt-5.3-codex"
 CURSOR_AGENT_MODEL="${RALPH_AGENT_MODEL:-$CURSOR_AGENT_MODEL_DEFAULT}"
 CURSOR_AGENT_CMD_DEFAULT=(agent -p --force --output-format text --model "$CURSOR_AGENT_MODEL")
 CLAUDE_AGENT_CMD_DEFAULT=(claude -p --dangerously-skip-permissions)

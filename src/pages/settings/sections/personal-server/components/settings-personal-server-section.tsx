@@ -33,13 +33,20 @@ interface SettingsPersonalServerSectionProps {
 export function SettingsPersonalServerSection({
   personalServer,
 }: SettingsPersonalServerSectionProps) {
+  const isTestMode = TEST_SERVER_STATUS_OVERRIDE !== null
   const previewStatus = TEST_SERVER_STATUS_OVERRIDE ?? personalServer.status
   const previewPort =
-    previewStatus === "running" ? TEST_SERVER_PORT : personalServer.port
+    isTestMode && previewStatus === "running"
+      ? TEST_SERVER_PORT
+      : personalServer.port
   const previewError =
-    previewStatus === "error" ? TEST_SERVER_ERROR : personalServer.error
+    isTestMode && previewStatus === "error"
+      ? TEST_SERVER_ERROR
+      : personalServer.error
   const previewTunnelUrl =
-    previewStatus === "running" ? TEST_TUNNEL_URL : personalServer.tunnelUrl
+    isTestMode && previewStatus === "running"
+      ? TEST_TUNNEL_URL
+      : personalServer.tunnelUrl
 
   return (
     <div className="space-y-8">

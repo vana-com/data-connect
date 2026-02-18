@@ -18,7 +18,7 @@ type PublicEndpointState = "available" | "unavailable"
   - "available": force endpoint preview
   - "unavailable": force unavailable preview
 */
-const TEST_PUBLIC_ENDPOINT_STATE: PublicEndpointState | null = "available"
+const TEST_PUBLIC_ENDPOINT_STATE: PublicEndpointState | null = null
 const TEST_PUBLIC_ENDPOINT_URL = "https://abc123.server.vana.org"
 const TEST_PUBLIC_ENDPOINT_COPIED = false
 

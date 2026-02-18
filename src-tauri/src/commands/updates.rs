@@ -6,7 +6,7 @@ use std::path::PathBuf;
 use tauri::{AppHandle, Manager};
 
 const DEFAULT_REGISTRY_URL: &str =
-    "https://raw.githubusercontent.com/volod-vana/registry/main/registry.json";
+    "https://raw.githubusercontent.com/vana-com/data-connectors/main/registry.json";
 
 /// Registry manifest from remote
 #[derive(Debug, Serialize, Deserialize, Clone)]

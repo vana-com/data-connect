@@ -21,7 +21,7 @@ import { fileURLToPath } from 'url';
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const ROOT = join(__dirname, '..');
 const CONNECTORS_DIR = join(ROOT, 'connectors');
-const DEFAULT_REGISTRY_URL = 'https://raw.githubusercontent.com/volod-vana/registry/main/registry.json';
+const DEFAULT_REGISTRY_URL = 'https://raw.githubusercontent.com/vana-com/data-connectors/main/registry.json';
 const MAX_RETRIES = 3;
 const RETRY_DELAY_MS = 1000;
 

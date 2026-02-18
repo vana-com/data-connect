@@ -97,6 +97,12 @@ async function connectTunnel(tunnelManager, storageRoot, send) {
     const text = data.toString();
     if (!connected && text.includes('start proxy success')) {
       connected = true;
+      // Sync the library's TunnelManager state so /health reports correctly.
+      // We killed the library's frpc and spawned our own, so the manager
+      // still thinks the tunnel is "stopped".
+      tunnelManager.status = 'connected';
+      tunnelManager.publicUrl = publicUrl;
+      tunnelManager.connectedSince = new Date();
       send({ type: 'tunnel', url: publicUrl });
     }
   };

@@ -55,7 +55,8 @@ function killStaleFrpc(storageRoot) {
  * proxy name, and respawn frpc. Fire-and-forget: emits tunnel/tunnel-failed
  * events via send() as they happen.
  */
-async function connectTunnel(tunnelManager, storageRoot, send) {
+async function connectTunnel(tunnelManager, storageRoot, send, { refreshAuth, attempt = 0 } = {}) {
+  const MAX_RETRIES = 3;
   const tomlPath = join(storageRoot, 'tunnel', 'frpc.toml');
   const frpcPath = join(storageRoot, 'bin', process.platform === 'win32' ? 'frpc.exe' : 'frpc');
 
@@ -82,10 +83,10 @@ async function connectTunnel(tunnelManager, storageRoot, send) {
 
   // Replace static proxy name with a unique per-session name
   const uniqueName = `ps-${randomUUID().slice(0, 8)}`;
-  toml = toml.replace(/name = "personal-server"/, `name = "${uniqueName}"`);
+  toml = toml.replace(/name = "(?:personal-server|ps-[0-9a-f]+)"/, `name = "${uniqueName}"`);
   writeFileSync(tomlPath, toml);
 
-  send({ type: 'log', message: `[tunnel] Connecting with proxy name: ${uniqueName}` });
+  send({ type: 'log', message: `[tunnel] Connecting with proxy name: ${uniqueName}${attempt > 0 ? ` (retry ${attempt}/${MAX_RETRIES})` : ''}` });
 
   // Spawn frpc with the patched config
   const frpc = spawn(frpcPath, ['-c', tomlPath], {
@@ -93,6 +94,23 @@ async function connectTunnel(tunnelManager, storageRoot, send) {
   });
 
   let connected = false;
+  let tokenExpired = false;
+
+  const retry = async () => {
+    if (connected || attempt >= MAX_RETRIES) return;
+    try { frpc.kill(); } catch {}
+    if (refreshAuth) {
+      send({ type: 'log', message: '[tunnel] Auth token expired, refreshing and retrying...' });
+      try {
+        await refreshAuth();
+      } catch (err) {
+        send({ type: 'tunnel-failed', message: `Failed to refresh tunnel auth: ${err.message}` });
+        return;
+      }
+    }
+    connectTunnel(tunnelManager, storageRoot, send, { refreshAuth, attempt: attempt + 1 });
+  };
+
   const onData = (data) => {
     const text = data.toString();
     if (!connected && text.includes('start proxy success')) {
@@ -105,6 +123,13 @@ async function connectTunnel(tunnelManager, storageRoot, send) {
       tunnelManager.connectedSince = new Date();
       send({ type: 'tunnel', url: publicUrl });
     }
+    // The FRP server auth token has a short TTL. If the initial connection
+    // takes too long, the token expires and frpc retries forever with the
+    // stale token. Detect this and retry with a fresh auth claim.
+    if (!connected && !tokenExpired && text.includes('Token expired')) {
+      tokenExpired = true;
+      retry();
+    }
   };
   frpc.stdout?.on('data', onData);
   frpc.stderr?.on('data', onData);
@@ -114,7 +139,7 @@ async function connectTunnel(tunnelManager, storageRoot, send) {
     }
   });
   frpc.on('exit', (code) => {
-    if (!connected) {
+    if (!connected && !tokenExpired) {
       send({ type: 'tunnel-failed', message: `frpc exited with code ${code}` });
     }
   });
@@ -229,7 +254,11 @@ async function main() {
     if (context.tunnelManager) {
       // Library set up tunnel infrastructure (TOML + frpc binary).
       // Reconnect with a unique proxy name to avoid FRP server collisions.
-      connectTunnel(context.tunnelManager, storageRoot, send);
+      // Pass refreshAuth so connectTunnel can retry with a fresh auth claim
+      // if the FRP server rejects an expired token.
+      connectTunnel(context.tunnelManager, storageRoot, send, {
+        refreshAuth: () => context.startBackgroundServices(),
+      });
     } else if (context.tunnelUrl) {
       send({ type: 'tunnel', url: context.tunnelUrl });
     } else if (hasMasterKey) {

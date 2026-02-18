@@ -467,7 +467,7 @@ describe("useGrantFlow", () => {
     expect(result.current.builderName).toBe("Pre-fetched Builder")
   })
 
-  it("handles deny flow — calls deny API and navigates to apps", async () => {
+  it("handles deny flow — calls deny API and navigates to home", async () => {
     mockClaimSession.mockResolvedValue({
       sessionId: "deny-session-1",
       granteeAddress: "0xbuilder",
@@ -498,7 +498,7 @@ describe("useGrantFlow", () => {
       secret: "deny-secret",
       reason: "User declined",
     })
-    expect(mockNavigate).toHaveBeenCalledWith("/apps")
+    expect(mockNavigate).toHaveBeenCalledWith("/")
   })
 
   it("shows error when session claim fails", async () => {
@@ -621,7 +621,7 @@ describe("useGrantFlow", () => {
     })
 
     // Should still navigate away despite deny call failure
-    expect(mockNavigate).toHaveBeenCalledWith("/apps")
+    expect(mockNavigate).toHaveBeenCalledWith("/")
   })
 
   it("errors when secret is missing during approve for non-demo session", async () => {
@@ -710,7 +710,7 @@ describe("useGrantFlow", () => {
       secret: "auth-cancel-secret",
       reason: "User declined",
     })
-    expect(mockNavigate).toHaveBeenCalledWith("/apps")
+    expect(mockNavigate).toHaveBeenCalledWith("/")
   })
 
   it("retries the flow from error state via handleRetry", async () => {

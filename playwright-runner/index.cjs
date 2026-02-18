@@ -287,7 +287,10 @@ async function launchPersistentContext(userDataDir, headless, browserPath) {
 
   const launchOptions = {
     headless,
-    args: ['--disable-blink-features=AutomationControlled'],
+    args: [
+      '--disable-blink-features=AutomationControlled',
+      '--disable-features=MediaRouter,DialMediaRouteProvider',
+    ],
     viewport: { width: 1280, height: 800 },
     userAgent: 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
   };
@@ -358,12 +361,15 @@ function createPageApi(runState, runId) {
   }
 
   return {
-    goto: async (url) => {
+    goto: async (url, options = {}) => {
       const page = requirePage();
       log(`pageApi.goto called with: ${url}`);
       send({ type: 'log', runId, message: `Navigating to: ${url}` });
+      const { waitUntil = 'domcontentloaded', timeout } = options;
+      const gotoOpts = { waitUntil };
+      if (timeout != null) gotoOpts.timeout = timeout;
       try {
-        await page.goto(url, { waitUntil: 'domcontentloaded' });
+        await page.goto(url, gotoOpts);
         log('pageApi.goto completed successfully');
       } catch (err) {
         log(`pageApi.goto error: ${err.message}`);

@@ -225,23 +225,40 @@ pub async fn start_personal_server(
     }
 
     let mut child = if let Some(binary_path) = get_bundled_personal_server(&app) {
-        // Re-sign on macOS
+        // On macOS, only ad-hoc sign if the binary lacks a valid signature.
+        // Production builds are already signed by CI with Developer ID —
+        // re-signing would downgrade to ad-hoc and trigger
+        // "was prevented from modifying apps" Gatekeeper warnings.
         #[cfg(target_os = "macos")]
         {
-            log::info!("Re-signing bundled personal server for macOS...");
-            if let Ok(output) = Command::new("codesign")
-                .arg("--force")
-                .arg("--sign")
-                .arg("-")
+            let needs_sign = match Command::new("codesign")
+                .arg("--verify")
+                .arg("--strict")
                 .arg(&binary_path)
                 .output()
             {
-                if !output.status.success() {
-                    log::warn!(
-                        "Failed to codesign personal server: {}",
-                        String::from_utf8_lossy(&output.stderr)
-                    );
+                Ok(output) => !output.status.success(),
+                Err(_) => true,
+            };
+
+            if needs_sign {
+                log::info!("Ad-hoc signing personal server (no valid signature found)...");
+                if let Ok(output) = Command::new("codesign")
+                    .arg("--force")
+                    .arg("--sign")
+                    .arg("-")
+                    .arg(&binary_path)
+                    .output()
+                {
+                    if !output.status.success() {
+                        log::warn!(
+                            "Failed to codesign personal server: {}",
+                            String::from_utf8_lossy(&output.stderr)
+                        );
+                    }
                 }
+            } else {
+                log::info!("Personal server already has valid signature, skipping re-sign");
             }
         }
 

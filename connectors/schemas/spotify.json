@@ -1,0 +1,116 @@
+{
+  "name": "Spotify",
+  "version": "1.0.0",
+  "scope": "spotify",
+  "dialect": "json",
+  "description": "All exported data from Spotify including profile, liked songs, and playlists with full track listings",
+  "schema": {
+    "type": "object",
+    "properties": {
+      "profile": {
+        "type": "object",
+        "description": "Spotify user profile",
+        "properties": {
+          "id": { "type": "string" },
+          "display_name": { "type": "string" },
+          "uri": { "type": "string" },
+          "followers": { "type": "number" },
+          "following": { "type": "number" },
+          "images": {
+            "type": "array",
+            "items": { "type": "string" }
+          }
+        },
+        "required": ["id", "display_name"]
+      },
+      "savedTracks": {
+        "type": "array",
+        "description": "User's liked/saved songs",
+        "items": {
+          "type": "object",
+          "properties": {
+            "added_at": { "type": "string" },
+            "name": { "type": "string" },
+            "artists": {
+              "type": "array",
+              "items": {
+                "type": "object",
+                "properties": {
+                  "name": { "type": "string" }
+                },
+                "required": ["name"]
+              }
+            },
+            "album": {
+              "type": "object",
+              "properties": {
+                "name": { "type": "string" },
+                "artists": {
+                  "type": "array",
+                  "items": {
+                    "type": "object",
+                    "properties": {
+                      "name": { "type": "string" }
+                    },
+                    "required": ["name"]
+                  }
+                }
+              },
+              "required": ["name"]
+            },
+            "duration_ms": { "type": "number" },
+            "uri": { "type": "string" },
+            "explicit": { "type": "boolean" }
+          },
+          "required": ["name", "artists"]
+        }
+      },
+      "playlists": {
+        "type": "array",
+        "description": "User's playlists with full track listings",
+        "items": {
+          "type": "object",
+          "properties": {
+            "name": { "type": "string" },
+            "description": { "type": "string" },
+            "owner": { "type": "string" },
+            "uri": { "type": "string" },
+            "followers": { "type": "number" },
+            "images": {
+              "type": "array",
+              "items": { "type": "string" }
+            },
+            "tracks_total": { "type": "number" },
+            "tracks": {
+              "type": "array",
+              "items": {
+                "type": "object",
+                "properties": {
+                  "added_at": { "type": "string" },
+                  "added_by": { "type": "string" },
+                  "name": { "type": "string" },
+                  "artists": {
+                    "type": "array",
+                    "items": {
+                      "type": "object",
+                      "properties": {
+                        "name": { "type": "string" }
+                      },
+                      "required": ["name"]
+                    }
+                  },
+                  "album": { "type": "string" },
+                  "duration_ms": { "type": "number" },
+                  "uri": { "type": "string" }
+                },
+                "required": ["name", "artists"]
+              }
+            }
+          },
+          "required": ["name", "tracks"]
+        }
+      }
+    },
+    "required": ["profile", "savedTracks", "playlists"]
+  }
+}

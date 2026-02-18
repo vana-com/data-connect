@@ -142,7 +142,7 @@ export async function claimSession(
     return existing;
   }
 
-  console.log("[SessionRelay] claimSession called", { sessionId: request.sessionId });
+  console.log("[SessionRelay] claimSession →", { sessionId: request.sessionId, url: `${SESSION_RELAY_URL}/v1/session/claim` });
   const promise = relayFetch<ClaimSessionResponse>(
     `${SESSION_RELAY_URL}/v1/session/claim`,
     {
@@ -156,37 +156,76 @@ export async function claimSession(
 
   // Keep successful results cached (claim is idempotent for the session lifetime).
   // Clear failures so retries can make a fresh request.
-  promise.catch(() => {
-    claimInflight.delete(request.sessionId);
-  });
+  promise.then(
+    (res) => {
+      console.log("[SessionRelay] claimSession ✓", { sessionId: request.sessionId, granteeAddress: res.granteeAddress, scopes: res.scopes });
+    },
+    (err) => {
+      console.error("[SessionRelay] claimSession ✗", {
+        sessionId: request.sessionId,
+        errorCode: err instanceof SessionRelayError ? err.errorCode : undefined,
+        message: err instanceof Error ? err.message : String(err),
+      });
+      claimInflight.delete(request.sessionId);
+    },
+  );
 
   return promise;
+}
+
+/** Remove a session from the claim dedup cache (e.g. after deny). */
+export function evictClaimCache(sessionId: string) {
+  claimInflight.delete(sessionId);
 }
 
 export async function approveSession(
   sessionId: string,
   request: ApproveSessionRequest
 ): Promise<void> {
-  await relayFetch<unknown>(
-    `${SESSION_RELAY_URL}/v1/session/${encodeURIComponent(sessionId)}/approve`,
-    {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(request),
-    }
-  );
+  console.log("[SessionRelay] approveSession →", { sessionId, grantId: request.grantId, userAddress: request.userAddress });
+  try {
+    await relayFetch<unknown>(
+      `${SESSION_RELAY_URL}/v1/session/${encodeURIComponent(sessionId)}/approve`,
+      {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(request),
+      }
+    );
+    console.log("[SessionRelay] approveSession ✓", { sessionId });
+  } catch (err) {
+    console.error("[SessionRelay] approveSession ✗", {
+      sessionId,
+      errorCode: err instanceof SessionRelayError ? err.errorCode : undefined,
+      message: err instanceof Error ? err.message : String(err),
+    });
+    throw err;
+  }
 }
 
 export async function denySession(
   sessionId: string,
   request: DenySessionRequest
 ): Promise<void> {
-  await relayFetch<unknown>(
-    `${SESSION_RELAY_URL}/v1/session/${encodeURIComponent(sessionId)}/deny`,
-    {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(request),
-    }
-  );
+  console.log("[SessionRelay] denySession →", { sessionId, reason: request.reason });
+  // Evict the claim cache so re-using this deep link doesn't return stale data.
+  evictClaimCache(sessionId);
+  try {
+    await relayFetch<unknown>(
+      `${SESSION_RELAY_URL}/v1/session/${encodeURIComponent(sessionId)}/deny`,
+      {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(request),
+      }
+    );
+    console.log("[SessionRelay] denySession ✓", { sessionId });
+  } catch (err) {
+    console.error("[SessionRelay] denySession ✗", {
+      sessionId,
+      errorCode: err instanceof SessionRelayError ? err.errorCode : undefined,
+      message: err instanceof Error ? err.message : String(err),
+    });
+    throw err;
+  }
 }

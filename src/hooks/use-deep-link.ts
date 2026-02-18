@@ -47,14 +47,21 @@ export function useDeepLink() {
 
   // Navigate to the appropriate route based on grant params
   const handleGrantParams = (params: GrantParams) => {
-    setDeepLinkParams(params)
-    setIsDeepLink(true)
-
     const normalizedSearch = buildGrantSearchParams(params).toString()
     const targetSearch = normalizedSearch ? `?${normalizedSearch}` : ""
     const targetRoute =
       params.status === "success" ? ROUTES.grant : ROUTES.connect
 
+    console.log("[DeepLink] Handling grant params", {
+      sessionId: params.sessionId,
+      hasSecret: Boolean(params.secret),
+      appId: params.appId,
+      status: params.status,
+      targetRoute,
+    })
+
+    setDeepLinkParams(params)
+    setIsDeepLink(true)
     navigateRef.current(`${targetRoute}${targetSearch}`, { replace: true })
   }
 

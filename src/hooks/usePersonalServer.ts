@@ -24,6 +24,7 @@ const isTauriRuntime = () =>
 const MAX_RESTART_ATTEMPTS = 3;
 let _restartCount = 0;
 let _lastStartedWallet: string | null = null;
+let _lastMasterKeySignature: string | null = null;
 let _pendingTunnelRestart = false;
 // Prevents multiple Phase 3 (tunnel) restarts from duplicate server-registered events.
 // Set when a tunnel restart is scheduled; cleared when tunnel connects, server exits,
@@ -55,10 +56,14 @@ export function usePersonalServer() {
 
     try {
       const owner = wallet ?? walletAddress ?? null;
-      console.log('[PersonalServer] Starting with wallet:', owner ?? 'none', 'masterKey:', masterKeySignature ? 'present' : 'null');
+      // Prefer the closure value, but fall back to the module-level snapshot
+      // stored during Phase 2 — the closure can go stale if the component
+      // remounts or React StrictMode recreates the callback between phases.
+      const masterKey = masterKeySignature ?? _lastMasterKeySignature;
+      console.log('[PersonalServer] Starting with wallet:', owner ?? 'none', 'masterKey:', masterKey ? 'present' : 'null');
       await invoke<PersonalServerStatus>('start_personal_server', {
         port: null,
-        masterKeySignature: masterKeySignature ?? null,
+        masterKeySignature: masterKey ?? null,
         gatewayUrl: null,
         ownerAddress: owner,
       });
@@ -277,6 +282,7 @@ export function usePersonalServer() {
     if (!walletAddress || !masterKeySignature) return;
     if (_lastStartedWallet === walletAddress) return;
     _lastStartedWallet = walletAddress;
+    _lastMasterKeySignature = masterKeySignature;
     _tunnelRestartScheduled = false; // New auth session — allow a fresh tunnel restart
     console.log('[PersonalServer] Credentials available, restarting for identity...');
     _restartCount = 0;

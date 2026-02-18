@@ -30,15 +30,11 @@ pub fn run() {
     builder
         .setup(|app| {
             // Enable logging in both debug and release builds, writing to both stdout and a file
+            // Default targets are already [Stdout, LogDir] — do NOT add
+            // .target() calls or each log line gets written twice.
             app.handle().plugin(
                 tauri_plugin_log::Builder::default()
                     .level(log::LevelFilter::Info)
-                    .target(tauri_plugin_log::Target::new(
-                        tauri_plugin_log::TargetKind::Stdout,
-                    ))
-                    .target(tauri_plugin_log::Target::new(
-                        tauri_plugin_log::TargetKind::LogDir { file_name: None },
-                    ))
                     .build(),
             )?;
 

@@ -5,7 +5,6 @@ import { useBrowserStatus } from "./use-browser-status"
 import { useGrantFlow } from "./use-grant-flow"
 import { BrowserSetupSection } from "./components/browser-setup-section"
 import { GrantLoadingState } from "./components/grant-loading-state"
-import { GrantAuthRequiredState } from "./components/grant-auth-required-state"
 import { GrantErrorState } from "./components/grant-error-state"
 import { GrantSuccessState } from "./components/grant-success-state"
 import { GrantConsentState } from "./components/consent/grant-consent-state"
@@ -47,9 +46,6 @@ export function Grant() {
   const {
     flowState,
     isApproving,
-    authUrl,
-    authError,
-    startBrowserAuth,
     handleApprove,
     handleDeny,
     handleRetry,
@@ -77,11 +73,6 @@ export function Grant() {
     ? activeDebugStatus === "creating-grant" ||
       activeDebugStatus === "approving"
     : isApproving
-  const resolvedAuthUrl =
-    isDebugging && activeDebugStatus === "auth-required"
-      ? "https://passport.vana.org"
-      : authUrl
-  const resolvedAuthError = isDebugging ? null : authError
   const resolvedBuilderName = isDebugging
     ? debugSession.appName
     : builderName
@@ -116,16 +107,6 @@ export function Grant() {
       ? "Preparing secure connection…"
       : undefined
     content = <GrantLoadingState message={loadingMessage} />
-  } else if (resolvedFlowState.status === "auth-required") {
-    content = (
-      <GrantAuthRequiredState
-        appName={resolvedBuilderName}
-        authUrl={resolvedAuthUrl}
-        authError={resolvedAuthError}
-        onRetryAuth={startBrowserAuth}
-        onDeny={handleDeny}
-      />
-    )
   } else if (resolvedFlowState.status === "error") {
     content = (
       <GrantErrorState

@@ -6,7 +6,7 @@ import { useAuth } from "@/hooks/useAuth"
 import { usePersonalServer } from "@/hooks/usePersonalServer"
 import { useConnectedApps } from "@/hooks/useConnectedApps"
 import { ROUTES } from "@/config/routes"
-import { openLocalPath } from "@/lib/open-resource"
+import { openLocalPath, openExternalUrl } from "@/lib/open-resource"
 import { getUserDataPath } from "@/lib/tauri-paths"
 import type { BrowserSession, BrowserStatus, NodeJsTestResult, SettingsSection } from "./types"
 import {
@@ -183,8 +183,10 @@ export function useSettingsPage() {
   }, [logout, navigate])
 
   const handleSignIn = useCallback(() => {
-    navigate(ROUTES.login)
-  }, [navigate])
+    const accountUrl =
+      import.meta.env.VITE_ACCOUNT_URL || "https://account.vana.org"
+    openExternalUrl(accountUrl)
+  }, [])
 
   const setActiveSection = useCallback(
     (nextSection: SettingsSection) => {

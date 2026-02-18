@@ -28,9 +28,8 @@ Behavior:
 1. `/connect` runs the connector and routes to `/grant` with `sessionId`, `appId`, `scopes`.
 2. `/grant` loads session data in `useGrantFlow` and moves to `consent`.
 3. Clicking **Allow**:
-   - If unauthenticated, `useGrantFlow.handleApprove` sets status `auth-required` and triggers `start_browser_auth`.
-   - External auth page opens in a new tab.
-   - On `auth-complete`, the flow resumes and approval continues.
+   - Auth must already be populated from the deep link (`masterKeySig` param).
+   - If not authenticated, an error is shown directing the user to account.vana.org.
 4. Clicking **Cancel** returns to **Data Apps** (`/apps`).
 5. Deep-link success: `/grant?...&status=success` renders the Step 4 success UI.
 
@@ -39,13 +38,6 @@ Data-source label:
 - Example: `["read:chatgpt-conversations"]` -> `ChatGPT`
 - Fallback: "data source" / "data"
 - Shared helpers live in `src/lib/scope-labels.ts` and are used by `/connect` and `/grant`.
-
-Dev flow visibility:
-
-- **Tauri dev:** `start_browser_auth` serves `src-tauri/auth-page` and opens the browser.
-- **Web dev (mock-only):** the auth page does not auto-open. Click "Open Sign-In Page" or
-  open `http://localhost:5175` manually.
-  - Run `npm run auth:dev` to start the auth page dev server.
 
 ## Mocking the Grant URL
 
@@ -57,19 +49,6 @@ Use these in the browser when testing the grant flow directly:
   `http://localhost:5173/grant?sessionId=grant-session-123&appId=rickroll&scopes=%5B%22read:chatgpt-conversations%22%5D`
 - Step 4 success:
   `http://localhost:5173/grant?sessionId=grant-session-123&appId=rickroll&scopes=%5B%22read:chatgpt-conversations%22%5D&status=success`
-
-When you click **Allow** in the browser, open the auth page dev server at
-`http://localhost:5175`. Run this first:
-
-```
-npm run auth:dev
-```
-
-Run the app in another tab:
-
-```
-npm run dev:app
-```
 
 If generating in code, do not encode the full query string:
 

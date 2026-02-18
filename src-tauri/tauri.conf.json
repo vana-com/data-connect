@@ -6,7 +6,7 @@
   "build": {
     "frontendDist": "../dist",
     "devUrl": "http://localhost:5173",
-    "beforeDevCommand": "npm run auth:build && npm run dev",
+    "beforeDevCommand": "npm run dev",
     "beforeBuildCommand": "npm run build"
   },
   "app": {
@@ -62,10 +62,7 @@
       "../connectors/openai/**/*": "connectors/openai/",
       "../connectors/spotify/**/*": "connectors/spotify/",
       "../playwright-runner/dist/*": "playwright-runner/dist/",
-      "../personal-server/dist/personal-server*": "personal-server/dist/",
-      "auth-page/*": "auth-page/",
-      "auth-page/assets/*": "auth-page/assets/",
-      "auth-page/fonts/*": "auth-page/fonts/"
+      "../personal-server/dist/personal-server*": "personal-server/dist/"
     },
     "windows": {
       "nsis": {

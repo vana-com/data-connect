@@ -1,10 +1,8 @@
 import { useCallback, useEffect, useRef, useState } from "react"
 import { useNavigate } from "react-router-dom"
-import { invoke } from "@tauri-apps/api/core"
-import { listen } from "@tauri-apps/api/event"
 import { useDispatch } from "react-redux"
 import { useAuth } from "../../hooks/useAuth"
-import { setAuthenticated, addConnectedApp } from "../../state/store"
+import { addConnectedApp } from "../../state/store"
 import {
   claimSession,
   approveSession,
@@ -31,12 +29,8 @@ import type {
 } from "./types"
 import { ROUTES } from "@/config/routes"
 
-const PRIVY_APP_ID = import.meta.env.VITE_PRIVY_APP_ID
-const PRIVY_CLIENT_ID = import.meta.env.VITE_PRIVY_CLIENT_ID
-const DEV_AUTH_PAGE_URL = "http://localhost:5175"
-const isTauriRuntime = () =>
-  typeof window !== "undefined" &&
-  ("__TAURI__" in window || "__TAURI_INTERNALS__" in window)
+const ACCOUNT_URL =
+  import.meta.env.VITE_ACCOUNT_URL || "https://account.vana.org"
 
 // Demo mode: sessions starting with "grant-session-" use mock data (dev only)
 function isDemoSession(sessionId: string): boolean {
@@ -74,11 +68,8 @@ export function useGrantFlow(params: GrantFlowParams, prefetched?: PrefetchedGra
     sessionId: "",
     status: "loading",
   })
-  const authTriggered = useRef(false)
   const [isApproving, setIsApproving] = useState(false)
   const [authPending, setAuthPending] = useState(false)
-  const [authUrl, setAuthUrl] = useState<string | null>(null)
-  const [authError, setAuthError] = useState<string | null>(null)
   const [retryCount, setRetryCount] = useState(0)
 
   const sessionId = params?.sessionId
@@ -87,9 +78,6 @@ export function useGrantFlow(params: GrantFlowParams, prefetched?: PrefetchedGra
 
   // Reset auth state when sessionId changes
   useEffect(() => {
-    authTriggered.current = false
-    setAuthUrl(null)
-    setAuthError(null)
     setAuthPending(false)
   }, [sessionId])
 
@@ -269,83 +257,21 @@ export function useGrantFlow(params: GrantFlowParams, prefetched?: PrefetchedGra
     setFlowState(prev => ({ ...prev, status: "success" }))
   }, [flowState.session, flowState.status, hasSuccessOverride])
 
-  // --- Auth ---
-  const startBrowserAuth = useCallback(async () => {
-    if (import.meta.env.DEV && !isTauriRuntime()) {
-      setAuthError(null)
-      setAuthUrl(DEV_AUTH_PAGE_URL)
-      return
-    }
-    if (!PRIVY_APP_ID || !PRIVY_CLIENT_ID) {
-      setAuthError("Missing VITE_PRIVY_APP_ID or VITE_PRIVY_CLIENT_ID.")
-      return
-    }
-
-    setAuthError(null)
-    try {
-      const url = await invoke<string>("start_browser_auth", {
-        privyAppId: PRIVY_APP_ID,
-        privyClientId: PRIVY_CLIENT_ID,
-      })
-      setAuthUrl(url)
-    } catch (err) {
-      if (import.meta.env.DEV) {
-        setAuthUrl(null)
-        setAuthError(
-          `Auth dev server runs at ${DEV_AUTH_PAGE_URL}. Switch to that tab to continue.`
-        )
-        return
-      }
-      console.error("Failed to start browser auth:", err)
-      setAuthError(
-        err instanceof Error
-          ? err.message
-          : "Failed to open browser for authentication."
-      )
-      authTriggered.current = false
-    }
-  }, [])
-
-  // Auto-start browser auth when auth is required
-  useEffect(() => {
-    if (flowState.status !== "auth-required" || authTriggered.current) return
-    authTriggered.current = true
-    startBrowserAuth()
-  }, [flowState.status, startBrowserAuth])
-
-  // Listen for auth completion from browser
-  useEffect(() => {
-    const unlisten = listen<{
-      success: boolean
-      user?: { id: string; email: string | null }
-      walletAddress?: string
-      masterKeySignature?: string
-      error?: string
-    }>("auth-complete", event => {
-      const result = event.payload
-      if (result.success && result.user) {
-        dispatch(
-          setAuthenticated({
-            user: { id: result.user.id, email: result.user.email || undefined },
-            walletAddress: result.walletAddress || null,
-            masterKeySignature: result.masterKeySignature || null,
-          })
-        )
-      }
-    })
-    return () => {
-      unlisten.then(fn => fn())
-    }
-  }, [dispatch])
-
   // --- Approve flow ---
   const handleApprove = useCallback(async () => {
     if (!flowState.session) return
 
-    // If not authenticated, defer to auth (auto-approve effect will resume)
+    // Auth should already be populated from the deep link (masterKeySig).
+    // If missing, the user needs to sign in via account.vana.org first.
     if (!isAuthenticated || !walletAddress) {
-      setAuthPending(true)
-      setFlowState(prev => ({ ...prev, status: "auth-required" }))
+      const connectUrl = new URL("/connect", ACCOUNT_URL)
+      if (flowState.sessionId) connectUrl.searchParams.set("sessionId", flowState.sessionId)
+      if (flowState.secret) connectUrl.searchParams.set("secret", flowState.secret)
+      setFlowState(prev => ({
+        ...prev,
+        status: "error",
+        error: `Not signed in. Please sign in at ${connectUrl.toString()} and relaunch Data Connect.`,
+      }))
       return
     }
 
@@ -472,12 +398,9 @@ export function useGrantFlow(params: GrantFlowParams, prefetched?: PrefetchedGra
     dispatch,
   ])
 
-  // Auto-approve after auth completes (if user had clicked Allow before auth).
-  // For non-demo sessions, wait until the Personal Server is fully ready
-  // (port + tunnel) so handleApprove doesn't throw and the builder can reach
-  // the server externally. If the server errors out, surface the error
-  // immediately. For tunnel failures, keep waiting — the backend monitors
-  // frpc asynchronously and may emit a late tunnel-success event.
+  // Auto-approve after auth is ready and Personal Server is available.
+  // Auth is now populated from the deep link, but the Personal Server
+  // may still be starting up when the user clicks Allow.
   const preparingTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
   const [tunnelTimedOut, setTunnelTimedOut] = useState(false)
 
@@ -545,7 +468,6 @@ export function useGrantFlow(params: GrantFlowParams, prefetched?: PrefetchedGra
   // For errors during grant creation/approval, the user returns to consent
   // and can click Allow again.
   const handleRetry = useCallback(() => {
-    authTriggered.current = false
     setAuthPending(false)
     setRetryCount(c => c + 1)
   }, [])
@@ -578,9 +500,6 @@ export function useGrantFlow(params: GrantFlowParams, prefetched?: PrefetchedGra
   return {
     flowState,
     isApproving,
-    authUrl,
-    authError,
-    startBrowserAuth,
     handleApprove,
     handleDeny,
     handleRetry,

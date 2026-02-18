@@ -1,6 +1,5 @@
 import { beforeEach, describe, expect, it, vi } from "vitest"
 import { act, renderHook, waitFor } from "@testing-library/react"
-import { invoke } from "@tauri-apps/api/core"
 import { useGrantFlow } from "./use-grant-flow"
 
 const mockNavigate = vi.fn()
@@ -29,24 +28,6 @@ let personalServerState = {
   restartServer: vi.fn(),
   restartingRef: { current: false },
 }
-
-let authCompleteHandler: ((event: { payload: any }) => void) | null = null
-const tauriWindow = window as Window & { __TAURI__?: unknown; __TAURI_INTERNALS__?: unknown }
-
-vi.mock("@tauri-apps/api/core", () => ({
-  invoke: vi.fn(),
-}))
-
-vi.mock("@tauri-apps/api/event", () => ({
-  listen: vi.fn(
-    (eventName: string, handler: (event: { payload: any }) => void) => {
-      if (eventName === "auth-complete") {
-        authCompleteHandler = handler
-      }
-      return Promise.resolve(() => {})
-    }
-  ),
-}))
 
 vi.mock("react-redux", () => ({
   useDispatch: () => vi.fn(),
@@ -105,9 +86,6 @@ beforeEach(() => {
   mockCreateGrant.mockReset()
   mockFetchServerIdentity.mockReset()
   mockFetchServerIdentity.mockResolvedValue({ address: "0xserver", publicKey: "pk", serverId: null })
-  authCompleteHandler = null
-  delete tauriWindow.__TAURI__
-  delete tauriWindow.__TAURI_INTERNALS__
   authState = {
     isAuthenticated: false,
     isLoading: false,
@@ -148,12 +126,8 @@ describe("useGrantFlow", () => {
     expect(result.current.builderName).toBe("Demo App")
   })
 
-  it("starts auth only after approval and auto-approves on auth completion", async () => {
-    tauriWindow.__TAURI_INTERNALS__ = {}
-    const mockedInvoke = vi.mocked(invoke)
-    mockedInvoke.mockResolvedValue("https://auth.vana.test")
-
-    const { result, rerender } = renderHook(() =>
+  it("shows error when unauthenticated user tries to approve", async () => {
+    const { result } = renderHook(() =>
       useGrantFlow({
         sessionId: "grant-session-456",
       })
@@ -163,43 +137,18 @@ describe("useGrantFlow", () => {
       expect(result.current.flowState.status).toBe("consent")
     })
 
-    // Click Allow while not authenticated → should go to auth-required
+    // Click Allow while not authenticated → should show error
     await act(async () => {
       await result.current.handleApprove()
     })
 
     await waitFor(() => {
-      expect(result.current.flowState.status).toBe("auth-required")
+      expect(result.current.flowState.status).toBe("error")
     })
-    expect(mockedInvoke).toHaveBeenCalledWith("start_browser_auth", {
-      privyAppId: expect.any(String),
-      privyClientId: expect.any(String),
-    })
-
-    // Simulate auth completion
-    await act(async () => {
-      authState = {
-        isAuthenticated: true,
-        isLoading: false,
-        walletAddress: "0xabc",
-      }
-      authCompleteHandler?.({
-        payload: {
-          success: true,
-          user: { id: "user-1", email: "test@vana.org" },
-          walletAddress: "0xabc",
-        },
-      })
-      rerender()
-    })
-
-    // Demo sessions skip grant creation → go straight to success
-    await waitFor(() => {
-      expect(result.current.flowState.status).toBe("success")
-    })
+    expect(result.current.flowState.error).toContain("Not signed in")
   })
 
-  it("waits for Personal Server port and tunnel before auto-approving after auth", async () => {
+  it("waits for Personal Server port and tunnel before auto-approving", async () => {
     // Start with server still starting (port and tunnel null)
     personalServerState = {
       ...personalServerState,
@@ -209,9 +158,12 @@ describe("useGrantFlow", () => {
       devToken: "test-dev-token",
     }
 
-    tauriWindow.__TAURI_INTERNALS__ = {}
-    const mockedInvoke = vi.mocked(invoke)
-    mockedInvoke.mockResolvedValue("https://auth.vana.test")
+    // Auth is already populated (from deep link)
+    authState = {
+      isAuthenticated: true,
+      isLoading: false,
+      walletAddress: "0xuser",
+    }
 
     // Use pre-fetched data for a real (non-demo) session to skip claim+verify
     const prefetched = {
@@ -241,36 +193,13 @@ describe("useGrantFlow", () => {
       expect(result.current.flowState.status).toBe("consent")
     })
 
-    // Click Allow while not authenticated → auth-required
+    // Click Allow — server port still null, should defer
     await act(async () => {
       await result.current.handleApprove()
     })
 
-    await waitFor(() => {
-      expect(result.current.flowState.status).toBe("auth-required")
-    })
-
-    // Simulate auth completion (server port still null)
-    await act(async () => {
-      authState = {
-        isAuthenticated: true,
-        isLoading: false,
-        walletAddress: "0xuser",
-      }
-      authCompleteHandler?.({
-        payload: {
-          success: true,
-          user: { id: "user-1", email: "test@vana.org" },
-          walletAddress: "0xuser",
-        },
-      })
-      rerender()
-    })
-
     // Auto-approve should NOT have fired — server port is still null
     expect(mockCreateGrant).not.toHaveBeenCalled()
-    // Status should transition to preparing-server (not stay on auth-required)
-    expect(result.current.flowState.status).toBe("preparing-server")
 
     // Simulate server port becoming ready (but tunnel still null)
     await act(async () => {
@@ -285,7 +214,6 @@ describe("useGrantFlow", () => {
 
     // Auto-approve should still NOT have fired — tunnel is not ready
     expect(mockCreateGrant).not.toHaveBeenCalled()
-    expect(result.current.flowState.status).toBe("preparing-server")
 
     // Simulate tunnel becoming ready
     await act(async () => {
@@ -428,8 +356,6 @@ describe("useGrantFlow", () => {
   })
 
   it("skips claim + verify when pre-fetched data is provided", async () => {
-    // When the connect page pre-fetched session + builder data in the background,
-    // the grant flow should skip straight to consent without calling claim/verify.
     const prefetched = {
       session: {
         id: "prefetch-session-1",
@@ -458,18 +384,14 @@ describe("useGrantFlow", () => {
       expect(result.current.flowState.status).toBe("consent")
     })
 
-    // Claim and verify should NOT have been called — data was pre-fetched
     expect(mockClaimSession).not.toHaveBeenCalled()
     expect(mockVerifyBuilder).not.toHaveBeenCalled()
-
-    // Pre-fetched data should be in state
     expect(result.current.flowState.session?.granteeAddress).toBe("0xprefetchbuilder")
     expect(result.current.builderName).toBe("Pre-fetched Builder")
   })
 
   it("handles deny flow — calls deny API and navigates to apps", async () => {
     mockClaimSession.mockResolvedValue({
-      sessionId: "deny-session-1",
       granteeAddress: "0xbuilder",
       scopes: ["chatgpt.conversations"],
       expiresAt: "2030-01-01T00:00:00.000Z",
@@ -538,7 +460,6 @@ describe("useGrantFlow", () => {
       })
     )
 
-    // Per protocol spec: "MUST NOT render the consent screen and MUST fail the session flow"
     await waitFor(() => {
       expect(result.current.flowState.status).toBe("error")
     })
@@ -620,7 +541,6 @@ describe("useGrantFlow", () => {
       await result.current.handleDeny()
     })
 
-    // Should still navigate away despite deny call failure
     expect(mockNavigate).toHaveBeenCalledWith("/apps")
   })
 
@@ -631,7 +551,6 @@ describe("useGrantFlow", () => {
       walletAddress: "0xuser",
     }
 
-    // Use pre-fetched data to bypass the initial claim (which would error on missing secret)
     const prefetched = {
       session: {
         id: "no-secret-session",
@@ -670,51 +589,7 @@ describe("useGrantFlow", () => {
     expect(result.current.flowState.error).toContain("secret is missing")
   })
 
-  it("calls denySession when canceling from auth-required state", async () => {
-    mockClaimSession.mockResolvedValue({
-      granteeAddress: "0xbuilder",
-      scopes: ["chatgpt.conversations"],
-      expiresAt: "2030-01-01T00:00:00.000Z",
-    })
-    mockVerifyBuilder.mockResolvedValue({
-      name: "Test Builder",
-      appUrl: "https://test.example.com",
-    })
-
-    const { result } = renderHook(() =>
-      useGrantFlow({
-        sessionId: "auth-cancel-1",
-        secret: "auth-cancel-secret",
-      })
-    )
-
-    await waitFor(() => {
-      expect(result.current.flowState.status).toBe("consent")
-    })
-
-    // Click Allow while not authenticated → transitions to auth-required
-    await act(async () => {
-      await result.current.handleApprove()
-    })
-
-    await waitFor(() => {
-      expect(result.current.flowState.status).toBe("auth-required")
-    })
-
-    // Cancel from auth-required — should call denySession and navigate away
-    await act(async () => {
-      await result.current.handleDeny()
-    })
-
-    expect(mockDenySession).toHaveBeenCalledWith("auth-cancel-1", {
-      secret: "auth-cancel-secret",
-      reason: "User declined",
-    })
-    expect(mockNavigate).toHaveBeenCalledWith("/apps")
-  })
-
   it("retries the flow from error state via handleRetry", async () => {
-    // First call fails, second call succeeds
     mockClaimSession
       .mockRejectedValueOnce(new Error("Network timeout"))
       .mockResolvedValueOnce({
@@ -734,12 +609,10 @@ describe("useGrantFlow", () => {
       })
     )
 
-    // First attempt should fail
     await waitFor(() => {
       expect(result.current.flowState.status).toBe("error")
     })
 
-    // Retry should re-run the flow
     await act(async () => {
       result.current.handleRetry()
     })
@@ -759,13 +632,12 @@ describe("useGrantFlow", () => {
       walletAddress: "0xuser",
     }
 
-    // Session with an already-expired expiresAt
     const prefetched = {
       session: {
         id: "expired-session-1",
         granteeAddress: "0xbuilder",
         scopes: ["chatgpt.conversations"],
-        expiresAt: "2020-01-01T00:00:00.000Z", // in the past
+        expiresAt: "2020-01-01T00:00:00.000Z",
       },
       builderManifest: {
         name: "Test Builder",
@@ -795,7 +667,6 @@ describe("useGrantFlow", () => {
       expect(result.current.flowState.status).toBe("error")
     })
     expect(result.current.flowState.error).toContain("expired")
-    // Grant creation should not have been attempted
     expect(mockCreateGrant).not.toHaveBeenCalled()
   })
 
@@ -834,8 +705,6 @@ describe("useGrantFlow", () => {
       expect(result.current.flowState.status).toBe("consent")
     })
 
-    // handleApprove defers when port is null; the auto-approve effect
-    // then surfaces the error because personalServer.status is "error"
     await act(async () => {
       await result.current.handleApprove()
     })
@@ -849,8 +718,6 @@ describe("useGrantFlow", () => {
   })
 
   it("waits during Phase 2 restart even if tunnelFailed is stale from Phase 1", async () => {
-    // Phase 1 tunnel failed, but server is restarting for Phase 2.
-    // The auto-approve effect should wait (not error) because restartingRef is true.
     authState = {
       isAuthenticated: true,
       isLoading: false,
@@ -892,15 +759,12 @@ describe("useGrantFlow", () => {
       expect(result.current.flowState.status).toBe("consent")
     })
 
-    // handleApprove defers because port+tunnel are null
     await act(async () => {
       await result.current.handleApprove()
     })
 
-    // Should NOT show tunnel error — restartingRef guards against stale tunnelFailed
     expect(result.current.flowState.status).not.toBe("error")
 
-    // Simulate Phase 2 restart completing: server ready, tunnel connected
     await act(async () => {
       personalServerState = {
         ...personalServerState,
@@ -913,14 +777,13 @@ describe("useGrantFlow", () => {
       rerender()
     })
 
-    // Now auto-approve should proceed
     await waitFor(() => {
       expect(result.current.flowState.status).toBe("success")
     })
     expect(mockCreateGrant).toHaveBeenCalled()
   })
 
-  it("shows error after 90s tunnel timeout, not on tunnelFailed alone", async () => {
+  it("shows error after 90s tunnel timeout", async () => {
     vi.useFakeTimers({ shouldAdvanceTime: true })
 
     authState = {
@@ -964,22 +827,17 @@ describe("useGrantFlow", () => {
       expect(result.current.flowState.status).toBe("consent")
     })
 
-    // handleApprove defers because tunnelUrl is null
     await act(async () => {
       await result.current.handleApprove()
     })
 
-    // tunnelFailed is true but the effect should NOT immediately error —
-    // it keeps waiting in "preparing-server" for a late tunnel-success event.
     expect(result.current.flowState.status).toBe("preparing-server")
     expect(mockCreateGrant).not.toHaveBeenCalled()
 
-    // Advance past the 90s timeout
     await act(async () => {
       vi.advanceTimersByTime(91_000)
     })
 
-    // NOW the error should surface
     await waitFor(() => {
       expect(result.current.flowState.status).toBe("error")
     })

@@ -1,10 +1,13 @@
 import { useEffect, useRef, useState } from "react"
 import { useLocation, useNavigate } from "react-router-dom"
+import { useDispatch } from "react-redux"
+import { hashMessage, recoverAddress } from "viem"
 import {
   buildGrantSearchParams,
   getGrantParamsFromSearchParams,
   type GrantParams,
 } from "../lib/grant-params"
+import { setAuthenticated } from "../state/store"
 import { ROUTES } from "@/config/routes"
 
 /**
@@ -40,15 +43,38 @@ async function getTauriDeepLink() {
 export function useDeepLink() {
   const navigate = useNavigate()
   const location = useLocation()
+  const dispatch = useDispatch()
   const [deepLinkParams, setDeepLinkParams] = useState<GrantParams | null>(null)
   const [isDeepLink, setIsDeepLink] = useState(false)
   const navigateRef = useRef(navigate)
   navigateRef.current = navigate
+  const dispatchRef = useRef(dispatch)
+  dispatchRef.current = dispatch
 
   // Navigate to the appropriate route based on grant params
   const handleGrantParams = (params: GrantParams) => {
     setDeepLinkParams(params)
     setIsDeepLink(true)
+
+    // Derive wallet address from masterKeySignature and populate auth state
+    if (params.masterKeySignature) {
+      recoverAddress({
+        hash: hashMessage("vana-master-key-v1"),
+        signature: params.masterKeySignature as `0x${string}`,
+      })
+        .then(walletAddress => {
+          dispatchRef.current(
+            setAuthenticated({
+              user: { id: walletAddress },
+              walletAddress,
+              masterKeySignature: params.masterKeySignature,
+            })
+          )
+        })
+        .catch(err => {
+          console.error("[DeepLink] Failed to recover address from masterKeySig:", err)
+        })
+    }
 
     const normalizedSearch = buildGrantSearchParams(params).toString()
     const targetSearch = normalizedSearch ? `?${normalizedSearch}` : ""
@@ -107,6 +133,26 @@ export function useDeepLink() {
     if (params.sessionId || params.appId) {
       setDeepLinkParams(params)
       setIsDeepLink(true)
+
+      // Derive wallet address from masterKeySignature and populate auth state
+      if (params.masterKeySignature) {
+        recoverAddress({
+          hash: hashMessage("vana-master-key-v1"),
+          signature: params.masterKeySignature as `0x${string}`,
+        })
+          .then(walletAddress => {
+            dispatchRef.current(
+              setAuthenticated({
+                user: { id: walletAddress },
+                walletAddress,
+                masterKeySignature: params.masterKeySignature,
+              })
+            )
+          })
+          .catch(err => {
+            console.error("[DeepLink] Failed to recover address from masterKeySig:", err)
+          })
+      }
 
       const normalizedSearch = buildGrantSearchParams(params).toString()
       const targetSearch = normalizedSearch ? `?${normalizedSearch}` : ""

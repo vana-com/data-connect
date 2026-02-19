@@ -3,7 +3,7 @@ import { SETTINGS_SECTION_ORDER } from "./sections"
 import type { SettingsSection } from "./types"
 
 export const SETTINGS_SECTION_PARAM = "section"
-export const DEFAULT_SETTINGS_SECTION: SettingsSection = "account"
+export const DEFAULT_SETTINGS_SECTION: SettingsSection = "personalServer"
 
 export function isSettingsSection(value: string | null): value is SettingsSection {
   return value !== null && SETTINGS_SECTION_ORDER.includes(value as SettingsSection)

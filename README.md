@@ -55,8 +55,40 @@ The downloaded browser is stored in `~/.dataconnect/browsers/` and persists acro
 npm install
 
 # Run in development mode
-npm run tauri dev
+npm run tauri:dev
 ```
+
+### Connector lifecycle (important)
+
+Connector files have two locations in dev:
+
+- Repo source: `./connectors/`
+- User runtime copy: `~/.dataconnect/connectors/`
+
+How they get there:
+
+- `npm install` runs `postinstall` -> `node scripts/fetch-connectors.js`
+  - This can download/regenerate connector files into `./connectors/`.
+- `npm run tauri:dev` runs `node scripts/sync-connectors-dev.js` first
+  - This copies repo connectors into `~/.dataconnect/connectors/`.
+
+Key point:
+
+- `tauri:dev` syncs what already exists in `./connectors/`.
+- It does not fetch missing repo connectors by itself.
+
+If you deleted connector folders and need to recover:
+
+```bash
+node scripts/fetch-connectors.js
+node scripts/sync-connectors-dev.js
+npm run tauri:dev
+```
+
+Optional environment flags:
+
+- `SKIP_CONNECTOR_FETCH=1` -> skip connector download in `postinstall`.
+- `CONNECTORS_PATH=/path/to/local/connectors` -> skip remote fetch and use local connector source.
 
 ### Agent config files
 

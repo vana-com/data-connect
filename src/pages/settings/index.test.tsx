@@ -94,6 +94,9 @@ beforeEach(() => {
     if (command === "get_user_data_path") {
       return Promise.resolve("/tmp/dataconnect")
     }
+    if (command === "list_browser_sessions") {
+      return Promise.resolve([])
+    }
     if (command === "check_browser_available") {
       return Promise.resolve({
         available: false,
@@ -106,11 +109,10 @@ beforeEach(() => {
 })
 
 describe("Settings", () => {
-  it("shows the account section by default", () => {
+  it("shows the personal server section by default", () => {
     const { getAllByRole } = renderSettings()
 
-    expect(getAllByRole("heading", { name: "Account" }).length).toBeGreaterThan(0)
-    expect(getAllByRole("button", { name: "Sign in" }).length).toBeGreaterThan(0)
+    expect(getAllByRole("heading", { name: "Personal Server" }).length).toBeGreaterThan(0)
   })
 
   it("switches to the apps section from the nav", () => {
@@ -131,7 +133,7 @@ describe("Settings", () => {
       walletAddress: null,
     })
 
-    const { getAllByText } = renderSettings()
+    const { getAllByText } = renderSettings(`${ROUTES.settings}?section=account`)
 
     expect(getAllByText("Sign out").length).toBeGreaterThan(0)
   })
@@ -142,9 +144,9 @@ describe("Settings", () => {
     expect(getByRole("heading", { name: "Storage & Server" })).toBeTruthy()
   })
 
-  it("falls back to account for invalid section values", () => {
+  it("falls back to personal server for invalid section values", () => {
     const { getAllByRole } = renderSettings(`${ROUTES.settings}?section=invalid`)
-    expect(getAllByRole("heading", { name: "Account" }).length).toBeGreaterThan(0)
+    expect(getAllByRole("heading", { name: "Personal Server" }).length).toBeGreaterThan(0)
   })
 
   it("clears source param when switching between non-import sections", () => {
@@ -152,8 +154,10 @@ describe("Settings", () => {
       `${ROUTES.settings}?section=apps&source=github`
     )
 
-    const [accountButton] = getAllByRole("button", { name: "Account" })
-    fireEvent.click(accountButton)
+    const [personalServerButton] = getAllByRole("button", {
+      name: "Personal Server",
+    })
+    fireEvent.click(personalServerButton)
 
     expect(getByTestId("search").textContent).toBe("")
   })

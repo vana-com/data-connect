@@ -76,7 +76,7 @@ export function RowDot({ className }: RowDotProps) {
 }
 
 export const tooltipStyle = [
-  "text-fine bg-background",
+  "text-fine bg-foreground text-background",
   "ring-2 ring-foreground rounded-soft",
   "px-2.5 py-2",
 ]

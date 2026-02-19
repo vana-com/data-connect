@@ -1,5 +1,6 @@
 import { cleanup, render, screen } from "@testing-library/react"
 import { afterEach, describe, expect, it, vi } from "vitest"
+import { LINKS } from "@/config/links"
 import type { BuilderManifest, GrantSession } from "../../types"
 import { GrantConsentState } from "./grant-consent-state"
 
@@ -71,70 +72,38 @@ describe("GrantConsentState scope action label", () => {
     ).toBeTruthy()
   })
 
-  it("falls back to generic copy and hides scope list when scopes are empty", () => {
+  it("falls back to generic copy when scopes are empty", () => {
     renderConsent([])
 
     expect(screen.getByText("See your data")).toBeTruthy()
-    expect(screen.queryByRole("list")).toBeNull()
-  })
-})
-
-describe("GrantConsentState builder links sentence", () => {
-  it("renders one link naturally", () => {
-    renderConsent(["chatgpt.conversations"], {
-      builderManifest: createBuilderManifest({
-        privacyPolicyUrl: "https://demo.app/privacy",
-      }),
-    })
-
-    const sentence = screen.getByText(
-      (_, element) =>
-        element?.tagName.toLowerCase() === "p" &&
-        Boolean(element.textContent?.includes("Demo App's")) &&
-        Boolean(element.textContent?.includes("Privacy Policy"))
-    )
-    expect(sentence.textContent).toContain("Privacy Policy.")
-    expect(sentence.textContent).not.toContain(" and ")
-    expect(sentence.textContent).not.toContain(", ")
   })
 
-  it("renders two links with 'and'", () => {
-    renderConsent(["chatgpt.conversations"], {
-      builderManifest: createBuilderManifest({
-        privacyPolicyUrl: "https://demo.app/privacy",
-        termsUrl: "https://demo.app/terms",
-      }),
-    })
+  it("allows immediately without checkbox acknowledgement", () => {
+    renderConsent(["chatgpt.conversations"])
 
-    const sentence = screen.getByText(
-      (_, element) =>
-        element?.tagName.toLowerCase() === "p" &&
-        Boolean(element.textContent?.includes("Demo App's")) &&
-        Boolean(element.textContent?.includes("Privacy Policy"))
-    )
-    expect(sentence.textContent).toContain(
-      "Privacy Policy and Terms of Service."
-    )
-    expect(sentence.textContent).not.toContain("Privacy Policy,")
+    const allowButton = screen.getByRole("button", { name: "Agree and Allow" })
+    expect((allowButton as HTMLButtonElement).disabled).toBe(false)
   })
 
-  it("renders three links with comma plus 'and'", () => {
-    renderConsent(["chatgpt.conversations"], {
-      builderManifest: createBuilderManifest({
-        privacyPolicyUrl: "https://demo.app/privacy",
-        termsUrl: "https://demo.app/terms",
-        supportUrl: "https://demo.app/support",
-      }),
-    })
+  it("renders compact clickwrap disclosure with legal doc link", () => {
+    renderConsent(["chatgpt.conversations"])
 
-    const sentence = screen.getByText(
-      (_, element) =>
-        element?.tagName.toLowerCase() === "p" &&
-        Boolean(element.textContent?.includes("Demo App's")) &&
-        Boolean(element.textContent?.includes("Privacy Policy"))
-    )
-    expect(sentence.textContent).toContain(
-      "Privacy Policy, Terms of Service and Support."
-    )
+    expect(
+      screen.getByText(
+        /you acknowledge that you are initiating access with credentials you control/i
+      )
+    ).toBeTruthy()
+    expect(
+      screen.getByRole("link", {
+        name: "Data Extraction Risk & Responsibility Disclosure",
+      })
+    ).toBeTruthy()
+    expect(
+      screen
+        .getByRole("link", {
+          name: "Data Extraction Risk & Responsibility Disclosure",
+        })
+        .getAttribute("href")
+    ).toBe(LINKS.legalDataExtractionRiskResponsibilityDisclosure)
   })
 })

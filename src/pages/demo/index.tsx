@@ -14,28 +14,28 @@ export function DemoIndex() {
   return (
     <>
       <TopNav />
-      <div className="container py-w24">
-      <div className="space-y-w6">
-        <Text as="h1" intent="title">
-          Demo Flow
-        </Text>
-        <Text as="p" dim>
-          Click through the grant flow. Start at step 1 or jump to any scene.
-        </Text>
+      <div className="container pt-major">
+        <div className="space-y-w6">
+          <Text as="h1" intent="title">
+            Demo Flow
+          </Text>
+          <Text as="p" dim>
+            Click through the grant flow. Start at step 1 or jump to any scene.
+          </Text>
 
-        <div className="space-y-2">
-          {DEMO_SCENES.map(scene => (
-            <Link
-              key={scene.path}
-              to={scene.path}
-              className="link block text-body"
-            >
-              {scene.label}
-            </Link>
-          ))}
+          <div className="space-y-2">
+            {DEMO_SCENES.map(scene => (
+              <Link
+                key={scene.path}
+                to={scene.path}
+                className="link block text-body"
+              >
+                {scene.label}
+              </Link>
+            ))}
+          </div>
         </div>
       </div>
-    </div>
     </>
   )
 }

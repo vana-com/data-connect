@@ -15,7 +15,7 @@ export function RickrollMockRoot() {
           // layout
           "container flex min-h-screen items-center justify-center",
           // spacing
-          "py-w24"
+          "pt-major"
         )}
       >
         <div className="space-y-gap">

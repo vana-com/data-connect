@@ -45,9 +45,12 @@
 /* https://tailwindcss.com/docs/adding-custom-styles#adding-custom-variants */
 @custom-variant dark (&:is(.dark *));
 
-/* lucide defaults */
+/* lucide defaults + opt-in overrides */
+:root {
+  --icon-stroke-width: 1.5;
+}
 .lucide {
-  stroke-width: 1.5;
+  stroke-width: var(--lucide-stroke-width, var(--icon-stroke-width));
 }
 
 /*
@@ -75,7 +78,7 @@
     "Courier New", monospace;
 
   /* custom font weights */
-  --font-weight-semibold: 550;
+  /* --font-weight-semibold: 550; */
 
   /* text sizes */
   /* --text-* is a theme variable namespace that controls text-* utilities, and Tailwind only registers those when they’re defined via @theme. inline is explicitly required when a theme variable references another variable, which your alias lines do (e.g. --text-sm: var(--text-small)). */

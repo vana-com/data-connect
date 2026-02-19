@@ -72,7 +72,7 @@ export function ConnectedAppsList({ apps }: ConnectedAppsListProps) {
         <Header />
         <div className="action-outset">
           <ActionPanel>
-            <Text muted>No connected apps</Text>
+            <Text weight="medium">No connected apps</Text>
           </ActionPanel>
         </div>
       </section>
@@ -117,9 +117,7 @@ export function ConnectedAppsList({ apps }: ConnectedAppsListProps) {
                 {/* Duplicated SourceRow LHS; RHS is different! */}
                 <PlatformIcon
                   iconName={app.icon?.trim() || app.name}
-                  fallbackLabel={
-                    app.name.charAt(0).toUpperCase()
-                  }
+                  fallbackLabel={app.name.charAt(0).toUpperCase()}
                 />
                 <div className="flex items-baseline gap-2">
                   {app.name}

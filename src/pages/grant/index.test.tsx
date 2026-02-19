@@ -25,7 +25,7 @@ afterEach(() => {
 })
 
 describe("Grant debug status switching", () => {
-  it("keeps builder manifest links when toggling creating-grant back to consent", () => {
+  it("keeps disclosure link when toggling creating-grant back to consent", () => {
     mockUseGrantFlow.mockReturnValue({
       flowState: {
         sessionId: "session-1",
@@ -63,15 +63,19 @@ describe("Grant debug status switching", () => {
       </MemoryRouter>
     )
 
-    expect(screen.getByRole("link", { name: "Privacy Policy" })).toBeTruthy()
-    expect(screen.getByRole("link", { name: "Terms of Service" })).toBeTruthy()
-    expect(screen.getByRole("link", { name: "Support" })).toBeTruthy()
+    expect(
+      screen.getByRole("link", {
+        name: "Data Extraction Risk & Responsibility Disclosure",
+      })
+    ).toBeTruthy()
 
     fireEvent.click(screen.getByRole("button", { name: "creating-grant" }))
     fireEvent.click(screen.getByRole("button", { name: "consent" }))
 
-    expect(screen.getByRole("link", { name: "Privacy Policy" })).toBeTruthy()
-    expect(screen.getByRole("link", { name: "Terms of Service" })).toBeTruthy()
-    expect(screen.getByRole("link", { name: "Support" })).toBeTruthy()
+    expect(
+      screen.getByRole("link", {
+        name: "Data Extraction Risk & Responsibility Disclosure",
+      })
+    ).toBeTruthy()
   })
 })

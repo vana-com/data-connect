@@ -29,7 +29,7 @@ export function ConnectedSourcesList({
         </Text>
         <div className="action-outset">
           <ActionPanel>
-            <Text muted>No sources yet</Text>
+            <Text weight="medium">No sources yet</Text>
           </ActionPanel>
         </div>
       </section>

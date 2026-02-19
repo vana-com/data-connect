@@ -118,11 +118,13 @@ export function Grant() {
       </div>
     )
   } else if (isLoadingState || resolvedAuthLoading) {
-    const loadingMessage =
-      resolvedFlowState.status === "preparing-server"
-        ? "Preparing secure connection…"
-        : undefined
-    content = <GrantLoadingState message={loadingMessage} />
+    const loadingTitle =
+      resolvedFlowState.status === "verifying-builder"
+        ? "Verifying app configuration…"
+        : resolvedFlowState.status === "preparing-server"
+          ? "Preparing connection…"
+          : "Loading…"
+    content = <GrantLoadingState title={loadingTitle} />
   } else if (resolvedFlowState.status === "auth-required") {
     content = (
       <GrantAuthRequiredState

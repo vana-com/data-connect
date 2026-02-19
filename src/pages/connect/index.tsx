@@ -61,7 +61,8 @@ export function Connect() {
   useEffect(() => {
     // Only pre-fetch for real sessions (not demo, needs secret)
     if (!params.sessionId || !params.secret) return
-    if (import.meta.env.DEV && params.sessionId.startsWith("grant-session-")) return
+    if (import.meta.env.DEV && params.sessionId.startsWith("grant-session-"))
+      return
     if (prefetchedSessionRef.current === params.sessionId) return // already started for this session
 
     void (async (): Promise<PrefetchedGrantData | null> => {
@@ -72,7 +73,7 @@ export function Connect() {
           sessionId: params.sessionId,
           hasSecret: Boolean(params.secret),
           timestamp: Date.now(),
-        });
+        })
         const claimed = await claimSession({
           sessionId: params.sessionId!,
           secret: params.secret!,
@@ -81,7 +82,7 @@ export function Connect() {
           sessionId: params.sessionId,
           granteeAddress: claimed.granteeAddress,
           scopes: claimed.scopes,
-        });
+        })
         session = {
           id: params.sessionId!,
           granteeAddress: claimed.granteeAddress,
@@ -105,21 +106,27 @@ export function Connect() {
       try {
         const builderManifest = await verifyBuilder(
           session.granteeAddress,
-          session.webhookUrl,
+          session.webhookUrl
         )
         const result = { session, builderManifest }
-        console.log("[Connect] Pre-fetch: builder verified, prefetched data ready", {
-          sessionId: params.sessionId,
-          builderName: builderManifest?.name,
-        });
+        console.log(
+          "[Connect] Pre-fetch: builder verified, prefetched data ready",
+          {
+            sessionId: params.sessionId,
+            builderName: builderManifest?.name,
+          }
+        )
         setPrefetched(result)
         return result
       } catch (err) {
         // Builder verification failed — still pass session so grant flow skips claim
-        console.warn("[Connect] Pre-fetch: builder verification failed, passing session only", {
-          sessionId: params.sessionId,
-          error: err,
-        })
+        console.warn(
+          "[Connect] Pre-fetch: builder verification failed, passing session only",
+          {
+            sessionId: params.sessionId,
+            error: err,
+          }
+        )
         const result: PrefetchedGrantData = { session }
         setPrefetched(result)
         return result
@@ -230,7 +237,7 @@ export function Connect() {
         prefetchedSession: prefetched?.session?.id,
         prefetchedBuilder: prefetched?.builderManifest?.name,
         grantHref,
-      });
+      })
       setConnectRunId(null)
       navigate(grantHref, {
         state: prefetched ? { prefetched } : undefined,
@@ -258,7 +265,7 @@ export function Connect() {
   }
 
   return (
-    <div className="container py-w24">
+    <div className="container pt-major">
       <div className="space-y-w6">
         <Text as="h1" intent="title">
           {connectTitle}
@@ -276,7 +283,9 @@ export function Connect() {
             className="relative gap-3 group disabled:opacity-100"
           >
             <PlatformIcon iconName={dataSourceLabel ?? "Data"} />
-            <span className={cn(isBusy ? "opacity-0" : undefined)}>{connectCta}</span>
+            <span className={cn(isBusy ? "opacity-0" : undefined)}>
+              {connectCta}
+            </span>
             {!connectPlatform && !isBusy ? (
               <EyebrowBadge
                 variant="outline"
@@ -288,7 +297,7 @@ export function Connect() {
               <ButtonArrow
                 icon={ChevronRight}
                 className={cn(
-                  "size-[1.5em] text-muted-foreground group-hover:text-foreground",
+                  "size-[2em] text-muted-foreground group-hover:text-foreground",
                   isBusy ? "opacity-0" : undefined
                 )}
                 aria-hidden="true"

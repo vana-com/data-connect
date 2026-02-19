@@ -17,14 +17,13 @@ export function GrantSuccessState({ appName, scopes }: GrantSuccessStateProps) {
   const dataLabel = dataSourceLabel ? `${dataSourceLabel} data` : "data"
 
   return (
-    <div className="container py-w24">
+    <div className="container pt-major">
       <div className="space-y-w6">
         <Text as="h1" intent="title" className="relative">
           <div className="absolute left-[-1.3em] top-[0.05em]">
             <CheckIcon
-              className="size-9 text-foreground-muted"
+              className="size-9 [--lucide-stroke-width:2] text-accent"
               aria-hidden="true"
-              strokeWidth={2.5}
             />
           </div>
           {resolvedAppName} has your {dataLabel}

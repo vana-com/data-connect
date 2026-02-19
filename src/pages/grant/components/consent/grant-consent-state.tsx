@@ -20,7 +20,7 @@ interface GrantConsentStateProps {
   onDeny?: () => void
 }
 
-/** Pick the best icon from the builder manifest icons array (prefer 48–96px). */
+/** Pick the best icon from builder manifest icons array (prefer 48–96px). */
 function pickBuilderIcon(manifest?: BuilderManifest): string | undefined {
   if (!manifest?.icons?.length) return undefined
   // Prefer an icon in the 48–96px range; fall back to first
@@ -61,7 +61,7 @@ export function GrantConsentState({
   }
 
   return (
-    <div className="container py-w24">
+    <div className="container pt-major">
       <div className="space-y-w6">
         <Text as="h1" intent="title">
           Allow access to your {dataLabel}

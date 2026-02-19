@@ -1,20 +1,17 @@
-import { LoaderIcon } from "lucide-react"
+import { Spinner } from "@/components/elements/spinner"
 import { Text } from "@/components/typography/text"
 
 interface GrantLoadingStateProps {
-  message?: string
+  title?: string
 }
 
-export function GrantLoadingState({ message }: GrantLoadingStateProps) {
+export function GrantLoadingState({ title }: GrantLoadingStateProps) {
   return (
-    <div className="flex min-h-screen items-center justify-center bg-muted">
-      <div className="flex flex-col items-center gap-4 text-center">
-        <LoaderIcon
-          aria-hidden="true"
-          className="size-12 animate-spin text-accent motion-reduce:animate-none"
-        />
-        <Text as="p" intent="body" color="mutedForeground" aria-live="polite">
-          {message ?? "Loading…"}
+    <div className="container pt-major">
+      <div className="space-y-w6">
+        <Text as="h1" intent="title" withIcon aria-live="polite">
+          <Spinner className="size-[0.75em] motion-reduce:animate-none" />
+          {title ?? "Loading…"}
         </Text>
       </div>
     </div>

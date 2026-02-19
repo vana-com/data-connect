@@ -45,9 +45,12 @@
 /* https://tailwindcss.com/docs/adding-custom-styles#adding-custom-variants */
 @custom-variant dark (&:is(.dark *));
 
-/* lucide defaults */
+/* lucide defaults + opt-in overrides */
+:root {
+  --icon-stroke-width: 1.5;
+}
 .lucide {
-  stroke-width: 1.5;
+  stroke-width: var(--lucide-stroke-width, var(--icon-stroke-width));
 }
 
 /*

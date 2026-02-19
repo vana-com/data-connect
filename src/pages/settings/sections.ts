@@ -2,8 +2,8 @@ import type { SettingsSection } from "./types"
 
 export const SETTINGS_SECTION_ORDER: SettingsSection[] = [
   "account",
-  "apps",
   "personalServer",
+  "apps",
   "storage",
   "imports",
   "credentials",

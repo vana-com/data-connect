@@ -24,8 +24,8 @@ import { useSettingsPage } from "./use-settings-page"
 
 const sectionIcons: Record<SettingsSection, ReactNode> = {
   account: <UserIcon aria-hidden="true" />,
-  apps: <BoxIcon aria-hidden="true" />,
   personalServer: <ServerIcon aria-hidden="true" />,
+  apps: <BoxIcon aria-hidden="true" />,
   storage: <HousePlusIcon aria-hidden="true" />,
   imports: <ActivityIcon aria-hidden="true" />,
   credentials: <KeyRoundIcon aria-hidden="true" />,
@@ -37,12 +37,12 @@ const settingsSections: Array<{
   label: string
   icon: ReactNode
 }> = SETTINGS_SECTION_ORDER
-  // Temporarily hide Storage in nav; keep storage section implementation intact.
-  .filter(section => section !== "storage")
+  // Temporarily hide Account and Storage in nav; keep section implementations intact.
+  .filter(section => section !== "account" && section !== "storage")
   .map(section => ({
-  key: section,
-  label: SETTINGS_SECTION_META[section].navLabel,
-  icon: sectionIcons[section],
+    key: section,
+    label: SETTINGS_SECTION_META[section].navLabel,
+    icon: sectionIcons[section],
   }))
 
 export function Settings() {

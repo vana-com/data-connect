@@ -1,5 +1,5 @@
-import { useState } from "react"
 import { useSearchParams, useLocation } from "react-router-dom"
+import { useState } from "react"
 import { getGrantParamsFromSearchParams } from "@/lib/grant-params"
 import { useBrowserStatus } from "./use-browser-status"
 import { useGrantFlow } from "./use-grant-flow"
@@ -10,7 +10,12 @@ import { GrantErrorState } from "./components/grant-error-state"
 import { GrantSuccessState } from "./components/grant-success-state"
 import { GrantConsentState } from "./components/consent/grant-consent-state"
 import { GrantDebugPanel } from "./components/grant-debug-panel.tsx"
-import type { BuilderManifest, GrantFlowState, GrantSession, PrefetchedGrantData } from "./types"
+import type {
+  BuilderManifest,
+  GrantFlowState,
+  GrantSession,
+  PrefetchedGrantData,
+} from "./types"
 
 const DEBUG_SESSION_ID = "grant-session-debug"
 function getDebugSession(): GrantSession {
@@ -31,14 +36,18 @@ export function Grant() {
   const params = getGrantParamsFromSearchParams(searchParams)
   // Pre-fetched session + builder data passed from the connect page via navigation state.
   // When available, the grant flow skips claim + verify steps (already done in background).
-  const prefetched = (location.state as { prefetched?: PrefetchedGrantData } | null)?.prefetched
+  const prefetched = (
+    location.state as { prefetched?: PrefetchedGrantData } | null
+  )?.prefetched
   console.log("[Grant] Extracted prefetched from location.state", {
     hasPrefetched: prefetched !== undefined,
     hasSession: Boolean(prefetched?.session),
     hasBuilderManifest: Boolean(prefetched?.builderManifest),
     sessionId: prefetched?.session?.id,
-    locationStateKeys: location.state ? Object.keys(location.state as object) : null,
-  });
+    locationStateKeys: location.state
+      ? Object.keys(location.state as object)
+      : null,
+  })
   const [debugStatus, setDebugStatus] = useState<
     GrantFlowState["status"] | null
   >(null)
@@ -82,17 +91,14 @@ export function Grant() {
       ? "https://passport.vana.org"
       : authUrl
   const resolvedAuthError = isDebugging ? null : authError
-  const resolvedBuilderName = isDebugging
-    ? debugSession.appName
-    : builderName
-  const debugBuilderManifest: BuilderManifest =
-    flowState.builderManifest ?? {
-      name: debugSession.appName ?? "Debug App",
-      appUrl: "https://example.com",
-      privacyPolicyUrl: "https://example.com/privacy",
-      termsUrl: "https://example.com/terms",
-      supportUrl: "https://example.com/support",
-    }
+  const resolvedBuilderName = isDebugging ? debugSession.appName : builderName
+  const debugBuilderManifest: BuilderManifest = flowState.builderManifest ?? {
+    name: debugSession.appName ?? "Debug App",
+    appUrl: "https://example.com",
+    privacyPolicyUrl: "https://example.com/privacy",
+    termsUrl: "https://example.com/terms",
+    supportUrl: "https://example.com/support",
+  }
   const resolvedBuilderManifest: BuilderManifest | undefined = isDebugging
     ? debugBuilderManifest
     : flowState.builderManifest
@@ -112,9 +118,10 @@ export function Grant() {
       </div>
     )
   } else if (isLoadingState || resolvedAuthLoading) {
-    const loadingMessage = resolvedFlowState.status === "preparing-server"
-      ? "Preparing secure connection…"
-      : undefined
+    const loadingMessage =
+      resolvedFlowState.status === "preparing-server"
+        ? "Preparing secure connection…"
+        : undefined
     content = <GrantLoadingState message={loadingMessage} />
   } else if (resolvedFlowState.status === "auth-required") {
     content = (

@@ -136,6 +136,7 @@ jobs:
         if: matrix.platform == 'macos-latest'
         run: |
           codesign --force --options runtime --timestamp \
+            --entitlements personal-server/entitlements.plist \
             --sign "Developer ID Application: Corsali, Inc (${{ secrets.APPLE_TEAM_ID }})" \
             personal-server/dist/${{ matrix.ps_binary_name }}
 
@@ -226,10 +227,29 @@ jobs:
               echo "Copied node_modules to $dest"
             done
 
-            # Re-sign the .app after modification (--deep signs all nested code)
+            # Re-sign nested binaries with their entitlements, then re-sign the .app
             for app in src-tauri/target/${{ matrix.target }}/release/bundle/macos/*.app; do
               [ -e "$app" ] || continue
-              codesign --force --deep --options runtime --timestamp \
+
+              # Sign personal-server binary with JIT entitlements (--deep would strip them)
+              ps_bin="$app/Contents/Resources/personal-server/dist/${{ matrix.ps_binary_name }}"
+              if [ -f "$ps_bin" ]; then
+                codesign --force --options runtime --timestamp \
+                  --entitlements personal-server/entitlements.plist \
+                  --sign "Developer ID Application: Corsali, Inc (${{ secrets.APPLE_TEAM_ID }})" \
+                  "$ps_bin"
+                echo "Signed personal-server binary with JIT entitlements"
+              fi
+
+              # Sign native .node addons inside the app bundle
+              find "$app/Contents/Resources/personal-server/dist/node_modules" -name "*.node" -type f | while read node_binary; do
+                codesign --force --options runtime --timestamp \
+                  --sign "Developer ID Application: Corsali, Inc (${{ secrets.APPLE_TEAM_ID }})" \
+                  "$node_binary"
+              done
+
+              # Sign the outer .app (without --deep to preserve nested entitlements)
+              codesign --force --options runtime --timestamp \
                 --sign "Developer ID Application: Corsali, Inc (${{ secrets.APPLE_TEAM_ID }})" \
                 "$app"
               echo "Re-signed $app"

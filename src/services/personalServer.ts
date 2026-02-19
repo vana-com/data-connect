@@ -72,7 +72,11 @@ async function serverFetch<T>(
       } else if (typeof err === "object" && err !== null && "message" in err) {
         message = String((err as Record<string, unknown>).message);
       } else {
-        message = JSON.stringify(err);
+        try {
+          message = JSON.stringify(err);
+        } catch {
+          message = String(err);
+        }
       }
     }
     throw new PersonalServerError(message, response.status);

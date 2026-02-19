@@ -24,7 +24,14 @@ import { createServer } from '@opendatalabs/personal-server-ts-server';
 import { serve } from '@hono/node-server';
 
 function send(msg) {
-  process.stdout.write(JSON.stringify(msg) + '\n');
+  let json;
+  try {
+    json = JSON.stringify(msg);
+  } catch {
+    // Fallback for cyclic or non-serializable messages
+    json = JSON.stringify({ type: msg?.type || 'error', message: String(msg?.message ?? 'Serialization error') });
+  }
+  process.stdout.write(json + '\n');
 }
 
 /**
@@ -279,7 +286,8 @@ async function main() {
     process.on('SIGINT', () => shutdown('SIGINT'));
   } catch (err) {
     send({ type: 'error', message: err.message || String(err) });
-    process.exit(1);
+    // Flush stdout before exiting so the parent process captures the error
+    process.stdout.write('', () => process.exit(1));
   }
 }
 

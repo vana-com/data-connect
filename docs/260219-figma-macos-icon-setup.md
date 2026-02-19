@@ -122,6 +122,13 @@ For artboard size `S`:
 - [ ] Ran `npm run tauri icon ...`
 - [ ] Verified Dock/Finder icon from built app
 
+## Output
+
+- `npm run tauri icon ./public/data_connect_1024_1x.png`
+  - Generates/replaces app icon assets in `src-tauri/icons/` from your source PNG (`icon.icns`, `icon.ico`, and PNG size variants). This does not build installers; it only refreshes icon files.
+- `npm run tauri:build`
+  - Runs the production build flow: builds frontend + sidecar binaries, builds the Tauri app bundle, injects required runtime files, and creates release artifacts (including `.app`/`.dmg` on macOS).
+
 ## References
 
 - Tauri icons docs: <https://tauri.app/develop/icons>

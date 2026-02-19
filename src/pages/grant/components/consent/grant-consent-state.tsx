@@ -4,9 +4,9 @@ import { PlatformIcon } from "@/components/icons/platform-icon"
 import { Text } from "@/components/typography/text"
 import { OpenExternalLink } from "@/components/typography/link-open-external"
 import { cn } from "@/lib/classes"
+import { LINKS } from "@/config/links"
 import { formatScopeLabel, getPrimaryDataSourceLabel } from "@/lib/scope-labels"
 import type { BuilderManifest, GrantSession } from "../../types"
-import { GrantWarning } from "./grant-warning"
 import { ActionPanel } from "@/components/typography/button-action"
 
 // Note: `isApproving` maps to the "creating-grant" / "approving" states.
@@ -53,17 +53,6 @@ export function GrantConsentState({
   const appName =
     builderName ?? builderManifest?.name ?? session?.appName ?? "this app"
   const builderIconSrc = pickBuilderIcon(builderManifest)
-  const privacyPolicyUrl = builderManifest?.privacyPolicyUrl
-  const termsUrl = builderManifest?.termsUrl
-  const supportUrl = builderManifest?.supportUrl
-  const builderLinks = [
-    privacyPolicyUrl
-      ? { href: privacyPolicyUrl, label: "Privacy Policy" }
-      : null,
-    termsUrl ? { href: termsUrl, label: "Terms of Service" } : null,
-    supportUrl ? { href: supportUrl, label: "Support" } : null,
-  ].filter(Boolean) as Array<{ href: string; label: string }>
-
   const handleCancel = () => {
     if (isApproving) return
     if (onDeny) {
@@ -114,6 +103,20 @@ export function GrantConsentState({
           </Text>
         </ActionPanel>
 
+        <Text as="p" intent="fine" dim align="left" balance>
+          By clicking <strong>Agree and Allow</strong>, you acknowledge that you
+          are initiating access with credentials you control, that third-party
+          platform terms may restrict automated access, and that compliance
+          responsibility rests with you (not the Vana Foundation). Read the full
+          disclosure:{" "}
+          <OpenExternalLink
+            href={LINKS.legalDataExtractionRiskResponsibilityDisclosure}
+          >
+            Data Extraction Risk &amp; Responsibility Disclosure
+          </OpenExternalLink>
+          .
+        </Text>
+
         <div className="flex items-center justify-end gap-2.5">
           <Button
             type="button"
@@ -132,7 +135,7 @@ export function GrantConsentState({
             onClick={onApprove}
             disabled={isApproving}
             variant="accent"
-            className="w-[140px] disabled:opacity-100"
+            className="w-[156px] disabled:opacity-100"
           >
             {isApproving ? (
               <>
@@ -143,13 +146,13 @@ export function GrantConsentState({
                 <span aria-live="polite">Allowing…</span>
               </>
             ) : (
-              "Allow"
+              "Agree and Allow"
             )}
           </Button>
         </div>
 
-        <hr />
-        <div className="flex flex-col items-end gap-2">
+        {/* <hr /> */}
+        {/* <div className="flex flex-col items-end gap-2">
           {builderLinks.length > 0 && (
             <Text as="p" intent="body" dim align="right">
               Read {appName}'s{" "}
@@ -169,7 +172,7 @@ export function GrantConsentState({
             </Text>
           )}
           <GrantWarning align="right" />
-        </div>
+        </div> */}
       </div>
     </div>
   )

@@ -9,7 +9,7 @@ const eyebrowStyle =
 export const textVariants = cva(
   [
     // Basic defaults
-    "[&_strong]:font-medium",
+    "[&_strong]:font-semibold",
   ],
   {
     variants: {

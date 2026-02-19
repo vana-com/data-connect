@@ -75,7 +75,7 @@
     "Courier New", monospace;
 
   /* custom font weights */
-  --font-weight-semibold: 550;
+  /* --font-weight-semibold: 550; */
 
   /* text sizes */
   /* --text-* is a theme variable namespace that controls text-* utilities, and Tailwind only registers those when they’re defined via @theme. inline is explicitly required when a theme variable references another variable, which your alias lines do (e.g. --text-sm: var(--text-small)). */

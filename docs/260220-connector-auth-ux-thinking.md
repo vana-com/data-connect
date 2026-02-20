@@ -62,17 +62,15 @@ Working thought: session lifecycle quality (detect/repair/reuse) may be the real
 ## Keychain usage options (thinking only)
 
 1. **Status quo + improve UX**
-   - Keep browser-session model.
-   - Improve preflight checks and recovery UX.
-
+  - Keep browser-session model.
+  - Improve preflight checks and recovery UX.
 2. **Keychain for app-owned encryption keys, not platform passwords**
-   - Store a local master key in Keychain.
-   - Encrypt connector session artifacts at rest with that key.
-   - Keep browser login flow unchanged.
-
+  - Store a local master key in Keychain.
+  - Encrypt connector session artifacts at rest with that key.
+  - Keep browser login flow unchanged.
 3. **Keychain for raw connector credentials**
-   - Store platform credentials in Keychain and attempt automated entry.
-   - Highest complexity/risk path due to challenge handling and anti-bot pressure.
+  - Store platform credentials in Keychain and attempt automated entry.
+  - Highest complexity/risk path due to challenge handling and anti-bot pressure.
 
 Current bias: option 1 or 2 is more robust than option 3.
 
@@ -111,3 +109,4 @@ These are hypotheses to test, not recommendations:
 - `src/pages/settings/components/settings-credentials.tsx`
 - `docs/architecture.md`
 - `docs/_archive/260203-grant-connect-flow.md`
+

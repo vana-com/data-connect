@@ -61,6 +61,7 @@ export const PLATFORM_REGISTRY: PlatformRegistryEntry[] = [
     platformIds: ["spotify-playwright", "spotify"],
     availability: "requiresConnector",
     showInConnectList: true,
+    ingestScope: "spotify.savedTracks",
   },
   {
     id: "x",

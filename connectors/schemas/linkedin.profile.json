@@ -1,0 +1,21 @@
+{
+  "name": "LinkedIn Profile",
+  "version": "2.0.0",
+  "scope": "linkedin.profile",
+  "dialect": "json",
+  "description": "Basic LinkedIn profile information including name, headline, location, and connections",
+  "schema": {
+    "type": "object",
+    "properties": {
+      "profileUrl": { "type": "string" },
+      "fullName": { "type": "string" },
+      "headline": { "type": "string" },
+      "location": { "type": "string" },
+      "connections": { "type": "string" },
+      "profilePictureUrl": { "type": "string" },
+      "about": { "type": "string" }
+    },
+    "required": ["fullName"],
+    "additionalProperties": false
+  }
+}

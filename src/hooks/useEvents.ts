@@ -19,7 +19,7 @@ import type {
   ProgressPhase,
 } from '../types';
 import { normalizeExportData } from '../lib/export-data';
-import { getScopeForPlatform, ingestData } from '../services/personalServerIngest';
+import { getScopeForPlatform, ingestData, ingestExportData } from '../services/personalServerIngest';
 
 // Extended connector status event that can handle both string and object status
 interface ConnectorStatusEventPayload {
@@ -55,9 +55,6 @@ async function deliverRunToPersonalServer(
 ): Promise<boolean> {
   if (!run.exportPath || run.syncedToPersonalServer) return false;
 
-  const scope = getScopeForPlatform(run.platformId);
-  if (!scope) return false;
-
   // Normalize exportPath to directory
   const dirPath = run.exportPath.endsWith('.json')
     ? run.exportPath.replace(/\/[^/]+$/, '')
@@ -68,8 +65,9 @@ async function deliverRunToPersonalServer(
       runId: run.id,
       exportPath: dirPath,
     });
-    const payload = (data.content ?? data) as object;
-    await ingestData(port, scope, payload);
+    const payload = (data.content ?? data) as Record<string, unknown>;
+    const ingested = await ingestExportData(port, run.platformId, payload);
+    if (ingested.length === 0) return false;
 
     // Mark staging as synced (trims the large JSON)
     await invoke('mark_export_synced', {
@@ -77,11 +75,11 @@ async function deliverRunToPersonalServer(
       exportPath: run.exportPath,
       itemsExported: run.itemsExported ?? null,
       itemLabel: run.itemLabel ?? null,
-      scope,
+      scope: ingested[0],
     });
 
     dispatch(markRunSynced(run.id));
-    console.log('[Data Delivery] Synced run', run.id, 'to personal server, scope:', scope);
+    console.log('[Data Delivery] Synced run', run.id, 'to personal server, scopes:', ingested.join(', '));
     return true;
   } catch (err) {
     console.warn('[Data Delivery] Failed for run', run.id, '(non-blocking):', err);
@@ -196,23 +194,26 @@ export function useEvents() {
             );
 
             // Attempt immediate delivery to personal server
-            const scope = getScopeForPlatform(exportData.platform || 'unknown');
-            if (!scope) return;
-
             try {
               const serverStatus = await invoke<{ running: boolean; port?: number }>('get_personal_server_status');
               if (!serverStatus.running || !serverStatus.port) return;
 
-              await ingestData(serverStatus.port, scope, exportData as object);
+              const ingested = await ingestExportData(
+                serverStatus.port,
+                exportData.platform || 'unknown',
+                exportData as Record<string, unknown>
+              );
+              if (ingested.length === 0) return;
+
               await invoke('mark_export_synced', {
                 runId,
                 exportPath: result,
                 itemsExported: itemsExported ?? null,
                 itemLabel: itemLabel ?? null,
-                scope,
+                scope: ingested[0],
               });
               dispatch(markRunSynced(runId));
-              console.log('[Data Delivery] Synced run', runId, 'immediately after export');
+              console.log('[Data Delivery] Synced run', runId, 'immediately after export, scopes:', ingested.join(', '));
             } catch (err) {
               console.warn('[Data Delivery] Deferred (server not ready):', err);
             }
@@ -323,14 +324,16 @@ export function useEvents() {
         );
 
         // Attempt immediate delivery to personal server
-        const scope = getScopeForPlatform(platformId);
-        if (!scope) return;
-
         try {
           const serverStatus = await invoke<{ running: boolean; port?: number }>('get_personal_server_status');
           if (!serverStatus.running || !serverStatus.port) return;
 
-          await ingestData(serverStatus.port, scope, data as object);
+          const ingested = await ingestExportData(
+            serverStatus.port,
+            platformId,
+            data as Record<string, unknown>
+          );
+          if (ingested.length === 0) return;
 
           // Delivery succeeded — trim staging and mark synced
           await invoke('mark_export_synced', {
@@ -338,10 +341,10 @@ export function useEvents() {
             exportPath: result,
             itemsExported: itemsExported ?? null,
             itemLabel: itemLabel ?? null,
-            scope,
+            scope: ingested[0],
           });
           dispatch(markRunSynced(runId));
-          console.log('[Data Delivery] Synced run', runId, 'immediately after export');
+          console.log('[Data Delivery] Synced run', runId, 'immediately after export, scopes:', ingested.join(', '));
         } catch (err) {
           // Delivery failed — staging file stays intact for personal-server-ready retry
           console.warn('[Data Delivery] Deferred (server not ready):', err);

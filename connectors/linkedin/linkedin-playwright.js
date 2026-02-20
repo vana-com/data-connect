@@ -86,7 +86,7 @@ const navigateToDetailPage = async (baseUrl, section, progressStep, totalSteps, 
     message: `Loading ${section} details page...`,
   });
 
-  await page.goto(detailUrl, { timeout: 60000 });
+  await page.goto(detailUrl);
   await page.sleep(3000);
 
   // Click "Load more" repeatedly until all content is loaded
@@ -567,18 +567,18 @@ const scrollToLoadContent = async () => {
 
   // ═══ Find profile URL ═══
   await page.setData('status', 'Finding your profile...');
-  await page.goto('https://www.linkedin.com/feed/', { timeout: 60000 });
+  await page.goto('https://www.linkedin.com/feed/');
   await page.sleep(3000);
 
   const profileUrl = await getProfileUrl();
 
   if (!profileUrl) {
     await page.setData('status', 'Navigating to your profile...');
-    await page.goto('https://www.linkedin.com/in/me/', { timeout: 60000 });
+    await page.goto('https://www.linkedin.com/in/me/');
     await page.sleep(3000);
   } else {
     await page.setData('status', 'Navigating to your profile...');
-    await page.goto(profileUrl, { timeout: 60000 });
+    await page.goto(profileUrl);
     await page.sleep(3000);
   }
 
@@ -654,17 +654,27 @@ const scrollToLoadContent = async () => {
   const about = state.aboutData || {};
 
   const result = {
-    profileUrl: state.profileUrl,
-    fullName: hero.fullName || '',
-    headline: hero.headline || '',
-    location: hero.location || '',
-    connections: hero.connections || '',
-    profilePictureUrl: hero.profilePictureUrl || '',
-    about: about.aboutText || '',
-    experience: state.experiences,
-    education: state.education,
-    skills: state.skills,
-    languages: state.languages,
+    'linkedin.profile': {
+      profileUrl: state.profileUrl,
+      fullName: hero.fullName || '',
+      headline: hero.headline || '',
+      location: hero.location || '',
+      connections: hero.connections || '',
+      profilePictureUrl: hero.profilePictureUrl || '',
+      about: about.aboutText || '',
+    },
+    'linkedin.experience': {
+      experiences: state.experiences,
+    },
+    'linkedin.education': {
+      education: state.education,
+    },
+    'linkedin.skills': {
+      skills: state.skills,
+    },
+    'linkedin.languages': {
+      languages: state.languages,
+    },
     exportSummary: {
       count: state.experiences.length + state.education.length + state.skills.length + state.languages.length,
       label: 'profile items',
@@ -676,15 +686,15 @@ const scrollToLoadContent = async () => {
       ].join(', ')
     },
     timestamp: new Date().toISOString(),
-    version: "1.3.0-playwright",
+    version: "2.0.0-playwright",
     platform: "linkedin"
   };
 
   state.isComplete = true;
 
-  if (result.fullName) {
+  if (result['linkedin.profile'].fullName) {
     await page.setData('result', result);
-    await page.setData('status', `Complete! Exported ${result.exportSummary.details} for ${result.fullName}`);
+    await page.setData('status', `Complete! Exported ${result.exportSummary.details} for ${result['linkedin.profile'].fullName}`);
     return { success: true, data: result };
   } else {
     await page.setData('error', 'Failed to extract profile data');

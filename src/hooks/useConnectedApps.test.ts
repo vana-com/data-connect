@@ -108,7 +108,7 @@ describe("useConnectedApps", () => {
         {
           grantId: "grant-spotify",
           granteeAddress: "0x1111112222223333",
-          scopes: ["spotify.history"],
+          scopes: ["spotify.savedTracks"],
           createdAt: "2025-02-01T00:00:00.000Z",
         },
       ])

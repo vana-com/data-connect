@@ -15,8 +15,8 @@ describe("getPrimaryScopeToken", () => {
     expect(getPrimaryScopeToken(["chatgpt.conversations"])).toBe("chatgpt")
   })
 
-  it('extracts "spotify" from dot-separated scope "spotify.history"', () => {
-    expect(getPrimaryScopeToken(["spotify.history"])).toBe("spotify")
+  it('extracts "spotify" from dot-separated scope "spotify.playlists"', () => {
+    expect(getPrimaryScopeToken(["spotify.playlists"])).toBe("spotify")
   })
 
   it('extracts "instagram" from dot-separated scope "instagram.posts"', () => {
@@ -30,7 +30,7 @@ describe("getPrimaryScopeToken", () => {
 
   it("uses the first scope when multiple are provided", () => {
     expect(
-      getPrimaryScopeToken(["chatgpt.conversations", "spotify.history"])
+      getPrimaryScopeToken(["chatgpt.conversations", "spotify.playlists"])
     ).toBe("chatgpt")
   })
 
@@ -60,8 +60,8 @@ describe("getPrimaryDataSourceLabel", () => {
     expect(getPrimaryDataSourceLabel(["read:chatgpt-conversations"])).toBe("ChatGPT")
   })
 
-  it('returns "Spotify" for spotify.history', () => {
-    expect(getPrimaryDataSourceLabel(["spotify.history"])).toBe("Spotify")
+  it('returns "Spotify" for spotify.playlists', () => {
+    expect(getPrimaryDataSourceLabel(["spotify.playlists"])).toBe("Spotify")
   })
 
   it("title-cases unknown platforms", () => {
@@ -75,8 +75,8 @@ describe("formatScopeLabel", () => {
     expect(formatScopeLabel("chatgpt.conversations")).toBe("ChatGPT Conversations")
   })
 
-  it('formats "spotify.history" with proper casing', () => {
-    expect(formatScopeLabel("spotify.history")).toBe("Spotify History")
+  it('formats "spotify.playlists" with proper casing', () => {
+    expect(formatScopeLabel("spotify.playlists")).toBe("Spotify Playlists")
   })
 
   it('formats "instagram.posts" with proper casing', () => {
@@ -92,8 +92,8 @@ describe("formatScopeLabel", () => {
     expect(formatScopeLabel("read:chatgpt-conversations")).toBe("ChatGPT Conversations")
   })
 
-  it('formats "read:spotify-history" with proper casing', () => {
-    expect(formatScopeLabel("read:spotify-history")).toBe("Spotify History")
+  it('formats "read:spotify-playlists" with proper casing', () => {
+    expect(formatScopeLabel("read:spotify-playlists")).toBe("Spotify Playlists")
   })
 
   // Bare platform token

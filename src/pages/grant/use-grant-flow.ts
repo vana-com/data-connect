@@ -488,14 +488,14 @@ export function useGrantFlow(params: GrantFlowParams, prefetched?: PrefetchedGra
       }
     }
 
-    navigate(ROUTES.apps)
+    navigate(ROUTES.home)
   }, [flowState.sessionId, flowState.secret, navigate])
 
   // Helper to get display name from builder manifest or session legacy fields
   const builderName =
     flowState.builderManifest?.name ?? flowState.session?.appName ?? undefined
 
-  const declineHref = ROUTES.apps
+  const declineHref = ROUTES.home
 
   return {
     flowState,

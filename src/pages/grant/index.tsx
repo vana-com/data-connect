@@ -1,10 +1,10 @@
 import { useSearchParams, useLocation } from "react-router-dom"
 import { useState } from "react"
 import { getGrantParamsFromSearchParams } from "@/lib/grant-params"
+import { LoadingState } from "@/components/elements/loading-state"
 import { useBrowserStatus } from "./use-browser-status"
 import { useGrantFlow } from "./use-grant-flow"
 import { BrowserSetupSection } from "./components/browser-setup-section"
-import { GrantLoadingState } from "./components/grant-loading-state"
 import { GrantAuthRequiredState } from "./components/grant-auth-required-state"
 import { GrantErrorState } from "./components/grant-error-state"
 import { GrantSuccessState } from "./components/grant-success-state"
@@ -124,7 +124,7 @@ export function Grant() {
         : resolvedFlowState.status === "preparing-server"
           ? "Preparing connection…"
           : "Loading…"
-    content = <GrantLoadingState title={loadingTitle} />
+    content = <LoadingState title={loadingTitle} />
   } else if (resolvedFlowState.status === "auth-required") {
     content = (
       <GrantAuthRequiredState

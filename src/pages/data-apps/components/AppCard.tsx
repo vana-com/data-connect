@@ -2,11 +2,9 @@ import { LockIcon, ClockIcon } from "lucide-react"
 import { Text } from "@/components/typography/text"
 import { Button } from "@/components/ui/button"
 import { cn } from "@/lib/classes"
-import { ROUTES } from "@/config/routes"
 import type { AppRegistryEntry } from "@/apps/registry"
 import { buildGrantSearchParams } from "@/lib/grant-params"
 import { openExternalUrl } from "@/lib/open-resource"
-import { DEV_FLAGS } from "@/config/dev-flags"
 
 async function openExternalApp(url: string) {
   return openExternalUrl(url)
@@ -22,12 +20,9 @@ export function AppCard({ app }: { app: AppRegistryEntry }) {
       appId: app.id,
       scopes: app.scopes,
     })
-    // Mock routing is explicit and opt-in to avoid internal app mental models.
-    const appUrl = DEV_FLAGS.useRickrollMock
-      ? new URL(ROUTES.rickrollMockRoot, window.location.origin)
-      : app.externalUrl
-        ? new URL(app.externalUrl, window.location.origin)
-        : null
+    const appUrl = app.externalUrl
+      ? new URL(app.externalUrl, window.location.origin)
+      : null
     if (!appUrl) {
       throw new Error(`Missing externalUrl for app "${app.id}".`)
     }

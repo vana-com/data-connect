@@ -30,11 +30,10 @@
 - Live apps show an "Open App" button that opens the external app URL.
 - Call-to-action section links to Vana documentation for developers.
 
-### Mock system (dev)
+### App URL behavior
 
-- RickRoll is the only mock external app (`/rickroll`).
-- `VITE_USE_RICKROLL_MOCK=true` forces **all** app cards to open the RickRoll mock.
-- Otherwise, live apps must define `externalUrl` in the app registry.
+- Live apps must define `externalUrl` in the app registry.
+- "Open App" appends canonical grant params (`sessionId`, `appId`, `scopes`) to that external URL.
 - Missing `externalUrl` throws on click to enforce external URLs.
 
 ### Notes

@@ -1,11 +1,11 @@
 import { Spinner } from "@/components/elements/spinner"
 import { Text } from "@/components/typography/text"
 
-interface GrantLoadingStateProps {
+interface LoadingStateProps {
   title?: string
 }
 
-export function GrantLoadingState({ title }: GrantLoadingStateProps) {
+export function LoadingState({ title }: LoadingStateProps) {
   return (
     <div className="container pt-major">
       <div className="space-y-w6">

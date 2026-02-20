@@ -4,7 +4,6 @@ import { createMemoryRouter, RouterProvider } from "react-router-dom"
 import { open } from "@tauri-apps/plugin-shell"
 import { buildGrantSearchParams } from "@/lib/grant-params"
 import { getAppRegistryEntries } from "@/apps/registry"
-import { ROUTES } from "@/config/routes"
 import { DEV_FLAGS } from "@/config/dev-flags"
 import { DataApps } from "./index"
 
@@ -32,9 +31,9 @@ vi.mock("react-router", async () => {
 
 const renderDataApps = () => {
   const router = createMemoryRouter(
-    [{ path: ROUTES.apps, element: <DataApps /> }],
+    [{ path: "/apps", element: <DataApps /> }],
     {
-      initialEntries: [ROUTES.apps],
+      initialEntries: ["/apps"],
     }
   )
 
@@ -93,7 +92,7 @@ describe("DataApps", () => {
     })
   })
 
-  it("uses the rickroll mock when the flag is enabled", async () => {
+  it("uses the external app URL when the flag is enabled", async () => {
     const nowSpy = vi.spyOn(Date, "now").mockReturnValue(123)
     mutableFlags.useRickrollMock = true
     renderDataApps()
@@ -107,7 +106,7 @@ describe("DataApps", () => {
       appId,
       scopes: liveApps[0].scopes,
     })
-    const expectedUrl = new URL(ROUTES.rickrollMockRoot, window.location.origin)
+    const expectedUrl = new URL(liveApps[0].externalUrl, window.location.origin)
     const search = searchParams.toString()
     if (search) {
       expectedUrl.search = search

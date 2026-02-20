@@ -13,6 +13,10 @@ import { usePersonalServer } from "./hooks/usePersonalServer"
 import { usePendingApprovalRetry } from "./hooks/usePendingApproval"
 import { ROUTES } from "@/config/routes"
 import { dotPatternStyle } from "@/components/elements/dot-pattern"
+import { LoadingState } from "@/components/elements/loading-state"
+
+// Dev loading debug:
+// - Open "/__loading" to render LoadingState directly.
 
 // Lazy-loaded pages for reduced initial bundle size
 const Home = lazy(() => import("./pages/home").then(m => ({ default: m.Home })))
@@ -33,32 +37,6 @@ const Grant = lazy(() =>
 const Connect = lazy(() =>
   import("./pages/connect").then(m => ({ default: m.Connect }))
 )
-const RickrollMockRoot = lazy(() =>
-  import("./pages/mock-apps/rickroll").then(m => ({
-    default: m.RickrollMockRoot,
-  }))
-)
-const RickrollMockSignIn = lazy(() =>
-  import("./pages/mock-apps/rickroll/signin").then(m => ({
-    default: m.RickrollMockSignIn,
-  }))
-)
-// Demo flow (throwaway — for video recording)
-const DemoIndex = lazy(() =>
-  import("./pages/demo").then(m => ({ default: m.DemoIndex }))
-)
-const DemoConnect = lazy(() =>
-  import("./pages/demo/demo-connect").then(m => ({ default: m.DemoConnect }))
-)
-const DemoAuth = lazy(() =>
-  import("./pages/demo/demo-auth").then(m => ({ default: m.DemoAuth }))
-)
-const DemoConsent = lazy(() =>
-  import("./pages/demo/demo-consent").then(m => ({ default: m.DemoConsent }))
-)
-const DemoSuccess = lazy(() =>
-  import("./pages/demo/demo-success").then(m => ({ default: m.DemoSuccess }))
-)
 
 function AppContent() {
   useEvents()
@@ -73,9 +51,10 @@ function AppContent() {
       <div className="flex flex-1 flex-col overflow-hidden">
         <TopNav />
         <main className="flex-1 overflow-auto">
-          <Suspense fallback={<div className="p-8">Loading...</div>}>
+          <Suspense fallback={<LoadingState />}>
             {/* Routes config: keep @/config/routes.ts in sync when adding/removing routes */}
             <Routes>
+              <Route path={ROUTES.debugLoading} element={<LoadingState />} />
               <Route path={ROUTES.home} element={<Home />} />
               <Route path={ROUTES.apps} element={<DataApps />} />
               <Route path={ROUTES.mcp} element={<Mcp />} />
@@ -111,23 +90,9 @@ function App() {
       <PrivyProvider>
         <div style={dotPatternStyle} className="min-h-screen">
           <BrowserRouter>
-            <Suspense fallback={<div className="p-8">Loading...</div>}>
+            <Suspense fallback={<LoadingState />}>
               <Routes>
                 <Route path={ROUTES.browserLogin} element={<BrowserLogin />} />
-                <Route
-                  path={ROUTES.rickrollMockRoot}
-                  element={<RickrollMockRoot />}
-                />
-                <Route
-                  path={ROUTES.rickrollMockSignIn}
-                  element={<RickrollMockSignIn />}
-                />
-                {/* Demo flow (throwaway — for video recording) */}
-                <Route path={ROUTES.demo} element={<DemoIndex />} />
-                <Route path={ROUTES.demoConnect} element={<DemoConnect />} />
-                <Route path={ROUTES.demoAuth} element={<DemoAuth />} />
-                <Route path={ROUTES.demoConsent} element={<DemoConsent />} />
-                <Route path={ROUTES.demoSuccess} element={<DemoSuccess />} />
                 <Route path="/*" element={<AppRouter />} />
               </Routes>
             </Suspense>

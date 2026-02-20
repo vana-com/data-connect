@@ -59,18 +59,29 @@ async function connectTunnel(tunnelManager, storageRoot, send) {
   const tomlPath = join(storageRoot, 'tunnel', 'frpc.toml');
   const frpcPath = join(storageRoot, 'bin', process.platform === 'win32' ? 'frpc.exe' : 'frpc');
 
+  send({ type: 'log', message: `[tunnel] Starting tunnel setup` });
+  send({ type: 'log', message: `[tunnel] TOML config: ${tomlPath}` });
+  send({ type: 'log', message: `[tunnel] frpc binary: ${frpcPath}` });
+  send({ type: 'log', message: `[tunnel] Storage root: ${storageRoot}` });
+
   // Stop the library's frpc
   try { await tunnelManager.stop(); } catch {}
   killStaleFrpc(storageRoot);
+  send({ type: 'log', message: `[tunnel] Stopped stale frpc processes` });
 
   // Read and patch the TOML config
   let toml;
   try {
     toml = readFileSync(tomlPath, 'utf-8');
-  } catch {
-    send({ type: 'tunnel-failed', message: 'Tunnel config not found' });
+    send({ type: 'log', message: `[tunnel] Loaded TOML config (${toml.length} bytes)` });
+  } catch (err) {
+    send({ type: 'tunnel-failed', message: `Tunnel config not found at ${tomlPath}: ${err.message}` });
     return;
   }
+
+  // Log the FRP server address from the config
+  const serverAddrMatch = toml.match(/serverAddr = "(.+)"/);
+  send({ type: 'log', message: `[tunnel] FRP server: ${serverAddrMatch ? serverAddrMatch[1] : 'unknown'}` });
 
   // Extract subdomain for the public URL
   const subdomainMatch = toml.match(/subdomain = "(.+)"/);
@@ -79,6 +90,8 @@ async function connectTunnel(tunnelManager, storageRoot, send) {
     return;
   }
   const publicUrl = `https://${subdomainMatch[1]}.server.vana.org`;
+  send({ type: 'log', message: `[tunnel] Subdomain: ${subdomainMatch[1]}` });
+  send({ type: 'log', message: `[tunnel] Public URL will be: ${publicUrl}` });
 
   // Replace static proxy name with a unique per-session name
   const uniqueName = `ps-${randomUUID().slice(0, 8)}`;
@@ -86,15 +99,19 @@ async function connectTunnel(tunnelManager, storageRoot, send) {
   writeFileSync(tomlPath, toml);
 
   send({ type: 'log', message: `[tunnel] Connecting with proxy name: ${uniqueName}` });
+  send({ type: 'log', message: `[tunnel] Spawning: ${frpcPath} -c ${tomlPath}` });
 
   // Spawn frpc with the patched config
   const frpc = spawn(frpcPath, ['-c', tomlPath], {
     stdio: ['ignore', 'pipe', 'pipe'],
   });
 
+  send({ type: 'log', message: `[tunnel] frpc spawned (pid: ${frpc.pid})` });
+
   let connected = false;
   const onData = (data) => {
-    const text = data.toString();
+    const text = data.toString().trim();
+    send({ type: 'log', message: `[tunnel] frpc output: ${text}` });
     if (!connected && text.includes('start proxy success')) {
       connected = true;
       // Sync the library's TunnelManager state so /health reports correctly.
@@ -103,17 +120,20 @@ async function connectTunnel(tunnelManager, storageRoot, send) {
       tunnelManager.status = 'connected';
       tunnelManager.publicUrl = publicUrl;
       tunnelManager.connectedSince = new Date();
+      send({ type: 'log', message: `[tunnel] Connected successfully!` });
       send({ type: 'tunnel', url: publicUrl });
     }
   };
   frpc.stdout?.on('data', onData);
   frpc.stderr?.on('data', onData);
   frpc.on('error', (err) => {
+    send({ type: 'log', message: `[tunnel] frpc error event: ${err.message}` });
     if (!connected) {
       send({ type: 'tunnel-failed', message: `frpc error: ${err.message}` });
     }
   });
-  frpc.on('exit', (code) => {
+  frpc.on('exit', (code, signal) => {
+    send({ type: 'log', message: `[tunnel] frpc exited (code: ${code}, signal: ${signal})` });
     if (!connected) {
       send({ type: 'tunnel-failed', message: `frpc exited with code ${code}` });
     }
@@ -152,6 +172,24 @@ async function main() {
     // Keep as a reference — startBackgroundServices mutates context.tunnelManager / context.tunnelUrl.
     const context = await createServer(config, { rootPath: configDir });
     const { app, devToken, cleanup, gatewayClient, serverSigner } = context;
+
+    // --- Request logging ---
+    // Wrap app.fetch to log all incoming requests (including routes registered
+    // by the library before our code runs, like /health).
+    const originalFetch = app.fetch.bind(app);
+    app.fetch = async (request, ...args) => {
+      const start = Date.now();
+      const url = new URL(request.url);
+      const method = request.method;
+      const path = url.pathname;
+      const forwarded = request.headers.get('x-forwarded-for') || request.headers.get('x-real-ip') || '';
+      const host = request.headers.get('host') || '';
+      send({ type: 'log', message: `[http] --> ${method} ${path} (host: ${host}${forwarded ? `, from: ${forwarded}` : ''})` });
+      const response = await originalFetch(request, ...args);
+      const ms = Date.now() - start;
+      send({ type: 'log', message: `[http] <-- ${method} ${path} ${response.status} (${ms}ms)` });
+      return response;
+    };
 
     // --- Grant management routes ---
     // The library ships POST /v1/grants (create) with Web3Auth middleware and
@@ -222,9 +260,14 @@ async function main() {
 
     // Start background services (gateway registration + tunnel setup).
     // The library creates the tunnel config (TOML) and downloads frpc.
+    send({ type: 'log', message: '[bg] Starting background services...' });
     await context.startBackgroundServices();
+    send({ type: 'log', message: '[bg] Background services started' });
 
     const hasMasterKey = !!process.env.VANA_MASTER_KEY_SIGNATURE;
+    send({ type: 'log', message: `[bg] hasMasterKey: ${hasMasterKey}` });
+    send({ type: 'log', message: `[bg] tunnelManager: ${!!context.tunnelManager}` });
+    send({ type: 'log', message: `[bg] tunnelUrl: ${context.tunnelUrl || 'none'}` });
 
     if (context.tunnelManager) {
       // Library set up tunnel infrastructure (TOML + frpc binary).
@@ -234,8 +277,9 @@ async function main() {
       send({ type: 'tunnel', url: context.tunnelUrl });
     } else if (hasMasterKey) {
       send({ type: 'tunnel-failed', message: 'Tunnel could not be established' });
+    } else {
+      send({ type: 'log', message: '[bg] No master key — skipping tunnel (expected for Phase 1)' });
     }
-    // Phase 1 (no masterKey): silently skip — tunnel is not expected
 
     function shutdown(signal) {
       send({ type: 'log', message: `Shutdown signal: ${signal}` });

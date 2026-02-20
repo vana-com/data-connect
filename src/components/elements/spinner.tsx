@@ -11,6 +11,8 @@ type SpinnerProps = Omit<ComponentPropsWithoutRef<"svg">, "children"> & {
 export function Spinner({ clipPathId, className, ...props }: SpinnerProps) {
   const generatedId = useId().replace(/:/g, "")
   const resolvedClipPathId = clipPathId ?? `spinner-${generatedId}`
+  const ariaLabel = props["aria-label"]
+  const isDecorative = ariaLabel == null
 
   return (
     <svg
@@ -18,6 +20,9 @@ export function Spinner({ clipPathId, className, ...props }: SpinnerProps) {
         "size-em animate-spin motion-reduce:animate-none",
         className
       )}
+      role={isDecorative ? "presentation" : "img"}
+      aria-hidden={isDecorative ? true : undefined}
+      focusable="false"
       fill="none"
       viewBox="0 0 21 21"
       xmlns="http://www.w3.org/2000/svg"

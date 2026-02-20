@@ -10,7 +10,7 @@ export function GrantLoadingState({ title }: GrantLoadingStateProps) {
     <div className="container pt-major">
       <div className="space-y-w6">
         <Text as="h1" intent="title" withIcon aria-live="polite">
-          <Spinner className="size-[0.75em] motion-reduce:animate-none" />
+          <Spinner className="size-[0.75em]" />
           {title ?? "Loading…"}
         </Text>
       </div>

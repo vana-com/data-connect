@@ -29,7 +29,7 @@ export function useImportsSection() {
   const connectedPlatforms = useSelector(
     (state: RootState) => state.app.connectedPlatforms
   )
-  const { stopExport } = useConnector()
+  const { startExport, stopExport } = useConnector()
   const { isAuthenticated } = useAuth()
   const personalServer = usePersonalServer()
   const [serverId, setServerId] = useState<string | null>(null)
@@ -142,6 +142,8 @@ export function useImportsSection() {
     sourceFilterOptions,
     selectedSourceFilter,
     setSourceFilter,
+    platforms,
+    startExport,
     stopExport,
     isAuthenticated,
     personalServer,

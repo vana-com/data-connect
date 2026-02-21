@@ -26,6 +26,7 @@
     "shell:default",
     "shell:allow-open",
     "deep-link:default",
+    "clipboard-manager:allow-write-text",
     "http:default",
     "mcp-bridge:default",
     {

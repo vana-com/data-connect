@@ -1,4 +1,6 @@
-export async function copyTextToClipboard(text: string) {
+import { writeText } from "@tauri-apps/plugin-clipboard-manager"
+
+export async function copyTextToClipboard(text: string): Promise<boolean> {
   try {
     if (typeof navigator !== "undefined" && navigator.clipboard?.writeText) {
       await navigator.clipboard.writeText(text)
@@ -8,7 +10,9 @@ export async function copyTextToClipboard(text: string) {
     // Fallback below for runtimes where Clipboard API is restricted.
   }
 
-  if (typeof document === "undefined") return false
+  if (typeof document === "undefined") {
+    return tauriClipboardFallback(text)
+  }
 
   const textarea = document.createElement("textarea")
   textarea.value = text
@@ -26,5 +30,22 @@ export async function copyTextToClipboard(text: string) {
   }
 
   textarea.remove()
-  return copied
+
+  if (copied) return true
+  return tauriClipboardFallback(text)
+}
+
+async function tauriClipboardFallback(text: string): Promise<boolean> {
+  if (
+    typeof window === "undefined" ||
+    (!("__TAURI__" in window) && !("__TAURI_INTERNALS__" in window))
+  ) {
+    return false
+  }
+  try {
+    await writeText(text)
+    return true
+  } catch {
+    return false
+  }
 }

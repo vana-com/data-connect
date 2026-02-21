@@ -72,7 +72,10 @@ fn read_export_content(path: &Path) -> Result<serde_json::Value, String> {
         .map_err(|e| format!("Failed to read export file: {}", e))?;
     let data = serde_json::from_str::<serde_json::Value>(&content)
         .map_err(|e| format!("Failed to parse export file: {}", e))?;
-    Ok(data.get("content").cloned().unwrap_or(data))
+    match data.get("content") {
+        Some(value) if !value.is_null() => Ok(value.clone()),
+        _ => Ok(data),
+    }
 }
 
 fn truncate_utf8_by_bytes(input: &str, max_bytes: usize) -> (String, bool) {
@@ -440,15 +443,8 @@ pub async fn load_run_export_data(_run_id: String, export_path: String) -> Resul
     }
 
     if let Some(json_path) = latest_json {
-        if let Ok(content) = fs::read_to_string(&json_path) {
-            if let Ok(data) = serde_json::from_str::<serde_json::Value>(&content) {
-                // Extract the content field which contains the actual export data
-                if let Some(content) = data.get("content") {
-                    return Ok(content.clone());
-                }
-                // If no content field, return the whole data
-                return Ok(data);
-            }
+        if let Ok(data) = read_export_content(&json_path) {
+            return Ok(data);
         }
     }
 
@@ -709,6 +705,8 @@ pub async fn get_log_path(app: AppHandle) -> Result<String, String> {
 #[cfg(test)]
 mod tests {
     use super::build_source_export_preview;
+    use super::read_export_content;
+    use serde_json::json;
     use std::fs;
     use std::path::PathBuf;
     use std::time::{SystemTime, UNIX_EPOCH};
@@ -762,5 +760,29 @@ mod tests {
             "expected parse failure, got: {}",
             error
         );
+    }
+
+    #[test]
+    fn read_export_content_falls_back_to_root_when_content_is_null() {
+        let path = unique_temp_file("source_preview_content_null");
+        let payload = json!({
+            "company": "OpenAI",
+            "name": "ChatGPT",
+            "content": null,
+            "syncedToPersonalServer": true
+        });
+        fs::write(&path, payload.to_string()).expect("should write temp file");
+
+        let result = read_export_content(&path);
+
+        fs::remove_file(&path).expect("should clean up temp file");
+
+        let content = result.expect("should parse export content");
+        assert!(
+            content.is_object(),
+            "null content should fall back to root export object"
+        );
+        assert_eq!(content["content"], serde_json::Value::Null);
+        assert_eq!(content["syncedToPersonalServer"], serde_json::Value::Bool(true));
     }
 }

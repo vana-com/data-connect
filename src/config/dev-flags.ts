@@ -5,9 +5,7 @@ export const DEV_FLAGS = {
   // .env.local: VITE_USE_TEST_DATA=true
   // Use fixture data for Home connected apps/sources.
   useTestData: parseEnvFlag(import.meta.env.VITE_USE_TEST_DATA),
-  // .env.local: VITE_USE_RICKROLL_MOCK=true
-  // Force every app open to the RickRoll mock.
-  useRickrollMock: parseEnvFlag(import.meta.env.VITE_USE_RICKROLL_MOCK),
+
   // .env.local: VITE_USE_SETTINGS_UI_MOCKS=true
   // Enable mocked/preview-only Settings UI states (safe default: false).
   useSettingsUiMocks:

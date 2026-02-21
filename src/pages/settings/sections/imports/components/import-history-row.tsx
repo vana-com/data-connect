@@ -11,7 +11,6 @@ import {
   getRowDescription,
   shouldConfirmStop,
 } from "./import-history-row-utils"
-import { ImportHistoryStatusBadge } from "./import-history-status-badge"
 
 const isTerminalRun = (status: Run["status"]) =>
   status === "success" || status === "error" || status === "stopped"
@@ -64,13 +63,19 @@ export function ImportHistoryRow({
               {run.name}
             </Text>
             {isRunning ? (
-              <Text as="span" intent="fine" withIcon color="success">
+              <Text
+                as="span"
+                intent="fine"
+                withIcon
+                color="success"
+                weight="medium"
+              >
                 <LoaderCircleIcon aria-hidden="true" className="animate-spin" />
                 Running
               </Text>
             ) : null}
             {isPending ? (
-              <Text as="span" intent="fine" muted>
+              <Text as="span" intent="fine" muted weight="medium">
                 Pending
               </Text>
             ) : null}
@@ -101,16 +106,11 @@ export function ImportHistoryRow({
               needsStopConfirm={needsStopConfirm}
               canRunAgain={canRunAgain}
               rerunPlatform={rerunPlatform}
+              isErrorExpanded={isErrorExpanded}
               onStop={() => onStop(run.id)}
               onRunAgain={onRunAgain}
+              onToggleErrorDetail={() => onToggleErrorDetail(run.id)}
             />
-            {isRunning ? null : (
-              <ImportHistoryStatusBadge
-                run={run}
-                isErrorExpanded={isErrorExpanded}
-                onToggleErrorDetail={() => onToggleErrorDetail(run.id)}
-              />
-            )}
           </div>
         }
         below={

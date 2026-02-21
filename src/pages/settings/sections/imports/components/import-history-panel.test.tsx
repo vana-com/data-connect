@@ -131,7 +131,6 @@ describe("ImportHistoryPanel", () => {
       ],
     })
 
-    expect(screen.getByText("Completed")).not.toBeNull()
     expect(screen.getByText("Failed")).not.toBeNull()
     expect(screen.getByText("Stopped")).not.toBeNull()
     expect(screen.queryByText("Authentication expired")).toBeNull()
@@ -160,5 +159,15 @@ describe("ImportHistoryPanel", () => {
 
     expect(startImport).toHaveBeenCalledTimes(1)
     expect(startImport).toHaveBeenCalledWith(githubPlatform)
+  })
+
+  it("shows source overview link for completed imports", () => {
+    renderPanel({
+      finishedImports: [buildRun("run-finished", "github", "success")],
+    })
+
+    expect(
+      screen.getByRole("link", { name: "View Source" }).getAttribute("href")
+    ).toBe("/sources/github")
   })
 })

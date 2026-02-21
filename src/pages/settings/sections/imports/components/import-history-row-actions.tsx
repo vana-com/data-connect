@@ -2,7 +2,6 @@ import {
   CheckIcon,
   ChevronDownIcon,
   ChevronUpIcon,
-  SquareStopIcon,
 } from "lucide-react"
 import { Link } from "react-router-dom"
 import { cn } from "@/lib/classes"

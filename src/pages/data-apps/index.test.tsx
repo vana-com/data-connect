@@ -13,8 +13,9 @@ const apps = getAppRegistryEntries()
 const liveApps = apps.filter(app => app.status === "live")
 const comingSoonApps = apps.filter(app => app.status === "coming-soon")
 const mutableFlags = DEV_FLAGS as {
-  useRickrollMock: boolean
   useTestData: boolean
+  useSettingsUiMocks: boolean
+  useHomeConnectingPreview: boolean
 }
 const originalFlags = { ...mutableFlags }
 
@@ -95,7 +96,6 @@ describe("DataApps", () => {
 
   it("uses the external app URL when the flag is enabled", async () => {
     const nowSpy = vi.spyOn(Date, "now").mockReturnValue(123)
-    mutableFlags.useRickrollMock = true
     renderDataApps()
 
     const openAppButtons = screen.getAllByRole("button", { name: "Open App" })
@@ -122,7 +122,6 @@ describe("DataApps", () => {
 
   it("uses the external app URL when the flag is disabled", async () => {
     const nowSpy = vi.spyOn(Date, "now").mockReturnValue(123)
-    mutableFlags.useRickrollMock = false
     renderDataApps()
 
     const openAppButtons = screen.getAllByRole("button", { name: "Open App" })

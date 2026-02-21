@@ -1,4 +1,4 @@
-import { ArrowUpRightIcon, BoxIcon, Trash2Icon } from "lucide-react"
+import { ArrowUpRightIcon, BoxIcon } from "lucide-react"
 import type { ConnectedApp } from "@/types"
 import { PlatformIcon } from "@/components/icons/platform-icon"
 import { OpenExternalLink } from "@/components/typography/link-open-external"

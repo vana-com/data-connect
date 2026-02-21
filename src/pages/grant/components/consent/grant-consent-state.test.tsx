@@ -17,15 +17,6 @@ function createSession(scopes: string[]): GrantSession {
   }
 }
 
-function createBuilderManifest(
-  overrides: Partial<BuilderManifest> = {}
-): BuilderManifest {
-  return {
-    name: "Demo App",
-    appUrl: "https://demo.app",
-    ...overrides,
-  }
-}
 
 function renderConsent(
   scopes: string[],
@@ -51,23 +42,23 @@ describe("GrantConsentState scope action label", () => {
   })
 
   it("renders a two-scope action label with 'and'", () => {
-    renderConsent(["chatgpt.conversations", "spotify.history"])
+    renderConsent(["chatgpt.conversations", "spotify.playlists"])
 
     expect(
-      screen.getByText("See your ChatGPT Conversations and Spotify History")
+      screen.getByText("See your ChatGPT Conversations and Spotify Playlists")
     ).toBeTruthy()
   })
 
   it("renders a three-scope action label with Oxford comma", () => {
     renderConsent([
       "chatgpt.conversations",
-      "spotify.history",
+      "spotify.playlists",
       "instagram.posts",
     ])
 
     expect(
       screen.getByText(
-        "See your ChatGPT Conversations, Spotify History, and Instagram Posts"
+        "See your ChatGPT Conversations, Spotify Playlists, and Instagram Posts"
       )
     ).toBeTruthy()
   })

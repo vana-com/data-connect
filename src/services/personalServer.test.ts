@@ -89,7 +89,7 @@ describe("createGrant", () => {
 
     await createGrant(3100, {
       granteeAddress: "0xbuilder",
-      scopes: ["spotify.history"],
+      scopes: ["spotify.savedTracks"],
       expiresAt: 1798761600,
       nonce: 42,
     });
@@ -167,7 +167,7 @@ describe("listGrants", () => {
     {
       grantId: "g-2",
       granteeAddress: "0xdef",
-      scopes: ["spotify.history"],
+      scopes: ["spotify.savedTracks"],
       createdAt: "2026-02-01T00:00:00Z",
       revokedAt: "2026-02-05T00:00:00Z",
     },

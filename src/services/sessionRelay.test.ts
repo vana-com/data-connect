@@ -56,7 +56,7 @@ describe("claimSession", () => {
     const responseBody = {
       sessionId: "sess-2",
       granteeAddress: "0xdef",
-      scopes: ["spotify.history"],
+      scopes: ["spotify.savedTracks"],
       expiresAt: "2026-06-01T00:00:00Z",
       webhookUrl: "https://builder.app/webhook",
       appUserId: "user-42",

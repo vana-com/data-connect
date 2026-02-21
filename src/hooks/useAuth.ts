@@ -1,35 +1,24 @@
-import { useCallback, useEffect } from 'react';
+import { useCallback } from 'react';
 import { useDispatch, useSelector } from 'react-redux';
-import { clearAuth, setAuthLoading } from '../state/store';
+import { clearAuth } from '../state/store';
 import type { RootState } from '../state/store';
-
-const PRIVY_APP_ID = import.meta.env.VITE_PRIVY_APP_ID;
 
 export function useAuth() {
   const dispatch = useDispatch();
   const auth = useSelector((state: RootState) => state.app.auth);
-
-  const privyEnabled = !!PRIVY_APP_ID;
-
-  // Set loading to false on mount since auth is handled externally via browser
-  useEffect(() => {
-    if (auth.isLoading) {
-      dispatch(setAuthLoading(false));
-    }
-  }, [dispatch, auth.isLoading]);
 
   const logout = useCallback(async () => {
     dispatch(clearAuth());
   }, [dispatch]);
 
   return {
-    isAuthenticated: auth.isAuthenticated,
-    isLoading: auth.isLoading,
+    isAuthenticated: Boolean(auth.walletAddress && auth.masterKeySignature),
+    isLoading: false,
     user: auth.user,
     walletAddress: auth.walletAddress,
+    masterKeySignature: auth.masterKeySignature,
     accountRole: auth.accountRole,
     canAccessDebugRuns: auth.accountRole === 'debug',
-    privyEnabled,
     logout,
   };
 }

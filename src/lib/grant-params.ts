@@ -4,6 +4,7 @@ export type GrantParams = {
   appId?: string
   scopes?: string[]
   status?: GrantStatusParam
+  masterKeySignature?: string
 }
 
 export type GrantStatusParam = "success"
@@ -53,6 +54,7 @@ export function getGrantParamsFromSearchParams(
   const scopes = parseScopesParam(searchParams.get("scopes"))
   const status =
     searchParams.get("status") === "success" ? ("success" as const) : undefined
+  const masterKeySignature = searchParams.get("masterKeySig") || undefined
 
   return {
     sessionId,
@@ -60,6 +62,7 @@ export function getGrantParamsFromSearchParams(
     appId,
     scopes,
     status,
+    masterKeySignature,
   }
 }
 
@@ -84,6 +87,10 @@ export function buildGrantSearchParams(params: GrantParams): URLSearchParams {
 
   if (params.status) {
     searchParams.set("status", params.status)
+  }
+
+  if (params.masterKeySignature) {
+    searchParams.set("masterKeySig", params.masterKeySignature)
   }
 
   return searchParams

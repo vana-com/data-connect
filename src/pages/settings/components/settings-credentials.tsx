@@ -1,5 +1,5 @@
 import { Text } from "@/components/typography/text"
-import { KeyRoundIcon, Trash2Icon } from "lucide-react"
+import { KeyRoundIcon } from "lucide-react"
 import { PlatformIcon } from "@/components/icons/platform-icon"
 import { DEV_FLAGS } from "@/config/dev-flags"
 import type { BrowserSession } from "../types"

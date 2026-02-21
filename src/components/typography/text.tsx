@@ -139,13 +139,13 @@ export const textVariants = cva(
       },
       {
         withIcon: true,
-        intent: ["button"],
-        className: "gap-2",
+        intent: ["compact", "button"],
+        className: "gap-1.5",
       },
       {
         withIcon: true,
-        intent: ["pill", "fine", "small"],
-        className: "gap-0.5",
+        intent: ["pillEyebrow", "pill", "fine", "small"],
+        className: "gap-0.75",
       },
       {
         withIcon: true,

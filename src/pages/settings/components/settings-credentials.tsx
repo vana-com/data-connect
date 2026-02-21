@@ -101,7 +101,7 @@ export function SettingsCredentials({
                   <PlatformIcon
                     iconName={getPlatformIconName(session.connectorId)}
                     fallbackLabel={getDisplayName(session.connectorId)}
-                    size={32}
+                    size={24}
                   />
                 }
                 title={getDisplayName(session.connectorId)}

@@ -53,7 +53,7 @@ function getServerStatusDescription(
     return { tone: "success" as const, label: `Running on port ${port ?? "?"}` }
   }
   if (status === "starting") {
-    return { tone: "accent" as const, label: "Starting…" }
+    return { tone: "warning" as const, label: "Starting…" }
   }
   if (status === "error") {
     return { tone: "destructive" as const, label: error || "Error" }

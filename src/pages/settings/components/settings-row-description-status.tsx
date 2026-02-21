@@ -4,7 +4,7 @@ import type { TextProps } from "@/components/typography/text"
 import { cn } from "@/lib/classes"
 import { SettingsRowDescriptionDot } from "./settings-row-description-shared"
 
-type StatusTone = "success" | "accent" | "destructive" | "muted"
+type StatusTone = "success" | "accent" | "warning" | "destructive" | "muted"
 type DotPosition = "left" | "right"
 
 interface SettingsRowDescriptionStatusProps {
@@ -26,6 +26,10 @@ const toneStyles: Record<
   accent: {
     textClassName: "text-accent",
     dotClassName: "bg-accent",
+  },
+  warning: {
+    textClassName: "text-amber-600",
+    dotClassName: "bg-amber-600",
   },
   destructive: {
     textClassName: "text-destructive-foreground",

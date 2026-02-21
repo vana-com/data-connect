@@ -5,14 +5,23 @@
  * If any required directory is missing, run fetch-connectors automatically.
  */
 
-import { existsSync, readdirSync, readFileSync, statSync } from "fs";
+import {
+  cpSync,
+  existsSync,
+  mkdirSync,
+  readdirSync,
+  readFileSync,
+  statSync,
+} from "fs";
 import { dirname, join } from "path";
 import { fileURLToPath } from "url";
 import { spawnSync } from "child_process";
+import { homedir } from "os";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const ROOT = join(__dirname, "..");
 const CONNECTORS_DIR = join(ROOT, "connectors");
+const USER_CONNECTORS_DIR = join(homedir(), ".dataconnect", "connectors");
 const TAURI_CONFIG = join(ROOT, "src-tauri", "tauri.conf.json");
 const FETCH_SCRIPT = join(ROOT, "scripts", "fetch-connectors.js");
 
@@ -49,6 +58,23 @@ function getMissingConnectorDirs(requiredDirs) {
   );
 }
 
+function restoreMissingFromUserCache(missingDirs) {
+  let restored = 0;
+  mkdirSync(CONNECTORS_DIR, { recursive: true });
+
+  for (const dir of missingDirs) {
+    const src = join(USER_CONNECTORS_DIR, dir);
+    const dest = join(CONNECTORS_DIR, dir);
+    if (!hasConnectorFiles(src)) continue;
+    cpSync(src, dest, { recursive: true });
+    restored++;
+  }
+
+  if (restored > 0) {
+    log(`Restored ${restored} connector dir(s) from local user cache.`);
+  }
+}
+
 function runFetchConnectors() {
   const result = spawnSync(process.execPath, [FETCH_SCRIPT], {
     stdio: "inherit",
@@ -78,7 +104,24 @@ function main() {
   }
 
   log(`Missing required connector dirs: ${missing.join(", ")}`);
-  runFetchConnectors();
+  restoreMissingFromUserCache(missing);
+
+  const afterRestore = getMissingConnectorDirs(requiredDirs);
+  if (afterRestore.length === 0) {
+    log("connectors present -> skip fetch");
+    return;
+  }
+
+  try {
+    runFetchConnectors();
+  } catch (error) {
+    const stillMissingAfterFetchError = getMissingConnectorDirs(requiredDirs);
+    if (stillMissingAfterFetchError.length === 0) {
+      log("connectors present -> skip fetch");
+      return;
+    }
+    throw error;
+  }
 
   const stillMissing = getMissingConnectorDirs(requiredDirs);
   if (stillMissing.length > 0) {

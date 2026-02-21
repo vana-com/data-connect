@@ -2,3 +2,9 @@
 *.log
 .DS_Store
 .fetch-cache.json
+
+# Auto-restored/generated connector payloads for local dev.
+meta/
+openai/
+spotify/
+linkedin/linkedin-playwright.json

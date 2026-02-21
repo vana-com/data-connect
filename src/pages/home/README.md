@@ -38,7 +38,7 @@
 
 ## Mock system (dev)
 
-- `VITE_USE_TEST_DATA=true` swaps in fixture data for connected apps and sources.
+- `VITE_USE_HOME_TEST_FIXTURES=true` swaps in fixture data for connected apps and sources.
 - Connected apps open in the browser using the same rules as Data Apps:
   - `VITE_USE_RICKROLL_MOCK=true` forces RickRoll for all apps.
   - Otherwise, live apps must define `externalUrl` in the app registry.

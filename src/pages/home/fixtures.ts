@@ -1,9 +1,6 @@
 import type { ConnectedApp, Platform } from "@/types"
-import { DEV_FLAGS } from "@/config/dev-flags"
 
-// Controlled via VITE_USE_TEST_DATA.
-export const USE_TEST_DATA = DEV_FLAGS.useTestData
-
+// Used when DEV_FLAGS.useHomeTestFixtures is true (see dev-flags.ts).
 export const testPlatforms: Platform[] = [
   {
     id: "instagram",
@@ -85,7 +82,7 @@ export const testConnectedPlatforms: Platform[] = [
   },
 ]
 
-// If VITE_USE_TEST_DATA=true, then Connected Apps list uses testConnectedApps
+// When useHomeTestFixtures: Connected Apps list uses testConnectedApps
 export const testConnectedApps: ConnectedApp[] = [
   {
     id: "rickroll",

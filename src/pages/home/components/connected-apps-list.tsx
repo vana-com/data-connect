@@ -38,7 +38,7 @@ async function openExternalApp(url: string) {
 }
 
 function getConnectedAppUrl(app: ConnectedApp) {
-  if (!DEV_FLAGS.useTestData) {
+  if (!DEV_FLAGS.useHomeTestFixtures) {
     return null
   }
   const entry = getAppRegistryEntry(app.id)

@@ -7,7 +7,8 @@ import { useAuth } from "@/hooks/useAuth"
 import { usePersonalServer } from "@/hooks/usePersonalServer"
 import { fetchServerIdentity } from "@/services/serverRegistration"
 import type { RootState } from "@/state/store"
-import { USE_TEST_DATA, testConnectedPlatforms } from "@/pages/home/fixtures"
+import { DEV_FLAGS } from "@/config/dev-flags"
+import { testConnectedPlatforms } from "@/pages/home/fixtures"
 
 interface ServerRegisteredPayload {
   status: number
@@ -73,7 +74,7 @@ export function useImportsSection() {
 
   const sourceFilterOptions = useMemo<ImportSourceFilterOption[]>(() => {
     const connectedSources =
-      USE_TEST_DATA && platforms.length === 0
+      DEV_FLAGS.useHomeTestFixtures && platforms.length === 0
         ? testConnectedPlatforms
         : platforms.filter(platform => connectedPlatforms[platform.id])
 

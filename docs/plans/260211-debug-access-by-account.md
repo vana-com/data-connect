@@ -195,4 +195,4 @@ Move to backend-driven capabilities:
 - Backend RBAC/permissions service.
 - Token claim verification changes in Tauri auth relay.
 - Full authorization hardening for privileged operations.
-- Changes to non-debug feature flags (`useTestData`, `useRickrollMock`).
+- Changes to non-debug feature flags (`useHomeTestFixtures`, `useRickrollMock`).

@@ -13,7 +13,7 @@ const apps = getAppRegistryEntries()
 const liveApps = apps.filter(app => app.status === "live")
 const comingSoonApps = apps.filter(app => app.status === "coming-soon")
 const mutableFlags = DEV_FLAGS as {
-  useTestData: boolean
+  useHomeTestFixtures: boolean
   useSettingsUiMocks: boolean
   useHomeConnectingPreview: boolean
 }

@@ -23,12 +23,8 @@ import {
   getGrantParamsFromSearchParams,
 } from "@/lib/grant-params"
 import { getPlatformRegistryEntry } from "@/lib/platform/utils"
-import {
-  USE_TEST_DATA,
-  testConnectedApps,
-  testConnectedPlatforms,
-  testPlatforms,
-} from "./fixtures"
+import { DEV_FLAGS } from "@/config/dev-flags"
+import { testConnectedApps, testConnectedPlatforms, testPlatforms } from "./fixtures"
 
 export function Home() {
   const navigate = useNavigate()
@@ -48,11 +44,11 @@ export function Home() {
   ]
 
   const displayPlatforms =
-    platforms.length > 0 ? platforms : USE_TEST_DATA ? testPlatforms : []
+    platforms.length > 0 ? platforms : DEV_FLAGS.useHomeTestFixtures ? testPlatforms : []
   const displayConnectedApps =
     connectedApps.length > 0
       ? connectedApps
-      : USE_TEST_DATA
+      : DEV_FLAGS.useHomeTestFixtures
         ? testConnectedApps
         : []
 
@@ -114,14 +110,14 @@ export function Home() {
 
   // Separate available platforms (memoized to avoid re-filtering on every render)
   const connectedPlatformsList = useMemo(() => {
-    if (USE_TEST_DATA && platforms.length === 0) {
+    if (DEV_FLAGS.useHomeTestFixtures && platforms.length === 0) {
       return testConnectedPlatforms
     }
     return displayPlatforms.filter(p => isPlatformConnected(p.id))
   }, [displayPlatforms, isPlatformConnected, platforms.length])
 
   const availablePlatforms = useMemo(() => {
-    if (USE_TEST_DATA && platforms.length === 0) {
+    if (DEV_FLAGS.useHomeTestFixtures && platforms.length === 0) {
       return testPlatforms
     }
     return displayPlatforms

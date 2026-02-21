@@ -143,7 +143,7 @@ export function SettingsAbout({
             label: personalServer.error || "Failed to start",
           }
         : personalServer.status === "starting"
-          ? { tone: "accent" as const, label: "Starting…" }
+          ? { tone: "warning" as const, label: "Starting…" }
           : { tone: "destructive" as const, label: "Not running" }
 
   const browserStatusDescription =

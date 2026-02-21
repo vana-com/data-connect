@@ -1,5 +1,12 @@
 import { beforeEach, describe, expect, it, vi } from "vitest"
-import { fireEvent, render, screen, waitFor } from "@testing-library/react"
+import {
+  act,
+  fireEvent,
+  render,
+  screen,
+  waitFor,
+  within,
+} from "@testing-library/react"
 import { createMemoryRouter, RouterProvider } from "react-router-dom"
 import { ROUTES } from "@/config/routes"
 import { SourceOverview } from "./index"
@@ -15,7 +22,8 @@ const mockGetUserDataPath = vi.fn()
 const mockOpenPlatformExportFolder = vi.fn()
 const mockLoadLatestSourceExportPreview = vi.fn()
 const mockLoadLatestSourceExportFull = vi.fn()
-const mockOpenLocalPath = vi.fn()
+const mockOpenExportFolderPath = vi.fn()
+const mockClearExportedDataCache = vi.fn()
 
 vi.mock("react-redux", () => ({
   useSelector: (selector: (state: typeof mockState) => unknown) =>
@@ -36,10 +44,13 @@ vi.mock("@/lib/tauri-paths", () => ({
     mockLoadLatestSourceExportPreview(...args),
   loadLatestSourceExportFull: (...args: unknown[]) =>
     mockLoadLatestSourceExportFull(...args),
+  clearExportedDataCache: (...args: unknown[]) =>
+    mockClearExportedDataCache(...args),
 }))
 
 vi.mock("@/lib/open-resource", () => ({
-  openLocalPath: (...args: unknown[]) => mockOpenLocalPath(...args),
+  openExportFolderPath: (...args: unknown[]) =>
+    mockOpenExportFolderPath(...args),
   toFileUrl: (path: string) => `file://${path}`,
 }))
 
@@ -51,6 +62,18 @@ const renderSourcePage = (path = "/sources/chatgpt") => {
     }
   )
   return render(<RouterProvider router={router} />)
+}
+
+const findCopyButton = async () => {
+  await waitFor(() => {
+    const hasCopyButton = screen
+      .getAllByRole("button")
+      .some(button => button.textContent?.includes("Copy"))
+    expect(hasCopyButton).toBe(true)
+  })
+  return screen
+    .getAllByRole("button")
+    .find(button => button.textContent?.includes("Copy")) as HTMLButtonElement
 }
 
 beforeEach(() => {
@@ -69,7 +92,8 @@ beforeEach(() => {
   }
   mockGetUserDataPath.mockResolvedValue("/tmp/dataconnect")
   mockLoadLatestSourceExportFull.mockResolvedValue("{}")
-  mockOpenLocalPath.mockResolvedValue(true)
+  mockOpenExportFolderPath.mockResolvedValue(true)
+  mockClearExportedDataCache.mockResolvedValue(undefined)
 })
 
 describe("SourceOverview", () => {
@@ -94,7 +118,7 @@ describe("SourceOverview", () => {
     })
   })
 
-  it("uses the same open handler for sidebar path and open file button", async () => {
+  it("opens exports folder from sidebar action", async () => {
     mockLoadLatestSourceExportPreview.mockResolvedValue({
       previewJson: "{\n  \"ok\": true\n}",
       isTruncated: false,
@@ -106,19 +130,22 @@ describe("SourceOverview", () => {
 
     renderSourcePage()
 
-    const [openFileButton] = await screen.findAllByRole("button", {
-      name: "Open file",
-    })
     const [sourcePathLink] = await screen.findAllByRole("link", {
-      name: "../exported_data/chatgpt",
+      name: "Open exports folder",
     })
 
-    fireEvent.click(openFileButton)
     fireEvent.click(sourcePathLink)
 
     await waitFor(() => {
-      expect(mockOpenPlatformExportFolder).toHaveBeenCalledTimes(2)
+      expect(mockOpenPlatformExportFolder).toHaveBeenCalledTimes(1)
     })
+  })
+
+  it("shows a back-to-home link in the sidebar", async () => {
+    const view = renderSourcePage()
+    const scoped = within(view.container)
+    const backLink = await scoped.findByRole("link", { name: "Back to Home" })
+    expect(backLink.getAttribute("href")).toBe(ROUTES.home)
   })
 
   it("shows copy failed when clipboard fallback copy returns false", async () => {
@@ -144,9 +171,7 @@ describe("SourceOverview", () => {
 
     try {
       renderSourcePage()
-      const [copyButton] = await screen.findAllByRole("button", {
-        name: "Copy full JSON",
-      })
+      const copyButton = await findCopyButton()
       fireEvent.click(copyButton)
 
       await waitFor(() => {
@@ -183,9 +208,7 @@ describe("SourceOverview", () => {
 
     try {
       renderSourcePage()
-      const [copyButton] = await screen.findAllByRole("button", {
-        name: "Copy full JSON",
-      })
+      const copyButton = await findCopyButton()
       fireEvent.click(copyButton)
 
       await waitFor(() => {
@@ -200,4 +223,75 @@ describe("SourceOverview", () => {
       })
     }
   })
+
+  it("keeps copy button enabled when source platform is unavailable", async () => {
+    mockState = {
+      app: {
+        runs: [],
+        platforms: [],
+      },
+    }
+
+    const originalClipboard = navigator.clipboard
+    Object.defineProperty(navigator, "clipboard", {
+      configurable: true,
+      value: {
+        writeText: vi.fn().mockResolvedValue(undefined),
+      },
+    })
+
+    try {
+      renderSourcePage()
+      const copyButton = await findCopyButton()
+      expect(copyButton.hasAttribute("disabled")).toBe(false)
+
+      fireEvent.click(copyButton)
+      await waitFor(() => {
+        expect(screen.getAllByRole("button", { name: "Copied" }).length).toBe(1)
+      })
+    } finally {
+      Object.defineProperty(navigator, "clipboard", {
+        configurable: true,
+        value: originalClipboard,
+      })
+    }
+  })
+
+  it(
+    "shows reset cache success and returns to idle label after timeout",
+    async () => {
+      mockLoadLatestSourceExportPreview.mockResolvedValue({
+        previewJson: "{\n  \"ok\": true\n}",
+        isTruncated: false,
+        filePath: "/tmp/dataconnect/exported_data/OpenAI/ChatGPT/chatgpt.json",
+        fileSizeBytes: 2048,
+        exportedAt: "2026-02-11T10:00:00.000Z",
+      })
+
+      const view = renderSourcePage()
+      const scoped = within(view.container)
+      const [resetButton] = await scoped.findAllByRole("button", {
+        name: "Reset cache",
+      })
+      fireEvent.click(resetButton)
+
+      await waitFor(
+        () => {
+          expect(scoped.getAllByRole("button", { name: "Cache reset" }).length).toBe(
+            1
+          )
+        },
+        { timeout: 3_000 }
+      )
+
+      await act(async () => {
+        await new Promise(resolve => window.setTimeout(resolve, 1_300))
+      })
+
+      await waitFor(() => {
+        expect(scoped.getAllByRole("button", { name: "Reset cache" }).length).toBe(1)
+      })
+    },
+    12_000
+  )
 })

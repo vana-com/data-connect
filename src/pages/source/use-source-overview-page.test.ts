@@ -13,7 +13,8 @@ const mockGetUserDataPath = vi.fn()
 const mockOpenPlatformExportFolder = vi.fn()
 const mockLoadLatestSourceExportPreview = vi.fn()
 const mockLoadLatestSourceExportFull = vi.fn()
-const mockOpenLocalPath = vi.fn()
+const mockOpenExportFolderPath = vi.fn()
+const mockClearExportedDataCache = vi.fn()
 
 vi.mock("react-redux", () => ({
   useSelector: (selector: (state: typeof mockState) => unknown) =>
@@ -34,10 +35,12 @@ vi.mock("@/lib/tauri-paths", () => ({
     mockLoadLatestSourceExportPreview(...args),
   loadLatestSourceExportFull: (...args: unknown[]) =>
     mockLoadLatestSourceExportFull(...args),
+  clearExportedDataCache: (...args: unknown[]) =>
+    mockClearExportedDataCache(...args),
 }))
 
 vi.mock("@/lib/open-resource", () => ({
-  openLocalPath: (...args: unknown[]) => mockOpenLocalPath(...args),
+  openExportFolderPath: (...args: unknown[]) => mockOpenExportFolderPath(...args),
   toFileUrl: (path: string) => `file://${path}`,
 }))
 
@@ -64,8 +67,9 @@ beforeEach(() => {
     exportedAt: "2026-02-11T10:00:00.000Z",
   })
   mockLoadLatestSourceExportFull.mockResolvedValue("{\"ok\":true}")
-  mockOpenLocalPath.mockResolvedValue(true)
+  mockOpenExportFolderPath.mockResolvedValue(true)
   mockOpenPlatformExportFolder.mockResolvedValue(undefined)
+  mockClearExportedDataCache.mockResolvedValue(undefined)
 })
 
 describe("useSourceOverviewPage", () => {
@@ -82,7 +86,7 @@ describe("useSourceOverviewPage", () => {
       await result.current.handleOpenSourcePath()
     })
 
-    expect(mockOpenLocalPath).toHaveBeenCalled()
+    expect(mockOpenExportFolderPath).toHaveBeenCalled()
   })
 
   it("sets copy status to error when clipboard copy fails", async () => {
@@ -115,6 +119,79 @@ describe("useSourceOverviewPage", () => {
         value: originalClipboard,
       })
       document.execCommand = originalExecCommand
+    }
+  })
+
+  it("copies fallback JSON when source platform is unavailable", async () => {
+    mockState = {
+      app: {
+        runs: [],
+        platforms: [],
+      },
+    }
+
+    const originalClipboard = navigator.clipboard
+    Object.defineProperty(navigator, "clipboard", {
+      configurable: true,
+      value: {
+        writeText: vi.fn().mockResolvedValue(undefined),
+      },
+    })
+
+    try {
+      const { result } = renderHook(() => useSourceOverviewPage("chatgpt"))
+
+      await waitFor(() => {
+        expect(result.current.sourcePlatform).toBe(null)
+      })
+
+      await act(async () => {
+        await result.current.handleCopyFullJson()
+      })
+
+      expect(result.current.copyStatus).toBe("copied")
+      expect(mockLoadLatestSourceExportFull).not.toHaveBeenCalled()
+    } finally {
+      Object.defineProperty(navigator, "clipboard", {
+        configurable: true,
+        value: originalClipboard,
+      })
+    }
+  })
+
+  it("resets copy status back to idle after feedback timeout", async () => {
+    const originalClipboard = navigator.clipboard
+    Object.defineProperty(navigator, "clipboard", {
+      configurable: true,
+      value: {
+        writeText: vi.fn().mockResolvedValue(undefined),
+      },
+    })
+
+    try {
+      const { result } = renderHook(() => useSourceOverviewPage("chatgpt"))
+
+      await waitFor(() => {
+        expect(result.current.sourceEntry?.id).toBe("chatgpt")
+      })
+
+      await act(async () => {
+        await result.current.handleCopyFullJson()
+      })
+
+      expect(result.current.copyStatus).toBe("copied")
+
+      await waitFor(
+        () => {
+          expect(result.current.copyStatus).toBe("idle")
+        },
+        { timeout: 2_500 }
+      )
+    } finally {
+      Object.defineProperty(navigator, "clipboard", {
+        configurable: true,
+        value: originalClipboard,
+      })
     }
   })
 
@@ -160,5 +237,45 @@ describe("useSourceOverviewPage", () => {
         delete (window as { __TAURI__?: unknown }).__TAURI__
       }
     }
+  })
+
+  it(
+    "resets cache status back to idle after success timeout",
+    async () => {
+    const { result } = renderHook(() => useSourceOverviewPage("chatgpt"))
+
+    await waitFor(() => {
+      expect(result.current.sourceEntry?.id).toBe("chatgpt")
+    })
+
+    await act(async () => {
+      await result.current.handleResetExportedDataCache()
+    })
+
+    expect(result.current.resetCacheStatus).toBe("success")
+
+    await waitFor(
+      () => {
+        expect(result.current.resetCacheStatus).toBe("idle")
+      },
+      { timeout: 6_000 }
+    )
+    },
+    12_000
+  )
+
+  it("sets reset cache status to error when cache clearing fails", async () => {
+    mockClearExportedDataCache.mockRejectedValue(new Error("permission denied"))
+    const { result } = renderHook(() => useSourceOverviewPage("chatgpt"))
+
+    await waitFor(() => {
+      expect(result.current.sourceEntry?.id).toBe("chatgpt")
+    })
+
+    await act(async () => {
+      await result.current.handleResetExportedDataCache()
+    })
+
+    expect(result.current.resetCacheStatus).toBe("error")
   })
 })

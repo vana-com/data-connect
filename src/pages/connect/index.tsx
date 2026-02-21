@@ -48,8 +48,12 @@ export function Connect() {
     getAppRegistryEntry(resolvedAppId) ?? getAppRegistryEntry(DEFAULT_APP_ID)
   const sessionId = params.sessionId ?? generatedSessionId
   // Scopes drive the "Connect your <data source>" copy.
-  const grantScopes =
-    params.scopes && params.scopes.length > 0 ? params.scopes : appEntry?.scopes
+  // URL params are checked first; if missing, fall back to claimed session scopes,
+  // then to the default app entry scopes.
+  const initialScopes =
+    params.scopes && params.scopes.length > 0 ? params.scopes : undefined
+  const [claimedScopes, setClaimedScopes] = useState<string[] | undefined>()
+  const grantScopes = initialScopes ?? claimedScopes ?? appEntry?.scopes
   const scopesKey = grantScopes?.join("|") ?? ""
 
   // Background pre-fetch: claim session + verify builder while user exports data.
@@ -82,6 +86,11 @@ export function Connect() {
           granteeAddress: claimed.granteeAddress,
           scopes: claimed.scopes,
         });
+        // Update scopes from the claimed session so the UI reflects the
+        // actual requested data source (not the default fallback).
+        if (claimed.scopes && claimed.scopes.length > 0) {
+          setClaimedScopes(claimed.scopes)
+        }
         session = {
           id: params.sessionId!,
           granteeAddress: claimed.granteeAddress,

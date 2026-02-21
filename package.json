@@ -12,7 +12,7 @@
     "build": "tsc -b && vite build && npm run auth:build",
     "auth:build": "vite build --config vite.auth.config.ts",
     "auth:dev": "vite --config vite.auth.config.ts --port 5175 --strictPort",
-    "prebuild:all": "npm run auth:build && node scripts/ensure-playwright-runner.js && node scripts/ensure-personal-server.js",
+    "prebuild:all": "npm run auth:build && node scripts/ensure-connectors.js && node scripts/ensure-playwright-runner.js && node scripts/ensure-personal-server.js",
     "pretauri:dev": "npm run prebuild:all",
     "pretauri:build": "npm run auth:build",
     "lint": "eslint .",
@@ -29,7 +29,7 @@
     "release:versions": "node scripts/release-github.mjs --show-versions",
     "skills:sync": "node scripts/sync-skills.js",
     "skills:watch": "node scripts/watch-skills.js",
-    "postinstall": "node scripts/fetch-connectors.js && node scripts/sync-skills.js"
+    "postinstall": "node scripts/sync-skills.js"
   },
   "dependencies": {
     "@base-ui/react": "^1.1.0",

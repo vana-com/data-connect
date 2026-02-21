@@ -1,118 +1,97 @@
+import { useCallback, useMemo, useState } from "react"
 import { Link } from "react-router-dom"
 import { ActivityIcon } from "lucide-react"
 import { Text } from "@/components/typography/text"
-import { Button } from "@/components/ui/button"
-import { DEV_FLAGS } from "@/config/dev-flags"
 import { ROUTES } from "@/config/routes"
 import {
   SettingsCard,
   SettingsCardStack,
 } from "@/pages/settings/components/settings-shared"
 import { SettingsRow } from "@/pages/settings/components/settings-row"
-import type { Run } from "@/types"
-import { RunItem } from "./run-item/run-item"
+import type { Platform } from "@/types"
 import { useImportsSection } from "../use-imports-section"
+import { resolveImportHistoryRuns } from "./import-history-panel-state"
+import { ImportHistoryRow } from "./import-history-row"
 
-interface ImportHistoryPanelProps {
-  showHeader?: boolean
-}
+const STOPPING_UI_MIN_MS = 600
 
-type TestImportsUiState = "empty" | "active" | "finished" | "mixed"
-
-const TEST_IMPORTS_UI_STATE: "real" | TestImportsUiState =
-  DEV_FLAGS.useSettingsUiMocks ? "mixed" : "real"
-
-const TEST_ACTIVE_IMPORTS: Run[] = [
-  {
-    id: "test-active-chatgpt",
-    platformId: "chatgpt",
-    filename: "chatgpt-export-active.zip",
-    isConnected: true,
-    startDate: new Date().toISOString(),
-    status: "running",
-    url: "https://chatgpt.com",
-    company: "OpenAI",
-    name: "ChatGPT",
-    phase: { step: 2, total: 4, label: "Collecting conversations" },
-    statusMessage: "Fetching latest messages…",
-  },
-]
-
-const TEST_FINISHED_IMPORTS: Run[] = [
-  {
-    id: "test-finished-chatgpt",
-    platformId: "chatgpt",
-    filename: "chatgpt-export-finished.zip",
-    isConnected: true,
-    startDate: new Date(Date.now() - 2 * 60 * 60 * 1000).toISOString(),
-    endDate: new Date(Date.now() - 90 * 60 * 1000).toISOString(),
-    status: "success",
-    url: "https://chatgpt.com",
-    company: "OpenAI",
-    name: "ChatGPT",
-    itemsExported: 48,
-    itemLabel: "conversations",
-  },
-]
-
-/* Import history = scraped data import activity, not app authorization history. */
-export function ImportHistoryPanel({
-  showHeader = true,
-}: ImportHistoryPanelProps) {
-  const {
-    activeImports,
-    finishedImports,
-    sourceFilterOptions,
-    selectedSourceFilter,
-    setSourceFilter,
-    stopExport,
-    personalServer,
-    serverReady,
-  } = useImportsSection()
+export function ImportHistoryPanel() {
+  const { activeImports, finishedImports, platforms, startExport, stopExport } =
+    useImportsSection()
+  const [expandedErrorRunIds, setExpandedErrorRunIds] = useState<Set<string>>(
+    () => new Set()
+  )
+  const [stoppingRunIds, setStoppingRunIds] = useState<Set<string>>(
+    () => new Set()
+  )
 
   const { effectiveActiveImports, effectiveFinishedImports } =
-    TEST_IMPORTS_UI_STATE === "real"
-      ? {
-          effectiveActiveImports: activeImports,
-          effectiveFinishedImports: finishedImports,
-        }
-      : TEST_IMPORTS_UI_STATE === "empty"
-        ? {
-            effectiveActiveImports: [],
-            effectiveFinishedImports: [],
-          }
-        : TEST_IMPORTS_UI_STATE === "active"
-          ? {
-              effectiveActiveImports: TEST_ACTIVE_IMPORTS,
-              effectiveFinishedImports: [],
-            }
-          : TEST_IMPORTS_UI_STATE === "finished"
-            ? {
-                effectiveActiveImports: [],
-                effectiveFinishedImports: TEST_FINISHED_IMPORTS,
-              }
-            : {
-                effectiveActiveImports: TEST_ACTIVE_IMPORTS,
-                effectiveFinishedImports: TEST_FINISHED_IMPORTS,
-              }
+    resolveImportHistoryRuns({
+      activeImports,
+      finishedImports,
+    })
 
   const hasNoImports =
     effectiveActiveImports.length === 0 && effectiveFinishedImports.length === 0
+  const importRuns = useMemo(
+    () =>
+      [...effectiveActiveImports, ...effectiveFinishedImports].sort(
+        (a, b) =>
+          new Date(b.startDate).getTime() - new Date(a.startDate).getTime()
+      ),
+    [effectiveActiveImports, effectiveFinishedImports]
+  )
+  const activePlatformIds = useMemo(
+    () => new Set(effectiveActiveImports.map(run => run.platformId)),
+    [effectiveActiveImports]
+  )
+  const platformById = useMemo(
+    () => new Map(platforms.map(platform => [platform.id, platform])),
+    [platforms]
+  )
+
+  const handleStop = useCallback(
+    async (runId: string) => {
+      const startedAt = Date.now()
+      setStoppingRunIds(prev => new Set(prev).add(runId))
+      try {
+        await stopExport(runId)
+      } finally {
+        const elapsedMs = Date.now() - startedAt
+        if (elapsedMs < STOPPING_UI_MIN_MS) {
+          await new Promise(resolve =>
+            window.setTimeout(resolve, STOPPING_UI_MIN_MS - elapsedMs)
+          )
+        }
+        setStoppingRunIds(prev => {
+          const next = new Set(prev)
+          next.delete(runId)
+          return next
+        })
+      }
+    },
+    [stopExport]
+  )
+
+  const toggleErrorDetail = useCallback((runId: string) => {
+    setExpandedErrorRunIds(prev => {
+      const next = new Set(prev)
+      if (next.has(runId)) next.delete(runId)
+      else next.add(runId)
+      return next
+    })
+  }, [])
+
+  const handleRunAgain = useCallback(
+    (platform: Platform) => {
+      void startExport(platform)
+    },
+    [startExport]
+  )
 
   return (
     // varied spacer here so that the filters + list is handled from root
     <div className="space-y-4">
-      {showHeader ? (
-        <div className="space-y-1">
-          <Text as="h1" intent="heading" weight="semi">
-            Import History
-          </Text>
-          <Text as="p" intent="small" color="mutedForeground">
-            Your data import activity
-          </Text>
-        </div>
-      ) : null}
-
       {hasNoImports ? (
         <>
           <SettingsCardStack>
@@ -144,7 +123,8 @@ export function ImportHistoryPanel({
         </>
       ) : null}
 
-      {!hasNoImports ? (
+      {/* Filters for different sources (coming soon) */}
+      {/* {!hasNoImports ? (
         <div className="flex flex-wrap gap-2">
           {sourceFilterOptions.map(option => (
             <Button
@@ -159,34 +139,24 @@ export function ImportHistoryPanel({
             </Button>
           ))}
         </div>
-      ) : null}
+      ) : null} */}
 
-      {effectiveActiveImports.length > 0 ? (
-        <div className="space-y-3">
-          {effectiveActiveImports.map(run => (
-            <RunItem
+      {importRuns.length > 0 ? (
+        <SettingsCardStack>
+          {importRuns.map(run => (
+            <ImportHistoryRow
               key={run.id}
               run={run}
-              onStop={stopExport}
-              serverPort={personalServer.port}
-              serverReady={serverReady}
+              isStopping={stoppingRunIds.has(run.id)}
+              canRunAgain={!activePlatformIds.has(run.platformId)}
+              rerunPlatform={platformById.get(run.platformId)}
+              isErrorExpanded={expandedErrorRunIds.has(run.id)}
+              onStop={handleStop}
+              onRunAgain={handleRunAgain}
+              onToggleErrorDetail={toggleErrorDetail}
             />
           ))}
-        </div>
-      ) : null}
-
-      {effectiveFinishedImports.length > 0 ? (
-        <div className="space-y-3">
-          {effectiveFinishedImports.map(run => (
-            <RunItem
-              key={run.id}
-              run={run}
-              onStop={stopExport}
-              serverPort={personalServer.port}
-              serverReady={serverReady}
-            />
-          ))}
-        </div>
+        </SettingsCardStack>
       ) : null}
     </div>
   )

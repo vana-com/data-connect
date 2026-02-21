@@ -15,6 +15,7 @@ import { SettingsRowDescriptionCopy } from "@/pages/settings/components/settings
 import { SettingsRowDescriptionStatus } from "@/pages/settings/components/settings-row-description-status"
 import { Text } from "@/components/typography/text"
 import { Switch } from "@/components/ui/switch"
+import { LINKS } from "@/config/links"
 import { cn } from "@/lib/classes"
 import type {
   BrowserStatus,
@@ -72,6 +73,9 @@ export function SettingsAbout({
 }: SettingsAboutProps) {
   const [isBrowserRefreshLoading, setIsBrowserRefreshLoading] = useState(false)
   const [isNodeTestResultOpen, setIsNodeTestResultOpen] = useState(false)
+  const commitHash = __COMMIT_HASH__ || "unknown"
+  const commitUrl = `${LINKS.githubRepo}/commit/${commitHash}`
+  const shortCommitHash = commitHash.slice(0, 7)
 
   const handleCheckBrowserStatus = useCallback(() => {
     if (isBrowserRefreshLoading) {
@@ -163,10 +167,53 @@ export function SettingsAbout({
             <SettingsRow
               icon={<InfoIcon aria-hidden="true" />}
               title="Version"
+              description={appVersion || "…"}
               right={
-                <Text as="span" intent="small" muted>
-                  {appVersion || "…"} ({__COMMIT_HASH__})
-                </Text>
+                <SettingsRowAction asChild>
+                  <a
+                    href={commitUrl}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="gap-0.75!"
+                  >
+                    {shortCommitHash}
+                    <ArrowUpRightIcon aria-hidden="true" />
+                  </a>
+                </SettingsRowAction>
+              }
+            />
+            <SettingsRow
+              icon={<GithubIcon aria-hidden="true" />}
+              title="GitHub Repository"
+              right={
+                <SettingsRowAction asChild>
+                  <a
+                    href={LINKS.docs}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="gap-0.75!"
+                  >
+                    Open
+                    <ArrowUpRightIcon aria-hidden="true" />
+                  </a>
+                </SettingsRowAction>
+              }
+            />
+            <SettingsRow
+              icon={<BookOpenIcon aria-hidden="true" />}
+              title="Documentation"
+              right={
+                <SettingsRowAction asChild>
+                  <a
+                    href={LINKS.docs}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="gap-0.75!"
+                  >
+                    Open
+                    <ArrowUpRightIcon aria-hidden="true" />
+                  </a>
+                </SettingsRowAction>
               }
             />
           </SettingsCard>
@@ -361,47 +408,6 @@ export function SettingsAbout({
                   disabled={!logPath}
                 >
                   Open
-                </SettingsRowAction>
-              }
-            />
-          </SettingsCard>
-        </SettingsCardStack>
-      </SettingsSection>
-
-      <SettingsSection title="Resources">
-        <SettingsCardStack>
-          <SettingsCard divided>
-            <SettingsRow
-              icon={<GithubIcon aria-hidden="true" />}
-              title="GitHub Repository"
-              right={
-                <SettingsRowAction asChild>
-                  <a
-                    href="https://github.com"
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="gap-0.75!"
-                  >
-                    Open
-                    <ArrowUpRightIcon aria-hidden="true" />
-                  </a>
-                </SettingsRowAction>
-              }
-            />
-            <SettingsRow
-              icon={<BookOpenIcon aria-hidden="true" />}
-              title="Documentation"
-              right={
-                <SettingsRowAction asChild>
-                  <a
-                    href="https://docs.dataconnect.dev"
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="gap-0.75!"
-                  >
-                    Open
-                    <ArrowUpRightIcon aria-hidden="true" />
-                  </a>
                 </SettingsRowAction>
               }
             />

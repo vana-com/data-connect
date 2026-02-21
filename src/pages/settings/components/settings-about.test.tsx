@@ -1,6 +1,7 @@
 import { act, cleanup, fireEvent, render, screen } from "@testing-library/react"
 import { afterEach, describe, expect, it, vi } from "vitest"
 import { TooltipProvider } from "@/components/ui/tooltip"
+import { LINKS } from "@/config/links"
 import { SettingsAbout } from "./settings-about"
 
 describe("SettingsAbout", () => {
@@ -122,5 +123,42 @@ describe("SettingsAbout", () => {
     expect(screen.getByText(/Hostname:/)).toBeTruthy()
     fireEvent.click(screen.getByRole("button", { name: "Close" }))
     expect(screen.queryByText(/Hostname:/)).toBeNull()
+  })
+
+  it("routes both resource links to docs and exposes commit link", () => {
+    render(
+      <TooltipProvider delayDuration={120}>
+        <SettingsAbout
+          appVersion="1.2.3"
+          logPath="/tmp/logs"
+          nodeTestStatus="idle"
+          nodeTestResult={null}
+          nodeTestError={null}
+          browserStatus={{ available: true, browser_type: "system" }}
+          pathsDebug={null}
+          personalServer={{ status: "stopped", port: null, error: null }}
+          simulateNoChrome={false}
+          onTestNodeJs={vi.fn()}
+          onCheckBrowserStatus={vi.fn()}
+          onDebugPaths={vi.fn()}
+          onClearDebugPaths={vi.fn()}
+          onRestartPersonalServer={vi.fn()}
+          onStopPersonalServer={vi.fn()}
+          onSimulateNoChromeChange={vi.fn()}
+          onOpenLogFolder={vi.fn()}
+        />
+      </TooltipProvider>
+    )
+
+    const resourceLinks = screen.getAllByRole("link", { name: "Open" })
+    expect(resourceLinks).toHaveLength(2)
+    for (const link of resourceLinks) {
+      expect(link.getAttribute("href")).toBe(LINKS.docs)
+    }
+
+    const commitLink = screen
+      .getAllByRole("link")
+      .find(link => link.getAttribute("href")?.includes("/commit/"))
+    expect(commitLink).toBeTruthy()
   })
 })

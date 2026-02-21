@@ -1,6 +1,7 @@
 export const LINKS = {
   docs: "https://github.com/vana-com/data-connect",
   appBuilderDocs: "https://github.com/vana-com/data-connect",
+  githubRepo: "https://github.com/vana-com/data-connect",
   vanaDocs: "https://docs.vana.org",
   vana: "https://www.vana.org/",
   openDataLabs: "https://opendatalabs.xyz/",

@@ -6,7 +6,11 @@
 
 ## Files
 
-- `index.tsx`: route component, connector run kickoff, `/grant` handoff.
+- `index.tsx`: route composition + JSX only.
+- `use-connect-page.ts`: route orchestration (params, prefetch, run state, navigation).
+- `connect-run-status.ts`: busy CTA mapping from run phase/status.
+- `connect-copy.ts`: stable copy builders for title/CTA/labels.
+- `index.test.tsx`: route behavior tests.
 
 ## Data flow
 

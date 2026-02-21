@@ -1,6 +1,3 @@
-import { useEffect, useMemo, useRef, useState } from "react"
-import { useNavigate, useSearchParams } from "react-router-dom"
-import { useSelector } from "react-redux"
 import { ChevronRight } from "lucide-react"
 import { EyebrowBadge } from "@/components/typography/eyebrow-badge"
 import { PlatformIcon } from "@/components/icons/platform-icon"
@@ -9,291 +6,23 @@ import { Text } from "@/components/typography/text"
 import { ActionButton } from "@/components/typography/button-action"
 import { LearnMoreLink } from "@/components/typography/link-learn-more"
 import { ButtonArrow } from "@/components/ui/button"
-import { DEFAULT_APP_ID, getAppRegistryEntry } from "@/apps/registry"
-import {
-  buildGrantSearchParams,
-  getGrantParamsFromSearchParams,
-} from "@/lib/grant-params"
-import {
-  getPrimaryDataSourceLabel,
-  getPrimaryScopeToken,
-} from "@/lib/scope-labels"
-import { ROUTES } from "@/config/routes"
-import { usePlatforms } from "@/hooks/usePlatforms"
-import { useConnector } from "@/hooks/useConnector"
-import {
-  getPlatformRegistryEntryById,
-  resolvePlatformForEntry,
-} from "@/lib/platform/utils"
-import { claimSession } from "@/services/sessionRelay"
-import { verifyBuilder } from "@/services/builder"
-import type { RootState, Run } from "@/types"
-import type { PrefetchedGrantData, GrantSession } from "@/pages/grant/types"
-
-/*
-  NB! If you’re running the web build (not Tauri), invoke fails → no platforms.
-
-  "If you want, I can also surface the Tauri debug_connector_paths output in the UI so you can see exactly which paths it's scanning and why it’s empty."
-*/
-
-function getConnectBusyCta(run: Run | null): string {
-  if (!run) return "Preparing export..."
-
-  const phaseLabel = run.phase?.label?.trim()
-  if (phaseLabel) return phaseLabel
-
-  const statusMessage = run.statusMessage?.trim()
-  if (statusMessage) {
-    const normalizedMessage = statusMessage.toLowerCase()
-
-    if (normalizedMessage.includes("checking browser")) {
-      return "Checking browser..."
-    }
-    if (normalizedMessage.includes("downloading browser")) {
-      return "Downloading browser..."
-    }
-    if (
-      normalizedMessage.includes("launching browser") ||
-      normalizedMessage.includes("authorizing")
-    ) {
-      return "Opening browser..."
-    }
-
-    return statusMessage
-  }
-
-  return "Preparing export..."
-}
+import { useConnectPage } from "./use-connect-page"
 
 export function Connect() {
-  const navigate = useNavigate()
-  const [searchParams] = useSearchParams()
-  // Deep link params are the source of truth for step-1 targeting.
-  const params = getGrantParamsFromSearchParams(searchParams)
-  const [generatedSessionId] = useState(() => `grant-session-${Date.now()}`)
-  // Fallbacks: if no appId/scopes are provided, use the default (Rickroll → ChatGPT).
-  const resolvedAppId = params.appId ?? DEFAULT_APP_ID
-  const appEntry =
-    getAppRegistryEntry(resolvedAppId) ?? getAppRegistryEntry(DEFAULT_APP_ID)
-  const sessionId = params.sessionId ?? generatedSessionId
-  // Scopes drive the "Connect your <data source>" copy.
-  const grantScopes =
-    params.scopes && params.scopes.length > 0 ? params.scopes : appEntry?.scopes
-  const scopesKey = grantScopes?.join("|") ?? ""
-
-  // Background pre-fetch: claim session + verify builder while user exports data.
-  // Per spec, session claim and builder verification happen in the background during
-  // the connect/export page (Screen 1), so the grant page can skip straight to consent.
-  const prefetchedSessionRef = useRef<string | null>(null)
-  const [prefetched, setPrefetched] = useState<PrefetchedGrantData | null>(null)
-
-  useEffect(() => {
-    // Only pre-fetch for real sessions (not demo, needs secret)
-    if (!params.sessionId || !params.secret) return
-    if (import.meta.env.DEV && params.sessionId.startsWith("grant-session-"))
-      return
-    if (prefetchedSessionRef.current === params.sessionId) return // already started for this session
-
-    void (async (): Promise<PrefetchedGrantData | null> => {
-      // Step 1: Claim session
-      let session: GrantSession
-      try {
-        console.log("[Connect] Pre-fetch: claiming session", {
-          sessionId: params.sessionId,
-          hasSecret: Boolean(params.secret),
-          timestamp: Date.now(),
-        })
-        const claimed = await claimSession({
-          sessionId: params.sessionId!,
-          secret: params.secret!,
-        })
-        console.log("[Connect] Pre-fetch: claim succeeded", {
-          sessionId: params.sessionId,
-          granteeAddress: claimed.granteeAddress,
-          scopes: claimed.scopes,
-        })
-        session = {
-          id: params.sessionId!,
-          granteeAddress: claimed.granteeAddress,
-          scopes: claimed.scopes,
-          expiresAt: claimed.expiresAt,
-          webhookUrl: claimed.webhookUrl,
-          appUserId: claimed.appUserId,
-        }
-      } catch (err) {
-        // Claim failure is non-fatal — the grant page will retry from scratch
-        console.warn("[Connect] Pre-fetch: claim failed", {
-          sessionId: params.sessionId,
-          error: err,
-        })
-        return null
-      }
-
-      // Step 2: Verify builder
-      // If this fails, still pass the claimed session so the grant flow
-      // can skip re-claiming and only retry builder verification.
-      try {
-        const builderManifest = await verifyBuilder(
-          session.granteeAddress,
-          session.webhookUrl
-        )
-        const result = { session, builderManifest }
-        console.log(
-          "[Connect] Pre-fetch: builder verified, prefetched data ready",
-          {
-            sessionId: params.sessionId,
-            builderName: builderManifest?.name,
-          }
-        )
-        setPrefetched(result)
-        return result
-      } catch (err) {
-        // Builder verification failed — still pass session so grant flow skips claim
-        console.warn(
-          "[Connect] Pre-fetch: builder verification failed, passing session only",
-          {
-            sessionId: params.sessionId,
-            error: err,
-          }
-        )
-        const result: PrefetchedGrantData = { session }
-        setPrefetched(result)
-        return result
-      }
-    })()
-
-    prefetchedSessionRef.current = params.sessionId!
-  }, [params.sessionId, params.secret])
-
-  // Platform resolution + connector run (data-source login/scrape).
-  const { platforms, isPlatformConnected, platformsLoaded, platformLoadError } =
-    usePlatforms()
-  const { startExport } = useConnector()
-  const runs = useSelector((state: RootState) => state.app.runs)
-  const [connectRunId, setConnectRunId] = useState<string | null>(null)
-
-  // Map primary scope token → platform registry entry → available connector.
-  const registryEntry = useMemo(() => {
-    const scopeToken = getPrimaryScopeToken(grantScopes)
-    return scopeToken ? getPlatformRegistryEntryById(scopeToken) : null
-  }, [scopesKey])
-
-  const connectPlatform = useMemo(
-    () =>
-      registryEntry ? resolvePlatformForEntry(platforms, registryEntry) : null,
-    [platforms, registryEntry]
-  )
-  const isCheckingPlatforms = !platformsLoaded
-  const isAlreadyConnected = connectPlatform
-    ? isPlatformConnected(connectPlatform.id)
-    : false
-  const dataSourceLabel = getPrimaryDataSourceLabel(grantScopes)
-  const connectTitle = dataSourceLabel
-    ? `Connect your ${dataSourceLabel}${isAlreadyConnected ? " (again)" : ""}`
-    : "Connect your data"
-  const dataLabel = dataSourceLabel ? `${dataSourceLabel} data` : "data"
-  const connectDescription = (
-    <>
-      {isAlreadyConnected
-        ? `You've already connected your ${dataLabel}. You can run it again to refresh.`
-        : `This saves your ${dataLabel} to your computer.`}{" "}
-      <LearnMoreLink />
-    </>
-  )
-  const connectCta = dataSourceLabel
-    ? `Connect ${dataSourceLabel}`
-    : "Connect data"
-  // Build the canonical `/grant` query for step-2+.
-  // Thread `secret` through so the grant flow can claim + approve the session.
-  const grantSearch = useMemo(
-    () =>
-      buildGrantSearchParams({
-        sessionId,
-        secret: params.secret,
-        appId: resolvedAppId,
-        scopes: grantScopes,
-      }).toString(),
-    [sessionId, params.secret, resolvedAppId, scopesKey]
-  )
-
-  const activeRun = connectRunId
-    ? (runs.find(run => run.id === connectRunId) ?? null)
-    : null
-  const isConnecting = Boolean(connectRunId)
-  const scopeSummary =
-    grantScopes && grantScopes.length > 0 ? grantScopes.join(", ") : null
-  const isMissingRegistryEntry = platformsLoaded && !registryEntry
-  const isMissingConnector =
-    platformsLoaded && Boolean(registryEntry) && !connectPlatform
-  const connectorErrorMessage = platformLoadError
-    ? `Could not load connectors.${scopeSummary ? ` Scope: ${scopeSummary}.` : ""}`
-    : isMissingRegistryEntry
-      ? `No data source matches the requested scope${
-          scopeSummary ? `: ${scopeSummary}.` : "."
-        }`
-      : isMissingConnector
-        ? `No connector installed for ${
-            dataSourceLabel ?? "requested scope"
-          }.${scopeSummary ? ` Scope: ${scopeSummary}.` : ""}`
-        : null
-  const isBusy = isCheckingPlatforms || isConnecting
-  const busyCta = isCheckingPlatforms
-    ? "Checking connectors..."
-    : getConnectBusyCta(activeRun)
-
-  // If the data source is already connected, skip the connect step entirely
-  // and go straight to the grant consent screen.
-  useEffect(() => {
-    if (!platformsLoaded || !isAlreadyConnected) return
-    const grantHref = grantSearch
-      ? `${ROUTES.grant}?${grantSearch}`
-      : ROUTES.grant
-    navigate(grantHref, {
-      replace: true,
-      state: prefetched ? { prefetched } : undefined,
-    })
-  }, [platformsLoaded, isAlreadyConnected, grantSearch, navigate, prefetched])
-
-  // When the connector run succeeds, move into `/grant`.
-  // Pass pre-fetched session + builder data via navigation state so the
-  // grant page can skip the claim + verify steps (already done in background).
-  useEffect(() => {
-    if (!activeRun) return
-    if (activeRun.status === "success") {
-      const grantHref = grantSearch
-        ? `${ROUTES.grant}?${grantSearch}`
-        : ROUTES.grant
-      console.log("[Connect] Navigating to /grant", {
-        hasPrefetched: prefetched !== null,
-        prefetchedSession: prefetched?.session?.id,
-        prefetchedBuilder: prefetched?.builderManifest?.name,
-        grantHref,
-      })
-      setConnectRunId(null)
-      navigate(grantHref, {
-        state: prefetched ? { prefetched } : undefined,
-      })
-    }
-    if (activeRun.status === "error" || activeRun.status === "stopped") {
-      setConnectRunId(null)
-    }
-  }, [activeRun, grantSearch, navigate, prefetched])
-
-  // Step 1 CTA: open data-source login/scrape (connector run).
-  const handleConnect = async () => {
-    if (!connectPlatform || isBusy) return
-    const runId = await startExport(connectPlatform)
-    setConnectRunId(runId)
-  }
-
-  const handleDebugGrant = () => {
-    const grantHref = grantSearch
-      ? `${ROUTES.grant}?${grantSearch}`
-      : ROUTES.grant
-    navigate(grantHref, {
-      state: prefetched ? { prefetched } : undefined,
-    })
-  }
+  const {
+    connectTitle,
+    connectCta,
+    busyCta,
+    dataSourceLabel,
+    dataLabel,
+    isAlreadyConnected,
+    hasConnector,
+    isBusy,
+    connectorErrorMessage,
+    showDebugBypass,
+    handleConnect,
+    handleDebugGrant,
+  } = useConnectPage()
 
   return (
     <div className="container pt-major">
@@ -302,7 +31,10 @@ export function Connect() {
           {connectTitle}
         </Text>
         <Text as="p" intent="body">
-          {connectDescription}
+          {isAlreadyConnected
+            ? `You've already connected your ${dataLabel}. You can run it again to refresh.`
+            : `This saves your ${dataLabel} to your computer.`}{" "}
+          <LearnMoreLink />
         </Text>
 
         <div className="action-outset">
@@ -310,12 +42,12 @@ export function Connect() {
             size="xl"
             onClick={handleConnect}
             aria-busy={isBusy}
-            disabled={!connectPlatform || isBusy}
+            disabled={!hasConnector || isBusy}
             className="relative gap-3 group disabled:opacity-100"
           >
             <PlatformIcon iconName={dataSourceLabel ?? "Data"} />
             <span>{isBusy ? busyCta : connectCta}</span>
-            {!connectPlatform && !isBusy ? (
+            {!hasConnector && !isBusy ? (
               <EyebrowBadge
                 variant="outline"
                 className="text-foreground-dim ml-auto"
@@ -339,7 +71,7 @@ export function Connect() {
             <Text as="p" intent="small" color="destructive">
               {connectorErrorMessage}
             </Text>
-            {import.meta.env.DEV ? (
+            {showDebugBypass ? (
               <>
                 <Text as="p" intent="small" color="destructive">
                   If you’re viewing this in a browser, connectors won’t load.

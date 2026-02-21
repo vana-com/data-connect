@@ -150,6 +150,20 @@ describe("Connect", () => {
         expect(router.state.location.pathname).toBe(ROUTES.grant)
       })
     })
+
+    it("stays on connect when platform is connected but no grant session exists", async () => {
+      mockUsePlatforms.mockReturnValue(
+        defaultPlatforms({
+          platforms: [CHATGPT_PLATFORM],
+          isPlatformConnected: vi.fn(() => true),
+        })
+      )
+      const { router } = renderConnect()
+
+      await waitFor(() => {
+        expect(router.state.location.pathname).toBe(ROUTES.connect)
+      })
+    })
   })
 
   // -------- platform resolution --------
@@ -256,22 +270,17 @@ describe("Connect", () => {
     })
 
     it("pre-fetch failure is non-fatal — does not crash UI", async () => {
-      const consoleWarn = vi.spyOn(console, "warn").mockImplementation(() => {})
       mockClaimSession.mockRejectedValue(new Error("Network error"))
       mockUsePlatforms.mockReturnValue(defaultPlatforms())
 
       renderConnect(REAL_SESSION_SEARCH)
 
       await waitFor(() => {
-        expect(consoleWarn).toHaveBeenCalledWith(
-          "[Connect] Pre-fetch: claim failed",
-          expect.objectContaining({ error: expect.any(Error) })
-        )
+        expect(mockClaimSession).toHaveBeenCalled()
       })
 
       // UI should still be functional
       expect(screen.getByText("Connect your ChatGPT")).toBeTruthy()
-      consoleWarn.mockRestore()
     })
 
     it("deduplicates pre-fetch for same session ID across re-renders", async () => {

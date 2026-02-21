@@ -1,9 +1,10 @@
 import { useEffect, useMemo, useRef, useState } from "react"
 import { useNavigate, useSearchParams } from "react-router-dom"
 import { useSelector } from "react-redux"
-import { ChevronRight, LoaderIcon } from "lucide-react"
+import { ChevronRight } from "lucide-react"
 import { EyebrowBadge } from "@/components/typography/eyebrow-badge"
 import { PlatformIcon } from "@/components/icons/platform-icon"
+import { Spinner } from "@/components/elements/spinner"
 import { Text } from "@/components/typography/text"
 import { ActionButton } from "@/components/typography/button-action"
 import { LearnMoreLink } from "@/components/typography/link-learn-more"
@@ -26,15 +27,43 @@ import {
 } from "@/lib/platform/utils"
 import { claimSession } from "@/services/sessionRelay"
 import { verifyBuilder } from "@/services/builder"
-import type { RootState } from "@/types"
+import type { RootState, Run } from "@/types"
 import type { PrefetchedGrantData, GrantSession } from "@/pages/grant/types"
-import { cn } from "@/lib/classes"
 
 /*
   NB! If you’re running the web build (not Tauri), invoke fails → no platforms.
 
   "If you want, I can also surface the Tauri debug_connector_paths output in the UI so you can see exactly which paths it's scanning and why it’s empty."
 */
+
+function getConnectBusyCta(run: Run | null): string {
+  if (!run) return "Preparing export..."
+
+  const phaseLabel = run.phase?.label?.trim()
+  if (phaseLabel) return phaseLabel
+
+  const statusMessage = run.statusMessage?.trim()
+  if (statusMessage) {
+    const normalizedMessage = statusMessage.toLowerCase()
+
+    if (normalizedMessage.includes("checking browser")) {
+      return "Checking browser..."
+    }
+    if (normalizedMessage.includes("downloading browser")) {
+      return "Downloading browser..."
+    }
+    if (
+      normalizedMessage.includes("launching browser") ||
+      normalizedMessage.includes("authorizing")
+    ) {
+      return "Opening browser..."
+    }
+
+    return statusMessage
+  }
+
+  return "Preparing export..."
+}
 
 export function Connect() {
   const navigate = useNavigate()
@@ -174,7 +203,6 @@ export function Connect() {
   const connectCta = dataSourceLabel
     ? `Connect ${dataSourceLabel}`
     : "Connect data"
-
   // Build the canonical `/grant` query for step-2+.
   // Thread `secret` through so the grant flow can claim + approve the session.
   const grantSearch = useMemo(
@@ -189,7 +217,7 @@ export function Connect() {
   )
 
   const activeRun = connectRunId
-    ? runs.find(run => run.id === connectRunId)
+    ? (runs.find(run => run.id === connectRunId) ?? null)
     : null
   const isConnecting = Boolean(connectRunId)
   const scopeSummary =
@@ -209,6 +237,9 @@ export function Connect() {
           }.${scopeSummary ? ` Scope: ${scopeSummary}.` : ""}`
         : null
   const isBusy = isCheckingPlatforms || isConnecting
+  const busyCta = isCheckingPlatforms
+    ? "Checking connectors..."
+    : getConnectBusyCta(activeRun)
 
   // If the data source is already connected, skip the connect step entirely
   // and go straight to the grant consent screen.
@@ -283,9 +314,7 @@ export function Connect() {
             className="relative gap-3 group disabled:opacity-100"
           >
             <PlatformIcon iconName={dataSourceLabel ?? "Data"} />
-            <span className={cn(isBusy ? "opacity-0" : undefined)}>
-              {connectCta}
-            </span>
+            <span>{isBusy ? busyCta : connectCta}</span>
             {!connectPlatform && !isBusy ? (
               <EyebrowBadge
                 variant="outline"
@@ -293,35 +322,15 @@ export function Connect() {
               >
                 No connector
               </EyebrowBadge>
+            ) : isBusy ? (
+              <Spinner className="size-[1.5em] text-muted-foreground ml-auto" />
             ) : (
               <ButtonArrow
                 icon={ChevronRight}
-                className={cn(
-                  "size-[2em] text-muted-foreground group-hover:text-foreground",
-                  isBusy ? "opacity-0" : undefined
-                )}
+                className="size-[2em] text-muted-foreground group-hover:text-foreground"
                 aria-hidden="true"
               />
             )}
-
-            {isBusy ? (
-              <span
-                className={cn(
-                  "absolute inset-0 flex items-center justify-center",
-                  "bg-background/70"
-                )}
-              >
-                <span className="flex items-center gap-2 text-sm font-medium text-foreground">
-                  <LoaderIcon
-                    className="size-4 animate-spin motion-reduce:animate-none"
-                    aria-hidden="true"
-                  />
-                  {isCheckingPlatforms
-                    ? "Checking connectors..."
-                    : (activeRun?.statusMessage ?? "Opening browser...")}
-                </span>
-              </span>
-            ) : null}
           </ActionButton>
         </div>
 

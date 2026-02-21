@@ -2,12 +2,14 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest"
 import { cleanup, render, screen, fireEvent, act, waitFor } from "@testing-library/react"
 import { createMemoryRouter, RouterProvider } from "react-router-dom"
 import { ROUTES } from "@/config/routes"
+import type { Run } from "@/types"
 import { Connect } from "./index"
 
 // ---------- mocks ----------
 
 const mockUsePlatforms = vi.fn()
-let mockRuns: Array<{ id: string; status: string }> = []
+type MockRun = Pick<Run, "id" | "status" | "statusMessage" | "phase">
+let mockRuns: MockRun[] = []
 
 vi.mock("@/hooks/usePlatforms", () => ({
   usePlatforms: () => mockUsePlatforms(),
@@ -189,9 +191,7 @@ describe("Connect", () => {
       )
       renderConnect()
 
-      const connectButton = screen.getByRole("button", {
-        name: /connect chatgpt/i,
-      })
+      const connectButton = screen.getByRole("button")
       expect(connectButton.getAttribute("aria-busy")).toBe("true")
       expect(screen.getByText("Checking connectors...")).toBeTruthy()
     })
@@ -446,6 +446,36 @@ describe("Connect", () => {
       // The grant page will retry claim + verify on its own
       vi.restoreAllMocks()
     })
+
+    it("shows connector status message while run is active", async () => {
+      mockStartExport.mockResolvedValue("run-1")
+      mockUsePlatforms.mockReturnValue(
+        defaultPlatforms({ platforms: [CHATGPT_PLATFORM] })
+      )
+
+      const { router } = renderConnect(REAL_SESSION_SEARCH)
+      const connectButton = screen.getByRole("button", {
+        name: /connect chatgpt/i,
+      })
+
+      await act(async () => {
+        fireEvent.click(connectButton)
+      })
+
+      await act(async () => {
+        mockRuns = [
+          {
+            id: "run-1",
+            status: "running",
+            statusMessage: "Collecting conversations...",
+          },
+        ]
+        router.navigate(`${ROUTES.connect}${REAL_SESSION_SEARCH}`)
+      })
+
+      expect(screen.getByText("Collecting conversations...")).toBeTruthy()
+    })
+
   })
 
   // -------- grant URL construction --------

@@ -126,6 +126,12 @@ export function useEvents() {
 
       // Get message, phase, and count from status if it's an object
       const statusMessage = typeof status === 'object' ? status.message : undefined;
+      const fallbackStatusMessage =
+        statusType === 'WAITING_FOR_USER'
+          ? 'Waiting for sign in...'
+          : statusType === 'RUNNING'
+            ? 'Collecting data...'
+            : undefined;
       const phase = typeof status === 'object' ? status.phase : undefined;
       const itemCount = typeof status === 'object' ? status.count : undefined;
 
@@ -133,18 +139,25 @@ export function useEvents() {
       const updateProgress = () => {
         dispatch(updateRunExportData({
           runId,
-          statusMessage,
+          statusMessage: statusMessage ?? fallbackStatusMessage,
           phase,
           itemCount,
         }));
       };
 
-      if (statusType === 'CONNECT_WEBSITE' || statusType === 'WAITING_LOGIN') {
+      if (
+        statusType === 'CONNECT_WEBSITE' ||
+        statusType === 'WAITING_LOGIN' ||
+        statusType === 'WAITING_FOR_USER'
+      ) {
         dispatch(updateRunConnected({ runId, isConnected: false }));
         updateProgress();
       } else if (statusType === 'DOWNLOADING' || statusType === 'COLLECTING') {
         dispatch(updateRunStatus({ runId, status: 'running' }));
         dispatch(updateRunConnected({ runId, isConnected: true }));
+        updateProgress();
+      } else if (statusType === 'RUNNING') {
+        dispatch(updateRunStatus({ runId, status: 'running' }));
         updateProgress();
       } else if (statusType === 'STARTED') {
         dispatch(updateRunStatus({ runId, status: 'running' }));

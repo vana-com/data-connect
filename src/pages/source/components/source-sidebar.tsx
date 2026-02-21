@@ -1,6 +1,7 @@
 import { PlatformIcon } from "@/components/icons/platform-icon"
 import { Text } from "@/components/typography/text"
 import { LINKS } from "@/config/links"
+import { openExternalUrl } from "@/lib/open-resource"
 import { ROUTES } from "@/config/routes"
 import { buildSettingsUrl } from "@/pages/settings/url"
 import {
@@ -108,6 +109,10 @@ function SourceActionLinks() {
         muted
         className="gap-1"
         trailingIcon={<ArrowUpRightIcon aria-hidden />}
+        onClick={event => {
+          event.preventDefault()
+          void openExternalUrl(LINKS.appBuilderRegistration)
+        }}
       >
         Build on Vana
       </SourceLinkRow>

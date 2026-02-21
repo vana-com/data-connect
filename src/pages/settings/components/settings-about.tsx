@@ -143,7 +143,7 @@ export function SettingsAbout({
             label: personalServer.error || "Failed to start",
           }
         : personalServer.status === "starting"
-          ? { tone: "accent" as const, label: "Starting…" }
+          ? { tone: "warning" as const, label: "Starting…" }
           : { tone: "destructive" as const, label: "Not running" }
 
   const browserStatusDescription =
@@ -370,7 +370,7 @@ export function SettingsAbout({
               }
               below={
                 pathsDebug ? (
-                  <div className="h-[400px] bg-background overflow-hidden px-4 pb-3 pl-[62px]">
+                  <div className="h-[400px] bg-background overflow-hidden px-4 pl-[62px]">
                     <hr className="border-border/70" />
                     <div className="h-full overflow-auto px-4 pt-3">
                       <Text pre intent="fine" dim>

@@ -1,8 +1,4 @@
-import {
-  CheckIcon,
-  ChevronDownIcon,
-  ChevronUpIcon,
-} from "lucide-react"
+import { CheckIcon, ChevronDownIcon, ChevronUpIcon } from "lucide-react"
 import { Link } from "react-router-dom"
 import { cn } from "@/lib/classes"
 import { ROUTES } from "@/config/routes"
@@ -130,12 +126,16 @@ export function ImportHistoryRowActions({
           {getStatusLabel(run.status)}
         </SettingsRowAction>
       ) : null}
+
+      {/* Purposefully hidden for now.  */}
       {canRunAgain && rerunPlatform ? (
         <SettingsRowAction
           type="button"
           className={cn(
             actionSvgClass,
-            "text-foreground-dim hover:text-foreground"
+            "text-foreground-dim hover:text-foreground",
+            // hide it for now!
+            "hidden"
           )}
           onClick={() => onRunAgain(rerunPlatform)}
         >

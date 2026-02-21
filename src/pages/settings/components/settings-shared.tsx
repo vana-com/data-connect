@@ -80,7 +80,7 @@ export function SettingsCard({
     <div
       data-component="settings-card"
       className={cn(
-        "rounded-card ring ring-border/30 bg-background",
+        "rounded-card overflow-hidden ring ring-border/30 bg-background",
         className
       )}
     >

@@ -40,6 +40,13 @@ export const toFileUrl = (path: string) => {
   return `${FILE_PROTOCOL}${encodeURI(normalizedPath)}`
 }
 
+export const toLocalDirectoryPath = (path: string) => {
+  const normalizedPath = normalizeLocalPath(path.trim())
+  return normalizedPath.endsWith(".json")
+    ? normalizedPath.replace(/[\\/][^\\/]+$/, "")
+    : normalizedPath
+}
+
 export async function openResource(
   target: string,
   options: OpenResourceOptions = {}

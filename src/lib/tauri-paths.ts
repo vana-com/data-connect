@@ -29,3 +29,6 @@ export const loadLatestSourceExportFull = (company: string, name: string) =>
     company,
     name,
   })
+
+export const clearExportedDataCache = () =>
+  invoke("clear_exported_data_cache")

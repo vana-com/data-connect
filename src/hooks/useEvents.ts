@@ -52,10 +52,34 @@ interface ConnectorExportCompleteEvent {
   timestamp: number;
 }
 
-function isExportedData(value: unknown): value is ExportedData {
-  if (typeof value !== 'object' || value === null) return false;
-  const candidate = value as Partial<ExportedData>;
-  return typeof candidate.platform === 'string' && typeof candidate.company === 'string';
+function toExportedData(
+  value: unknown,
+  fallback: { platform: string; company: string }
+): ExportedData | null {
+  if (typeof value !== "object" || value === null) return null;
+  const candidate = value as Record<string, unknown>;
+
+  const platform =
+    typeof candidate.platform === "string" && candidate.platform.length > 0
+      ? candidate.platform
+      : fallback.platform;
+  const company =
+    typeof candidate.company === "string" && candidate.company.length > 0
+      ? candidate.company
+      : fallback.company;
+  const exportedAt =
+    typeof candidate.exportedAt === "string" && candidate.exportedAt.length > 0
+      ? candidate.exportedAt
+      : typeof candidate.timestamp === "string" && candidate.timestamp.length > 0
+        ? candidate.timestamp
+        : new Date().toISOString();
+
+  return {
+    ...candidate,
+    platform,
+    company,
+    exportedAt,
+  } as ExportedData;
 }
 
 /**
@@ -174,6 +198,19 @@ async function persistAndDeliverExport({
     debugLog('[Data Delivery] Synced run', runId, 'immediately after export');
   } catch (err) {
     persistedRunIds.delete(runId);
+    const message = err instanceof Error ? err.message : String(err);
+    dispatch(
+      updateRunExportData({
+        runId,
+        statusMessage: `Failed to save export locally: ${message}`,
+      })
+    );
+    dispatch(
+      updateRunLogs({
+        runId,
+        logs: `[Export Persistence Error] ${message}`,
+      })
+    );
     if (isDev) {
       console.warn('[Export Persistence] Deferred or failed for run', runId, err);
     }
@@ -271,13 +308,25 @@ export function useEvents() {
         );
         dispatch(updateRunConnected({ runId, isConnected: true }));
 
-        if (typeof status === 'object' && isExportedData(status.data)) {
+        if (typeof status === 'object') {
+          const activeRun = store.getState().app.runs.find(r => r.id === runId);
+          if (!activeRun) {
+            if (isDev) {
+              console.warn('[Connector Status] COMPLETE for unknown run', runId);
+            }
+            return;
+          }
+          const normalizedData = toExportedData(status.data, {
+            platform: activeRun.platformId,
+            company: activeRun.company ?? 'Unknown',
+          });
+          if (!normalizedData) return;
           void persistAndDeliverExport({
             runId,
-            platformId: status.data.platform,
-            company: status.data.company,
-            name: status.data.platform,
-            exportData: status.data,
+            platformId: normalizedData.platform,
+            company: normalizedData.company,
+            name: normalizedData.platform,
+            exportData: normalizedData,
             dispatch,
             persistedRunIds,
           });
@@ -340,7 +389,11 @@ export function useEvents() {
 
     // Listen for export complete events from connector
     addListener<ConnectorExportCompleteEvent>('export-complete', ({ runId, platformId, company, name, data }) => {
-      if (!isExportedData(data)) return;
+      const normalizedData = toExportedData(data, {
+        platform: platformId,
+        company,
+      });
+      if (!normalizedData) return;
 
       dispatch(
         updateRunStatus({
@@ -355,7 +408,7 @@ export function useEvents() {
         platformId,
         company,
         name,
-        exportData: data,
+        exportData: normalizedData,
         dispatch,
         persistedRunIds,
       });

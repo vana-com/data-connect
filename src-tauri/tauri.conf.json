@@ -56,7 +56,6 @@
       "icons/icon.ico"
     ],
     "resources": {
-      "../connectors/*": "connectors/",
       "../connectors/linkedin/**/*": "connectors/linkedin/",
       "../connectors/meta/**/*": "connectors/meta/",
       "../connectors/openai/**/*": "connectors/openai/",

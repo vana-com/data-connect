@@ -1,6 +1,5 @@
 import { beforeEach, describe, expect, it, vi } from "vitest"
 import {
-  act,
   fireEvent,
   render,
   screen,
@@ -125,7 +124,7 @@ describe("SourceOverview", () => {
     renderSourcePage()
 
     const [sourcePathLink] = await screen.findAllByRole("link", {
-      name: "Open exports folder",
+      name: "Reveal imports folder",
     })
 
     fireEvent.click(sourcePathLink)
@@ -140,6 +139,42 @@ describe("SourceOverview", () => {
     const scoped = within(view.container)
     const backLink = await scoped.findByRole("link", { name: "Back to Home" })
     expect(backLink.getAttribute("href")).toBe(ROUTES.home)
+  })
+
+  it("shows synced status from the latest successful run", async () => {
+    mockState = {
+      app: {
+        runs: [
+          {
+            id: "run-1",
+            platformId: "chatgpt-playwright",
+            startDate: "2026-02-11T10:00:00.000Z",
+            status: "success",
+            syncedToPersonalServer: true,
+          },
+        ],
+        platforms: [
+          {
+            id: "chatgpt-playwright",
+            company: "OpenAI",
+            name: "ChatGPT",
+          },
+        ],
+      },
+    }
+    mockLoadLatestSourceExportPreview.mockResolvedValue({
+      previewJson: "{\n  \"ok\": true\n}",
+      isTruncated: false,
+      filePath: "/tmp/dataconnect/exported_data/OpenAI/ChatGPT/chatgpt.json",
+      fileSizeBytes: 2048,
+      exportedAt: "2026-02-11T10:00:00.000Z",
+    })
+
+    renderSourcePage()
+
+    await waitFor(() => {
+      expect(screen.getByRole("link", { name: "Synced to Personal Server" }))
+    })
   })
 
   it("shows copy failed when clipboard fallback copy returns false", async () => {

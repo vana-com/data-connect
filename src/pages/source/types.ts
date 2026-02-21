@@ -39,6 +39,7 @@ export interface SourceOverviewPageState {
   } | null
   sourceName: string
   lastUsedLabel: string
+  syncStatusLabel: string
   sourcePlatform: Platform | null
   preview: SourceExportPreview | null
   isPreviewLoading: boolean

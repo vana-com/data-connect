@@ -68,6 +68,17 @@ export function useSourceOverviewPage(
       .sort((a: Run, b: Run) => b.startDate.localeCompare(a.startDate))[0]
   }, [platformId, runs, sourceEntry?.id])
 
+  const latestSuccessfulSourceRun = useMemo(() => {
+    if (!platformId) return null
+    return [...runs]
+      .filter(
+        run =>
+          getPlatformRegistryEntryById(run.platformId)?.id === sourceEntry?.id &&
+          run.status === "success"
+      )
+      .sort((a: Run, b: Run) => b.startDate.localeCompare(a.startDate))[0]
+  }, [platformId, runs, sourceEntry?.id])
+
   const sourcePlatform = useMemo(
     () =>
       platforms.find(
@@ -174,6 +185,17 @@ export function useSourceOverviewPage(
       ),
     [latestSourceRun?.startDate, preview?.exportedAt]
   )
+  const syncStatusLabel = useMemo(() => {
+    if (!latestSuccessfulSourceRun) {
+      return "Never synced"
+    }
+    return latestSuccessfulSourceRun.syncedToPersonalServer
+      ? "Synced to Personal Server"
+      : "Not synced to Personal Server"
+  }, [
+    latestSuccessfulSourceRun?.id,
+    latestSuccessfulSourceRun?.syncedToPersonalServer,
+  ])
 
   const handleOpenSourcePath = async () => {
     if (sourcePlatform) {
@@ -203,11 +225,15 @@ export function useSourceOverviewPage(
       let copyPayload: string | null = null
 
       if (sourcePlatform) {
-        const fullJson = await loadLatestSourceExportFull(
-          sourcePlatform.company,
-          sourcePlatform.name
-        )
-        copyPayload = fullJson ?? null
+        try {
+          const fullJson = await loadLatestSourceExportFull(
+            sourcePlatform.company,
+            sourcePlatform.name
+          )
+          copyPayload = fullJson ?? null
+        } catch (error) {
+          console.error("Failed to load full source export JSON:", error)
+        }
       }
 
       if (!copyPayload) {
@@ -255,6 +281,7 @@ export function useSourceOverviewPage(
     sourceEntry,
     sourceName,
     lastUsedLabel,
+    syncStatusLabel,
     sourcePlatform,
     preview,
     isPreviewLoading,

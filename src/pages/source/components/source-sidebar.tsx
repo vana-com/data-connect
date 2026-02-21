@@ -16,6 +16,7 @@ interface SourceSidebarProps {
   sourceId: string
   sourceName: string
   lastUsedLabel: string
+  syncStatusLabel: string
   onOpenSourcePath: () => Promise<void>
 }
 
@@ -23,6 +24,7 @@ export function SourceSidebar({
   sourceId,
   sourceName,
   lastUsedLabel,
+  syncStatusLabel,
   onOpenSourcePath,
 }: SourceSidebarProps) {
   const importsSettingsUrl = buildSettingsUrl({
@@ -48,6 +50,7 @@ export function SourceSidebar({
           <SourceActivityLinks
             importsSettingsUrl={importsSettingsUrl}
             lastUsedLabel={lastUsedLabel}
+            syncStatusLabel={syncStatusLabel}
             onOpenSourcePath={onOpenSourcePath}
           />
           <hr className="w-full hidden lg:block" />
@@ -61,12 +64,14 @@ export function SourceSidebar({
 interface SourceActivityLinksProps {
   importsSettingsUrl: string
   lastUsedLabel: string
+  syncStatusLabel: string
   onOpenSourcePath: () => Promise<void>
 }
 
 function SourceActivityLinks({
   importsSettingsUrl,
   lastUsedLabel,
+  syncStatusLabel,
   onOpenSourcePath,
 }: SourceActivityLinksProps) {
   const lastUsedText =
@@ -82,7 +87,7 @@ function SourceActivityLinks({
           void onOpenSourcePath()
         }}
       >
-        Open exports folder
+        Reveal imports folder
       </SourceLinkRow>
       <SourceLinkRow icon={<ActivityIcon aria-hidden />}>
         {lastUsedText}
@@ -91,7 +96,7 @@ function SourceActivityLinks({
         to={importsSettingsUrl}
         icon={<RefreshCcwIcon aria-hidden />}
       >
-        Never synced
+        {syncStatusLabel}
       </SourceLinkRow>
     </div>
   )

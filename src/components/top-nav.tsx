@@ -48,7 +48,7 @@ export function TopNav() {
         {/* Logo/Brand */}
         <NavLink
           to={ROUTES.home}
-          className="flex items-center gap-2"
+          className="h-full flex items-center gap-2"
           aria-label="Data Connect"
         >
           <DcLogotype

@@ -130,20 +130,47 @@ export function Home() {
     }
   }, [deepLinkInput, navigate])
 
-  // Separate available platforms (memoized to avoid re-filtering on every render)
-  const connectedPlatformsList = useMemo(() => {
-    if (DEV_FLAGS.useHomeTestFixtures && platforms.length === 0) {
-      return testConnectedPlatforms
-    }
-    return displayPlatforms.filter(platform => isPlatformConnected(platform.id))
-  }, [displayPlatforms, isPlatformConnected, platforms.length])
-
   const availablePlatforms = useMemo(() => {
     if (DEV_FLAGS.useHomeTestFixtures && platforms.length === 0) {
       return testPlatforms
     }
     return displayPlatforms
   }, [displayPlatforms, platforms.length])
+
+  const connectedCanonicalIdsFromRuns = useMemo(
+    () =>
+      new Set(
+        runs
+          .filter(run => run.status === "success" && Boolean(run.exportPath))
+          .map(
+            run =>
+              getPlatformRegistryEntry({
+                id: run.platformId,
+                name: run.name,
+                company: run.company,
+              })?.id
+          )
+          .filter((id): id is string => Boolean(id))
+      ),
+    [runs]
+  )
+
+  // Separate available platforms (memoized to avoid re-filtering on every render)
+  const connectedPlatformsList = useMemo(() => {
+    if (DEV_FLAGS.useHomeTestFixtures && platforms.length === 0) {
+      return testConnectedPlatforms
+    }
+    return displayPlatforms.filter(platform => {
+      if (isPlatformConnected(platform.id)) return true
+      const canonicalId = getPlatformRegistryEntry(platform)?.id
+      return canonicalId ? connectedCanonicalIdsFromRuns.has(canonicalId) : false
+    })
+  }, [
+    connectedCanonicalIdsFromRuns,
+    displayPlatforms,
+    isPlatformConnected,
+    platforms.length,
+  ])
 
   return (
     <div className="container py-w16">

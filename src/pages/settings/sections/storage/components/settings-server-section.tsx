@@ -11,13 +11,15 @@ import { Button } from "@/components/ui/button"
 import { copyTextToClipboard } from "@/lib/clipboard"
 import { cn } from "@/lib/classes"
 import {
-  SettingsBadgeActive,
-  SettingsBadgeNone,
   SettingsCard,
   SettingsCardStack,
   SettingsRowAction,
   SettingsSingleSelectRowGroup,
 } from "@/pages/settings/components/public"
+import {
+  SettingsBadgeActive,
+  SettingsBadgeNone,
+} from "./settings-status-badge"
 import { SettingsConfirmAction } from "@/pages/settings/components/settings-confirm-action"
 import { AuthRow } from "./auth-row"
 import { PublicEndpointRow } from "./public-endpoint-row"

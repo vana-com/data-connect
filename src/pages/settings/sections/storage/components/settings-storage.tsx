@@ -11,6 +11,8 @@ import { SettingsConfirmAction } from "@/pages/settings/components/settings-conf
 import {
   SettingsBadgeActive,
   SettingsBadgeNone,
+} from "./settings-status-badge"
+import {
   SettingsCard,
   SettingsCardStack,
   SettingsRowAction,

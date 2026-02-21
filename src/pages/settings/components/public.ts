@@ -3,9 +3,6 @@
 // Reference: React Best Practices skill -> "2.1 Avoid Barrel File Imports".
 
 export {
-  SettingsBadgeActive,
-  SettingsBadgeError,
-  SettingsBadgeNone,
   SettingsCard,
   SettingsCardStack,
   SettingsRowAction,

@@ -19,7 +19,15 @@ export function ActionButton({
       variant={variant}
       size={size}
       fullWidth={fullWidth}
-      className={cn("px-4", className)}
+      className={cn(
+        // Base layout spacing
+        "px-4",
+        // Hover treatment
+        "hover:border-black hover:ring-4 hover:ring-accent/[0.07]",
+        // Focus-visible treatment
+        "focus-visible:border-black focus-visible:ring-4 focus-visible:ring-accent/[0.07] focus-visible:ring-offset-0",
+        className
+      )}
       {...props}
     >
       {children}
@@ -42,9 +50,18 @@ export function ActionPanel({
     <div
       className={cn(
         buttonVariants({ variant, size, fullWidth }),
-        "cursor-default px-4",
-        // "bg-background/40 hover:bg-background/40 hover:border-ring/20",
-        "hover:border-ring/20",
+        // Base panel surface
+        "cursor-default px-4 transition-none",
+        // Hover + active overrides (no visual interaction)
+        "hover:border-ring/20 hover:ring-0",
+        "active:border-ring/20 active:ring-0",
+        // Data/ARIA state overrides (no visual interaction)
+        "data-[state=open]:border-ring/20 data-[state=open]:ring-0",
+        "aria-pressed:border-ring/20 aria-pressed:ring-0",
+        "aria-selected:border-ring/20 aria-selected:ring-0",
+        // Focus override (no visual interaction)
+        "focus-visible:ring-0",
+        "focus-visible:ring-offset-0",
         className
       )}
       {...props}

@@ -22,7 +22,7 @@ export const PLATFORM_REGISTRY: PlatformRegistryEntry[] = [
     displayName: "ChatGPT",
     iconKey: "chatgpt",
     iconEmoji: "🤖",
-    primaryColor: "#10A37F",
+    primaryColor: "#0d45d3",
     platformIds: ["chatgpt-playwright", "chatgpt"],
     aliases: ["openai"],
     availability: "requiresConnector",

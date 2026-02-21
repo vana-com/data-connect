@@ -34,23 +34,22 @@ export function AvailableSourcesList({
     [connectedPlatformIds]
   )
   // Maps platformId → statusMessage (undefined if no message yet)
-  const connectingPlatforms = useMemo(
-    () => {
-      const map = new Map<string, string | undefined>()
-      runs.filter(run => run.status === "running").forEach(run => {
+  const connectingPlatforms = useMemo(() => {
+    const map = new Map<string, string | undefined>()
+    runs
+      .filter(run => run.status === "running")
+      .forEach(run => {
         map.set(run.platformId, run.statusMessage)
       })
-      return map
-    },
-    [runs]
-  )
+    return map
+  }, [runs])
 
   return (
     <section className="space-y-gap">
       <Text as="h2" weight="medium">
         {headline}
       </Text>
-      <div className="grid grid-cols-2 gap-2 action-outset">
+      <div className="grid grid-cols-2 gap-3 action-outset">
         {connectEntries
           .map(entry => {
             const platform = resolvePlatformForEntry(platforms, entry)

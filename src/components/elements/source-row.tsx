@@ -84,19 +84,15 @@ export function SourceStack({
   const shouldShowArrow = showArrow ?? Boolean(meta)
   const shouldRenderMetaSection =
     shouldShowArrow || Boolean(meta) || Boolean(trailingSlot)
+  void stackPrimaryColor
+  // const darkenedStackColor = stackPrimaryColor
+  //   ? `color-mix(in srgb, ${stackPrimaryColor} 30%, black)`
+  //   : undefined
+  // bgColor: `color-mix(in srgb, ${darkenedStackColor} 1%, transparent)`,
 
   return (
     <div className="w-full">
-      <div
-        className="h-[90px] flex items-start border-b"
-        style={
-          stackPrimaryColor
-            ? {
-                backgroundImage: `linear-gradient(30deg, color-mix(in srgb, ${stackPrimaryColor} 9%, transparent) 0%, color-mix(in srgb, ${stackPrimaryColor} 3%, transparent) 55%, transparent 100%)`,
-              }
-            : undefined
-        }
-      >
+      <div className="h-[72px] flex items-start border-b">
         <div className="p-2">
           <PlatformIcon
             iconName={iconName}

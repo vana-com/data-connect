@@ -115,7 +115,7 @@ export function Grant() {
     const loadingMessage = resolvedFlowState.status === "preparing-server"
       ? "Preparing secure connection…"
       : undefined
-    content = <GrantLoadingState message={loadingMessage} />
+    content = <GrantLoadingState title={loadingMessage} />
   } else if (resolvedFlowState.status === "error") {
     content = (
       <GrantErrorState

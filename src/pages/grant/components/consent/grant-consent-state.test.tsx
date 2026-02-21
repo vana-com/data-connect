@@ -17,15 +17,6 @@ function createSession(scopes: string[]): GrantSession {
   }
 }
 
-function createBuilderManifest(
-  overrides: Partial<BuilderManifest> = {}
-): BuilderManifest {
-  return {
-    name: "Demo App",
-    appUrl: "https://demo.app",
-    ...overrides,
-  }
-}
 
 function renderConsent(
   scopes: string[],

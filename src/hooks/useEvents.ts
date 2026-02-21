@@ -19,7 +19,7 @@ import type {
   ProgressPhase,
 } from '../types';
 import { normalizeExportData } from '../lib/export-data';
-import { getScopeForPlatform, ingestData, ingestExportData } from '../services/personalServerIngest';
+import { ingestExportData } from '../services/personalServerIngest';
 
 // Extended connector status event that can handle both string and object status
 interface ConnectorStatusEventPayload {
@@ -201,7 +201,7 @@ export function useEvents() {
               const ingested = await ingestExportData(
                 serverStatus.port,
                 exportData.platform || 'unknown',
-                exportData as Record<string, unknown>
+                exportData as unknown as Record<string, unknown>
               );
               if (ingested.length === 0) return;
 

@@ -22,8 +22,8 @@
         "resizable": true,
         "fullscreen": false,
         "decorations": true,
-        "titleBarStyle": "Overlay",
-        "hiddenTitle": true
+        "titleBarStyle": "Visible",
+        "hiddenTitle": false
       }
     ],
     "security": {

@@ -21,6 +21,7 @@ let mockRuns: Array<{
   company: string
   name: string
   logs: string
+  exportPath?: string
 }> = []
 
 vi.mock("react-router-dom", async () => {
@@ -233,6 +234,7 @@ describe("Home", () => {
         company: "OpenAI",
         name: "ChatGPT",
         logs: "",
+        exportPath: "/tmp/dataconnect/exported_data/OpenAI/ChatGPT/run-1",
       },
     ]
 
@@ -242,6 +244,55 @@ describe("Home", () => {
     })
 
     cleanup()
+    renderHome()
+
+    expect(
+      screen.queryByRole("button", { name: /connect chatgpt/i })
+    ).toBeNull()
+    expect(screen.getByRole("button", { name: /chatgpt/i })).toBeTruthy()
+  })
+
+  it("shows connected source from persisted run even when connected status map is stale", async () => {
+    const platform = {
+      id: "chatgpt-playwright",
+      company: "OpenAI",
+      name: "ChatGPT",
+      filename: "chatgpt-playwright",
+      description: "ChatGPT export",
+      isUpdated: false,
+      logoURL: "",
+      needsConnection: true,
+      connectURL: null,
+      connectSelector: null,
+      exportFrequency: null,
+      vectorize_config: null,
+      runtime: "playwright",
+    }
+    mockUsePlatforms.mockReturnValue({
+      platforms: [platform],
+      connectedPlatforms: {},
+      loadPlatforms: vi.fn(),
+      refreshConnectedStatus: vi.fn(),
+      getPlatformById: vi.fn(),
+      isPlatformConnected: vi.fn(() => false),
+    })
+    mockRuns = [
+      {
+        id: "chatgpt-playwright-1",
+        platformId: "ChatGPT",
+        filename: "ChatGPT",
+        isConnected: true,
+        startDate: new Date().toISOString(),
+        status: "success",
+        url: "",
+        company: "OpenAI",
+        name: "ChatGPT",
+        logs: "",
+        exportPath:
+          "/Users/me/Library/Application Support/dev.dataconnect/exported_data/OpenAI/ChatGPT/chatgpt-playwright-1",
+      },
+    ]
+
     renderHome()
 
     expect(

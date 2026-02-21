@@ -78,6 +78,24 @@ fn read_export_content(path: &Path) -> Result<serde_json::Value, String> {
     }
 }
 
+fn sanitize_path_component(input: &str) -> String {
+    let mut sanitized = String::with_capacity(input.len());
+    for ch in input.chars() {
+        match ch {
+            '/' | '\\' | '\0' => continue,
+            _ => sanitized.push(ch),
+        }
+    }
+
+    let without_traversal = sanitized.replace("..", "");
+    let trimmed = without_traversal.trim();
+    if trimmed.is_empty() {
+        "unknown".to_string()
+    } else {
+        trimmed.to_string()
+    }
+}
+
 fn truncate_utf8_by_bytes(input: &str, max_bytes: usize) -> (String, bool) {
     if input.len() <= max_bytes {
         return (input.to_string(), false);
@@ -197,13 +215,16 @@ pub async fn write_export_data(
             .to_string()
     });
 
+    let safe_company = sanitize_path_component(&company);
+    let safe_name = sanitize_path_component(&name);
+
     let data_dir = app
         .path()
         .app_data_dir()
         .map_err(|e| format!("Failed to get app data dir: {}", e))?
         .join("exported_data")
-        .join(&company)
-        .join(&name)
+        .join(&safe_company)
+        .join(&safe_name)
         .join(&run_id);
 
     fs::create_dir_all(&data_dir)
@@ -703,6 +724,7 @@ pub async fn get_log_path(app: AppHandle) -> Result<String, String> {
 mod tests {
     use super::build_source_export_preview;
     use super::read_export_content;
+    use super::sanitize_path_component;
     use serde_json::json;
     use std::fs;
     use std::path::PathBuf;
@@ -778,5 +800,15 @@ mod tests {
         );
         assert_eq!(content["content"], serde_json::Value::Null);
         assert_eq!(content["syncedToPersonalServer"], serde_json::Value::Bool(true));
+    }
+
+    #[test]
+    fn sanitize_path_component_strips_traversal_and_separators() {
+        assert_eq!(sanitize_path_component("../OpenAI"), "OpenAI");
+        assert_eq!(
+            sanitize_path_component("linked/in\\\\profile\0data"),
+            "linkedinprofiledata"
+        );
+        assert_eq!(sanitize_path_component(".."), "unknown");
     }
 }

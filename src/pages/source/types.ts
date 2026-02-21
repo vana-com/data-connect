@@ -3,7 +3,6 @@ import type { SourceExportPreview } from "@/lib/tauri-paths"
 import type { Platform } from "@/types"
 
 export type CopyStatus = "idle" | "copying" | "copied" | "error"
-export type ResetCacheStatus = "idle" | "resetting" | "success" | "error"
 
 type SourceLinkRowBaseProps = {
   children: ReactNode
@@ -39,16 +38,13 @@ export interface SourceOverviewPageState {
   } | null
   sourceName: string
   lastUsedLabel: string
-  syncStatusLabel: string
   sourcePlatform: Platform | null
   preview: SourceExportPreview | null
   isPreviewLoading: boolean
   previewError: string | null
   copyStatus: CopyStatus
-  resetCacheStatus: ResetCacheStatus
   openSourcePath: string | null
   fallbackPreviewJson: string
   handleOpenSourcePath: () => Promise<void>
   handleCopyFullJson: () => Promise<void>
-  handleResetExportedDataCache: () => Promise<void>
 }

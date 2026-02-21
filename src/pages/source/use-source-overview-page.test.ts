@@ -14,7 +14,6 @@ const mockOpenPlatformExportFolder = vi.fn()
 const mockLoadLatestSourceExportPreview = vi.fn()
 const mockLoadLatestSourceExportFull = vi.fn()
 const mockOpenExportFolderPath = vi.fn()
-const mockClearExportedDataCache = vi.fn()
 
 vi.mock("react-redux", () => ({
   useSelector: (selector: (state: typeof mockState) => unknown) =>
@@ -29,8 +28,6 @@ vi.mock("@/lib/tauri-paths", () => ({
     mockLoadLatestSourceExportPreview(...args),
   loadLatestSourceExportFull: (...args: unknown[]) =>
     mockLoadLatestSourceExportFull(...args),
-  clearExportedDataCache: (...args: unknown[]) =>
-    mockClearExportedDataCache(...args),
 }))
 
 vi.mock("@/lib/open-resource", () => ({
@@ -63,7 +60,6 @@ beforeEach(() => {
   mockLoadLatestSourceExportFull.mockResolvedValue("{\"ok\":true}")
   mockOpenExportFolderPath.mockResolvedValue(true)
   mockOpenPlatformExportFolder.mockResolvedValue(undefined)
-  mockClearExportedDataCache.mockResolvedValue(undefined)
 })
 
 describe("useSourceOverviewPage", () => {
@@ -271,43 +267,4 @@ describe("useSourceOverviewPage", () => {
     }
   })
 
-  it(
-    "resets cache status back to idle after success timeout",
-    async () => {
-    const { result } = renderHook(() => useSourceOverviewPage("chatgpt"))
-
-    await waitFor(() => {
-      expect(result.current.sourceEntry?.id).toBe("chatgpt")
-    })
-
-    await act(async () => {
-      await result.current.handleResetExportedDataCache()
-    })
-
-    expect(result.current.resetCacheStatus).toBe("success")
-
-    await waitFor(
-      () => {
-        expect(result.current.resetCacheStatus).toBe("idle")
-      },
-      { timeout: 6_000 }
-    )
-    },
-    12_000
-  )
-
-  it("sets reset cache status to error when cache clearing fails", async () => {
-    mockClearExportedDataCache.mockRejectedValue(new Error("permission denied"))
-    const { result } = renderHook(() => useSourceOverviewPage("chatgpt"))
-
-    await waitFor(() => {
-      expect(result.current.sourceEntry?.id).toBe("chatgpt")
-    })
-
-    await act(async () => {
-      await result.current.handleResetExportedDataCache()
-    })
-
-    expect(result.current.resetCacheStatus).toBe("error")
-  })
 })

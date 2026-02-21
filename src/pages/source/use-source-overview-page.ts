@@ -4,7 +4,6 @@ import { copyTextToClipboard } from "@/lib/clipboard"
 import { openExportFolderPath } from "@/lib/open-resource"
 import { getPlatformRegistryEntryById } from "@/lib/platform/utils"
 import {
-  clearExportedDataCache,
   getUserDataPath,
   loadLatestSourceExportFull,
   loadLatestSourceExportPreview,
@@ -12,31 +11,14 @@ import {
   type SourceExportPreview,
 } from "@/lib/tauri-paths"
 import type { RootState, Run } from "@/types"
-import type {
-  CopyStatus,
-  ResetCacheStatus,
-  SourceOverviewPageState,
-} from "./types"
+import type { CopyStatus, SourceOverviewPageState } from "./types"
 import { formatRelativeTimeLabel } from "./utils"
 
 const actionFeedbackMs = 1_200
-const resetActionMinLoadingMs = 1_500
 
 const isTauriRuntime = () =>
   typeof window !== "undefined" &&
   ("__TAURI__" in window || "__TAURI_INTERNALS__" in window)
-
-const waitForMinimumLoadingState = async (
-  startedAtMs: number,
-  minLoadingMs: number
-) => {
-  const elapsedMs = Date.now() - startedAtMs
-  const remainingMs = minLoadingMs - elapsedMs
-  if (remainingMs <= 0) return
-  await new Promise(resolve => {
-    window.setTimeout(resolve, remainingMs)
-  })
-}
 
 export function useSourceOverviewPage(
   platformId?: string
@@ -49,8 +31,6 @@ export function useSourceOverviewPage(
   const [isPreviewLoading, setIsPreviewLoading] = useState(false)
   const [previewError, setPreviewError] = useState<string | null>(null)
   const [copyStatus, setCopyStatus] = useState<CopyStatus>("idle")
-  const [resetCacheStatus, setResetCacheStatus] =
-    useState<ResetCacheStatus>("idle")
 
   const sourceEntry = platformId
     ? getPlatformRegistryEntryById(platformId)
@@ -64,17 +44,6 @@ export function useSourceOverviewPage(
       .filter(
         run =>
           getPlatformRegistryEntryById(run.platformId)?.id === sourceEntry?.id
-      )
-      .sort((a: Run, b: Run) => b.startDate.localeCompare(a.startDate))[0]
-  }, [platformId, runs, sourceEntry?.id])
-
-  const latestSuccessfulSourceRun = useMemo(() => {
-    if (!platformId) return null
-    return [...runs]
-      .filter(
-        run =>
-          getPlatformRegistryEntryById(run.platformId)?.id === sourceEntry?.id &&
-          run.status === "success"
       )
       .sort((a: Run, b: Run) => b.startDate.localeCompare(a.startDate))[0]
   }, [platformId, runs, sourceEntry?.id])
@@ -151,18 +120,6 @@ export function useSourceOverviewPage(
   }, [sourcePlatform])
 
   useEffect(() => {
-    if (resetCacheStatus !== "success" && resetCacheStatus !== "error") {
-      return
-    }
-    const timeoutId = window.setTimeout(() => {
-      setResetCacheStatus("idle")
-    }, actionFeedbackMs)
-    return () => {
-      window.clearTimeout(timeoutId)
-    }
-  }, [resetCacheStatus])
-
-  useEffect(() => {
     if (copyStatus !== "copied" && copyStatus !== "error") {
       return
     }
@@ -185,18 +142,6 @@ export function useSourceOverviewPage(
       ),
     [latestSourceRun?.startDate, preview?.exportedAt]
   )
-  const syncStatusLabel = useMemo(() => {
-    if (!latestSuccessfulSourceRun) {
-      return "Never synced"
-    }
-    return latestSuccessfulSourceRun.syncedToPersonalServer
-      ? "Synced to Personal Server"
-      : "Not synced to Personal Server"
-  }, [
-    latestSuccessfulSourceRun?.id,
-    latestSuccessfulSourceRun?.syncedToPersonalServer,
-  ])
-
   const handleOpenSourcePath = async () => {
     if (sourcePlatform) {
       try {
@@ -251,24 +196,6 @@ export function useSourceOverviewPage(
     }
   }
 
-  const handleResetExportedDataCache = async () => {
-    if (resetCacheStatus === "resetting") return
-    const startedAtMs = Date.now()
-    setResetCacheStatus("resetting")
-    try {
-      await clearExportedDataCache()
-      setPreview(null)
-      setPreviewError(null)
-      setIsPreviewLoading(false)
-      await waitForMinimumLoadingState(startedAtMs, resetActionMinLoadingMs)
-      setResetCacheStatus("success")
-    } catch (error) {
-      console.error("Failed to reset exported data cache:", error)
-      await waitForMinimumLoadingState(startedAtMs, resetActionMinLoadingMs)
-      setResetCacheStatus("error")
-    }
-  }
-
   const fallbackPreviewJson = `{
   "${sourceEntry?.id ?? "source"}Preview": {
     "status": "stub",
@@ -281,17 +208,14 @@ export function useSourceOverviewPage(
     sourceEntry,
     sourceName,
     lastUsedLabel,
-    syncStatusLabel,
     sourcePlatform,
     preview,
     isPreviewLoading,
     previewError,
     copyStatus,
-    resetCacheStatus,
     openSourcePath,
     fallbackPreviewJson,
     handleOpenSourcePath,
     handleCopyFullJson,
-    handleResetExportedDataCache,
   }
 }

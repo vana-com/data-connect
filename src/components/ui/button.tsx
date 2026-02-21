@@ -149,7 +149,9 @@ function Button({
           fullWidth,
           className,
         }),
-        asChild && props.disabled && "pointer-events-none opacity-50"
+        // When `asChild` wraps non-button elements (e.g. links), native `disabled:*`
+        // styles do not apply, so we still block interaction explicitly.
+        asChild && props.disabled && "pointer-events-none"
       )}
       {...(selected && {
         "data-state": "open",

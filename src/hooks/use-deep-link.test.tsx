@@ -9,10 +9,21 @@ import {
 import { ROUTES } from "@/config/routes"
 import { useDeepLink } from "./use-deep-link"
 
+const mockDispatch = vi.fn()
+
 // Mock the Tauri deep-link plugin
 vi.mock("@tauri-apps/plugin-deep-link", () => ({
   getCurrent: vi.fn(),
   onOpenUrl: vi.fn(),
+}))
+
+vi.mock("react-redux", () => ({
+  useDispatch: () => mockDispatch,
+}))
+
+vi.mock("viem", () => ({
+  hashMessage: vi.fn(() => "0xmockhash"),
+  recoverAddress: vi.fn(() => Promise.resolve("0xRecoveredAddress")),
 }))
 
 function DeepLinkHarness({
@@ -33,6 +44,7 @@ function DeepLinkHarness({
 describe("useDeepLink", () => {
   beforeEach(() => {
     vi.clearAllMocks()
+    mockDispatch.mockReset()
   })
 
   it("normalizes deep link params into /connect URL", async () => {
@@ -205,6 +217,107 @@ describe("useDeepLink", () => {
     expect(searchParams.get("sessionId")).toBe("live-sess")
     expect(searchParams.get("secret")).toBe("live-sec")
     expect(searchParams.get("scopes")).toBe('["chatgpt.conversations"]')
+  })
+
+  it("derives wallet address from masterKeySig and dispatches auth", async () => {
+    const deepLink = await import("@tauri-apps/plugin-deep-link")
+    ;(deepLink.getCurrent as Mock).mockResolvedValue([
+      "vana://connect?sessionId=sig-sess&secret=sig-sec&masterKeySig=0xdeadbeef",
+    ])
+    ;(deepLink.onOpenUrl as Mock).mockResolvedValue(() => {})
+
+    let latestPathname = ""
+
+    const router = createMemoryRouter(
+      [
+        {
+          path: "*",
+          element: (
+            <DeepLinkHarness
+              onChange={(pathname) => {
+                latestPathname = pathname
+              }}
+            />
+          ),
+        },
+      ],
+      { initialEntries: [ROUTES.home] }
+    )
+
+    render(<RouterProvider router={router} />)
+
+    await waitFor(() => {
+      expect(latestPathname).toBe(ROUTES.connect)
+    })
+
+    const { recoverAddress } = await import("viem")
+    expect(recoverAddress).toHaveBeenCalledWith({
+      hash: "0xmockhash",
+      signature: "0xdeadbeef",
+    })
+
+    await waitFor(() => {
+      expect(mockDispatch).toHaveBeenCalledWith(
+        expect.objectContaining({
+          payload: expect.objectContaining({
+            walletAddress: "0xRecoveredAddress",
+            masterKeySignature: "0xdeadbeef",
+          }),
+        })
+      )
+    })
+  })
+
+  it("recovers auth from masterKeySig in URL params (fallback path)", async () => {
+    const deepLink = await import("@tauri-apps/plugin-deep-link")
+    ;(deepLink.getCurrent as Mock).mockResolvedValue(null)
+    ;(deepLink.onOpenUrl as Mock).mockResolvedValue(() => {})
+
+    let latestPathname = ""
+
+    const router = createMemoryRouter(
+      [
+        {
+          path: "*",
+          element: (
+            <DeepLinkHarness
+              onChange={(pathname) => {
+                latestPathname = pathname
+              }}
+            />
+          ),
+        },
+      ],
+      {
+        initialEntries: [
+          `${ROUTES.connect}?sessionId=fallback-sess&masterKeySig=0xfallbacksig`,
+        ],
+      }
+    )
+
+    render(<RouterProvider router={router} />)
+
+    // Should stay on /connect (already on target route)
+    await waitFor(() => {
+      expect(latestPathname).toBe(ROUTES.connect)
+    })
+
+    const { recoverAddress } = await import("viem")
+    expect(recoverAddress).toHaveBeenCalledWith({
+      hash: "0xmockhash",
+      signature: "0xfallbacksig",
+    })
+
+    await waitFor(() => {
+      expect(mockDispatch).toHaveBeenCalledWith(
+        expect.objectContaining({
+          payload: expect.objectContaining({
+            walletAddress: "0xRecoveredAddress",
+            masterKeySignature: "0xfallbacksig",
+          }),
+        })
+      )
+    })
   })
 
   it("ignores invalid deep link URLs from native plugin", async () => {

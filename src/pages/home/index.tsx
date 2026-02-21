@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState } from "react"
+import { useCallback, useEffect, useMemo, useRef, useState } from "react"
 import { MotionConfig } from "motion/react"
 import { useNavigate } from "react-router-dom"
 import { useSelector } from "react-redux"
@@ -17,7 +17,6 @@ import { ConnectorUpdates } from "@/pages/home/components/connector-updates"
 import { Text } from "@/components/typography/text"
 import { Button } from "@/components/ui/button"
 import { ROUTES } from "@/config/routes"
-import { buildSettingsUrl } from "@/pages/settings/url"
 import {
   buildGrantSearchParams,
   getGrantParamsFromSearchParams,
@@ -28,7 +27,8 @@ import { testConnectedApps, testConnectedPlatforms, testPlatforms } from "./fixt
 
 export function Home() {
   const navigate = useNavigate()
-  const { platforms, isPlatformConnected, loadPlatforms } = usePlatforms()
+  const { platforms, isPlatformConnected, loadPlatforms, refreshConnectedStatus } =
+    usePlatforms()
   const { startImport } = useConnector()
   const { checkForUpdates } = useConnectorUpdates()
   const { connectedApps, fetchConnectedApps } = useConnectedApps()
@@ -37,6 +37,7 @@ export function Home() {
   const [activeTab, setActiveTab] = useState("sources")
   const [enableTabMotion, setEnableTabMotion] = useState(false)
   const [deepLinkInput, setDeepLinkInput] = useState("")
+  const knownSuccessfulRunIdsRef = useRef<Set<string> | null>(null)
 
   const tabs = [
     { value: "sources", label: "Your data" },
@@ -74,6 +75,28 @@ export function Home() {
     return () => cancelAnimationFrame(frame)
   }, [])
 
+  useEffect(() => {
+    const successfulRunIds = runs
+      .filter(run => run.status === "success")
+      .map(run => run.id)
+
+    if (knownSuccessfulRunIdsRef.current === null) {
+      knownSuccessfulRunIdsRef.current = new Set(successfulRunIds)
+      return
+    }
+
+    const knownSuccessfulRunIds = knownSuccessfulRunIdsRef.current
+    const hasNewSuccess = successfulRunIds.some(runId => {
+      if (knownSuccessfulRunIds.has(runId)) return false
+      knownSuccessfulRunIds.add(runId)
+      return true
+    })
+
+    if (hasNewSuccess) {
+      void refreshConnectedStatus()
+    }
+  }, [refreshConnectedStatus, runs])
+
   const handleImportSource = useCallback(
     async (platform: Platform) => {
       console.log(
@@ -85,12 +108,11 @@ export function Home() {
       )
       try {
         await startImport(platform)
-        navigate(buildSettingsUrl({ section: "imports", source: platform.id }))
       } catch (error) {
         console.error("Import failed:", error)
       }
     },
-    [navigate, startImport]
+    [startImport]
   )
 
   const handleTestDeepLink = useCallback(() => {
@@ -113,7 +135,7 @@ export function Home() {
     if (DEV_FLAGS.useHomeTestFixtures && platforms.length === 0) {
       return testConnectedPlatforms
     }
-    return displayPlatforms.filter(p => isPlatformConnected(p.id))
+    return displayPlatforms.filter(platform => isPlatformConnected(platform.id))
   }, [displayPlatforms, isPlatformConnected, platforms.length])
 
   const availablePlatforms = useMemo(() => {

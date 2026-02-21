@@ -122,15 +122,13 @@ fn build_source_export_preview(
     byte_limit: usize,
     file_size_bytes: u64,
 ) -> Result<(String, bool), String> {
-    let large_file_threshold = (byte_limit as u64).saturating_mul(4);
-    if file_size_bytes > large_file_threshold {
+    if file_size_bytes > (byte_limit as u64).saturating_mul(4) {
         return read_raw_export_preview(json_path, byte_limit);
     }
 
-    let content = read_export_content(json_path)?;
-    let full_json = serde_json::to_string_pretty(&content)
-        .map_err(|e| format!("Failed to serialize preview JSON: {}", e))?;
-    Ok(truncate_utf8_by_bytes(&full_json, byte_limit))
+    let raw_json = fs::read_to_string(json_path)
+        .map_err(|e| format!("Failed to read export file for preview: {}", e))?;
+    Ok(truncate_utf8_by_bytes(&raw_json, byte_limit))
 }
 
 /// Get all JSON files from an export path
@@ -508,10 +506,9 @@ pub async fn load_latest_source_export_full(
         return Ok(None);
     };
 
-    let content = read_export_content(&json_path)?;
-    let full_json = serde_json::to_string_pretty(&content)
-        .map_err(|e| format!("Failed to serialize full JSON: {}", e))?;
-    Ok(Some(full_json))
+    let raw_json = fs::read_to_string(&json_path)
+        .map_err(|e| format!("Failed to read full source export file: {}", e))?;
+    Ok(Some(raw_json))
 }
 
 /// Open the platform export folder
@@ -744,7 +741,7 @@ mod tests {
     }
 
     #[test]
-    fn build_source_export_preview_errors_for_small_invalid_json() {
+    fn build_source_export_preview_returns_raw_for_small_invalid_json() {
         let path = unique_temp_file("source_preview_small_invalid");
         fs::write(&path, "{not-json").expect("should write temp file");
 
@@ -754,12 +751,9 @@ mod tests {
 
         fs::remove_file(&path).expect("should clean up temp file");
 
-        let error = result.expect_err("small preview should still parse JSON");
-        assert!(
-            error.contains("Failed to parse export file"),
-            "expected parse failure, got: {}",
-            error
-        );
+        let (preview, is_truncated) = result.expect("small invalid JSON should still preview");
+        assert!(!is_truncated, "small file should not be truncated");
+        assert_eq!(preview, "{not-json");
     }
 
     #[test]

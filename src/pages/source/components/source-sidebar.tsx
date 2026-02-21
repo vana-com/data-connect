@@ -1,19 +1,23 @@
 import {
   ActivityIcon,
+  ArrowLeftIcon,
   ArrowUpRightIcon,
+  ArrowRightIcon,
   FolderIcon,
   RefreshCcwIcon,
+  HomeIcon,
 } from "lucide-react"
+import { ROUTES } from "@/config/routes"
 import { PlatformIcon } from "@/components/icons/platform-icon"
 import { Text } from "@/components/typography/text"
 import { buildSettingsUrl } from "@/pages/settings/url"
 import { SourceLinkRow } from "./source-link-row"
+import { LINKS } from "@/config/links"
 
 interface SourceSidebarProps {
   sourceId: string
   sourceName: string
-  sourceStoragePath: string
-  openSourceHref: string
+  lastUsedLabel: string
   canAccessDebugRuns: boolean
   onOpenSourcePath: () => Promise<void>
 }
@@ -21,12 +25,14 @@ interface SourceSidebarProps {
 export function SourceSidebar({
   sourceId,
   sourceName,
-  sourceStoragePath,
-  openSourceHref,
+  lastUsedLabel,
   canAccessDebugRuns,
   onOpenSourcePath,
 }: SourceSidebarProps) {
-  const importsSettingsUrl = buildSettingsUrl({ section: "imports", source: sourceId })
+  const importsSettingsUrl = buildSettingsUrl({
+    section: "imports",
+    source: sourceId,
+  })
 
   return (
     <aside className="space-y-6 relative">
@@ -59,8 +65,7 @@ export function SourceSidebar({
         <div className="flex flex-wrap items-start gap-small lg:gap-w6 lg:flex-col">
           <SourceActivityLinks
             importsSettingsUrl={importsSettingsUrl}
-            openSourceHref={openSourceHref}
-            sourceStoragePath={sourceStoragePath}
+            lastUsedLabel={lastUsedLabel}
             onOpenSourcePath={onOpenSourcePath}
           />
           <hr className="w-full hidden lg:block" />
@@ -76,34 +81,38 @@ export function SourceSidebar({
 
 interface SourceActivityLinksProps {
   importsSettingsUrl: string
-  openSourceHref: string
-  sourceStoragePath: string
+  lastUsedLabel: string
   onOpenSourcePath: () => Promise<void>
 }
 
 function SourceActivityLinks({
   importsSettingsUrl,
-  openSourceHref,
-  sourceStoragePath,
+  lastUsedLabel,
   onOpenSourcePath,
 }: SourceActivityLinksProps) {
+  const lastUsedText =
+    lastUsedLabel === "never" ? "Never used" : `Last used ${lastUsedLabel}`
+
   return (
     <div className="space-y-3">
       <SourceLinkRow
-        href={openSourceHref}
+        href="#"
         icon={<FolderIcon aria-hidden />}
         onClick={event => {
           event.preventDefault()
           void onOpenSourcePath()
         }}
       >
-        {sourceStoragePath}
+        Open exports folder
       </SourceLinkRow>
       <SourceLinkRow href="#" icon={<ActivityIcon aria-hidden />}>
-        Last used yesterday
+        {lastUsedText}
       </SourceLinkRow>
-      <SourceLinkRow to={importsSettingsUrl} icon={<RefreshCcwIcon aria-hidden />}>
-        Last synced yesterday
+      <SourceLinkRow
+        to={importsSettingsUrl}
+        icon={<RefreshCcwIcon aria-hidden />}
+      >
+        Never synced
       </SourceLinkRow>
     </div>
   )
@@ -114,20 +123,34 @@ interface SourceActionLinksProps {
   importsSettingsUrl: string
 }
 
-function SourceActionLinks({
-  canAccessDebugRuns,
-  importsSettingsUrl,
-}: SourceActionLinksProps) {
+function SourceActionLinks({ importsSettingsUrl }: SourceActionLinksProps) {
   return (
     <nav className="space-y-3">
       <SourceLinkRow
-        href="#"
+        to={ROUTES.home}
         muted
+        className="gap-1"
+        trailingIcon={<ArrowRightIcon aria-hidden />}
+      >
+        Back to Home
+      </SourceLinkRow>
+      <SourceLinkRow
+        to={importsSettingsUrl}
+        muted
+        className="gap-1"
+        trailingIcon={<ArrowRightIcon aria-hidden />}
+      >
+        Import history
+      </SourceLinkRow>
+      <SourceLinkRow
+        href={LINKS.appBuilderRegistration}
+        muted
+        className="gap-1"
         trailingIcon={<ArrowUpRightIcon aria-hidden />}
       >
         Build on Vana
       </SourceLinkRow>
-      <SourceLinkRow
+      {/* <SourceLinkRow
         href="#"
         muted
         trailingIcon={<ArrowUpRightIcon aria-hidden />}
@@ -140,16 +163,7 @@ function SourceActionLinks({
         trailingIcon={<ArrowUpRightIcon aria-hidden />}
       >
         Connect to ChatGPT
-      </SourceLinkRow>
-      {canAccessDebugRuns ? (
-        <SourceLinkRow
-          to={importsSettingsUrl}
-          muted
-          trailingIcon={<ArrowUpRightIcon aria-hidden />}
-        >
-          Import history
-        </SourceLinkRow>
-      ) : null}
+      </SourceLinkRow> */}
     </nav>
   )
 }

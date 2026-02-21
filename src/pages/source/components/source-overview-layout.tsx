@@ -20,7 +20,7 @@ export function SourceOverviewLayout({
         "lg:px-w24"
       )}
     >
-      <section className="w-full grid gap-small lg:grid-cols-[250px_minmax(0,1fr)]">
+      <section className="w-full grid gap-small lg:grid-cols-[230px_minmax(0,1fr)]">
         {sidebar}
         {content}
       </section>

@@ -85,7 +85,7 @@ export function SourcePreviewCard({
       <div className="border-t border-border px-gap py-3">
         <Text as="p" intent="fine" muted>
           {preview
-            ? `File: ${preview.filePath} · Size: ${formatBytes(preview.fileSizeBytes)} · Updated: ${new Date(preview.exportedAt).toLocaleString()}${preview.isTruncated ? " · Preview truncated" : ""}`
+            ? `File: ${preview.filePath} · Size: ${formatBytes(preview.fileSizeBytes)} · Exported: ${new Date(preview.exportedAt).toLocaleString()}${preview.isTruncated ? " · Preview truncated" : ""}`
             : "No local export metadata available."}
         </Text>
       </div>

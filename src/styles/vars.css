@@ -65,6 +65,7 @@
   --vana-blueLight: oklch(0.6888 0.166 281.13); /* #8B8BFE */
 
   /* Accent blue scale (anchor: #4141fc):  */
+  /* 4060d9 */
   /* Using: https://www.radix-ui.com/colors/custom */
   --accent: oklch(0.4248 0.1505 290.12); /* experiment; unused! */
   --accent-1: oklch(99.4% 0.0021 272);

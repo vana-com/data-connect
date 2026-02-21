@@ -8,8 +8,6 @@ export const ROUTES = {
   settings: "/settings",
   connect: "/connect",
   grant: "/grant",
-  login: "/login",
-  browserLogin: "/browser-login",
 } as const
 
 export type StaticRoute = keyof typeof ROUTES

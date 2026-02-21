@@ -17,6 +17,7 @@ description: Enforce commit safety and approval gates. Use when asked to commit,
   commit unless they also explicitly say to commit.
 - If tests exist for the changes being committed, they must be run first.
 - Prefer scoped tests for the changed area (page dir or specific files).
+- If the user gave prior commit-structure instructions in this thread (for example "series of atomic commits"), treat them as binding. If a later request could conflict (for example "commit all"), stop and ask for explicit confirmation before committing.
 
 ## Pre-commit staging hygiene
 
@@ -29,6 +30,11 @@ description: Enforce commit safety and approval gates. Use when asked to commit,
   asked to include them.
 - Before committing, run `git diff --staged` and confirm **only** the intended
   files are staged. If anything unexpected is staged, STOP and ask.
+- Before running `git commit`, post a short pre-commit checklist in chat:
+  - files to include
+  - files to exclude
+  - number of commits to create
+  - tests run for this commit set
 
 ## Speed rule (no back-and-forth on commit failures)
 

@@ -12,19 +12,17 @@ export function SourceOverview() {
   const {
     sourceEntry,
     sourceName,
-    sourceStoragePath,
-    sourcePlatform,
+    lastUsedLabel,
     canAccessDebugRuns,
     preview,
     isPreviewLoading,
     previewError,
     copyStatus,
-    openSourcePath,
-    openSourceHref,
+    resetCacheStatus,
     fallbackPreviewJson,
     handleOpenSourcePath,
-    handleOpenFile,
     handleCopyFullJson,
+    handleResetExportedDataCache,
   } = useSourceOverviewPage(platformId)
 
   if (!sourceEntry) {
@@ -55,23 +53,21 @@ export function SourceOverview() {
         <SourceSidebar
           sourceId={sourceEntry.id}
           sourceName={sourceName}
-          sourceStoragePath={sourceStoragePath}
-          openSourceHref={openSourceHref}
+          lastUsedLabel={lastUsedLabel}
           canAccessDebugRuns={canAccessDebugRuns}
           onOpenSourcePath={handleOpenSourcePath}
         />
       }
       content={
         <SourcePreviewCard
-          sourcePlatform={sourcePlatform}
-          openSourcePath={openSourcePath}
           isPreviewLoading={isPreviewLoading}
           previewError={previewError}
           preview={preview}
           fallbackPreviewJson={fallbackPreviewJson}
           copyStatus={copyStatus}
+          resetCacheStatus={resetCacheStatus}
           onCopyFullJson={handleCopyFullJson}
-          onOpenFile={handleOpenFile}
+          onResetExportedDataCache={handleResetExportedDataCache}
         />
       }
     />

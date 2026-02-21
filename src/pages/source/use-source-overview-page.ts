@@ -2,9 +2,10 @@ import { useEffect, useMemo, useState } from "react"
 import { useSelector } from "react-redux"
 import { useAuth } from "@/hooks/useAuth"
 import { copyTextToClipboard } from "@/lib/clipboard"
-import { openLocalPath, toFileUrl } from "@/lib/open-resource"
+import { openExportFolderPath } from "@/lib/open-resource"
 import { getPlatformRegistryEntryById } from "@/lib/platform/utils"
 import {
+  clearExportedDataCache,
   getUserDataPath,
   loadLatestSourceExportFull,
   loadLatestSourceExportPreview,
@@ -12,13 +13,31 @@ import {
   type SourceExportPreview,
 } from "@/lib/tauri-paths"
 import type { RootState, Run } from "@/types"
-import type { CopyStatus, SourceOverviewPageState } from "./types"
+import type {
+  CopyStatus,
+  ResetCacheStatus,
+  SourceOverviewPageState,
+} from "./types"
+import { formatRelativeTimeLabel } from "./utils"
 
-const fileSystemStub = `../exported_data`
+const actionFeedbackMs = 1_200
+const resetActionMinLoadingMs = 1_500
 
 const isTauriRuntime = () =>
   typeof window !== "undefined" &&
   ("__TAURI__" in window || "__TAURI_INTERNALS__" in window)
+
+const waitForMinimumLoadingState = async (
+  startedAtMs: number,
+  minLoadingMs: number
+) => {
+  const elapsedMs = Date.now() - startedAtMs
+  const remainingMs = minLoadingMs - elapsedMs
+  if (remainingMs <= 0) return
+  await new Promise(resolve => {
+    window.setTimeout(resolve, remainingMs)
+  })
+}
 
 export function useSourceOverviewPage(
   platformId?: string
@@ -32,15 +51,14 @@ export function useSourceOverviewPage(
   const [isPreviewLoading, setIsPreviewLoading] = useState(false)
   const [previewError, setPreviewError] = useState<string | null>(null)
   const [copyStatus, setCopyStatus] = useState<CopyStatus>("idle")
+  const [resetCacheStatus, setResetCacheStatus] =
+    useState<ResetCacheStatus>("idle")
 
   const sourceEntry = platformId
     ? getPlatformRegistryEntryById(platformId)
     : null
 
   const sourceName = sourceEntry?.displayName ?? platformId ?? "Unknown source"
-  const sourceStoragePath = sourceEntry
-    ? `${fileSystemStub}/${sourceEntry.id}`
-    : fileSystemStub
 
   const latestSourceRun = useMemo(() => {
     if (!platformId) return null
@@ -123,11 +141,41 @@ export function useSourceOverviewPage(
     }
   }, [sourcePlatform])
 
+  useEffect(() => {
+    if (resetCacheStatus !== "success" && resetCacheStatus !== "error") {
+      return
+    }
+    const timeoutId = window.setTimeout(() => {
+      setResetCacheStatus("idle")
+    }, actionFeedbackMs)
+    return () => {
+      window.clearTimeout(timeoutId)
+    }
+  }, [resetCacheStatus])
+
+  useEffect(() => {
+    if (copyStatus !== "copied" && copyStatus !== "error") {
+      return
+    }
+    const timeoutId = window.setTimeout(() => {
+      setCopyStatus("idle")
+    }, actionFeedbackMs)
+    return () => {
+      window.clearTimeout(timeoutId)
+    }
+  }, [copyStatus])
+
   const openSourcePath =
     preview?.filePath ??
     latestSourceRun?.exportPath ??
     (appDataPath ? `${appDataPath}/exported_data` : null)
-  const openSourceHref = openSourcePath ? toFileUrl(openSourcePath) : "#"
+  const lastUsedLabel = useMemo(
+    () =>
+      formatRelativeTimeLabel(
+        latestSourceRun?.startDate ?? preview?.exportedAt ?? null
+      ),
+    [latestSourceRun?.startDate, preview?.exportedAt]
+  )
 
   const handleOpenSourcePath = async () => {
     if (sourcePlatform) {
@@ -138,26 +186,37 @@ export function useSourceOverviewPage(
         // Fall through to generic local path fallback.
       }
     }
-    if (!openSourcePath) return
-    await openLocalPath(openSourcePath)
-  }
-
-  const handleOpenFile = async () => {
-    await handleOpenSourcePath()
+    let fallbackPath = openSourcePath
+    if (!fallbackPath) {
+      try {
+        const userDataPath = await getUserDataPath()
+        fallbackPath = `${userDataPath}/exported_data`
+      } catch {
+        fallbackPath = null
+      }
+    }
+    if (!fallbackPath) return
+    await openExportFolderPath(fallbackPath)
   }
 
   const handleCopyFullJson = async () => {
-    if (!sourcePlatform) return
     setCopyStatus("copying")
     try {
-      const fullJson = await loadLatestSourceExportFull(
-        sourcePlatform.company,
-        sourcePlatform.name
-      )
-      if (!fullJson) {
-        throw new Error("No source JSON found on disk")
+      let copyPayload: string | null = null
+
+      if (sourcePlatform) {
+        const fullJson = await loadLatestSourceExportFull(
+          sourcePlatform.company,
+          sourcePlatform.name
+        )
+        copyPayload = fullJson ?? null
       }
-      const copied = await copyTextToClipboard(fullJson)
+
+      if (!copyPayload) {
+        copyPayload = preview?.previewJson ?? fallbackPreviewJson
+      }
+
+      const copied = await copyTextToClipboard(copyPayload)
       if (!copied) {
         throw new Error("Clipboard copy failed")
       }
@@ -165,6 +224,24 @@ export function useSourceOverviewPage(
     } catch (error) {
       console.error("Failed to copy full JSON:", error)
       setCopyStatus("error")
+    }
+  }
+
+  const handleResetExportedDataCache = async () => {
+    if (resetCacheStatus === "resetting") return
+    const startedAtMs = Date.now()
+    setResetCacheStatus("resetting")
+    try {
+      await clearExportedDataCache()
+      setPreview(null)
+      setPreviewError(null)
+      setIsPreviewLoading(false)
+      await waitForMinimumLoadingState(startedAtMs, resetActionMinLoadingMs)
+      setResetCacheStatus("success")
+    } catch (error) {
+      console.error("Failed to reset exported data cache:", error)
+      await waitForMinimumLoadingState(startedAtMs, resetActionMinLoadingMs)
+      setResetCacheStatus("error")
     }
   }
 
@@ -179,18 +256,18 @@ export function useSourceOverviewPage(
   return {
     sourceEntry,
     sourceName,
-    sourceStoragePath,
+    lastUsedLabel,
     sourcePlatform,
     canAccessDebugRuns,
     preview,
     isPreviewLoading,
     previewError,
     copyStatus,
+    resetCacheStatus,
     openSourcePath,
-    openSourceHref,
     fallbackPreviewJson,
     handleOpenSourcePath,
-    handleOpenFile,
     handleCopyFullJson,
+    handleResetExportedDataCache,
   }
 }

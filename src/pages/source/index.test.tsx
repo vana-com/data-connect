@@ -22,7 +22,6 @@ const mockOpenPlatformExportFolder = vi.fn()
 const mockLoadLatestSourceExportPreview = vi.fn()
 const mockLoadLatestSourceExportFull = vi.fn()
 const mockOpenExportFolderPath = vi.fn()
-const mockClearExportedDataCache = vi.fn()
 
 vi.mock("react-redux", () => ({
   useSelector: (selector: (state: typeof mockState) => unknown) =>
@@ -37,8 +36,6 @@ vi.mock("@/lib/tauri-paths", () => ({
     mockLoadLatestSourceExportPreview(...args),
   loadLatestSourceExportFull: (...args: unknown[]) =>
     mockLoadLatestSourceExportFull(...args),
-  clearExportedDataCache: (...args: unknown[]) =>
-    mockClearExportedDataCache(...args),
 }))
 
 vi.mock("@/lib/open-resource", () => ({
@@ -86,7 +83,6 @@ beforeEach(() => {
   mockGetUserDataPath.mockResolvedValue("/tmp/dataconnect")
   mockLoadLatestSourceExportFull.mockResolvedValue("{}")
   mockOpenExportFolderPath.mockResolvedValue(true)
-  mockClearExportedDataCache.mockResolvedValue(undefined)
 })
 
 describe("SourceOverview", () => {
@@ -124,7 +120,7 @@ describe("SourceOverview", () => {
     renderSourcePage()
 
     const [sourcePathLink] = await screen.findAllByRole("link", {
-      name: "Reveal imports folder",
+      name: "Reveal local folder",
     })
 
     fireEvent.click(sourcePathLink)
@@ -141,7 +137,7 @@ describe("SourceOverview", () => {
     expect(backLink.getAttribute("href")).toBe(ROUTES.home)
   })
 
-  it("shows synced status from the latest successful run", async () => {
+  it("shows view import history link in the sidebar", async () => {
     mockState = {
       app: {
         runs: [
@@ -170,10 +166,13 @@ describe("SourceOverview", () => {
       exportedAt: "2026-02-11T10:00:00.000Z",
     })
 
-    renderSourcePage()
+    const view = renderSourcePage()
+    const scoped = within(view.container)
 
     await waitFor(() => {
-      expect(screen.getByRole("link", { name: "Synced to Personal Server" }))
+      expect(
+        scoped.getAllByRole("link", { name: "View import history" }).length
+      ).toBeGreaterThan(0)
     })
   })
 

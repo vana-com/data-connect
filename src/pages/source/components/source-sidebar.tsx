@@ -5,7 +5,7 @@ import { ROUTES } from "@/config/routes"
 import { buildSettingsUrl } from "@/pages/settings/url"
 import {
   ActivityIcon,
-  ArrowRightIcon,
+  ArrowLeftIcon,
   ArrowUpRightIcon,
   FolderIcon,
   RefreshCcwIcon,
@@ -16,7 +16,6 @@ interface SourceSidebarProps {
   sourceId: string
   sourceName: string
   lastUsedLabel: string
-  syncStatusLabel: string
   onOpenSourcePath: () => Promise<void>
 }
 
@@ -24,7 +23,6 @@ export function SourceSidebar({
   sourceId,
   sourceName,
   lastUsedLabel,
-  syncStatusLabel,
   onOpenSourcePath,
 }: SourceSidebarProps) {
   const importsSettingsUrl = buildSettingsUrl({
@@ -50,11 +48,10 @@ export function SourceSidebar({
           <SourceActivityLinks
             importsSettingsUrl={importsSettingsUrl}
             lastUsedLabel={lastUsedLabel}
-            syncStatusLabel={syncStatusLabel}
             onOpenSourcePath={onOpenSourcePath}
           />
           <hr className="w-full hidden lg:block" />
-          <SourceActionLinks importsSettingsUrl={importsSettingsUrl} />
+          <SourceActionLinks />
         </div>
       </div>
     </aside>
@@ -64,14 +61,12 @@ export function SourceSidebar({
 interface SourceActivityLinksProps {
   importsSettingsUrl: string
   lastUsedLabel: string
-  syncStatusLabel: string
   onOpenSourcePath: () => Promise<void>
 }
 
 function SourceActivityLinks({
   importsSettingsUrl,
   lastUsedLabel,
-  syncStatusLabel,
   onOpenSourcePath,
 }: SourceActivityLinksProps) {
   const lastUsedText =
@@ -79,6 +74,9 @@ function SourceActivityLinks({
 
   return (
     <div className="space-y-3">
+      <SourceLinkRow to={ROUTES.home} icon={<ArrowLeftIcon aria-hidden />}>
+        Back to Home
+      </SourceLinkRow>
       <SourceLinkRow
         href="#"
         icon={<FolderIcon aria-hidden />}
@@ -87,13 +85,13 @@ function SourceActivityLinks({
           void onOpenSourcePath()
         }}
       >
-        Reveal imports folder
+        Reveal local folder
       </SourceLinkRow>
       <SourceLinkRow
         to={importsSettingsUrl}
         icon={<RefreshCcwIcon aria-hidden />}
       >
-        {syncStatusLabel}
+        View import history
       </SourceLinkRow>
       <SourceLinkRow icon={<ActivityIcon aria-hidden />}>
         {lastUsedText}
@@ -102,29 +100,9 @@ function SourceActivityLinks({
   )
 }
 
-interface SourceActionLinksProps {
-  importsSettingsUrl: string
-}
-
-function SourceActionLinks({ importsSettingsUrl }: SourceActionLinksProps) {
+function SourceActionLinks() {
   return (
     <nav className="space-y-3">
-      <SourceLinkRow
-        to={ROUTES.home}
-        muted
-        // Purposely no icon for the home link
-        // trailingIcon={<ArrowRightIcon aria-hidden />}
-      >
-        Back to Home
-      </SourceLinkRow>
-      <SourceLinkRow
-        to={importsSettingsUrl}
-        muted
-        className="gap-1"
-        trailingIcon={<ArrowRightIcon aria-hidden />}
-      >
-        Import history
-      </SourceLinkRow>
       <SourceLinkRow
         href={LINKS.appBuilderRegistration}
         muted

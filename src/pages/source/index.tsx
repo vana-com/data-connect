@@ -13,7 +13,6 @@ export function SourceOverview() {
     sourceEntry,
     sourceName,
     lastUsedLabel,
-    syncStatusLabel,
     preview,
     isPreviewLoading,
     previewError,
@@ -52,7 +51,6 @@ export function SourceOverview() {
           sourceId={sourceEntry.id}
           sourceName={sourceName}
           lastUsedLabel={lastUsedLabel}
-          syncStatusLabel={syncStatusLabel}
           onOpenSourcePath={handleOpenSourcePath}
         />
       }

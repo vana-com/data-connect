@@ -4,6 +4,7 @@ import { createMemoryRouter, RouterProvider } from "react-router-dom"
 import { open } from "@tauri-apps/plugin-shell"
 import { buildGrantSearchParams } from "@/lib/grant-params"
 import { getAppRegistryEntries } from "@/apps/registry"
+import { LINKS } from "@/config/links"
 import { DEV_FLAGS } from "@/config/dev-flags"
 import { DataApps } from "./index"
 
@@ -88,7 +89,7 @@ describe("DataApps", () => {
     const learnMoreLinks = screen.getAllByRole("link", { name: /Learn more/i })
     expect(learnMoreLinks.length).toBeGreaterThan(0)
     learnMoreLinks.forEach(link => {
-      expect(link.getAttribute("href")).toBe("https://docs.vana.org")
+      expect(link.getAttribute("href")).toBe(LINKS.docs)
     })
   })
 

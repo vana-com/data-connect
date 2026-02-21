@@ -39,5 +39,9 @@
 
 ## Notes
 
-- If `appId`/`scopes` are missing, it falls back to the default app (currently ChatGPT)
-- External apps should deep‑link with all three params to show the correct source
+- For grant sessions (`sessionId` present), scopes are canonical to URL/claimed session data:
+  - uses `scopes` from URL when provided
+  - otherwise uses claimed session scopes after `claimSession`
+  - does not infer fallback app scopes
+- For non-grant connect entries (no `sessionId`), app default scopes may be used
+- External apps should deep-link with `sessionId`, `appId`, and `scopes` for deterministic source resolution

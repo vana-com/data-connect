@@ -130,12 +130,16 @@ describe("Connect", () => {
       expect(screen.getByText("Connect your ChatGPT")).toBeTruthy()
     })
 
-    it("falls back to default app scopes when appId is unknown", () => {
+    it("does not fall back to default app scopes when appId is unknown for grant sessions", () => {
       mockUsePlatforms.mockReturnValue(defaultPlatforms())
-      // Unknown appId → getAppRegistryEntry returns null → falls back to
-      // DEFAULT_APP_ID (rickroll) → scopes resolve to ChatGPT.
-      renderConnect("?appId=nonexistent")
-      expect(screen.getByText("Connect your ChatGPT")).toBeTruthy()
+      renderConnect("?sessionId=sess-123&secret=my-secret&appId=nonexistent")
+      expect(screen.getByText("Connect your data")).toBeTruthy()
+    })
+
+    it("does not fall back to app scopes when appId is known but grant scopes are missing", () => {
+      mockUsePlatforms.mockReturnValue(defaultPlatforms())
+      renderConnect("?sessionId=sess-123&secret=my-secret&appId=rickroll")
+      expect(screen.getByText("Connect your data")).toBeTruthy()
     })
 
     it("auto-navigates to grant when platform is already connected", async () => {

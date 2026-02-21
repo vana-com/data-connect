@@ -1,4 +1,5 @@
 import { ChevronRight } from "lucide-react"
+import { LoadingState } from "@/components/elements/loading-state"
 import { EyebrowBadge } from "@/components/typography/eyebrow-badge"
 import { PlatformIcon } from "@/components/icons/platform-icon"
 import { Spinner } from "@/components/elements/spinner"
@@ -18,11 +19,14 @@ export function Connect() {
     isAlreadyConnected,
     hasConnector,
     isBusy,
+    isAutoRedirecting,
     connectorErrorMessage,
     showDebugBypass,
     handleConnect,
     handleDebugGrant,
   } = useConnectPage()
+
+  if (isAutoRedirecting) return <LoadingState />
 
   return (
     <div className="container pt-major">

@@ -36,6 +36,7 @@ interface UseConnectPageResult {
   isAlreadyConnected: boolean
   hasConnector: boolean
   isBusy: boolean
+  isAutoRedirecting: boolean
   connectorErrorMessage: string | null
   showDebugBypass: boolean
   handleConnect: () => Promise<void>
@@ -52,13 +53,18 @@ export function useConnectPage(): UseConnectPageResult {
   const appEntry =
     getAppRegistryEntry(resolvedAppId) ?? getAppRegistryEntry(DEFAULT_APP_ID)
   const sessionId = params.sessionId ?? generatedSessionId
-  const grantScopes =
-    params.scopes && params.scopes.length > 0 ? params.scopes : appEntry?.scopes
-  const scopesKey = grantScopes?.join("|") ?? ""
 
   const prefetchedSessionRef = useRef<string | null>(null)
   const prefetchedDataRef = useRef<PrefetchedGrantData | null>(null)
   const [prefetched, setPrefetched] = useState<PrefetchedGrantData | null>(null)
+  const requestedScopes =
+    params.scopes && params.scopes.length > 0 ? params.scopes : undefined
+  const claimedScopes = prefetched?.session.scopes
+  // Grant sessions must remain canonical to URL/claimed session inputs.
+  // Do not infer app-default scopes when sessionId is present.
+  const fallbackAppScopes = hasGrantSession ? undefined : appEntry?.scopes
+  const grantScopes = requestedScopes ?? claimedScopes ?? fallbackAppScopes
+  const scopesKey = grantScopes?.join("|") ?? ""
 
   useEffect(() => {
     const sessionIdParam = params.sessionId
@@ -174,6 +180,7 @@ export function useConnectPage(): UseConnectPageResult {
         : null
 
   const isBusy = isCheckingPlatforms || isConnecting
+  const isAutoRedirecting = hasGrantSession && platformsLoaded && isAlreadyConnected
   const busyCta = isCheckingPlatforms
     ? "Checking connectors..."
     : getConnectBusyCta(activeRun)
@@ -231,6 +238,7 @@ export function useConnectPage(): UseConnectPageResult {
     isAlreadyConnected,
     hasConnector: Boolean(connectPlatform),
     isBusy,
+    isAutoRedirecting,
     connectorErrorMessage,
     showDebugBypass: import.meta.env.DEV && Boolean(connectorErrorMessage),
     handleConnect,

@@ -107,8 +107,8 @@ function SourceActionLinks({ importsSettingsUrl }: SourceActionLinksProps) {
       <SourceLinkRow
         to={ROUTES.home}
         muted
-        className="gap-1"
-        trailingIcon={<ArrowRightIcon aria-hidden />}
+        // Purposely no icon for the home link
+        // trailingIcon={<ArrowRightIcon aria-hidden />}
       >
         Back to Home
       </SourceLinkRow>

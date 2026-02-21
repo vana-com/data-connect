@@ -10,7 +10,7 @@
     "dev": "vite",
     "dev:app": "vite --port 5173 --strictPort",
     "build": "tsc -b && vite build",
-    "prebuild:all": "node scripts/ensure-playwright-runner.js && node scripts/ensure-personal-server.js",
+    "prebuild:all": "node scripts/ensure-connectors.js && node scripts/ensure-playwright-runner.js && node scripts/ensure-personal-server.js",
     "pretauri:dev": "npm run prebuild:all",
     "lint": "eslint .",
     "format": "prettier --write \"**/*.{ts,tsx,js,jsx,json,css,scss,md}\"",
@@ -26,7 +26,7 @@
     "release:versions": "node scripts/release-github.mjs --show-versions",
     "skills:sync": "node scripts/sync-skills.js",
     "skills:watch": "node scripts/watch-skills.js",
-    "postinstall": "node scripts/fetch-connectors.js && node scripts/sync-skills.js"
+    "postinstall": "node scripts/sync-skills.js"
   },
   "dependencies": {
     "@base-ui/react": "^1.1.0",
@@ -34,6 +34,7 @@
     "@tabler/icons-react": "^3.36.1",
     "@tauri-apps/api": "~2.10.1",
     "@tauri-apps/cli": "~2.10.0",
+    "@tauri-apps/plugin-clipboard-manager": "^2.3.2",
     "@tauri-apps/plugin-deep-link": "^2.4.7",
     "@tauri-apps/plugin-http": "^2.5.6",
     "@tauri-apps/plugin-shell": "^2.3.4",

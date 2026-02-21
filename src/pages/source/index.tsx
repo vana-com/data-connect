@@ -12,18 +12,13 @@ export function SourceOverview() {
   const {
     sourceEntry,
     sourceName,
-    sourceStoragePath,
-    sourcePlatform,
-    canAccessDebugRuns,
+    lastUsedLabel,
     preview,
     isPreviewLoading,
     previewError,
     copyStatus,
-    openSourcePath,
-    openSourceHref,
     fallbackPreviewJson,
     handleOpenSourcePath,
-    handleOpenFile,
     handleCopyFullJson,
   } = useSourceOverviewPage(platformId)
 
@@ -55,23 +50,29 @@ export function SourceOverview() {
         <SourceSidebar
           sourceId={sourceEntry.id}
           sourceName={sourceName}
-          sourceStoragePath={sourceStoragePath}
-          openSourceHref={openSourceHref}
-          canAccessDebugRuns={canAccessDebugRuns}
+          lastUsedLabel={lastUsedLabel}
           onOpenSourcePath={handleOpenSourcePath}
         />
       }
       content={
+        /*
+          RESET CACHE IS DELIBERATELY OFF.
+          Timeline:
+          1) UI reset action existed in this Source page.
+          2) Backend behavior and UX intent diverged and caused destructive outcomes.
+          3) Feature is parked until we have a clear, reviewed contract.
+          Trail:
+          - Source state/orchestration: src/pages/source/use-source-overview-page.ts
+          - Tauri file ops command surface: src-tauri/src/commands/file_ops.rs
+          - IPC bindings: src/lib/tauri-paths.ts
+        */
         <SourcePreviewCard
-          sourcePlatform={sourcePlatform}
-          openSourcePath={openSourcePath}
           isPreviewLoading={isPreviewLoading}
           previewError={previewError}
           preview={preview}
           fallbackPreviewJson={fallbackPreviewJson}
           copyStatus={copyStatus}
           onCopyFullJson={handleCopyFullJson}
-          onOpenFile={handleOpenFile}
         />
       }
     />

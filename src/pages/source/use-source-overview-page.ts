@@ -1,8 +1,7 @@
 import { useEffect, useMemo, useState } from "react"
 import { useSelector } from "react-redux"
-import { useAuth } from "@/hooks/useAuth"
 import { copyTextToClipboard } from "@/lib/clipboard"
-import { openLocalPath, toFileUrl } from "@/lib/open-resource"
+import { openExportFolderPath } from "@/lib/open-resource"
 import { getPlatformRegistryEntryById } from "@/lib/platform/utils"
 import {
   getUserDataPath,
@@ -13,8 +12,9 @@ import {
 } from "@/lib/tauri-paths"
 import type { RootState, Run } from "@/types"
 import type { CopyStatus, SourceOverviewPageState } from "./types"
+import { formatRelativeTimeLabel } from "./utils"
 
-const fileSystemStub = `../exported_data`
+const actionFeedbackMs = 1_200
 
 const isTauriRuntime = () =>
   typeof window !== "undefined" &&
@@ -25,7 +25,6 @@ export function useSourceOverviewPage(
 ): SourceOverviewPageState {
   const runs = useSelector((state: RootState) => state.app.runs)
   const platforms = useSelector((state: RootState) => state.app.platforms)
-  const { canAccessDebugRuns } = useAuth()
 
   const [appDataPath, setAppDataPath] = useState<string | null>(null)
   const [preview, setPreview] = useState<SourceExportPreview | null>(null)
@@ -38,9 +37,6 @@ export function useSourceOverviewPage(
     : null
 
   const sourceName = sourceEntry?.displayName ?? platformId ?? "Unknown source"
-  const sourceStoragePath = sourceEntry
-    ? `${fileSystemStub}/${sourceEntry.id}`
-    : fileSystemStub
 
   const latestSourceRun = useMemo(() => {
     if (!platformId) return null
@@ -123,12 +119,29 @@ export function useSourceOverviewPage(
     }
   }, [sourcePlatform])
 
+  useEffect(() => {
+    if (copyStatus !== "copied" && copyStatus !== "error") {
+      return
+    }
+    const timeoutId = window.setTimeout(() => {
+      setCopyStatus("idle")
+    }, actionFeedbackMs)
+    return () => {
+      window.clearTimeout(timeoutId)
+    }
+  }, [copyStatus])
+
   const openSourcePath =
     preview?.filePath ??
     latestSourceRun?.exportPath ??
     (appDataPath ? `${appDataPath}/exported_data` : null)
-  const openSourceHref = openSourcePath ? toFileUrl(openSourcePath) : "#"
-
+  const lastUsedLabel = useMemo(
+    () =>
+      formatRelativeTimeLabel(
+        latestSourceRun?.startDate ?? preview?.exportedAt ?? null
+      ),
+    [latestSourceRun?.startDate, preview?.exportedAt]
+  )
   const handleOpenSourcePath = async () => {
     if (sourcePlatform) {
       try {
@@ -138,26 +151,41 @@ export function useSourceOverviewPage(
         // Fall through to generic local path fallback.
       }
     }
-    if (!openSourcePath) return
-    await openLocalPath(openSourcePath)
-  }
-
-  const handleOpenFile = async () => {
-    await handleOpenSourcePath()
+    let fallbackPath = openSourcePath
+    if (!fallbackPath) {
+      try {
+        const userDataPath = await getUserDataPath()
+        fallbackPath = `${userDataPath}/exported_data`
+      } catch {
+        fallbackPath = null
+      }
+    }
+    if (!fallbackPath) return
+    await openExportFolderPath(fallbackPath)
   }
 
   const handleCopyFullJson = async () => {
-    if (!sourcePlatform) return
     setCopyStatus("copying")
     try {
-      const fullJson = await loadLatestSourceExportFull(
-        sourcePlatform.company,
-        sourcePlatform.name
-      )
-      if (!fullJson) {
-        throw new Error("No source JSON found on disk")
+      let copyPayload: string | null = null
+
+      if (sourcePlatform) {
+        try {
+          const fullJson = await loadLatestSourceExportFull(
+            sourcePlatform.company,
+            sourcePlatform.name
+          )
+          copyPayload = fullJson ?? null
+        } catch (error) {
+          console.error("Failed to load full source export JSON:", error)
+        }
       }
-      const copied = await copyTextToClipboard(fullJson)
+
+      if (!copyPayload) {
+        copyPayload = preview?.previewJson ?? fallbackPreviewJson
+      }
+
+      const copied = await copyTextToClipboard(copyPayload)
       if (!copied) {
         throw new Error("Clipboard copy failed")
       }
@@ -179,18 +207,15 @@ export function useSourceOverviewPage(
   return {
     sourceEntry,
     sourceName,
-    sourceStoragePath,
+    lastUsedLabel,
     sourcePlatform,
-    canAccessDebugRuns,
     preview,
     isPreviewLoading,
     previewError,
     copyStatus,
     openSourcePath,
-    openSourceHref,
     fallbackPreviewJson,
     handleOpenSourcePath,
-    handleOpenFile,
     handleCopyFullJson,
   }
 }

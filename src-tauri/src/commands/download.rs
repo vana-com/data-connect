@@ -135,8 +135,9 @@ pub async fn handle_download(
         export_size,
     };
 
-    // Emit export complete
-    let _ = app.emit("export-complete", result.clone());
+    // Emit export complete on the rust-specific channel to avoid payload-shape
+    // collisions with connector-runtime "export-complete" events.
+    let _ = app.emit("export-complete-rust", result.clone());
 
     Ok(result)
 }

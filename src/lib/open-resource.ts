@@ -40,6 +40,13 @@ export const toFileUrl = (path: string) => {
   return `${FILE_PROTOCOL}${encodeURI(normalizedPath)}`
 }
 
+export const toLocalDirectoryPath = (path: string) => {
+  const normalizedPath = normalizeLocalPath(path.trim())
+  return normalizedPath.endsWith(".json")
+    ? normalizedPath.replace(/[\\/][^\\/]+$/, "")
+    : normalizedPath
+}
+
 export async function openResource(
   target: string,
   options: OpenResourceOptions = {}
@@ -60,6 +67,15 @@ export async function openResource(
     await open(shellTarget)
     return true
   } catch {
+    if (kind === "local-path") {
+      try {
+        const { invoke } = await import("@tauri-apps/api/core")
+        await invoke("open_folder", { path: shellTarget })
+        return true
+      } catch {
+        // Fall through to browser fallback.
+      }
+    }
     if (typeof window === "undefined") return false
     const popup = window.open(
       browserTarget,
@@ -72,6 +88,9 @@ export async function openResource(
 
 export const openLocalPath = (path: string) =>
   openResource(path, { kind: "local-path" })
+
+export const openExportFolderPath = (path: string) =>
+  openLocalPath(toLocalDirectoryPath(path))
 
 export const openExternalUrl = (url: string) =>
   openResource(url, { kind: "external-url" })

@@ -59,7 +59,7 @@ export const textVariants = cva(
         xl: "text-xlarge",
         xlarge: "text-xlarge",
         heading: "text-heading",
-        subtitle: "text-subtitle",
+        subtitle: "text-subtitle text-balance",
         title: "text-title text-balance font-[450]",
         display: "text-display text-balance font-[450]",
         hero: "text-hero text-balance font-[450]",
@@ -101,7 +101,7 @@ export const textVariants = cva(
       },
       withIcon: {
         true: [
-          "flex items-center gap-2",
+          "inline-flex items-center gap-2",
           "[&_svg:not([class*=size-])]:size-[0.9em]",
           // "[&_svg]:transform [&_svg]:translate-y-[-0.1em]",
         ],
@@ -139,13 +139,13 @@ export const textVariants = cva(
       },
       {
         withIcon: true,
-        intent: ["button"],
-        className: "gap-2",
+        intent: ["compact", "button"],
+        className: "gap-1.5",
       },
       {
         withIcon: true,
-        intent: ["pill", "fine"],
-        className: "gap-1",
+        intent: ["pillEyebrow", "pill", "fine", "small"],
+        className: "gap-0.75",
       },
       {
         withIcon: true,

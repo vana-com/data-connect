@@ -2,16 +2,20 @@
 
 ## What this is
 
-- Step‑1 connect UI that launches a data‑source login/scrape before `/grant`.
+- Step-1 connect UI that launches a data-source import before `/grant`.
 
 ## Files
 
-- `index.tsx`: route component, connector run kickoff, `/grant` handoff.
+- `index.tsx`: route composition + JSX only.
+- `use-connect-page.ts`: route orchestration (params, prefetch, run state, navigation).
+- `connect-run-status.ts`: busy CTA mapping from run phase/status.
+- `connect-copy.ts`: stable copy builders for title/CTA/labels.
+- `index.test.tsx`: route behavior tests.
 
 ## Data flow
 
 - URL params (`sessionId`, `appId`, `scopes`) → `getGrantParamsFromSearchParams` → resolve platform
-- `startExport` → Tauri `start_connector_run` → run status in Redux → navigate to `/grant`
+- `startImport` → Tauri `start_connector_run` → run status in Redux → navigate to `/grant`
 
 ## App integration
 
@@ -30,15 +34,14 @@
 - Localhost (dev): hit `/connect` directly with query params.
   - Example: `http://localhost:5173/connect?sessionId=ext-123&appId=rickroll&scopes=read:chatgpt-conversations`
   - JSON `scopes` also works: `scopes=["read:chatgpt-conversations"]`
-  - Mock external app entry:
-    - `http://localhost:5173/rickroll?sessionId=ext-123&appId=rickroll&scopes=read:chatgpt-conversations`
-    - `/signin` preserves the same query string
-    - In dev it launches: `http://localhost:5173/connect?sessionId=ext-123&appId=rickroll&scopes=read:chatgpt-conversations`
 - Production: use deep linking with the same params.
   - Example: `dataconnect://?sessionId=ext-123&appId=rickroll&scopes=read:chatgpt-conversations`
-  - In prod the mock sign-in launches `dataconnect://` instead of `/connect`
 
 ## Notes
 
-- If `appId`/`scopes` are missing, it falls back to the default app (currently ChatGPT)
-- External apps should deep‑link with all three params to show the correct source
+- For grant sessions (`sessionId` present), scopes are canonical to URL/claimed session data:
+  - uses `scopes` from URL when provided
+  - otherwise uses claimed session scopes after `claimSession`
+  - does not infer fallback app scopes
+- For non-grant connect entries (no `sessionId`), app default scopes may be used
+- External apps should deep-link with `sessionId`, `appId`, and `scopes` for deterministic source resolution

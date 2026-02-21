@@ -3,6 +3,7 @@ import { CheckIcon, UserRoundCogIcon, HomeIcon } from "lucide-react"
 import { PlatformIcon } from "@/components/icons/platform-icon"
 import { ActionPanel } from "@/components/typography/button-action"
 import { Text } from "@/components/typography/text"
+import { PageHeading } from "@/components/typography/page-heading"
 import { getPrimaryDataSourceLabel } from "@/lib/scope-labels"
 import { ROUTES } from "@/config/routes"
 
@@ -17,17 +18,17 @@ export function GrantSuccessState({ appName, scopes }: GrantSuccessStateProps) {
   const dataLabel = dataSourceLabel ? `${dataSourceLabel} data` : "data"
 
   return (
-    <div className="container pt-major">
+    <div className="container pt-w16">
       <div className="space-y-w6">
-        <Text as="h1" intent="title" className="relative">
-          <div className="absolute left-[-1.3em] top-[0.05em]">
+        <PageHeading className="relative">
+          <div className="absolute left-[-1.5em] top-[0.05em]">
             <CheckIcon
-              className="size-9 [--lucide-stroke-width:2] text-accent"
+              className="size-8 [--lucide-stroke-width:2] text-accent"
               aria-hidden="true"
             />
           </div>
           {resolvedAppName} has your {dataLabel}
-        </Text>
+        </PageHeading>
 
         <Text as="p">
           You can manage or revoke access in{" "}
@@ -37,11 +38,12 @@ export function GrantSuccessState({ appName, scopes }: GrantSuccessStateProps) {
           .
         </Text>
 
-        {/* Purposely not wrapped in action-outset */}
-        <ActionPanel className="gap-3 justify-start">
-          <PlatformIcon iconName={appName ?? "App"} />
-          Return to {resolvedAppName} to continue
-        </ActionPanel>
+        <div className="action-outset">
+          <ActionPanel className="gap-3 justify-start">
+            <PlatformIcon iconName={appName ?? "App"} />
+            Return to {resolvedAppName} to continue
+          </ActionPanel>
+        </div>
 
         <div className="flex items-center gap-3 pt-0.5">
           <Text as={Link} to={ROUTES.settings} dim withIcon link="default">

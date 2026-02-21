@@ -1,17 +1,17 @@
 import { MonitorIcon } from "lucide-react"
 import type { AuthUser } from "@/types"
+import { DEV_FLAGS } from "@/config/dev-flags"
 import { Text } from "@/components/typography/text"
 import { Button } from "@/components/ui/button"
 import {
   SettingsCard,
   SettingsCardStack,
-  SettingsRow,
   SettingsSection,
 } from "./settings-shared"
+import { SettingsRow } from "./settings-row"
 import { VanaV } from "@/components/icons/vana-v"
 
-// Local UI test toggle: set true to force logged-in state.
-const TEST_LOGGED_IN = false
+const TEST_LOGGED_IN = DEV_FLAGS.useSettingsUiMocks
 const TEST_ACCOUNT_EMAIL = "test.user@vana.xyz"
 
 // Temporarily hide Sessions in Account tab without deleting implementation.

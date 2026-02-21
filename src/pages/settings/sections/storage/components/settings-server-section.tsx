@@ -1,36 +1,29 @@
 import { useState } from "react"
 import { ChevronDownIcon, RefreshCwIcon } from "lucide-react"
 import type { usePersonalServer } from "@/hooks/usePersonalServer"
+import { DEV_FLAGS } from "@/config/dev-flags"
 import { LINKS } from "@/config/links"
 import { ButtonSignInVana } from "@/components/elements/button-sign-in-vana"
+import { LoadingButton } from "@/components/elements/button-loading"
 import { OpenExternalLink } from "@/components/typography/link-open-external"
-import { LoadingButton } from "@/components/typography/button-loading"
 import { Text } from "@/components/typography/text"
-import { copyTextToClipboard } from "@/lib/clipboard"
-import {
-  AlertDialog,
-  AlertDialogAction,
-  AlertDialogCancel,
-  AlertDialogContent,
-  AlertDialogDescription,
-  AlertDialogFooter,
-  AlertDialogHeader,
-  AlertDialogTitle,
-  AlertDialogTrigger,
-} from "@/components/ui/alert-dialog"
 import { Button } from "@/components/ui/button"
+import { copyTextToClipboard } from "@/lib/clipboard"
 import { cn } from "@/lib/classes"
 import {
-  SettingsBadgeActive,
-  SettingsBadgeNone,
   SettingsCard,
   SettingsCardStack,
-  SettingsMetaRow,
   SettingsRowAction,
   SettingsSingleSelectRowGroup,
 } from "@/pages/settings/components/public"
+import {
+  SettingsBadgeActive,
+  SettingsBadgeNone,
+} from "./settings-status-badge"
+import { SettingsConfirmAction } from "@/pages/settings/components/settings-confirm-action"
 import { AuthRow } from "./auth-row"
 import { PublicEndpointRow } from "./public-endpoint-row"
+import { SettingsMetaRow } from "./settings-meta-row"
 import { StatusRow } from "./status-row"
 
 const serverOptions = [
@@ -95,7 +88,8 @@ export function SettingsServerSection({
   onSignIn,
   personalServer,
 }: SettingsServerSectionProps) {
-  const isAuthenticatedForUi = TEST_AUTHENTICATED || isAuthenticated
+  const isAuthenticatedForUi =
+    (DEV_FLAGS.useSettingsUiMocks && TEST_AUTHENTICATED) || isAuthenticated
   const [draftServerOption, setDraftServerOption] =
     useState<ServerOptionId | null>(null)
   const [activeServerOption, setActiveServerOption] =
@@ -111,7 +105,9 @@ export function SettingsServerSection({
     (draftServerOption !== "personal-server" || isAuthenticatedForUi)
   const isExpanded = selectedServerOption === "personal-server"
   const previewServerStatus =
-    TEST_SERVER_STATUS_OVERRIDE ?? personalServer.status
+    DEV_FLAGS.useSettingsUiMocks && TEST_SERVER_STATUS_OVERRIDE
+      ? TEST_SERVER_STATUS_OVERRIDE
+      : personalServer.status
   const shouldShowRestartControl =
     previewServerStatus === "error" || previewServerStatus === "stopped"
 
@@ -177,35 +173,16 @@ export function SettingsServerSection({
 
             if (canRemove) {
               return (
-                <AlertDialog>
-                  <AlertDialogTrigger asChild>
-                    <SettingsRowAction>Remove</SettingsRowAction>
-                  </AlertDialogTrigger>
-                  <AlertDialogContent size="sm">
-                    <AlertDialogHeader>
-                      <AlertDialogTitle>
-                        Remove server provider?
-                      </AlertDialogTitle>
-                      <AlertDialogDescription>
-                        This will clear the active server selection. You can set
-                        it again later.
-                      </AlertDialogDescription>
-                    </AlertDialogHeader>
-                    <AlertDialogFooter>
-                      <AlertDialogCancel size="sm">Cancel</AlertDialogCancel>
-                      <AlertDialogAction
-                        size="sm"
-                        variant="destructive"
-                        onClick={() => {
-                          setActiveServerOptionWithPersistence(null)
-                          setDraftServerOption(null)
-                        }}
-                      >
-                        Remove
-                      </AlertDialogAction>
-                    </AlertDialogFooter>
-                  </AlertDialogContent>
-                </AlertDialog>
+                <SettingsConfirmAction
+                  trigger={<SettingsRowAction>Remove</SettingsRowAction>}
+                  title="Remove server provider?"
+                  description="This will clear the active server selection. You can set it again later."
+                  actionLabel="Remove"
+                  onAction={() => {
+                    setActiveServerOptionWithPersistence(null)
+                    setDraftServerOption(null)
+                  }}
+                />
               )
             }
 
@@ -322,7 +299,7 @@ export function SettingsServerSection({
             variant="iris"
             size="sm"
             isLoading={isSavingServer}
-            loadingLabel="Saving..."
+            loadingLabel="Saving…"
             onClick={() => void handleSaveServer()}
           >
             Save & create

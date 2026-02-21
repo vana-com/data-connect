@@ -72,7 +72,10 @@ fn read_export_content(path: &Path) -> Result<serde_json::Value, String> {
         .map_err(|e| format!("Failed to read export file: {}", e))?;
     let data = serde_json::from_str::<serde_json::Value>(&content)
         .map_err(|e| format!("Failed to parse export file: {}", e))?;
-    Ok(data.get("content").cloned().unwrap_or(data))
+    match data.get("content") {
+        Some(value) if !value.is_null() => Ok(value.clone()),
+        _ => Ok(data),
+    }
 }
 
 fn truncate_utf8_by_bytes(input: &str, max_bytes: usize) -> (String, bool) {
@@ -119,15 +122,13 @@ fn build_source_export_preview(
     byte_limit: usize,
     file_size_bytes: u64,
 ) -> Result<(String, bool), String> {
-    let large_file_threshold = (byte_limit as u64).saturating_mul(4);
-    if file_size_bytes > large_file_threshold {
+    if file_size_bytes > (byte_limit as u64).saturating_mul(4) {
         return read_raw_export_preview(json_path, byte_limit);
     }
 
-    let content = read_export_content(json_path)?;
-    let full_json = serde_json::to_string_pretty(&content)
-        .map_err(|e| format!("Failed to serialize preview JSON: {}", e))?;
-    Ok(truncate_utf8_by_bytes(&full_json, byte_limit))
+    let raw_json = fs::read_to_string(json_path)
+        .map_err(|e| format!("Failed to read export file for preview: {}", e))?;
+    Ok(truncate_utf8_by_bytes(&raw_json, byte_limit))
 }
 
 /// Get all JSON files from an export path
@@ -440,15 +441,8 @@ pub async fn load_run_export_data(_run_id: String, export_path: String) -> Resul
     }
 
     if let Some(json_path) = latest_json {
-        if let Ok(content) = fs::read_to_string(&json_path) {
-            if let Ok(data) = serde_json::from_str::<serde_json::Value>(&content) {
-                // Extract the content field which contains the actual export data
-                if let Some(content) = data.get("content") {
-                    return Ok(content.clone());
-                }
-                // If no content field, return the whole data
-                return Ok(data);
-            }
+        if let Ok(data) = read_export_content(&json_path) {
+            return Ok(data);
         }
     }
 
@@ -512,10 +506,9 @@ pub async fn load_latest_source_export_full(
         return Ok(None);
     };
 
-    let content = read_export_content(&json_path)?;
-    let full_json = serde_json::to_string_pretty(&content)
-        .map_err(|e| format!("Failed to serialize full JSON: {}", e))?;
-    Ok(Some(full_json))
+    let raw_json = fs::read_to_string(&json_path)
+        .map_err(|e| format!("Failed to read full source export file: {}", e))?;
+    Ok(Some(raw_json))
 }
 
 /// Open the platform export folder
@@ -709,6 +702,8 @@ pub async fn get_log_path(app: AppHandle) -> Result<String, String> {
 #[cfg(test)]
 mod tests {
     use super::build_source_export_preview;
+    use super::read_export_content;
+    use serde_json::json;
     use std::fs;
     use std::path::PathBuf;
     use std::time::{SystemTime, UNIX_EPOCH};
@@ -746,7 +741,7 @@ mod tests {
     }
 
     #[test]
-    fn build_source_export_preview_errors_for_small_invalid_json() {
+    fn build_source_export_preview_returns_raw_for_small_invalid_json() {
         let path = unique_temp_file("source_preview_small_invalid");
         fs::write(&path, "{not-json").expect("should write temp file");
 
@@ -756,11 +751,32 @@ mod tests {
 
         fs::remove_file(&path).expect("should clean up temp file");
 
-        let error = result.expect_err("small preview should still parse JSON");
+        let (preview, is_truncated) = result.expect("small invalid JSON should still preview");
+        assert!(!is_truncated, "small file should not be truncated");
+        assert_eq!(preview, "{not-json");
+    }
+
+    #[test]
+    fn read_export_content_falls_back_to_root_when_content_is_null() {
+        let path = unique_temp_file("source_preview_content_null");
+        let payload = json!({
+            "company": "OpenAI",
+            "name": "ChatGPT",
+            "content": null,
+            "syncedToPersonalServer": true
+        });
+        fs::write(&path, payload.to_string()).expect("should write temp file");
+
+        let result = read_export_content(&path);
+
+        fs::remove_file(&path).expect("should clean up temp file");
+
+        let content = result.expect("should parse export content");
         assert!(
-            error.contains("Failed to parse export file"),
-            "expected parse failure, got: {}",
-            error
+            content.is_object(),
+            "null content should fall back to root export object"
         );
+        assert_eq!(content["content"], serde_json::Value::Null);
+        assert_eq!(content["syncedToPersonalServer"], serde_json::Value::Bool(true));
     }
 }

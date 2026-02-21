@@ -1,7 +1,8 @@
 import type { ReactNode } from "react"
 import { Text } from "@/components/typography/text"
 import { cn } from "@/lib/classes"
-import { SettingsRow, SettingsRowDivider } from "./settings-shared"
+import { SettingsRow } from "./settings-row"
+import { SettingsRowDivider } from "./settings-row-divider"
 
 export interface SettingsSingleSelectRowOption<T extends string = string> {
   id: T

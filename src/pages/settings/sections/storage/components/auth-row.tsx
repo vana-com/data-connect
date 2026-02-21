@@ -1,4 +1,5 @@
 import { Text } from "@/components/typography/text"
+import { DEV_FLAGS } from "@/config/dev-flags"
 import { Row, RowDot } from "./row"
 
 /*
@@ -41,10 +42,13 @@ export function AuthRow({
   walletAddress,
   isLast = false,
 }: AuthRowProps) {
+  const previewIdentityState = DEV_FLAGS.useSettingsUiMocks
+    ? TEST_AUTH_IDENTITY
+    : null
   const mockedEmail =
-    TEST_AUTH_IDENTITY === "email" ? TEST_ACCOUNT_EMAIL : accountEmail
+    previewIdentityState === "email" ? TEST_ACCOUNT_EMAIL : accountEmail
   const mockedWallet =
-    TEST_AUTH_IDENTITY === "wallet" ? TEST_WALLET_ADDRESS : walletAddress
+    previewIdentityState === "wallet" ? TEST_WALLET_ADDRESS : walletAddress
   const previewIdentity = getAuthIdentity(mockedEmail, mockedWallet)
   const label =
     previewIdentity.state === "signed-in"
@@ -68,5 +72,5 @@ export function AuthRow({
 
 function shortenWallet(walletAddress: string) {
   if (walletAddress.length < 12) return walletAddress
-  return `${walletAddress.slice(0, 6)}...${walletAddress.slice(-4)}`
+  return `${walletAddress.slice(0, 6)}…${walletAddress.slice(-4)}`
 }

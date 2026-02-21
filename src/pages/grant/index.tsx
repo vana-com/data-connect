@@ -1,10 +1,10 @@
 import { useSearchParams, useLocation } from "react-router-dom"
 import { useState } from "react"
 import { getGrantParamsFromSearchParams } from "@/lib/grant-params"
+import { LoadingState } from "@/components/elements/loading-state"
 import { useBrowserStatus } from "./use-browser-status"
 import { useGrantFlow } from "./use-grant-flow"
 import { BrowserSetupSection } from "./components/browser-setup-section"
-import { GrantLoadingState } from "./components/grant-loading-state"
 import { GrantErrorState } from "./components/grant-error-state"
 import { GrantSuccessState } from "./components/grant-success-state"
 import { GrantConsentState } from "./components/consent/grant-consent-state"
@@ -82,17 +82,14 @@ export function Grant() {
     ? activeDebugStatus === "creating-grant" ||
       activeDebugStatus === "approving"
     : isApproving
-  const resolvedBuilderName = isDebugging
-    ? debugSession.appName
-    : builderName
-  const debugBuilderManifest: BuilderManifest =
-    flowState.builderManifest ?? {
-      name: debugSession.appName ?? "Debug App",
-      appUrl: "https://example.com",
-      privacyPolicyUrl: "https://example.com/privacy",
-      termsUrl: "https://example.com/terms",
-      supportUrl: "https://example.com/support",
-    }
+  const resolvedBuilderName = isDebugging ? debugSession.appName : builderName
+  const debugBuilderManifest: BuilderManifest = flowState.builderManifest ?? {
+    name: debugSession.appName ?? "Debug App",
+    appUrl: "https://example.com",
+    privacyPolicyUrl: "https://example.com/privacy",
+    termsUrl: "https://example.com/terms",
+    supportUrl: "https://example.com/support",
+  }
   const resolvedBuilderManifest: BuilderManifest | undefined = isDebugging
     ? debugBuilderManifest
     : flowState.builderManifest
@@ -112,10 +109,13 @@ export function Grant() {
       </div>
     )
   } else if (isLoadingState || resolvedAuthLoading) {
-    const loadingMessage = resolvedFlowState.status === "preparing-server"
-      ? "Preparing secure connection…"
-      : undefined
-    content = <GrantLoadingState title={loadingMessage} />
+    const loadingTitle =
+      resolvedFlowState.status === "verifying-builder"
+        ? "Verifying app configuration…"
+        : resolvedFlowState.status === "preparing-server"
+          ? "Preparing connection…"
+          : "Loading…"
+    content = <LoadingState title={loadingTitle} />
   } else if (resolvedFlowState.status === "error") {
     content = (
       <GrantErrorState

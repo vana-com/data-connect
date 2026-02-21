@@ -36,7 +36,9 @@ about component internals — verify them. Do not pass props that match defaults
 - Use `as` to keep semantic HTML (`h1`, `p`, `li`, etc.).
 - Prefer `muted`/`dim` boolean props on `Text` for muted/dim copy; avoid verbose `color="mutedForeground"` unless a specific semantic color token is required.
 - `Text` has props for icon layout (`withIcon`) and link styling (`link`). Read the component source to understand how they work before using them — do not guess at prop values or manually replicate behavior the component already handles.
+- When `Text` uses `withIcon`, do not add icon sizing classes (`size-*`) to nested icons by default; `Text` already applies fallback icon sizing for nested SVGs. Only add `size-*` when design explicitly requires a non-default icon size.
 - For links, use `Text as="a"` and pass link props (`href`, `target`, `rel`) directly; do not wrap `Text` in an `<a>`.
+- Use typographic ellipsis (`…`) in user-visible UI copy for in-progress/loading/truncated labels (e.g. `Loading…`, `Refreshing…`, `Testing…`), not three periods (`...`).
 - Do not set `weight` unless the Figma design explicitly shows non-normal weight. Models tend to over-apply `font-medium` and `font-bold` — normal weight is almost always correct.
 - No inline styles; use Tailwind classes + tokens.
 - **Do not introduce `cn` as a formatting tool.** Use `cn` only when class names are dynamic or need conditional logic. For static classes (even 5-7 of them), prefer a plain string literal `className="..."`. Only group into `cn(...)` arrays when the element has 8+ classes (per Tailwind sort rule) or when classes are extracted into a reusable constant.
@@ -50,6 +52,8 @@ about component internals — verify them. Do not pass props that match defaults
 - Icons inside `Button`: do not set explicit icon sizing classes by default. `Button` already sizes nested SVGs via its base styles; only add `size-*` when the design explicitly requires an override.
 - SVG sizing: `useBoxSize` sets inline `width/height` (`1em` by default). Use it when icons should scale with text; avoid mixing with `size-*` in the same element.
 - Lucide icon imports must end with `Icon` suffix (e.g., `DownloadIcon`).
+- Loading indicators: prefer the shared `Spinner` (`src/components/elements/spinner.tsx`) over Lucide `LoaderIcon`/`LoaderCircleIcon` for in-progress UI. First verify `Spinner` fits the surface; only use a Lucide loader when `Spinner` cannot satisfy a specific visual requirement.
+- Do not add `animate-spin`/motion classes to `Spinner` instances. `Spinner` owns its animation internally; only pass sizing/color/layout classes (for example `size-*`, spacing, tokenized text color).
 - Component filenames are kebab-case.
 
 ## Typography Notes

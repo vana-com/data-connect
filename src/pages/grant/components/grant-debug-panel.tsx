@@ -6,10 +6,10 @@ const DEBUG_STATUSES: GrantFlowState["status"][] = [
   "loading",
   "claiming",
   "verifying-builder",
-  "consent",
   "preparing-server",
-  "creating-grant",
+  "consent",
   "approving",
+  "creating-grant",
   "success",
   "error",
 ]

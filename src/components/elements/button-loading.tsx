@@ -1,5 +1,5 @@
 import type { ComponentPropsWithoutRef, ReactNode } from "react"
-import { Loader2Icon } from "lucide-react"
+import { Spinner } from "@/components/elements/spinner"
 import { Button } from "@/components/ui/button"
 import { cn } from "@/lib/classes"
 
@@ -22,10 +22,7 @@ export function LoadingButton({
     <Button type={type} disabled={disabled || isLoading} {...props}>
       {isLoading ? (
         <>
-          <Loader2Icon
-            aria-hidden="true"
-            className={cn("animate-spin", spinnerClassName)}
-          />
+          <Spinner className={cn("size-em shrink-0", spinnerClassName)} />
           {loadingLabel ?? children ?? "Loading…"}
         </>
       ) : (

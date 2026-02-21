@@ -1,14 +1,33 @@
 import { Text } from "@/components/typography/text"
-import { Button } from "@/components/ui/button"
 import { KeyRoundIcon } from "lucide-react"
 import { PlatformIcon } from "@/components/icons/platform-icon"
+import { DEV_FLAGS } from "@/config/dev-flags"
 import type { BrowserSession } from "../types"
-import { SettingsCard, SettingsCardStack, SettingsRow } from "./settings-shared"
+import { SettingsConfirmAction } from "./settings-confirm-action"
+import { SettingsCard, SettingsCardStack } from "./settings-shared"
+import { SettingsRow } from "./settings-row"
 
 interface SettingsCredentialsProps {
   sessions: BrowserSession[]
   onClearSession: (connectorId: string) => void
 }
+
+const TEST_CREDENTIALS_UI_STATE: "real" | "populated" =
+  DEV_FLAGS.useSettingsUiMocks ? "populated" : "real"
+const TEST_BROWSER_SESSIONS: BrowserSession[] = [
+  {
+    connectorId: "chatgpt-playwright",
+    path: "/tmp/chatgpt/session.json",
+    sizeBytes: 186_212,
+    lastModified: new Date(Date.now() - 2 * 60 * 60 * 1000).toISOString(),
+  },
+  {
+    connectorId: "spotify-playwright",
+    path: "/tmp/spotify/session.json",
+    sizeBytes: 92_408,
+    lastModified: new Date(Date.now() - 26 * 60 * 60 * 1000).toISOString(),
+  },
+]
 
 const CONNECTOR_DISPLAY_NAMES: Record<string, string> = {
   "chatgpt-playwright": "ChatGPT",
@@ -51,19 +70,18 @@ export function SettingsCredentials({
   sessions,
   onClearSession,
 }: SettingsCredentialsProps) {
+  const effectiveSessions =
+    TEST_CREDENTIALS_UI_STATE === "populated" ? TEST_BROWSER_SESSIONS : sessions
+
   return (
     <div className="space-y-8">
-      {sessions.length === 0 ? (
+      {effectiveSessions.length === 0 ? (
         <>
           <SettingsCardStack>
             <SettingsCard>
               <SettingsRow
-                icon={<KeyRoundIcon aria-hidden="true" />}
-                title={
-                  <Text as="div" intent="body" weight="semi">
-                    No stored sessions
-                  </Text>
-                }
+                icon={<KeyRoundIcon aria-hidden="true" className="size-6!" />}
+                title={"No stored sessions"}
               />
             </SettingsCard>
           </SettingsCardStack>
@@ -73,42 +91,47 @@ export function SettingsCredentials({
           </Text>
         </>
       ) : (
-        <SettingsCard divided>
-          {sessions.map(session => (
-            <SettingsRow
-              key={session.connectorId}
-              wrapIcon={false}
-              icon={
-                <PlatformIcon
-                  iconName={getPlatformIconName(session.connectorId)}
-                  fallbackLabel={getDisplayName(session.connectorId)}
-                  size={28}
-                />
-              }
-              title={
-                <Text as="div" intent="small" weight="medium">
-                  {getDisplayName(session.connectorId)}
-                </Text>
-              }
-              description={
-                <Text as="div" intent="fine" color="mutedForeground">
-                  Session stored · {formatBytes(session.sizeBytes)} · Last used{" "}
-                  {formatDate(session.lastModified)}
-                </Text>
-              }
-              right={
-                <Button
-                  type="button"
-                  variant="ghost"
-                  size="sm"
-                  onClick={() => onClearSession(session.connectorId)}
-                >
-                  Clear
-                </Button>
-              }
-            />
-          ))}
-        </SettingsCard>
+        <SettingsCardStack>
+          <SettingsCard divided>
+            {effectiveSessions.map(session => (
+              <SettingsRow
+                key={session.connectorId}
+                wrapIcon={false}
+                icon={
+                  <PlatformIcon
+                    iconName={getPlatformIconName(session.connectorId)}
+                    fallbackLabel={getDisplayName(session.connectorId)}
+                    size={24}
+                  />
+                }
+                title={getDisplayName(session.connectorId)}
+                description={`Session stored · ${formatBytes(session.sizeBytes)} · Last used ${formatDate(session.lastModified)}`}
+                right={
+                  <SettingsConfirmAction
+                    triggerLabel="Clear"
+                    title="Clear stored session?"
+                    description={
+                      <>
+                        This removes your saved login for{" "}
+                        <strong>{getDisplayName(session.connectorId)}</strong>.
+                        You will need to sign in again next time you import.
+                      </>
+                    }
+                    actionLabel="Clear"
+                    onAction={() => onClearSession(session.connectorId)}
+                    media={
+                      <PlatformIcon
+                        iconName={getPlatformIconName(session.connectorId)}
+                        fallbackLabel={getDisplayName(session.connectorId)}
+                        size={24}
+                      />
+                    }
+                  />
+                }
+              />
+            ))}
+          </SettingsCard>
+        </SettingsCardStack>
       )}
     </div>
   )

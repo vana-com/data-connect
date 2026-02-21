@@ -5,29 +5,21 @@ import {
   ActionLink,
   OpenExternalLink,
 } from "@/components/typography/link-open-external"
-import { LoadingButton } from "@/components/typography/button-loading"
-import {
-  AlertDialog,
-  AlertDialogAction,
-  AlertDialogCancel,
-  AlertDialogContent,
-  AlertDialogDescription,
-  AlertDialogFooter,
-  AlertDialogHeader,
-  AlertDialogTitle,
-  AlertDialogTrigger,
-} from "@/components/ui/alert-dialog"
+import { LoadingButton } from "@/components/elements/button-loading"
 import { Button } from "@/components/ui/button"
+import { SettingsConfirmAction } from "@/pages/settings/components/settings-confirm-action"
 import {
   SettingsBadgeActive,
   SettingsBadgeNone,
+} from "./settings-status-badge"
+import {
   SettingsCard,
   SettingsCardStack,
-  SettingsMetaRow,
   SettingsRowAction,
   SettingsSingleSelectRowGroup,
 } from "@/pages/settings/components/public"
 import { SettingsServerSection } from "./settings-server-section"
+import { SettingsMetaRow } from "./settings-meta-row"
 
 export interface SettingsStorageProps {
   dataPath: string
@@ -139,35 +131,16 @@ export function SettingsStorage({
             }}
             renderRight={(item, selected) =>
               activeStorageOption === item.id && selected ? (
-                <AlertDialog>
-                  <AlertDialogTrigger asChild>
-                    <SettingsRowAction>Remove</SettingsRowAction>
-                  </AlertDialogTrigger>
-                  <AlertDialogContent size="sm">
-                    <AlertDialogHeader>
-                      <AlertDialogTitle>
-                        Remove storage provider?
-                      </AlertDialogTitle>
-                      <AlertDialogDescription>
-                        This will clear the active storage selection. You can
-                        set it again later.
-                      </AlertDialogDescription>
-                    </AlertDialogHeader>
-                    <AlertDialogFooter>
-                      <AlertDialogCancel size="sm">Cancel</AlertDialogCancel>
-                      <AlertDialogAction
-                        size="sm"
-                        variant="destructive"
-                        onClick={() => {
-                          setActiveStorageOption(null)
-                          setDraftStorageOption(null)
-                        }}
-                      >
-                        Remove
-                      </AlertDialogAction>
-                    </AlertDialogFooter>
-                  </AlertDialogContent>
-                </AlertDialog>
+                <SettingsConfirmAction
+                  trigger={<SettingsRowAction>Remove</SettingsRowAction>}
+                  title="Remove storage provider?"
+                  description="This will clear the active storage selection. You can set it again later."
+                  actionLabel="Remove"
+                  onAction={() => {
+                    setActiveStorageOption(null)
+                    setDraftStorageOption(null)
+                  }}
+                />
               ) : null
             }
           />

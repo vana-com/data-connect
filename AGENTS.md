@@ -22,9 +22,21 @@ DataConnect is the protocol client: it runs connectors, orchestrates grants, and
 - Don’t overwrite comments; don’t change styles/classes unless asked.
 - When I report a bug, don't start by trying to fix it. Instead, start by writing a test that reproduces the bug. Then, have subagents try to fix the bug and prove it with a passing test.
 - Commit only when asked; never push; stage explicit paths only (no `git add .`, `-A`, `-u`, `git commit -a`); run relevant tests before commit.
+- For all commit actions, follow `.agents/skills/commit-discipline/SKILL.md` exactly.
 - For links/actions that open URLs or local file/folder paths, use shared helpers in `src/lib/open-resource.ts` and `src/lib/tauri-paths.ts`; avoid inline runtime/OS branching in page components.
 - For routes in `src/pages/*`, keep `index.tsx` as entry/composition (params, guards, wiring) and move side effects/async orchestration into a page-local hook (`use-<page>-*.ts`).
 - If behavior branches by runtime capability (for example Tauri vs browser), add at least one test per branch before commit.
+
+### UI component gate
+
+When the user message contains `UI gate` and the change touches JSX (`.tsx` files or JSX in React components), the agent must:
+
+1. Read `.cursor/skills/ui-component-audit/SKILL.md` before making edits.
+2. Restate 2-4 concrete rules from that skill that will be applied in the current change.
+3. Proceed with edits only after completing steps 1-2.
+
+If no JSX is touched, ignore this gate.
+If the gate is requested and the skill was not read first, stop and ask for confirmation before continuing.
 
 ### Skills (JIT only)
 

@@ -1,5 +1,6 @@
 import type { usePersonalServer } from "@/hooks/usePersonalServer"
 import { Text } from "@/components/typography/text"
+import { DEV_FLAGS } from "@/config/dev-flags"
 import { Row, RowDot } from "./row"
 
 /*
@@ -45,7 +46,9 @@ function getPreviewRegistrationState(
   tunnelUrl: string | null
 ): RegistrationState {
   const state = getRegistrationState(status, tunnelUrl)
-  return TEST_REGISTRATION_STATE ?? state
+  return DEV_FLAGS.useSettingsUiMocks && TEST_REGISTRATION_STATE
+    ? TEST_REGISTRATION_STATE
+    : state
 }
 
 function getRegistrationPresentation(

@@ -9,7 +9,7 @@ export function useConnector() {
   const dispatch = useDispatch();
   const runs = useSelector((state: RootState) => state.app.runs);
 
-  const startExport = useCallback(
+  const startImport = useCallback(
     async (platform: Platform) => {
       const runId = `${platform.id}-${Date.now()}`;
 
@@ -83,7 +83,7 @@ export function useConnector() {
 
   return {
     runs,
-    startExport,
+    startImport,
     stopExport,
     getRunById,
   };

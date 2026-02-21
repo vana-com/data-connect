@@ -2,21 +2,23 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest"
 import { cleanup, render, screen, fireEvent, act, waitFor } from "@testing-library/react"
 import { createMemoryRouter, RouterProvider } from "react-router-dom"
 import { ROUTES } from "@/config/routes"
+import type { Run } from "@/types"
 import { Connect } from "./index"
 
 // ---------- mocks ----------
 
 const mockUsePlatforms = vi.fn()
-let mockRuns: Array<{ id: string; status: string }> = []
+type MockRun = Pick<Run, "id" | "status" | "statusMessage" | "phase">
+let mockRuns: MockRun[] = []
 
 vi.mock("@/hooks/usePlatforms", () => ({
   usePlatforms: () => mockUsePlatforms(),
 }))
 
-const mockStartExport = vi.fn()
+const mockStartImport = vi.fn()
 vi.mock("@/hooks/useConnector", () => ({
   useConnector: () => ({
-    startExport: mockStartExport,
+    startImport: mockStartImport,
   }),
 }))
 
@@ -106,7 +108,7 @@ const BUILDER_MANIFEST = {
 describe("Connect", () => {
   beforeEach(() => {
     mockUsePlatforms.mockReset()
-    mockStartExport.mockReset()
+    mockStartImport.mockReset()
     mockClaimSession.mockReset()
     mockVerifyBuilder.mockReset()
     // Default: background pre-fetch returns pending promise (never resolves in tests)
@@ -128,12 +130,16 @@ describe("Connect", () => {
       expect(screen.getByText("Connect your ChatGPT")).toBeTruthy()
     })
 
-    it("falls back to default app scopes when appId is unknown", () => {
+    it("does not fall back to default app scopes when appId is unknown for grant sessions", () => {
       mockUsePlatforms.mockReturnValue(defaultPlatforms())
-      // Unknown appId → getAppRegistryEntry returns null → falls back to
-      // DEFAULT_APP_ID (rickroll) → scopes resolve to ChatGPT.
-      renderConnect("?appId=nonexistent")
-      expect(screen.getByText("Connect your ChatGPT")).toBeTruthy()
+      renderConnect("?sessionId=sess-123&secret=my-secret&appId=nonexistent")
+      expect(screen.getByText("Connect your data")).toBeTruthy()
+    })
+
+    it("does not fall back to app scopes when appId is known but grant scopes are missing", () => {
+      mockUsePlatforms.mockReturnValue(defaultPlatforms())
+      renderConnect("?sessionId=sess-123&secret=my-secret&appId=rickroll")
+      expect(screen.getByText("Connect your data")).toBeTruthy()
     })
 
     it("auto-navigates to grant when platform is already connected", async () => {
@@ -146,6 +152,20 @@ describe("Connect", () => {
       const { router } = renderConnect(REAL_SESSION_SEARCH)
       await waitFor(() => {
         expect(router.state.location.pathname).toBe(ROUTES.grant)
+      })
+    })
+
+    it("stays on connect when platform is connected but no grant session exists", async () => {
+      mockUsePlatforms.mockReturnValue(
+        defaultPlatforms({
+          platforms: [CHATGPT_PLATFORM],
+          isPlatformConnected: vi.fn(() => true),
+        })
+      )
+      const { router } = renderConnect()
+
+      await waitFor(() => {
+        expect(router.state.location.pathname).toBe(ROUTES.connect)
       })
     })
   })
@@ -189,9 +209,7 @@ describe("Connect", () => {
       )
       renderConnect()
 
-      const connectButton = screen.getByRole("button", {
-        name: /connect chatgpt/i,
-      })
+      const connectButton = screen.getByRole("button")
       expect(connectButton.getAttribute("aria-busy")).toBe("true")
       expect(screen.getByText("Checking connectors...")).toBeTruthy()
     })
@@ -256,22 +274,17 @@ describe("Connect", () => {
     })
 
     it("pre-fetch failure is non-fatal — does not crash UI", async () => {
-      const consoleWarn = vi.spyOn(console, "warn").mockImplementation(() => {})
       mockClaimSession.mockRejectedValue(new Error("Network error"))
       mockUsePlatforms.mockReturnValue(defaultPlatforms())
 
       renderConnect(REAL_SESSION_SEARCH)
 
       await waitFor(() => {
-        expect(consoleWarn).toHaveBeenCalledWith(
-          "[Connect] Pre-fetch: claim failed",
-          expect.objectContaining({ error: expect.any(Error) })
-        )
+        expect(mockClaimSession).toHaveBeenCalled()
       })
 
       // UI should still be functional
       expect(screen.getByText("Connect your ChatGPT")).toBeTruthy()
-      consoleWarn.mockRestore()
     })
 
     it("deduplicates pre-fetch for same session ID across re-renders", async () => {
@@ -296,8 +309,8 @@ describe("Connect", () => {
   // -------- connector execution + navigation --------
 
   describe("connector execution and navigation", () => {
-    it("starts export when connect button is clicked", async () => {
-      mockStartExport.mockResolvedValue("run-1")
+    it("starts import when connect button is clicked", async () => {
+      mockStartImport.mockResolvedValue("run-1")
       mockUsePlatforms.mockReturnValue(
         defaultPlatforms({ platforms: [CHATGPT_PLATFORM] })
       )
@@ -311,14 +324,14 @@ describe("Connect", () => {
         fireEvent.click(connectButton)
       })
 
-      expect(mockStartExport).toHaveBeenCalledWith(CHATGPT_PLATFORM)
+      expect(mockStartImport).toHaveBeenCalledWith(CHATGPT_PLATFORM)
     })
 
     it("navigates to grant page with prefetched data when run succeeds", async () => {
       // Setup: pre-fetch resolves, then connector run succeeds
       mockClaimSession.mockResolvedValue(CLAIMED_SESSION)
       mockVerifyBuilder.mockResolvedValue(BUILDER_MANIFEST)
-      mockStartExport.mockResolvedValue("run-1")
+      mockStartImport.mockResolvedValue("run-1")
       mockUsePlatforms.mockReturnValue(
         defaultPlatforms({ platforms: [CHATGPT_PLATFORM] })
       )
@@ -356,14 +369,14 @@ describe("Connect", () => {
     })
 
     it("resets connect state when run errors", async () => {
-      mockStartExport.mockResolvedValue("run-1")
+      mockStartImport.mockResolvedValue("run-1")
       mockUsePlatforms.mockReturnValue(
         defaultPlatforms({ platforms: [CHATGPT_PLATFORM] })
       )
 
       const { router } = renderConnect(REAL_SESSION_SEARCH)
 
-      // Start export
+      // Start import
       const connectButton = screen.getByRole("button", {
         name: /connect chatgpt/i,
       })
@@ -384,7 +397,7 @@ describe("Connect", () => {
     })
 
     it("resets connect state when run is stopped", async () => {
-      mockStartExport.mockResolvedValue("run-1")
+      mockStartImport.mockResolvedValue("run-1")
       mockUsePlatforms.mockReturnValue(
         defaultPlatforms({ platforms: [CHATGPT_PLATFORM] })
       )
@@ -413,7 +426,7 @@ describe("Connect", () => {
       // Pre-fetch fails
       mockClaimSession.mockRejectedValue(new Error("Network error"))
       vi.spyOn(console, "warn").mockImplementation(() => {})
-      mockStartExport.mockResolvedValue("run-1")
+      mockStartImport.mockResolvedValue("run-1")
       mockUsePlatforms.mockReturnValue(
         defaultPlatforms({ platforms: [CHATGPT_PLATFORM] })
       )
@@ -425,7 +438,7 @@ describe("Connect", () => {
         expect(mockClaimSession).toHaveBeenCalled()
       })
 
-      // Start export and simulate success
+      // Start import and simulate success
       const connectButton = screen.getByRole("button", {
         name: /connect chatgpt/i,
       })
@@ -446,6 +459,36 @@ describe("Connect", () => {
       // The grant page will retry claim + verify on its own
       vi.restoreAllMocks()
     })
+
+    it("shows connector status message while run is active", async () => {
+      mockStartImport.mockResolvedValue("run-1")
+      mockUsePlatforms.mockReturnValue(
+        defaultPlatforms({ platforms: [CHATGPT_PLATFORM] })
+      )
+
+      const { router } = renderConnect(REAL_SESSION_SEARCH)
+      const connectButton = screen.getByRole("button", {
+        name: /connect chatgpt/i,
+      })
+
+      await act(async () => {
+        fireEvent.click(connectButton)
+      })
+
+      await act(async () => {
+        mockRuns = [
+          {
+            id: "run-1",
+            status: "running",
+            statusMessage: "Collecting conversations...",
+          },
+        ]
+        router.navigate(`${ROUTES.connect}${REAL_SESSION_SEARCH}`)
+      })
+
+      expect(screen.getByText("Collecting conversations...")).toBeTruthy()
+    })
+
   })
 
   // -------- grant URL construction --------

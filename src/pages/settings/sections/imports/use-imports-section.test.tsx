@@ -13,6 +13,7 @@ vi.mock("@tauri-apps/api/event", () => ({
 
 vi.mock("@/hooks/useConnector", () => ({
   useConnector: () => ({
+    startImport: vi.fn(),
     stopExport: vi.fn(),
   }),
 }))

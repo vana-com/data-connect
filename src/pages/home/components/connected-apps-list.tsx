@@ -6,7 +6,6 @@ import { stateFocus } from "@/components/typography/field"
 import { Text } from "@/components/typography/text"
 import { buttonVariants } from "@/components/ui/button"
 import { DEV_FLAGS } from "@/config/dev-flags"
-import { ROUTES } from "@/config/routes"
 import { cn } from "@/lib/classes"
 import { openExternalUrl } from "@/lib/open-resource"
 import { buildSettingsUrl } from "@/pages/settings/url"
@@ -39,19 +38,10 @@ async function openExternalApp(url: string) {
 }
 
 function getConnectedAppUrl(app: ConnectedApp) {
-  // If VITE_USE_RICKROLL_MOCK=true, then every connected app opens the RickRoll mock.
-  if (DEV_FLAGS.useRickrollMock) {
-    return new URL(ROUTES.rickrollMockRoot, window.location.origin)
-  }
-  if (!DEV_FLAGS.useTestData) {
+  if (!DEV_FLAGS.useHomeTestFixtures) {
     return null
   }
-  // When using testConnectedApps, rickroll is the only in-app mock.
-  if (app.id === "rickroll") {
-    return new URL(ROUTES.rickrollMockRoot, window.location.origin)
-  }
   const entry = getAppRegistryEntry(app.id)
-  // Otherwise, rely on the registry's externalUrl.
   return entry?.status === "live"
     ? new URL(entry.externalUrl, window.location.origin)
     : null

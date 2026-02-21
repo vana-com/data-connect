@@ -111,6 +111,10 @@ export function useSettingsPage() {
     }
   }, [])
 
+  const clearDebugPaths = useCallback(() => {
+    setPathsDebug(null)
+  }, [])
+
   // Fetch connected apps from Personal Server when available
   useEffect(() => {
     if (personalServer.port && personalServer.status === "running") {
@@ -239,6 +243,7 @@ export function useSettingsPage() {
     onOpenLogFolder: openLogFolder,
     onTestNodeJs: testNodeJs,
     onDebugPaths: debugPaths,
+    onClearDebugPaths: clearDebugPaths,
     onCheckBrowserStatus: checkBrowserStatus,
     onSimulateNoChromeChange: setSimulateNoChrome,
     onClearBrowserSession: handleClearSession,

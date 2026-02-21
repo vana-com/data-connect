@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useMemo, useState } from "react"
 import { invoke } from "@tauri-apps/api/core"
-import { getScopeForPlatform, ingestExportData } from "@/services/personalServerIngest"
-import { openLocalPath } from "@/lib/open-resource"
+import { getScopeForPlatform, ingestData } from "@/services/personalServerIngest"
+import { openExportFolderPath } from "@/lib/open-resource"
 import type { Run } from "@/types"
 import {
   buildExportData,
@@ -35,7 +35,7 @@ export function useRunItem({ run, serverPort, serverReady }: UseRunItemProps) {
   }, [run.syncedToPersonalServer])
 
   const scope = useMemo(() => getScopeForPlatform(run.platformId), [run.platformId])
-  const canIngest = serverReady && !!serverPort && !!run.exportPath
+  const canIngest = serverReady && !!serverPort && !!run.exportPath && !!scope
   const conversations = exportData?.conversations || []
   const ingestButtonLabel = getIngestButtonLabel(ingestStatus)
   const formattedDate = formatRunDate(run.startDate)
@@ -77,9 +77,8 @@ export function useRunItem({ run, serverPort, serverReady }: UseRunItemProps) {
         runId: run.id,
         exportPath: dirPath,
       })
-      const payload = (data.content ?? data) as Record<string, unknown>
-      const ingested = await ingestExportData(serverPort!, run.platformId, payload)
-      if (ingested.length === 0) throw new Error("No scopes ingested")
+      const payload = (data.content ?? data) as object
+      await ingestData(serverPort!, scope!, payload)
       setIngestStatus("sent")
     } catch (err) {
       console.error("[Ingest] Failed:", err)
@@ -89,11 +88,7 @@ export function useRunItem({ run, serverPort, serverReady }: UseRunItemProps) {
 
   const openFolder = useCallback(async () => {
     if (run.exportPath) {
-      // exportPath may be a .json file path — open the parent directory instead
-      const dirPath = run.exportPath.endsWith(".json")
-        ? run.exportPath.replace(/\/[^/]+$/, "")
-        : run.exportPath
-      await openLocalPath(dirPath)
+      await openExportFolderPath(run.exportPath)
     }
   }, [run.exportPath])
 

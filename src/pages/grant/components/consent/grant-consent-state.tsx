@@ -1,7 +1,9 @@
-import { AlertTriangleIcon, ArrowRightIcon, LoaderIcon } from "lucide-react"
+import { AlertTriangleIcon, ArrowRightIcon } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { PlatformIcon } from "@/components/icons/platform-icon"
 import { Text } from "@/components/typography/text"
+import { PageHeading } from "@/components/typography/page-heading"
+import { LoadingButton } from "@/components/elements/button-loading"
 import { OpenExternalLink } from "@/components/typography/link-open-external"
 import { cn } from "@/lib/classes"
 import { LINKS } from "@/config/links"
@@ -61,11 +63,9 @@ export function GrantConsentState({
   }
 
   return (
-    <div className="container pt-major">
+    <div className="container pt-w16">
       <div className="space-y-w6">
-        <Text as="h1" intent="title">
-          Allow access to your {dataLabel}
-        </Text>
+        <PageHeading>Allow access to your {dataLabel}</PageHeading>
         <Text as="p">
           This will allow <strong>{appName}</strong> to:
         </Text>
@@ -83,25 +83,26 @@ export function GrantConsentState({
           </div>
         )}
 
-        {/* purposely not wrapped in action-outset */}
-        <ActionPanel className="justify-start gap-w4">
-          <div className="h-full flex items-center gap-1">
-            <PlatformIcon
-              iconName={dataSourceLabel ?? "Data"}
-              aria-hidden="true"
-            />
-            <ArrowRightIcon aria-hidden="true" className="size-[1.5em]" />
-            <PlatformIcon
-              iconName={appName}
-              imageSrc={builderIconSrc}
-              aria-hidden="true"
-            />
-          </div>
-          {/* Scope list */}
-          <Text as="p" intent="button" weight="medium">
-            See your {scopeActionLabel}
-          </Text>
-        </ActionPanel>
+        <div className="action-outset">
+          <ActionPanel className="justify-start gap-w4">
+            <div className="h-full flex items-center gap-1">
+              <PlatformIcon
+                iconName={dataSourceLabel ?? "Data"}
+                aria-hidden="true"
+              />
+              <ArrowRightIcon aria-hidden="true" className="size-[1.5em]" />
+              <PlatformIcon
+                iconName={appName}
+                imageSrc={builderIconSrc}
+                aria-hidden="true"
+              />
+            </div>
+            {/* Scope list */}
+            <Text as="p" intent="button" weight="medium">
+              See your {scopeActionLabel}
+            </Text>
+          </ActionPanel>
+        </div>
 
         <Text as="p" intent="fine" dim align="left" balance>
           By clicking <strong>Agree and Allow</strong>, you acknowledge that you
@@ -130,25 +131,17 @@ export function GrantConsentState({
           >
             Cancel
           </Button>
-          <Button
+          <LoadingButton
             type="button"
             onClick={onApprove}
             disabled={isApproving}
+            isLoading={isApproving}
+            loadingLabel="Allowing…"
             variant="accent"
             className="w-[156px] disabled:opacity-100"
           >
-            {isApproving ? (
-              <>
-                <LoaderIcon
-                  aria-hidden="true"
-                  className="animate-spin motion-reduce:animate-none"
-                />
-                <span aria-live="polite">Allowing…</span>
-              </>
-            ) : (
-              "Agree and Allow"
-            )}
-          </Button>
+            Agree and Allow
+          </LoadingButton>
         </div>
 
         {/* <hr /> */}

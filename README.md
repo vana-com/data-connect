@@ -67,27 +67,26 @@ Connector files have two locations in dev:
 
 How they get there:
 
-- `npm install` runs `postinstall` -> `node scripts/fetch-connectors.js`
-  - This can download/regenerate connector files into `./connectors/`.
+- `npm install` no longer fetches connectors.
+- `npm run tauri:dev` and `tauri dev` run `node scripts/ensure-connectors.js`
+  - If required connector dirs are missing, they are fetched automatically.
 - `npm run tauri:dev` runs `node scripts/sync-connectors-dev.js` first
   - This copies repo connectors into `~/.dataconnect/connectors/`.
 
 Key point:
 
-- `tauri:dev` syncs what already exists in `./connectors/`.
-- It does not fetch missing repo connectors by itself.
+- `tauri:dev` syncs repo connectors into `~/.dataconnect/connectors/`.
+- `ensure-connectors` auto-fetches missing required repo connectors first.
 
 If you deleted connector folders and need to recover:
 
 ```bash
-node scripts/fetch-connectors.js
-node scripts/sync-connectors-dev.js
 npm run tauri:dev
 ```
 
 Optional environment flags:
 
-- `SKIP_CONNECTOR_FETCH=1` -> skip connector download in `postinstall`.
+- `SKIP_CONNECTOR_FETCH=1` -> skip connector fetch in `ensure-connectors`/`fetch-connectors`.
 - `CONNECTORS_PATH=/path/to/local/connectors` -> skip remote fetch and use local connector source.
 
 ### Agent config files

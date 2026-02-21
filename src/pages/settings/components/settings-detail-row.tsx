@@ -7,21 +7,24 @@ import {
   TooltipTrigger,
 } from "@/components/ui/tooltip"
 import { cn } from "@/lib/classes"
+import { settingsRowDescriptionTooltipStyle } from "./settings-row-description-shared"
 
-/* Duplicate of storage/components/row.tsx */
-
-interface RowProps {
+interface SettingsDetailRowProps {
   label: ReactNode
   value: ReactNode
   isLast?: boolean
   labelInfo?: ReactNode
 }
 
-interface RowDotProps {
-  className?: string
-}
-
-export function Row({ label, value, isLast = false, labelInfo }: RowProps) {
+/**
+ * Variation of `SettingsRow` for compact label/value detail lines.
+ */
+export function SettingsDetailRow({
+  label,
+  value,
+  isLast = false,
+  labelInfo,
+}: SettingsDetailRowProps) {
   const labelContent =
     typeof label === "string" ? (
       <Text as="div" intent="body" weight="semi">
@@ -34,7 +37,6 @@ export function Row({ label, value, isLast = false, labelInfo }: RowProps) {
   return (
     <div
       className={cn(
-        // "flex items-center justify-between gap-4 py-2.5",
         "flex items-center justify-between gap-4 py-4",
         !isLast && "border-b border-border"
       )}
@@ -54,7 +56,10 @@ export function Row({ label, value, isLast = false, labelInfo }: RowProps) {
             </TooltipTrigger>
             <TooltipContent
               side="top"
-              className={cn("max-w-[280px]", tooltipStyle)}
+              className={cn(
+                "max-w-[280px]",
+                settingsRowDescriptionTooltipStyle
+              )}
             >
               {labelInfo}
             </TooltipContent>
@@ -65,18 +70,3 @@ export function Row({ label, value, isLast = false, labelInfo }: RowProps) {
     </div>
   )
 }
-
-export function RowDot({ className }: RowDotProps) {
-  return (
-    <span
-      aria-hidden="true"
-      className={cn("size-[0.5em] rounded-full", className)}
-    />
-  )
-}
-
-export const tooltipStyle = [
-  "text-fine bg-foreground text-background",
-  "ring-2 ring-foreground rounded-soft",
-  "px-2.5 py-2",
-]

@@ -4,7 +4,7 @@ import { createMemoryRouter, RouterProvider } from "react-router-dom"
 import { open } from "@tauri-apps/plugin-shell"
 import { buildGrantSearchParams } from "@/lib/grant-params"
 import { getAppRegistryEntries } from "@/apps/registry"
-import { ROUTES } from "@/config/routes"
+import { LINKS } from "@/config/links"
 import { DEV_FLAGS } from "@/config/dev-flags"
 import { DataApps } from "./index"
 
@@ -13,8 +13,9 @@ const apps = getAppRegistryEntries()
 const liveApps = apps.filter(app => app.status === "live")
 const comingSoonApps = apps.filter(app => app.status === "coming-soon")
 const mutableFlags = DEV_FLAGS as {
-  useRickrollMock: boolean
-  useTestData: boolean
+  useHomeTestFixtures: boolean
+  useSettingsUiMocks: boolean
+  useHomeConnectingPreview: boolean
 }
 const originalFlags = { ...mutableFlags }
 
@@ -32,9 +33,9 @@ vi.mock("react-router", async () => {
 
 const renderDataApps = () => {
   const router = createMemoryRouter(
-    [{ path: ROUTES.apps, element: <DataApps /> }],
+    [{ path: "/apps", element: <DataApps /> }],
     {
-      initialEntries: [ROUTES.apps],
+      initialEntries: ["/apps"],
     }
   )
 
@@ -89,13 +90,12 @@ describe("DataApps", () => {
     const learnMoreLinks = screen.getAllByRole("link", { name: /Learn more/i })
     expect(learnMoreLinks.length).toBeGreaterThan(0)
     learnMoreLinks.forEach(link => {
-      expect(link.getAttribute("href")).toBe("https://docs.vana.org")
+      expect(link.getAttribute("href")).toBe(LINKS.docs)
     })
   })
 
-  it("uses the rickroll mock when the flag is enabled", async () => {
+  it("uses the external app URL when the flag is enabled", async () => {
     const nowSpy = vi.spyOn(Date, "now").mockReturnValue(123)
-    mutableFlags.useRickrollMock = true
     renderDataApps()
 
     const openAppButtons = screen.getAllByRole("button", { name: "Open App" })
@@ -107,7 +107,7 @@ describe("DataApps", () => {
       appId,
       scopes: liveApps[0].scopes,
     })
-    const expectedUrl = new URL(ROUTES.rickrollMockRoot, window.location.origin)
+    const expectedUrl = new URL(liveApps[0].externalUrl, window.location.origin)
     const search = searchParams.toString()
     if (search) {
       expectedUrl.search = search
@@ -122,7 +122,6 @@ describe("DataApps", () => {
 
   it("uses the external app URL when the flag is disabled", async () => {
     const nowSpy = vi.spyOn(Date, "now").mockReturnValue(123)
-    mutableFlags.useRickrollMock = false
     renderDataApps()
 
     const openAppButtons = screen.getAllByRole("button", { name: "Open App" })

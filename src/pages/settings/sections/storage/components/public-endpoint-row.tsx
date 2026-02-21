@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react"
 import { CopyIcon } from "lucide-react"
 import { Text } from "@/components/typography/text"
+import { DEV_FLAGS } from "@/config/dev-flags"
 import { Row, tooltipStyle } from "./row"
 import { cn } from "@/lib/classes"
 
@@ -31,7 +32,7 @@ function getPreviewPublicEndpointInputs(
   tunnelUrl: string | null,
   copied: boolean
 ) {
-  if (!TEST_PUBLIC_ENDPOINT_STATE) {
+  if (!DEV_FLAGS.useSettingsUiMocks || !TEST_PUBLIC_ENDPOINT_STATE) {
     return { tunnelUrl, copied }
   }
 

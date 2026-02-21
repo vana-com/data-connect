@@ -16,7 +16,7 @@ import { SettingsCredentials } from "./components/settings-credentials"
 import { SettingsOverviewLayout } from "./components/settings-overview-layout"
 import { SettingsSidebar } from "./components/settings-sidebar"
 import { SettingsImportsSection } from "./sections/imports/index"
-import { SettingsPersonalServer } from "./sections/personal-server"
+import { SettingsPersonalServer } from "./components/settings-personal-server"
 import { SettingsStorageSection } from "./sections/storage/index"
 import { SETTINGS_SECTION_META, SETTINGS_SECTION_ORDER } from "./sections"
 import type { SettingsSection } from "./types"
@@ -68,6 +68,7 @@ export function Settings() {
     onOpenLogFolder,
     onTestNodeJs,
     onDebugPaths,
+    onClearDebugPaths,
     onCheckBrowserStatus,
     onSimulateNoChromeChange,
     onClearBrowserSession,
@@ -132,6 +133,7 @@ export function Settings() {
         onTestNodeJs={onTestNodeJs}
         onCheckBrowserStatus={onCheckBrowserStatus}
         onDebugPaths={onDebugPaths}
+        onClearDebugPaths={onClearDebugPaths}
         onRestartPersonalServer={personalServer.startServer}
         onStopPersonalServer={personalServer.stopServer}
         onSimulateNoChromeChange={onSimulateNoChromeChange}

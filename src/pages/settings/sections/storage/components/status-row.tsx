@@ -1,5 +1,6 @@
 import type { usePersonalServer } from "@/hooks/usePersonalServer"
 import { Text } from "@/components/typography/text"
+import { DEV_FLAGS } from "@/config/dev-flags"
 import { Row, RowDot } from "./row"
 
 /*
@@ -32,7 +33,10 @@ function getPreviewStatusInputs(
   port: number | null,
   error: string | null
 ) {
-  const previewStatus = TEST_SERVER_STATUS ?? status
+  const previewStatus =
+    DEV_FLAGS.useSettingsUiMocks && TEST_SERVER_STATUS
+      ? TEST_SERVER_STATUS
+      : status
   const previewPort = previewStatus === "running" ? TEST_SERVER_PORT : port
   const previewError = previewStatus === "error" ? TEST_SERVER_ERROR : error
   return {

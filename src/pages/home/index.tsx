@@ -23,17 +23,13 @@ import {
   getGrantParamsFromSearchParams,
 } from "@/lib/grant-params"
 import { getPlatformRegistryEntry } from "@/lib/platform/utils"
-import {
-  USE_TEST_DATA,
-  testConnectedApps,
-  testConnectedPlatforms,
-  testPlatforms,
-} from "./fixtures"
+import { DEV_FLAGS } from "@/config/dev-flags"
+import { testConnectedApps, testConnectedPlatforms, testPlatforms } from "./fixtures"
 
 export function Home() {
   const navigate = useNavigate()
   const { platforms, isPlatformConnected, loadPlatforms } = usePlatforms()
-  const { startExport } = useConnector()
+  const { startImport } = useConnector()
   const { checkForUpdates } = useConnectorUpdates()
   const { connectedApps, fetchConnectedApps } = useConnectedApps()
   const personalServer = usePersonalServer()
@@ -48,11 +44,11 @@ export function Home() {
   ]
 
   const displayPlatforms =
-    platforms.length > 0 ? platforms : USE_TEST_DATA ? testPlatforms : []
+    platforms.length > 0 ? platforms : DEV_FLAGS.useHomeTestFixtures ? testPlatforms : []
   const displayConnectedApps =
     connectedApps.length > 0
       ? connectedApps
-      : USE_TEST_DATA
+      : DEV_FLAGS.useHomeTestFixtures
         ? testConnectedApps
         : []
 
@@ -78,21 +74,24 @@ export function Home() {
     return () => cancelAnimationFrame(frame)
   }, [])
 
-  const handleExport = async (platform: Platform) => {
-    console.log(
-      "Starting export for platform:",
-      platform.id,
-      platform.name,
-      "runtime:",
-      platform.runtime
-    )
-    try {
-      await startExport(platform)
-      navigate(buildSettingsUrl({ section: "imports", source: platform.id }))
-    } catch (error) {
-      console.error("Export failed:", error)
-    }
-  }
+  const handleImportSource = useCallback(
+    async (platform: Platform) => {
+      console.log(
+        "Starting import for platform:",
+        platform.id,
+        platform.name,
+        "runtime:",
+        platform.runtime
+      )
+      try {
+        await startImport(platform)
+        navigate(buildSettingsUrl({ section: "imports", source: platform.id }))
+      } catch (error) {
+        console.error("Import failed:", error)
+      }
+    },
+    [navigate, startImport]
+  )
 
   const handleTestDeepLink = useCallback(() => {
     const trimmed = deepLinkInput.trim()
@@ -111,14 +110,14 @@ export function Home() {
 
   // Separate available platforms (memoized to avoid re-filtering on every render)
   const connectedPlatformsList = useMemo(() => {
-    if (USE_TEST_DATA && platforms.length === 0) {
+    if (DEV_FLAGS.useHomeTestFixtures && platforms.length === 0) {
       return testConnectedPlatforms
     }
     return displayPlatforms.filter(p => isPlatformConnected(p.id))
   }, [displayPlatforms, isPlatformConnected, platforms.length])
 
   const availablePlatforms = useMemo(() => {
-    if (USE_TEST_DATA && platforms.length === 0) {
+    if (DEV_FLAGS.useHomeTestFixtures && platforms.length === 0) {
       return testPlatforms
     }
     return displayPlatforms
@@ -162,7 +161,7 @@ export function Home() {
             platforms={availablePlatforms}
             runs={runs}
             headline="Available connectors"
-            onExport={handleExport}
+            onExport={handleImportSource}
             connectedPlatformIds={connectedPlatformsList.map(p => p.id)}
           />
         </TabsContent>

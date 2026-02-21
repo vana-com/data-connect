@@ -4,6 +4,7 @@ import { EyebrowBadge } from "@/components/typography/eyebrow-badge"
 import { PlatformIcon } from "@/components/icons/platform-icon"
 import { Spinner } from "@/components/elements/spinner"
 import { Text } from "@/components/typography/text"
+import { PageHeading } from "@/components/typography/page-heading"
 import { ActionButton } from "@/components/typography/button-action"
 import { LearnMoreLink } from "@/components/typography/link-learn-more"
 import { ButtonArrow } from "@/components/ui/button"
@@ -29,11 +30,9 @@ export function Connect() {
   if (isAutoRedirecting) return <LoadingState />
 
   return (
-    <div className="container pt-major">
+    <div className="container pt-w16">
       <div className="space-y-w6">
-        <Text as="h1" intent="title">
-          {connectTitle}
-        </Text>
+        <PageHeading>{connectTitle}</PageHeading>
         <Text as="p" intent="body">
           {isAlreadyConnected
             ? `You've already connected your ${dataLabel}. You can run it again to refresh.`

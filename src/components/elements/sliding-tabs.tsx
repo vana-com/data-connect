@@ -29,7 +29,7 @@ export function SlidingTabs({
   return (
     <nav className={cn("relative", className)}>
       <ul className={cn("flex gap-5 relative", ulClassName)}>
-        <div className="absolute z-0 rounded-button bg-foreground/10 h-[1px] inset-x-0 bottom-[-0.8em]"></div>
+        <div className="absolute z-0 rounded-button bg-foreground/10 h-px inset-x-0 bottom-[-0.8em]"></div>
 
         {tabs.map(tab => {
           const isSelected = value === tab.value
@@ -42,7 +42,7 @@ export function SlidingTabs({
                   className={cn(
                     "absolute z-0 rounded-button",
                     // "inset-0",
-                    "bg-foreground h-[1px] inset-x-0 bottom-[-0.8em]"
+                    "bg-foreground h-px inset-x-0 bottom-[-0.8em]"
                     // "bg-foreground/[0.05]"
                     // "border border-ring"
                   )}
@@ -65,7 +65,10 @@ export function SlidingTabs({
                   // "px-2.5 py-1.5",
                   // "text-xlarge font-medium",
                   // "px-2 py-1",
-                  textVariants({ intent: "title" }),
+                  textVariants({
+                    intent: "subtitle",
+                    weight: "medium",
+                  }),
                   "transition-colors disabled:cursor-not-allowed",
                   isSelected
                     ? "text-accent"

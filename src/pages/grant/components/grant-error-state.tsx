@@ -3,6 +3,7 @@ import { Link } from "react-router-dom"
 import { ArrowRightIcon, HomeIcon, RotateCcwIcon, XIcon } from "lucide-react"
 import { ActionButton } from "@/components/typography/button-action"
 import { Text } from "@/components/typography/text"
+import { PageHeading } from "@/components/typography/page-heading"
 import { ButtonArrow } from "@/components/ui/button"
 import { ROUTES } from "@/config/routes"
 
@@ -18,27 +19,29 @@ export function GrantErrorState({
   onRetry,
 }: GrantErrorStateProps) {
   return (
-    <div className="container pt-major">
+    <div className="container pt-w16">
       <div className="space-y-w6">
-        <Text as="h1" intent="title" className="relative">
-          <div className="absolute left-[-1.3em] top-[0.05em]">
+        <PageHeading color="destructive" className="relative">
+          {/* <div className="absolute left-[-1.3em] top-[0.05em]">
             <XIcon
               aria-hidden="true"
-              className="size-9 [--lucide-stroke-width:2] text-destructive-foreground"
+              className="size-8 [--lucide-stroke-width:2] text-destructive-foreground"
             />
-          </div>
+          </div> */}
           Something went wrong
-        </Text>
+        </PageHeading>
 
         <Text as="p">{error || "Please try again."}</Text>
 
         {onRetry ? (
           <>
-            <GrantActionButton
-              label="Try Again"
-              onClick={onRetry}
-              icon={<RotateCcwIcon aria-hidden="true" />}
-            />
+            <div className="action-outset">
+              <GrantActionButton
+                label="Try Again"
+                onClick={onRetry}
+                icon={<RotateCcwIcon aria-hidden="true" />}
+              />
+            </div>
             <div className="pt-px">
               <Text as={Link} to={ROUTES.home} dim link="default">
                 Cancel and return Home
@@ -46,12 +49,14 @@ export function GrantErrorState({
             </div>
           </>
         ) : (
-          <GrantActionButton
-            asChild
-            label="Return home"
-            to={declineHref}
-            icon={<HomeIcon aria-hidden="true" />}
-          />
+          <div className="action-outset">
+            <GrantActionButton
+              asChild
+              label="Return home"
+              to={declineHref}
+              icon={<HomeIcon aria-hidden="true" />}
+            />
+          </div>
         )}
       </div>
     </div>
@@ -81,11 +86,13 @@ function GrantActionButton({
         {icon}
       </div>
       <span className="flex-1">{label}</span>
-      <ButtonArrow
-        icon={ArrowRightIcon}
-        aria-hidden="true"
-        className="size-[2em] text-foreground-muted group-hover:text-foreground"
-      />
+      <div className="pr-2">
+        <ButtonArrow
+          icon={ArrowRightIcon}
+          aria-hidden="true"
+          className="size-[1.75em] text-foreground-muted group-hover:text-foreground"
+        />
+      </div>
     </>
   )
 

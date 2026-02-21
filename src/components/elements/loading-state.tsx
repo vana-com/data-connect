@@ -1,5 +1,5 @@
 import { Spinner } from "@/components/elements/spinner"
-import { Text } from "@/components/typography/text"
+import { PageHeading } from "@/components/typography/page-heading"
 
 interface LoadingStateProps {
   title?: string
@@ -7,12 +7,12 @@ interface LoadingStateProps {
 
 export function LoadingState({ title }: LoadingStateProps) {
   return (
-    <div className="container pt-major">
+    <div className="container pt-w16">
       <div className="space-y-w6">
-        <Text as="h1" intent="title" withIcon aria-live="polite">
+        <PageHeading withIcon aria-live="polite">
           <Spinner className="size-[0.75em]" />
           {title ?? "Loading…"}
-        </Text>
+        </PageHeading>
       </div>
     </div>
   )

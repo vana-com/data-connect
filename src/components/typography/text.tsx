@@ -59,7 +59,7 @@ export const textVariants = cva(
         xl: "text-xlarge",
         xlarge: "text-xlarge",
         heading: "text-heading",
-        subtitle: "text-subtitle",
+        subtitle: "text-subtitle text-balance",
         title: "text-title text-balance font-[450]",
         display: "text-display text-balance font-[450]",
         hero: "text-hero text-balance font-[450]",

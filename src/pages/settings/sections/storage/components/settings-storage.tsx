@@ -5,7 +5,7 @@ import {
   ActionLink,
   OpenExternalLink,
 } from "@/components/typography/link-open-external"
-import { LoadingButton } from "@/components/typography/button-loading"
+import { LoadingButton } from "@/components/elements/button-loading"
 import { Button } from "@/components/ui/button"
 import { SettingsConfirmAction } from "@/pages/settings/components/settings-confirm-action"
 import {

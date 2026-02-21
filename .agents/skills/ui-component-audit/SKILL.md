@@ -52,6 +52,8 @@ about component internals — verify them. Do not pass props that match defaults
 - Icons inside `Button`: do not set explicit icon sizing classes by default. `Button` already sizes nested SVGs via its base styles; only add `size-*` when the design explicitly requires an override.
 - SVG sizing: `useBoxSize` sets inline `width/height` (`1em` by default). Use it when icons should scale with text; avoid mixing with `size-*` in the same element.
 - Lucide icon imports must end with `Icon` suffix (e.g., `DownloadIcon`).
+- Loading indicators: prefer the shared `Spinner` (`src/components/elements/spinner.tsx`) over Lucide `LoaderIcon`/`LoaderCircleIcon` for in-progress UI. First verify `Spinner` fits the surface; only use a Lucide loader when `Spinner` cannot satisfy a specific visual requirement.
+- Do not add `animate-spin`/motion classes to `Spinner` instances. `Spinner` owns its animation internally; only pass sizing/color/layout classes (for example `size-*`, spacing, tokenized text color).
 - Component filenames are kebab-case.
 
 ## Typography Notes

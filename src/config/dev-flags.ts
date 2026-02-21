@@ -10,4 +10,9 @@ export const DEV_FLAGS = {
   // Enable mocked/preview-only Settings UI states (safe default: false).
   useSettingsUiMocks:
     !isTestMode && parseEnvFlag(import.meta.env.VITE_USE_SETTINGS_UI_MOCKS),
+
+  // .env.local: VITE_USE_HOME_CONNECTING_PREVIEW=true
+  // Enable Home "connecting card" debug preview overrides (safe default: false).
+  useHomeConnectingPreview:
+    !isTestMode && parseEnvFlag(import.meta.env.VITE_USE_HOME_CONNECTING_PREVIEW),
 } as const

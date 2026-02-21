@@ -26,6 +26,8 @@ export function ActionButton({
         "hover:border-black hover:ring-4 hover:ring-accent/[0.07]",
         // Focus-visible treatment
         "focus-visible:border-black focus-visible:ring-4 focus-visible:ring-accent/[0.07] focus-visible:ring-offset-0",
+        // Selected treatment (persistent active card state)
+        "aria-selected:border-black aria-selected:ring-4 aria-selected:ring-accent/[0.15] aria-selected:ring-offset-0",
         className
       )}
       {...props}

@@ -84,7 +84,7 @@ function SourceActivityLinks({
       >
         Open exports folder
       </SourceLinkRow>
-      <SourceLinkRow href="#" icon={<ActivityIcon aria-hidden />}>
+      <SourceLinkRow icon={<ActivityIcon aria-hidden />}>
         {lastUsedText}
       </SourceLinkRow>
       <SourceLinkRow

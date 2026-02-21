@@ -10,6 +10,7 @@ import { LINKS } from "@/config/links"
 import { formatScopeLabel, getPrimaryDataSourceLabel } from "@/lib/scope-labels"
 import type { BuilderManifest, GrantSession } from "../../types"
 import { ActionPanel } from "@/components/typography/button-action"
+import { fieldHeight } from "@/components/typography/field"
 
 // Note: `isApproving` maps to the "creating-grant" / "approving" states.
 // The consent screen stays visible while the Allow button shows a loading spinner.
@@ -125,6 +126,7 @@ export function GrantConsentState({
             disabled={isApproving}
             onClick={handleCancel}
             className={cn(
+              fieldHeight.base,
               "text-muted-foreground",
               "border border-transparent hover:border-ring hover:bg-background"
             )}
@@ -138,7 +140,7 @@ export function GrantConsentState({
             isLoading={isApproving}
             loadingLabel="Allowing…"
             variant="accent"
-            className="w-[156px] disabled:opacity-100"
+            className={cn(fieldHeight.base, "w-[156px] disabled:opacity-100")}
           >
             Agree and Allow
           </LoadingButton>

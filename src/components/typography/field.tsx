@@ -16,7 +16,7 @@ export const stateFocus = [
 export const fieldHeight = {
   xs: "h-button-xs", // 25px
   sm: "h-8", // 32px
-  base: "h-9", // 36px (UNUSED except for icon buttons)
+  base: "h-9", // 36px
   default: "h-button", // 44px
   lg: "h-tab", // 54px
   xl: "h-16", // 64px

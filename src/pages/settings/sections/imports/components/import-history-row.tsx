@@ -1,7 +1,7 @@
 import { LoaderCircleIcon } from "lucide-react"
 import { PlatformIcon } from "@/components/icons/platform-icon"
 import { Text } from "@/components/typography/text"
-import { openLocalPath, toLocalDirectoryPath } from "@/lib/open-resource"
+import { openExportFolderPath } from "@/lib/open-resource"
 import { SettingsCard } from "@/pages/settings/components/settings-shared"
 import { SettingsRow } from "@/pages/settings/components/settings-row"
 import type { Platform, Run } from "@/types"
@@ -45,7 +45,7 @@ export function ImportHistoryRow({
 
   const handleRevealExport = async () => {
     if (!run.exportPath) return
-    await openLocalPath(toLocalDirectoryPath(run.exportPath))
+    await openExportFolderPath(run.exportPath)
   }
 
   return (

@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useMemo, useState } from "react"
 import { invoke } from "@tauri-apps/api/core"
 import { getScopeForPlatform, ingestData } from "@/services/personalServerIngest"
-import { openLocalPath } from "@/lib/open-resource"
+import { openExportFolderPath } from "@/lib/open-resource"
 import type { Run } from "@/types"
 import {
   buildExportData,
@@ -88,7 +88,7 @@ export function useRunItem({ run, serverPort, serverReady }: UseRunItemProps) {
 
   const openFolder = useCallback(async () => {
     if (run.exportPath) {
-      await openLocalPath(run.exportPath)
+      await openExportFolderPath(run.exportPath)
     }
   }, [run.exportPath])
 

@@ -179,7 +179,7 @@ export function RunItem({ run, onStop, serverPort, serverReady }: RunItemProps) 
           {loadingData ? (
             <div className="px-4 py-5 text-center">
               <Text as="p" intent="small" color="mutedForeground">
-                Loading data...
+                Loading data…
               </Text>
             </div>
           ) : conversations.length > 0 ? (

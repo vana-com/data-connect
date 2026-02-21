@@ -1,30 +1,21 @@
-import { BoxIcon, Trash2Icon } from "lucide-react"
+import { ArrowUpRightIcon, BoxIcon, Trash2Icon } from "lucide-react"
 import type { ConnectedApp } from "@/types"
 import { PlatformIcon } from "@/components/icons/platform-icon"
 import { OpenExternalLink } from "@/components/typography/link-open-external"
 import { Text } from "@/components/typography/text"
-import {
-  AlertDialog,
-  AlertDialogAction,
-  AlertDialogCancel,
-  AlertDialogContent,
-  AlertDialogDescription,
-  AlertDialogFooter,
-  AlertDialogHeader,
-  AlertDialogMedia,
-  AlertDialogTitle,
-  AlertDialogTrigger,
-} from "@/components/ui/alert-dialog"
-import { Button } from "@/components/ui/button"
+import { DEV_FLAGS } from "@/config/dev-flags"
 import { LINKS } from "@/config/links"
-import { SettingsCard, SettingsCardStack, SettingsRow } from "./settings-shared"
+import { SettingsConfirmAction } from "./settings-confirm-action"
+import { SettingsCard, SettingsCardStack } from "./settings-shared"
+import { SettingsRow } from "./settings-row"
 
 // Settings surface for Connected apps.
 // This is a permission management surface: it shows granted scopes and supports revoke actions.
 // It is intentionally different from Home's quick-launch/activity list.
 
-// Local UI test toggle: set true to force test app rows.
-const TEST_LOGGED_IN = false
+const TEST_APPS_UI_STATE: "real" | "populated" = DEV_FLAGS.useSettingsUiMocks
+  ? "populated"
+  : "real"
 const TEST_CONNECTED_APPS: ConnectedApp[] = [
   {
     id: "test-app-even-stevens",
@@ -49,9 +40,8 @@ export function SettingsApps({
   connectedApps,
   onRevokeApp,
 }: SettingsAppsProps) {
-  const effectiveConnectedApps = TEST_LOGGED_IN
-    ? TEST_CONNECTED_APPS
-    : connectedApps
+  const effectiveConnectedApps =
+    TEST_APPS_UI_STATE === "populated" ? TEST_CONNECTED_APPS : connectedApps
 
   return (
     <div className="space-y-8">
@@ -59,12 +49,8 @@ export function SettingsApps({
         {effectiveConnectedApps.length === 0 ? (
           <SettingsCard>
             <SettingsRow
-              icon={<BoxIcon aria-hidden="true" />}
-              title={
-                <Text as="div" intent="body" weight="semi">
-                  No connected apps
-                </Text>
-              }
+              icon={<BoxIcon aria-hidden="true" className="size-6!" />}
+              title={"No connected apps"}
             />
           </SettingsCard>
         ) : (
@@ -80,49 +66,32 @@ export function SettingsApps({
                     size={28}
                   />
                 }
-                title={
-                  <Text as="div" intent="body" weight="semi">
-                    {app.name}
-                  </Text>
-                }
+                title={app.name}
                 description={
-                  <Text as="div" intent="small" muted>
-                    {app.permissions.length > 0
-                      ? app.permissions.join(", ")
-                      : "Full access"}
-                  </Text>
+                  app.permissions.length > 0
+                    ? app.permissions.join(", ")
+                    : "Full access"
                 }
                 right={
-                  <AlertDialog>
-                    <AlertDialogTrigger asChild>
-                      <Button type="button" variant="ghost" size="sm">
-                        Revoke
-                      </Button>
-                    </AlertDialogTrigger>
-                    <AlertDialogContent size="sm">
-                      <AlertDialogHeader>
-                        <AlertDialogMedia>
-                          <Trash2Icon aria-hidden="true" />
-                        </AlertDialogMedia>
-                        <AlertDialogTitle>Revoke app access?</AlertDialogTitle>
-                        <AlertDialogDescription>
-                          This will remove access for{" "}
-                          <strong>{app.name}</strong>. You can reconnect it
-                          later if needed.
-                        </AlertDialogDescription>
-                      </AlertDialogHeader>
-                      <AlertDialogFooter>
-                        <AlertDialogCancel size="sm">Cancel</AlertDialogCancel>
-                        <AlertDialogAction
-                          size="sm"
-                          variant="destructive"
-                          onClick={() => onRevokeApp(app.id)}
-                        >
-                          Revoke
-                        </AlertDialogAction>
-                      </AlertDialogFooter>
-                    </AlertDialogContent>
-                  </AlertDialog>
+                  <SettingsConfirmAction
+                    triggerLabel="Revoke"
+                    title="Revoke app access?"
+                    description={
+                      <>
+                        This will remove access for <strong>{app.name}</strong>.
+                        You can reconnect it later if needed.
+                      </>
+                    }
+                    actionLabel="Revoke"
+                    onAction={() => onRevokeApp(app.id)}
+                    media={
+                      <PlatformIcon
+                        iconName={app.icon?.trim() || app.name}
+                        fallbackLabel={app.name.charAt(0).toUpperCase()}
+                        size={24}
+                      />
+                    }
+                  />
                 }
               />
             ))}
@@ -130,15 +99,16 @@ export function SettingsApps({
         )}
       </SettingsCardStack>
       <Text as="p" intent="small" muted>
-        Want to build your own application? Check{" "}
+        Want to build your own application? Check our{" "}
         <OpenExternalLink
           intent="small"
-          className="text-current hover:text-foreground"
+          className="inline-flex text-current hover:text-foreground"
           href={LINKS.appDevelopmentDocs}
+          withIcon
         >
-          {LINKS.appDevelopmentDocs.replace(/^https?:\/\//, "")}
+          docs
+          <ArrowUpRightIcon aria-hidden="true" />
         </OpenExternalLink>
-        .
       </Text>
     </div>
   )

@@ -101,7 +101,7 @@ export const textVariants = cva(
       },
       withIcon: {
         true: [
-          "flex items-center gap-2",
+          "inline-flex items-center gap-2",
           "[&_svg:not([class*=size-])]:size-[0.9em]",
           // "[&_svg]:transform [&_svg]:translate-y-[-0.1em]",
         ],
@@ -144,8 +144,8 @@ export const textVariants = cva(
       },
       {
         withIcon: true,
-        intent: ["pill", "fine"],
-        className: "gap-1",
+        intent: ["pill", "fine", "small"],
+        className: "gap-0.5",
       },
       {
         withIcon: true,

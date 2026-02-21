@@ -68,7 +68,7 @@ function AlertDialogContent({
           // spacing
           "gap-4 p-4",
           // shape
-          "rounded-none",
+          "rounded-card",
           // background
           "bg-background",
           // borders
@@ -175,7 +175,11 @@ function AlertDialogTitle({
   return (
     <AlertDialogPrimitive.Title
       data-slot="alert-dialog-title"
-      className={cn("text-sm font-medium sm:group-data-[size=default]/alert-dialog-content:group-has-data-[slot=alert-dialog-media]/alert-dialog-content:col-start-2", className)}
+      className={cn(
+        "text-heading font-medium",
+        "sm:group-data-[size=default]/alert-dialog-content:group-has-data-[slot=alert-dialog-media]/alert-dialog-content:col-start-2",
+        className
+      )}
       {...props}
     />
   )

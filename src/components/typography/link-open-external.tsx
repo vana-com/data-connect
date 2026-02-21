@@ -1,3 +1,4 @@
+import type { MouseEvent } from "react"
 import type { TextProps } from "@/components/typography/text"
 import { Text } from "@/components/typography/text"
 import { cn } from "@/lib/classes"
@@ -26,7 +27,7 @@ export function OpenExternalLink({
       intent="inherit"
       color="inherit"
       className={cn(linkClassName, "[font:inherit]", className)}
-      onClick={event => {
+      onClick={(event: MouseEvent<HTMLAnchorElement>) => {
         onClick?.(event)
         if (event.defaultPrevented) return
         event.preventDefault()
@@ -54,7 +55,7 @@ export function ActionLink({
       intent="inherit"
       color="inherit"
       className={cn(linkClassName, "[font:inherit]", className)}
-      onClick={event => {
+      onClick={(event: MouseEvent<HTMLButtonElement>) => {
         onClick?.(event)
         if (event.defaultPrevented) return
         void onPress()

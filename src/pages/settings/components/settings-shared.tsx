@@ -2,12 +2,12 @@ import {
   Children,
   Fragment,
   type ComponentPropsWithoutRef,
-  isValidElement,
   type ReactNode,
 } from "react"
+import { LoadingButton } from "@/components/elements/button-loading"
 import { Text } from "@/components/typography/text"
-import { Button } from "@/components/ui/button"
 import { cn } from "@/lib/classes"
+import { SettingsRowDivider } from "./settings-row-divider"
 
 interface SettingsSectionProps {
   title: ReactNode
@@ -103,162 +103,27 @@ export function SettingsCardStack({
   )
 }
 
-interface SettingsRowProps {
-  icon: ReactNode
-  wrapIcon?: boolean
-  iconContainerClassName?: string
-  title: ReactNode
-  description?: ReactNode
-  right?: ReactNode
-  className?: string
-  contentClassName?: string
-}
-
-interface SettingsMetaRowProps {
-  title: ReactNode
-  description?: ReactNode
-  badge?: ReactNode
-  className?: string
-}
-
 interface SettingsStatusBadgeProps {
   label?: ReactNode
   className?: string
 }
 
-type SettingsRowActionProps = Omit<
-  ComponentPropsWithoutRef<typeof Button>,
-  "variant" | "size"
->
-
-export function SettingsRow({
-  icon,
-  wrapIcon = true,
-  iconContainerClassName,
-  title,
-  description,
-  right,
-  className,
-  contentClassName,
-}: SettingsRowProps) {
-  const titleContent =
-    typeof title === "string" ? (
-      <Text as="div" intent="body" weight="semi">
-        {title}
-      </Text>
-    ) : (
-      title
-    )
-  const descriptionContent =
-    description == null ? null : isValidElement(description) &&
-      description.type === Text ? (
-      description
-    ) : (
-      <Text as="div" intent="small" muted>
-        {description}
-      </Text>
-    )
-
-  const iconContent = wrapIcon ? (
-    <div
-      className={cn(
-        "w-[34px] h-inset mt-0.5",
-        "flex items-center justify-center rounded-button [&_svg]:size-6",
-        iconContainerClassName
-      )}
-    >
-      {icon}
-    </div>
-  ) : (
-    icon
-  )
-
-  return (
-    <div
-      data-component="settings-row"
-      className={cn(
-        "flex gap-4 p-4",
-        descriptionContent ? "items-start" : "items-center",
-        className
-      )}
-    >
-      {iconContent}
-      <div
-        className={cn(
-          "flex-1",
-          descriptionContent && "space-y-0.5",
-          contentClassName
-        )}
-      >
-        {titleContent}
-        {descriptionContent}
-      </div>
-      {right}
-    </div>
-  )
-}
-
-export function SettingsMetaRow({
-  title,
-  description,
-  badge,
-  className,
-}: SettingsMetaRowProps) {
-  const titleContent =
-    typeof title === "string" ? (
-      <Text as="div" intent="body" weight="semi">
-        {title}
-      </Text>
-    ) : (
-      title
-    )
-  const descriptionContent =
-    description == null ? null : isValidElement(description) &&
-      description.type === Text ? (
-      description
-    ) : (
-      <Text as="div" intent="small" dim>
-        {description}
-      </Text>
-    )
-
-  return (
-    <div
-      data-component="settings-meta-row"
-      className={cn(
-        "flex items-start justify-between gap-4 px-4 py-3",
-        className
-      )}
-    >
-      <div className={cn("flex-1", descriptionContent && "space-y-0.5")}>
-        {titleContent}
-        {descriptionContent}
-      </div>
-      {badge}
-    </div>
-  )
-}
+type SettingsRowActionProps = ComponentPropsWithoutRef<typeof LoadingButton>
 
 export function SettingsRowAction({
+  variant = "ghost",
+  size = "sm",
   type = "button",
   ...props
 }: SettingsRowActionProps) {
   return (
-    <Button
+    <LoadingButton
+      variant={variant}
+      size={size}
       type={type}
-      variant="outline"
-      size="sm"
-      className="hover:bg-muted"
+      spinnerClassName="size-[0.75em]"
       {...props}
     />
-  )
-}
-
-export function SettingsRowDivider() {
-  return (
-    <div data-component="settings-row-divider" className="pl-4">
-      <div className="border-t border-border" />
-    </div>
   )
 }
 

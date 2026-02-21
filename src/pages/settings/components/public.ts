@@ -8,7 +8,6 @@ export {
   SettingsBadgeNone,
   SettingsCard,
   SettingsCardStack,
-  SettingsMetaRow,
   SettingsRowAction,
 } from "./settings-shared"
 

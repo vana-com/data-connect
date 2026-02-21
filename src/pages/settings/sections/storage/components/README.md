@@ -35,3 +35,8 @@
 - "On-Chain Registration" is the intended product concept: whether the Personal Server is a protocol participant registered on-chain.
 - Current UI state in `registration-row.tsx` is a runtime-derived approximation, not an authoritative on-chain proof yet.
 - Each row exposes a local `TEST_*` constant pattern for design-time state previews.
+- This folder intentionally contains legacy duplication with personal-server components while the Storage tab remains inactive.
+- Known duplicates currently kept on purpose:
+  - `row.tsx` ↔ `src/pages/settings/sections/personal-server/components/row.tsx`
+  - `status-row.tsx` ↔ `src/pages/settings/sections/personal-server/components/status-row.tsx`
+  - `public-endpoint-row.tsx` ↔ `src/pages/settings/sections/personal-server/components/endpoint-row.tsx` (near-duplicate behavior and UI)

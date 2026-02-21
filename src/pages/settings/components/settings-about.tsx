@@ -1,19 +1,33 @@
+import { useCallback, useEffect, useState } from "react"
 import {
-  ExternalLinkIcon,
-  FileTextIcon,
-  FolderOpenIcon,
+  ArrowUpRightIcon,
+  BookOpenIcon,
+  GithubIcon,
   InfoIcon,
-  PlayIcon,
-  CheckCircleIcon,
-  XCircleIcon,
-  LoaderIcon,
+  ScrollTextIcon,
+  ChevronsLeftRightEllipsisIcon,
+  SquarePlayIcon,
+  PanelTopIcon,
+  FlaskConicalIcon,
+  ServerIcon,
 } from "lucide-react"
+import { SettingsRowDescriptionCopy } from "@/pages/settings/components/settings-row-description-copy"
+import { SettingsRowDescriptionStatus } from "@/pages/settings/components/settings-row-description-status"
 import { Text } from "@/components/typography/text"
-import { Button } from "@/components/ui/button"
+import { Switch } from "@/components/ui/switch"
 import { cn } from "@/lib/classes"
-import { useState } from "react"
-import type { BrowserStatus, NodeJsTestResult, PersonalServerInfo } from "../types"
-import { SettingsCard, SettingsRow, SettingsSection } from "./settings-shared"
+import type {
+  BrowserStatus,
+  NodeJsTestResult,
+  PersonalServerInfo,
+} from "../types"
+import {
+  SettingsCard,
+  SettingsCardStack,
+  SettingsRowAction,
+  SettingsSection,
+} from "./settings-shared"
+import { SettingsRow } from "./settings-row"
 
 interface SettingsAboutProps {
   appVersion: string
@@ -26,20 +40,16 @@ interface SettingsAboutProps {
   personalServer: PersonalServerInfo
   simulateNoChrome: boolean
   onTestNodeJs: () => void
-  onCheckBrowserStatus: () => void
+  onCheckBrowserStatus: () => void | Promise<void>
   onDebugPaths: () => void
+  onClearDebugPaths: () => void
   onRestartPersonalServer: () => void
   onStopPersonalServer: () => void
   onSimulateNoChromeChange: (value: boolean) => void
   onOpenLogFolder: () => void
 }
 
-const statusStyles = {
-  success: { text: "text-success", bg: "bg-success/10" },
-  accent: { text: "text-accent", bg: "bg-accent/10" },
-  destructive: { text: "text-destructive", bg: "bg-destructive/10" },
-  mutedForeground: { text: "text-muted-foreground", bg: "bg-muted" },
-} as const
+const BROWSER_REFRESH_FEEDBACK_MS = 700
 
 export function SettingsAbout({
   appVersion,
@@ -54,411 +64,350 @@ export function SettingsAbout({
   onTestNodeJs,
   onCheckBrowserStatus,
   onDebugPaths,
+  onClearDebugPaths,
   onRestartPersonalServer,
   onStopPersonalServer,
   onSimulateNoChromeChange,
   onOpenLogFolder,
 }: SettingsAboutProps) {
-  const [copied, setCopied] = useState(false)
+  const [isBrowserRefreshLoading, setIsBrowserRefreshLoading] = useState(false)
+  const [isNodeTestResultOpen, setIsNodeTestResultOpen] = useState(false)
 
-  const handleCopyLogPath = async () => {
-    if (!logPath) return
-    await navigator.clipboard.writeText(logPath)
-    setCopied(true)
-    setTimeout(() => setCopied(false), 2000)
-  }
-  const nodeStatusKey: keyof typeof statusStyles =
+  const handleCheckBrowserStatus = useCallback(() => {
+    if (isBrowserRefreshLoading) {
+      return
+    }
+
+    setIsBrowserRefreshLoading(true)
+
+    void Promise.all([
+      Promise.resolve(onCheckBrowserStatus()),
+      new Promise<void>(resolve => {
+        window.setTimeout(resolve, BROWSER_REFRESH_FEEDBACK_MS)
+      }),
+    ]).finally(() => {
+      setIsBrowserRefreshLoading(false)
+    })
+  }, [isBrowserRefreshLoading, onCheckBrowserStatus])
+
+  useEffect(() => {
+    if (nodeTestStatus !== "success") {
+      setIsNodeTestResultOpen(false)
+      return
+    }
+
+    if (nodeTestResult) {
+      setIsNodeTestResultOpen(true)
+    }
+  }, [nodeTestResult, nodeTestStatus])
+
+  const handleNodeTestAction = useCallback(() => {
+    if (nodeTestStatus === "success" && isNodeTestResultOpen) {
+      setIsNodeTestResultOpen(false)
+      return
+    }
+
+    onTestNodeJs()
+  }, [isNodeTestResultOpen, nodeTestStatus, onTestNodeJs])
+
+  const nodeStatusDescription =
     nodeTestStatus === "success"
-      ? "success"
+      ? {
+          tone: "success" as const,
+          label: nodeTestResult
+            ? `${nodeTestResult.nodejs} on ${nodeTestResult.platform}/${nodeTestResult.arch}`
+            : "Node.js runtime available",
+        }
       : nodeTestStatus === "error"
-        ? "destructive"
+        ? {
+            tone: "destructive" as const,
+            label: nodeTestError || "Test failed",
+          }
         : nodeTestStatus === "testing"
-          ? "accent"
-          : "mutedForeground"
+          ? { tone: "accent" as const, label: "Testing…" }
+          : { tone: "muted" as const, label: "Test bundled Node.js runtime" }
 
-  const nodeStatus = statusStyles[nodeStatusKey]
-
-  const serverStatusKey: keyof typeof statusStyles =
+  const personalServerStatusDescription =
     personalServer.status === "running"
-      ? "success"
+      ? {
+          tone: "success" as const,
+          label: `Running on port ${personalServer.port ?? "?"}`,
+        }
       : personalServer.status === "error"
-        ? "destructive"
+        ? {
+            tone: "destructive" as const,
+            label: personalServer.error || "Failed to start",
+          }
         : personalServer.status === "starting"
-          ? "accent"
-          : "mutedForeground"
+          ? { tone: "accent" as const, label: "Starting…" }
+          : { tone: "destructive" as const, label: "Not running" }
 
-  const serverStatus = statusStyles[serverStatusKey]
-  const nodeState: StatusState =
-    nodeTestStatus === "testing"
-      ? "loading"
-      : nodeTestStatus === "success"
-        ? "success"
-        : nodeTestStatus === "error"
-          ? "error"
-          : "idle"
-  const serverState: StatusState =
-    personalServer.status === "starting"
-      ? "loading"
-      : personalServer.status === "running"
-        ? "success"
-        : personalServer.status === "error"
-          ? "error"
-          : "idle"
+  const browserStatusDescription =
+    browserStatus === null
+      ? { tone: "muted" as const, label: "Checking…" }
+      : browserStatus.available
+        ? {
+            tone: "success" as const,
+            label:
+              browserStatus.browser_type === "system"
+                ? "System Chrome/Edge found"
+                : "Downloaded Chromium found",
+          }
+        : { tone: "destructive" as const, label: "No browser found" }
 
   return (
     <div className="space-y-6">
       <SettingsSection title="About">
-        <SettingsCard divided>
-          <SettingsRow
-            iconContainerClassName="bg-muted"
-            icon={
-              <InfoIcon aria-hidden="true" className="size-5 text-muted-foreground" />
-            }
-            title={
-              <Text as="span" intent="small" weight="medium">
-                Version
-              </Text>
-            }
-            right={
-              <Text as="span" intent="fine" color="mutedForeground">
-                {appVersion || "..."}{" "}
-                <Text as="span" intent="fine" color="mutedForeground">
-                  ({__COMMIT_HASH__})
+        <SettingsCardStack>
+          <SettingsCard divided>
+            <SettingsRow
+              icon={<InfoIcon aria-hidden="true" />}
+              title="Version"
+              right={
+                <Text as="span" intent="small" muted>
+                  {appVersion || "…"} ({__COMMIT_HASH__})
                 </Text>
-              </Text>
-            }
-            contentClassName="space-y-1"
-          />
-          <SettingsRow
-            iconContainerClassName="bg-muted"
-            icon={
-              <InfoIcon aria-hidden="true" className="size-5 text-muted-foreground" />
-            }
-            title={
-              <Text as="span" intent="small" weight="medium">
-                Framework
-              </Text>
-            }
-            right={
-              <Text as="span" intent="fine" color="mutedForeground">
-                Tauri v2
-              </Text>
-            }
-            contentClassName="space-y-1"
-          />
-        </SettingsCard>
+              }
+            />
+          </SettingsCard>
+        </SettingsCardStack>
       </SettingsSection>
 
       <SettingsSection title="Diagnostics">
-        <SettingsCard divided>
-          <SettingsRow
-            iconContainerClassName={nodeStatus.bg}
-            icon={<StatusIcon state={nodeState} className={nodeStatus.text} />}
-            title={
-              <Text as="div" intent="small" weight="medium">
-                Node.js Runtime
-              </Text>
-            }
-            description={
-              <Text as="div" intent="fine" color={nodeStatusKey}>
-                {nodeTestStatus === "idle" && "Test bundled Node.js runtime"}
-                {nodeTestStatus === "testing" && "Testing..."}
-                {nodeTestStatus === "success" &&
-                  nodeTestResult &&
-                  `${nodeTestResult.nodejs} on ${nodeTestResult.platform}/${nodeTestResult.arch}`}
-                {nodeTestStatus === "error" && (nodeTestError || "Test failed")}
-              </Text>
-            }
-            right={
-              <Button
-                type="button"
-                variant="outline"
-                size="sm"
-                onClick={onTestNodeJs}
-                disabled={nodeTestStatus === "testing"}
-              >
-                {nodeTestStatus === "testing" ? "Testing..." : "Test"}
-              </Button>
-            }
-          />
-          {nodeTestStatus === "success" && nodeTestResult && (
-            <div className="bg-muted px-4 py-3">
-              <div className="grid gap-2 text-xs md:grid-cols-2">
-                <Text as="div" intent="fine" color="mutedForeground">
-                  Hostname:{" "}
-                  <Text as="span" intent="fine" color="foreground">
-                    {nodeTestResult.hostname}
-                  </Text>
-                </Text>
-                <Text as="div" intent="fine" color="mutedForeground">
-                  CPUs:{" "}
-                  <Text as="span" intent="fine" color="foreground">
-                    {nodeTestResult.cpus}
-                  </Text>
-                </Text>
-                <Text as="div" intent="fine" color="mutedForeground">
-                  Memory:{" "}
-                  <Text as="span" intent="fine" color="foreground">
-                    {nodeTestResult.memory}
-                  </Text>
-                </Text>
-                <Text as="div" intent="fine" color="mutedForeground">
-                  Uptime:{" "}
-                  <Text as="span" intent="fine" color="foreground">
-                    {nodeTestResult.uptime}
-                  </Text>
-                </Text>
+        <SettingsCardStack>
+          <SettingsCard divided>
+            <SettingsRow
+              icon={<SquarePlayIcon aria-hidden="true" />}
+              title="Node.js Runtime"
+              description={
+                <SettingsRowDescriptionStatus tone={nodeStatusDescription.tone}>
+                  {nodeStatusDescription.label}
+                </SettingsRowDescriptionStatus>
+              }
+              right={
+                <SettingsRowAction
+                  onClick={handleNodeTestAction}
+                  isLoading={nodeTestStatus === "testing"}
+                  loadingLabel="Testing…"
+                >
+                  {nodeTestStatus === "success" && isNodeTestResultOpen
+                    ? "Close"
+                    : "Test"}
+                </SettingsRowAction>
+              }
+              below={
+                nodeTestStatus === "success" &&
+                nodeTestResult &&
+                isNodeTestResultOpen ? (
+                  <div className="bg-background px-4 pb-3 pl-[62px]">
+                    <hr className="border-border/70" />
+                    <div className="grid gap-1 md:grid-cols-2 pt-3">
+                      <Text as="div" intent="fine" color="mutedForeground">
+                        Hostname: {nodeTestResult.hostname}
+                      </Text>
+                      <Text as="div" intent="fine" color="mutedForeground">
+                        CPUs: {nodeTestResult.cpus}
+                      </Text>
+                      <Text as="div" intent="fine" color="mutedForeground">
+                        Memory: {nodeTestResult.memory}
+                      </Text>
+                      <Text as="div" intent="fine" color="mutedForeground">
+                        Uptime: {nodeTestResult.uptime}
+                      </Text>
+                    </div>
+                  </div>
+                ) : null
+              }
+            />
+
+            <SettingsRow
+              icon={<ServerIcon aria-hidden="true" />}
+              title="Personal Server"
+              description={
+                <SettingsRowDescriptionStatus
+                  tone={personalServerStatusDescription.tone}
+                >
+                  {personalServerStatusDescription.label}
+                </SettingsRowDescriptionStatus>
+              }
+              right={
+                personalServer.status === "running" ? (
+                  <SettingsRowAction onClick={onStopPersonalServer}>
+                    Stop
+                  </SettingsRowAction>
+                ) : (
+                  <SettingsRowAction
+                    onClick={onRestartPersonalServer}
+                    isLoading={personalServer.status === "starting"}
+                    loadingLabel="Starting…"
+                  >
+                    Start
+                  </SettingsRowAction>
+                )
+              }
+            />
+            {/* opens JSON health info in browser */}
+            {/* {personalServer.status === "running" && personalServer.port && (
+              <div className="px-4 pb-4">
+                <Button asChild variant="ghost" size="sm">
+                  <a
+                    href={`http://localhost:${personalServer.port}/status`}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                  >
+                    Health check
+                    <ExternalLinkIcon aria-hidden="true" className="size-4" />
+                  </a>
+                </Button>
               </div>
-            </div>
-          )}
+            )} */}
 
-          <SettingsRow
-            iconContainerClassName={serverStatus.bg}
-            icon={<StatusIcon state={serverState} className={serverStatus.text} />}
-            title={
-              <Text as="div" intent="small" weight="medium">
-                Personal Server
-              </Text>
-            }
-            description={
-              <Text as="div" intent="fine" color={serverStatusKey}>
-                {personalServer.status === "stopped" && "Not running"}
-                {personalServer.status === "starting" && "Starting..."}
-                {personalServer.status === "running" &&
-                  `Running on port ${personalServer.port}`}
-                {personalServer.status === "error" &&
-                  (personalServer.error || "Failed to start")}
-              </Text>
-            }
-            right={
-              personalServer.status === "running" ? (
-                <Button
-                  type="button"
-                  variant="outline"
-                  size="sm"
-                  onClick={onStopPersonalServer}
+            <SettingsRow
+              icon={<PanelTopIcon aria-hidden="true" />}
+              title="Browser"
+              description={
+                <SettingsRowDescriptionStatus
+                  tone={browserStatusDescription.tone}
                 >
-                  Stop
-                </Button>
-              ) : personalServer.status !== "starting" ? (
-                <Button
-                  type="button"
-                  variant="outline"
-                  size="sm"
-                  onClick={onRestartPersonalServer}
+                  {browserStatusDescription.label}
+                </SettingsRowDescriptionStatus>
+              }
+              right={
+                <SettingsRowAction
+                  onClick={handleCheckBrowserStatus}
+                  isLoading={isBrowserRefreshLoading}
+                  loadingLabel="Refreshing…"
                 >
-                  Start
-                </Button>
-              ) : null
-            }
-          />
+                  Refresh
+                </SettingsRowAction>
+              }
+            />
 
-          {personalServer.status === "running" && personalServer.port && (
-            <div className="px-4 pb-4">
-              <Button asChild variant="ghost" size="sm">
-                <a
-                  href={`http://localhost:${personalServer.port}/status`}
-                  target="_blank"
-                  rel="noopener noreferrer"
+            <SettingsRow
+              icon={<FlaskConicalIcon aria-hidden="true" />}
+              title="Simulate No System Browser"
+              description="Testing: pretend system Chrome/Edge is not installed"
+              right={
+                <div className="pr-2">
+                  <Switch
+                    checked={simulateNoChrome}
+                    onCheckedChange={onSimulateNoChromeChange}
+                    aria-label="Simulate no system browser"
+                    className={cn(
+                      // geometry
+                      "[--switch-w:48px] [--switch-h:20px] [--thumb-w:24px] [--thumb-h:16px] [--switch-border:1px]",
+                      // size
+                      "h-(--switch-h) w-(--switch-w)",
+                      // thumb size + shape
+                      "**:data-[slot=switch-thumb]:h-(--thumb-h)",
+                      "**:data-[slot=switch-thumb]:w-(--thumb-w)",
+                      // thumb position by state
+                      "[&_[data-slot=switch-thumb][data-state=unchecked]]:translate-x-[calc((var(--switch-h)-var(--thumb-h))/2-var(--switch-border))]",
+                      "[&_[data-slot=switch-thumb][data-state=checked]]:translate-x-[calc(var(--switch-w)-var(--switch-border)-var(--thumb-w)-((var(--switch-h)-var(--thumb-h))/2))]"
+                    )}
+                  />
+                </div>
+              }
+            />
+
+            <SettingsRow
+              icon={<ChevronsLeftRightEllipsisIcon aria-hidden="true" />}
+              title="Connector Paths"
+              description="Debug where app looks for connectors"
+              right={
+                <SettingsRowAction
+                  onClick={pathsDebug ? onClearDebugPaths : onDebugPaths}
                 >
-                  Health check
-                  <ExternalLinkIcon aria-hidden="true" className="size-4" />
-                </a>
-              </Button>
-            </div>
-          )}
-
-          <SettingsRow
-            iconContainerClassName="bg-muted"
-            icon={
-              browserStatus?.available ? (
-                <CheckCircleIcon aria-hidden="true" className="size-5 text-success" />
-              ) : (
-                <XCircleIcon aria-hidden="true" className="size-5 text-accent" />
-              )
-            }
-            title={
-              <Text as="div" intent="small" weight="medium">
-                Browser
-              </Text>
-            }
-            description={
-              <Text as="div" intent="fine" color="mutedForeground">
-                {browserStatus === null
-                  ? "Checking..."
-                  : browserStatus.available
-                    ? `${browserStatus.browser_type === "system" ? "System Chrome/Edge" : "Downloaded Chromium"} found`
-                    : "No browser found"}
-              </Text>
-            }
-            right={
-              <Button
-                type="button"
-                variant="outline"
-                size="sm"
-                onClick={onCheckBrowserStatus}
-              >
-                Refresh
-              </Button>
-            }
-          />
-
-          <div className="flex items-center justify-between border-t border-border/50 px-4 py-3">
-            <div className="space-y-0.5">
-              <Text as="div" intent="small" weight="medium">
-                Simulate No System Browser
-              </Text>
-              <Text as="div" intent="fine" color="mutedForeground">
-                Testing: pretend system Chrome/Edge is not installed
-              </Text>
-            </div>
-            <Button
-              type="button"
-              variant={simulateNoChrome ? "default" : "outline"}
-              size="sm"
-              onClick={() => onSimulateNoChromeChange(!simulateNoChrome)}
-            >
-              {simulateNoChrome ? "On" : "Off"}
-            </Button>
-          </div>
-
-          <SettingsRow
-            iconContainerClassName="bg-muted"
-            icon={
-              <InfoIcon aria-hidden="true" className="size-5 text-muted-foreground" />
-            }
-            title={
-              <Text as="div" intent="small" weight="medium">
-                Connector Paths
-              </Text>
-            }
-            description={
-              <Text as="div" intent="fine" color="mutedForeground">
-                Debug where app looks for connectors
-              </Text>
-            }
-            right={
-              <Button type="button" variant="outline" size="sm" onClick={onDebugPaths}>
-                Debug
-              </Button>
-            }
-          />
-          {pathsDebug && (
-            <div className="bg-muted px-4 py-3">
-              <Text as="pre" pre className="text-xs">
-                <code>{JSON.stringify(pathsDebug, null, 2)}</code>
-              </Text>
-            </div>
-          )}
-        </SettingsCard>
+                  {pathsDebug ? "Close" : "Debug"}
+                </SettingsRowAction>
+              }
+              below={
+                pathsDebug ? (
+                  <div className="h-[400px] bg-background overflow-hidden px-4 pb-3 pl-[62px]">
+                    <hr className="border-border/70" />
+                    <div className="h-full overflow-auto px-4 pt-3">
+                      <Text pre intent="fine" dim>
+                        <code>{JSON.stringify(pathsDebug, null, 2)}</code>
+                      </Text>
+                    </div>
+                  </div>
+                ) : null
+              }
+            />
+          </SettingsCard>
+        </SettingsCardStack>
       </SettingsSection>
 
-      <SettingsSection title="Logs">
-        <SettingsCard divided>
-          <SettingsRow
-            iconContainerClassName="bg-muted"
-            icon={
-              <FileTextIcon aria-hidden="true" className="size-5 text-muted-foreground" />
-            }
-            title={
-              <Text as="div" intent="small" weight="medium">
-                Application Logs
-              </Text>
-            }
-            description={
-              <Text
-                as="div"
-                intent="fine"
-                color="mutedForeground"
-                className="max-w-[280px] truncate"
-                title={logPath || undefined}
-              >
-                {logPath || "Loading..."}
-              </Text>
-            }
-            right={
-              <div className="flex shrink-0 gap-2">
-                <Button
-                  type="button"
-                  variant="outline"
-                  size="sm"
-                  onClick={handleCopyLogPath}
-                  disabled={!logPath}
-                >
-                  {copied ? "Copied!" : "Copy path"}
-                </Button>
-                <Button
-                  type="button"
-                  variant="outline"
-                  size="sm"
+      <SettingsSection
+        title="Logs"
+        description="Share these logs with support when reporting issues."
+      >
+        <SettingsCardStack>
+          <SettingsCard divided>
+            <SettingsRow
+              icon={<ScrollTextIcon aria-hidden="true" />}
+              title="Application Logs"
+              description={
+                <SettingsRowDescriptionCopy
+                  value={logPath || null}
+                  emptyLabel="Loading…"
+                  copyLabel="Copy path"
+                  iconPosition="after"
+                />
+              }
+              right={
+                <SettingsRowAction
                   onClick={onOpenLogFolder}
                   disabled={!logPath}
                 >
-                  <FolderOpenIcon aria-hidden="true" className="size-4" />
                   Open
-                </Button>
-              </div>
-            }
-          />
-        </SettingsCard>
-        <Text as="p" intent="fine" color="mutedForeground" className="px-1">
-          Share these logs with support when reporting issues.
-        </Text>
+                </SettingsRowAction>
+              }
+            />
+          </SettingsCard>
+        </SettingsCardStack>
       </SettingsSection>
 
       <SettingsSection title="Resources">
-        <SettingsCard divided>
-          <SettingsResourceLink href="https://github.com" label="GitHub Repository" />
-          <SettingsResourceLink
-            href="https://docs.dataconnect.dev"
-            label="Documentation"
-          />
-        </SettingsCard>
+        <SettingsCardStack>
+          <SettingsCard divided>
+            <SettingsRow
+              icon={<GithubIcon aria-hidden="true" />}
+              title="GitHub Repository"
+              right={
+                <SettingsRowAction asChild>
+                  <a
+                    href="https://github.com"
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="gap-0.75!"
+                  >
+                    Open
+                    <ArrowUpRightIcon aria-hidden="true" />
+                  </a>
+                </SettingsRowAction>
+              }
+            />
+            <SettingsRow
+              icon={<BookOpenIcon aria-hidden="true" />}
+              title="Documentation"
+              right={
+                <SettingsRowAction asChild>
+                  <a
+                    href="https://docs.dataconnect.dev"
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="gap-0.75!"
+                  >
+                    Open
+                    <ArrowUpRightIcon aria-hidden="true" />
+                  </a>
+                </SettingsRowAction>
+              }
+            />
+          </SettingsCard>
+        </SettingsCardStack>
       </SettingsSection>
     </div>
-  )
-}
-
-type StatusState = "loading" | "success" | "error" | "idle"
-
-interface StatusIconProps {
-  state: StatusState
-  className?: string
-}
-
-function StatusIcon({ state, className }: StatusIconProps) {
-  if (state === "loading") {
-    return (
-      <LoaderIcon
-        aria-hidden="true"
-        className={cn("size-5 animate-spin motion-reduce:animate-none", className)}
-      />
-    )
-  }
-
-  if (state === "success") {
-    return <CheckCircleIcon aria-hidden="true" className={cn("size-5", className)} />
-  }
-
-  if (state === "error") {
-    return <XCircleIcon aria-hidden="true" className={cn("size-5", className)} />
-  }
-
-  return <PlayIcon aria-hidden="true" className={cn("size-5", className)} />
-}
-
-interface SettingsResourceLinkProps {
-  href: string
-  label: string
-}
-
-function SettingsResourceLink({ href, label }: SettingsResourceLinkProps) {
-  return (
-    <Button asChild variant="ghost" className="w-full justify-between px-4 py-3">
-      <a href={href} target="_blank" rel="noopener noreferrer">
-        {label}
-        <ExternalLinkIcon aria-hidden="true" className="size-4 text-muted-foreground" />
-      </a>
-    </Button>
   )
 }

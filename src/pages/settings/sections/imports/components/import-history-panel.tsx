@@ -2,12 +2,13 @@ import { Link } from "react-router-dom"
 import { ActivityIcon } from "lucide-react"
 import { Text } from "@/components/typography/text"
 import { Button } from "@/components/ui/button"
+import { DEV_FLAGS } from "@/config/dev-flags"
 import { ROUTES } from "@/config/routes"
 import {
   SettingsCard,
   SettingsCardStack,
-  SettingsRow,
 } from "@/pages/settings/components/settings-shared"
+import { SettingsRow } from "@/pages/settings/components/settings-row"
 import type { Run } from "@/types"
 import { RunItem } from "./run-item/run-item"
 import { useImportsSection } from "../use-imports-section"
@@ -18,13 +19,8 @@ interface ImportHistoryPanelProps {
 
 type TestImportsUiState = "empty" | "active" | "finished" | "mixed"
 
-// Local UI test toggle for designing Import History states.
-// - null: use real app state (no UI override)
-// - empty: show placeholder only
-// - active: show active imports only
-// - finished: show finished imports only
-// - mixed: show both active and finished imports
-const TEST_IMPORTS_UI_STATE: TestImportsUiState | null = null
+const TEST_IMPORTS_UI_STATE: "real" | TestImportsUiState =
+  DEV_FLAGS.useSettingsUiMocks ? "mixed" : "real"
 
 const TEST_ACTIVE_IMPORTS: Run[] = [
   {
@@ -38,7 +34,7 @@ const TEST_ACTIVE_IMPORTS: Run[] = [
     company: "OpenAI",
     name: "ChatGPT",
     phase: { step: 2, total: 4, label: "Collecting conversations" },
-    statusMessage: "Fetching latest messages...",
+    statusMessage: "Fetching latest messages…",
   },
 ]
 
@@ -75,7 +71,7 @@ export function ImportHistoryPanel({
   } = useImportsSection()
 
   const { effectiveActiveImports, effectiveFinishedImports } =
-    TEST_IMPORTS_UI_STATE === null
+    TEST_IMPORTS_UI_STATE === "real"
       ? {
           effectiveActiveImports: activeImports,
           effectiveFinishedImports: finishedImports,

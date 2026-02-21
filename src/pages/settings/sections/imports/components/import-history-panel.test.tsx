@@ -66,17 +66,17 @@ function buildRun(
 
 type ImportsSectionPanelState = Pick<
   ReturnType<typeof useImportsSection>,
-  "activeImports" | "finishedImports" | "platforms" | "startExport" | "stopExport"
+  "activeImports" | "finishedImports" | "platforms" | "startImport" | "stopExport"
 >
 
 function renderPanel(overrides: Partial<ImportsSectionPanelState> = {}) {
-  const startExport = vi.fn()
+  const startImport = vi.fn()
   const stopExport = vi.fn()
   const value: ImportsSectionPanelState = {
     activeImports: [],
     finishedImports: [],
     platforms,
-    startExport,
+    startImport,
     stopExport,
     ...overrides,
   }
@@ -91,7 +91,7 @@ function renderPanel(overrides: Partial<ImportsSectionPanelState> = {}) {
     </MemoryRouter>
   )
 
-  return { ...view, startExport, stopExport }
+  return { ...view, startImport, stopExport }
 }
 
 describe("ImportHistoryPanel", () => {
@@ -150,15 +150,15 @@ describe("ImportHistoryPanel", () => {
     expect(screen.queryByText("Run again")).toBeNull()
   })
 
-  it("shows run again and starts export for inactive finished platform", () => {
+  it("shows run again and starts import for inactive finished platform", () => {
     const githubPlatform = platforms[0]
-    const { startExport } = renderPanel({
+    const { startImport } = renderPanel({
       finishedImports: [buildRun("run-finished", "github", "success")],
     })
 
     fireEvent.click(screen.getByRole("button", { name: "Run again" }))
 
-    expect(startExport).toHaveBeenCalledTimes(1)
-    expect(startExport).toHaveBeenCalledWith(githubPlatform)
+    expect(startImport).toHaveBeenCalledTimes(1)
+    expect(startImport).toHaveBeenCalledWith(githubPlatform)
   })
 })

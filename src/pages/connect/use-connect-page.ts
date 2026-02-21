@@ -113,7 +113,7 @@ export function useConnectPage(): UseConnectPageResult {
 
   const { platforms, isPlatformConnected, platformsLoaded, platformLoadError } =
     usePlatforms()
-  const { startExport } = useConnector()
+  const { startImport } = useConnector()
   const [connectRunId, setConnectRunId] = useState<string | null>(null)
   const activeRun = useSelector((state: RootState) =>
     connectRunId
@@ -211,7 +211,7 @@ export function useConnectPage(): UseConnectPageResult {
 
   const handleConnect = async () => {
     if (!connectPlatform || isBusy) return
-    const runId = await startExport(connectPlatform)
+    const runId = await startImport(connectPlatform)
     setConnectRunId(runId)
   }
 

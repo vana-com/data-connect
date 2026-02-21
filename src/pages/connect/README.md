@@ -2,7 +2,7 @@
 
 ## What this is
 
-- Step‑1 connect UI that launches a data‑source login/scrape before `/grant`.
+- Step-1 connect UI that launches a data-source import before `/grant`.
 
 ## Files
 
@@ -15,7 +15,7 @@
 ## Data flow
 
 - URL params (`sessionId`, `appId`, `scopes`) → `getGrantParamsFromSearchParams` → resolve platform
-- `startExport` → Tauri `start_connector_run` → run status in Redux → navigate to `/grant`
+- `startImport` → Tauri `start_connector_run` → run status in Redux → navigate to `/grant`
 
 ## App integration
 

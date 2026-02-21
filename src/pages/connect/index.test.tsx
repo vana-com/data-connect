@@ -15,10 +15,10 @@ vi.mock("@/hooks/usePlatforms", () => ({
   usePlatforms: () => mockUsePlatforms(),
 }))
 
-const mockStartExport = vi.fn()
+const mockStartImport = vi.fn()
 vi.mock("@/hooks/useConnector", () => ({
   useConnector: () => ({
-    startExport: mockStartExport,
+    startImport: mockStartImport,
   }),
 }))
 
@@ -108,7 +108,7 @@ const BUILDER_MANIFEST = {
 describe("Connect", () => {
   beforeEach(() => {
     mockUsePlatforms.mockReset()
-    mockStartExport.mockReset()
+    mockStartImport.mockReset()
     mockClaimSession.mockReset()
     mockVerifyBuilder.mockReset()
     // Default: background pre-fetch returns pending promise (never resolves in tests)
@@ -305,8 +305,8 @@ describe("Connect", () => {
   // -------- connector execution + navigation --------
 
   describe("connector execution and navigation", () => {
-    it("starts export when connect button is clicked", async () => {
-      mockStartExport.mockResolvedValue("run-1")
+    it("starts import when connect button is clicked", async () => {
+      mockStartImport.mockResolvedValue("run-1")
       mockUsePlatforms.mockReturnValue(
         defaultPlatforms({ platforms: [CHATGPT_PLATFORM] })
       )
@@ -320,14 +320,14 @@ describe("Connect", () => {
         fireEvent.click(connectButton)
       })
 
-      expect(mockStartExport).toHaveBeenCalledWith(CHATGPT_PLATFORM)
+      expect(mockStartImport).toHaveBeenCalledWith(CHATGPT_PLATFORM)
     })
 
     it("navigates to grant page with prefetched data when run succeeds", async () => {
       // Setup: pre-fetch resolves, then connector run succeeds
       mockClaimSession.mockResolvedValue(CLAIMED_SESSION)
       mockVerifyBuilder.mockResolvedValue(BUILDER_MANIFEST)
-      mockStartExport.mockResolvedValue("run-1")
+      mockStartImport.mockResolvedValue("run-1")
       mockUsePlatforms.mockReturnValue(
         defaultPlatforms({ platforms: [CHATGPT_PLATFORM] })
       )
@@ -365,14 +365,14 @@ describe("Connect", () => {
     })
 
     it("resets connect state when run errors", async () => {
-      mockStartExport.mockResolvedValue("run-1")
+      mockStartImport.mockResolvedValue("run-1")
       mockUsePlatforms.mockReturnValue(
         defaultPlatforms({ platforms: [CHATGPT_PLATFORM] })
       )
 
       const { router } = renderConnect(REAL_SESSION_SEARCH)
 
-      // Start export
+      // Start import
       const connectButton = screen.getByRole("button", {
         name: /connect chatgpt/i,
       })
@@ -393,7 +393,7 @@ describe("Connect", () => {
     })
 
     it("resets connect state when run is stopped", async () => {
-      mockStartExport.mockResolvedValue("run-1")
+      mockStartImport.mockResolvedValue("run-1")
       mockUsePlatforms.mockReturnValue(
         defaultPlatforms({ platforms: [CHATGPT_PLATFORM] })
       )
@@ -422,7 +422,7 @@ describe("Connect", () => {
       // Pre-fetch fails
       mockClaimSession.mockRejectedValue(new Error("Network error"))
       vi.spyOn(console, "warn").mockImplementation(() => {})
-      mockStartExport.mockResolvedValue("run-1")
+      mockStartImport.mockResolvedValue("run-1")
       mockUsePlatforms.mockReturnValue(
         defaultPlatforms({ platforms: [CHATGPT_PLATFORM] })
       )
@@ -434,7 +434,7 @@ describe("Connect", () => {
         expect(mockClaimSession).toHaveBeenCalled()
       })
 
-      // Start export and simulate success
+      // Start import and simulate success
       const connectButton = screen.getByRole("button", {
         name: /connect chatgpt/i,
       })
@@ -457,7 +457,7 @@ describe("Connect", () => {
     })
 
     it("shows connector status message while run is active", async () => {
-      mockStartExport.mockResolvedValue("run-1")
+      mockStartImport.mockResolvedValue("run-1")
       mockUsePlatforms.mockReturnValue(
         defaultPlatforms({ platforms: [CHATGPT_PLATFORM] })
       )

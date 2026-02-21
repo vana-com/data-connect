@@ -16,7 +16,7 @@ import { ImportHistoryRow } from "./import-history-row"
 const STOPPING_UI_MIN_MS = 600
 
 export function ImportHistoryPanel() {
-  const { activeImports, finishedImports, platforms, startExport, stopExport } =
+  const { activeImports, finishedImports, platforms, startImport, stopExport } =
     useImportsSection()
   const [expandedErrorRunIds, setExpandedErrorRunIds] = useState<Set<string>>(
     () => new Set()
@@ -84,9 +84,9 @@ export function ImportHistoryPanel() {
 
   const handleRunAgain = useCallback(
     (platform: Platform) => {
-      void startExport(platform)
+      void startImport(platform)
     },
-    [startExport]
+    [startImport]
   )
 
   return (

@@ -58,9 +58,6 @@ export function useConnector() {
     [dispatch]
   );
 
-  // Temporary alias to keep existing callers working during rename rollout.
-  const startExport = startImport;
-
   const stopExport = useCallback(
     async (runId: string) => {
       // Always update Redux state first to ensure UI updates
@@ -87,7 +84,6 @@ export function useConnector() {
   return {
     runs,
     startImport,
-    startExport,
     stopExport,
     getRunById,
   };

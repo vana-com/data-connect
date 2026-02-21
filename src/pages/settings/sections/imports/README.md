@@ -44,7 +44,7 @@
   - examples: `ChatGPT`, `Instagram`, etc.
 - Button state for top action strip:
   - disable/hide if that platform currently has an active run
-  - otherwise `Run again` starts a new run via `startExport(platform)`
+  - otherwise `Run again` starts a new run via `startImport(platform)`
 - Keep failed details expandable from the failed badge; keep stopped non-expandable.
 - Keep stop confirmation for meaningful in-progress runs:
   - confirm when `phase.step > 1` or `itemCount > 0`

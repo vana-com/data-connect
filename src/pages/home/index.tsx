@@ -33,7 +33,7 @@ import {
 export function Home() {
   const navigate = useNavigate()
   const { platforms, isPlatformConnected, loadPlatforms } = usePlatforms()
-  const { startExport } = useConnector()
+  const { startImport } = useConnector()
   const { checkForUpdates } = useConnectorUpdates()
   const { connectedApps, fetchConnectedApps } = useConnectedApps()
   const personalServer = usePersonalServer()
@@ -78,21 +78,24 @@ export function Home() {
     return () => cancelAnimationFrame(frame)
   }, [])
 
-  const handleExport = async (platform: Platform) => {
-    console.log(
-      "Starting export for platform:",
-      platform.id,
-      platform.name,
-      "runtime:",
-      platform.runtime
-    )
-    try {
-      await startExport(platform)
-      navigate(buildSettingsUrl({ section: "imports", source: platform.id }))
-    } catch (error) {
-      console.error("Export failed:", error)
-    }
-  }
+  const handleImportSource = useCallback(
+    async (platform: Platform) => {
+      console.log(
+        "Starting import for platform:",
+        platform.id,
+        platform.name,
+        "runtime:",
+        platform.runtime
+      )
+      try {
+        await startImport(platform)
+        navigate(buildSettingsUrl({ section: "imports", source: platform.id }))
+      } catch (error) {
+        console.error("Import failed:", error)
+      }
+    },
+    [navigate, startImport]
+  )
 
   const handleTestDeepLink = useCallback(() => {
     const trimmed = deepLinkInput.trim()
@@ -162,7 +165,7 @@ export function Home() {
             platforms={availablePlatforms}
             runs={runs}
             headline="Available connectors"
-            onExport={handleExport}
+            onExport={handleImportSource}
             connectedPlatformIds={connectedPlatformsList.map(p => p.id)}
           />
         </TabsContent>

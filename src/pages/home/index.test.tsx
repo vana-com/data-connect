@@ -1,25 +1,20 @@
 import { describe, expect, it, vi, beforeEach, afterEach } from "vitest"
-import { render, waitFor, cleanup } from "@testing-library/react"
+import { render, waitFor, cleanup, fireEvent, screen } from "@testing-library/react"
 import { createMemoryRouter, RouterProvider } from "react-router-dom"
 import { ROUTES } from "@/config/routes"
 import { Home } from "./index"
 
 const mockCheckForUpdates = vi.fn()
+const mockUsePlatforms = vi.fn()
+const mockStartImport = vi.fn()
 
 vi.mock("@/hooks/usePlatforms", () => ({
-  usePlatforms: () => ({
-    platforms: [],
-    connectedPlatforms: {},
-    loadPlatforms: vi.fn(),
-    refreshConnectedStatus: vi.fn(),
-    getPlatformById: vi.fn(),
-    isPlatformConnected: vi.fn(() => false),
-  }),
+  usePlatforms: () => mockUsePlatforms(),
 }))
 
 vi.mock("@/hooks/useConnector", () => ({
   useConnector: () => ({
-    startExport: vi.fn(),
+    startImport: mockStartImport,
   }),
 }))
 
@@ -69,16 +64,32 @@ vi.mock("react-redux", async () => {
 })
 
 function renderHome() {
-  const router = createMemoryRouter([{ path: ROUTES.home, element: <Home /> }], {
-    initialEntries: [ROUTES.home],
-  })
+  const router = createMemoryRouter(
+    [
+      { path: ROUTES.home, element: <Home /> },
+      { path: ROUTES.settings, element: <div>Settings Route</div> },
+    ],
+    {
+      initialEntries: [ROUTES.home],
+    }
+  )
 
-  return render(<RouterProvider router={router} />)
+  return { ...render(<RouterProvider router={router} />), router }
 }
 
 describe("Home", () => {
   beforeEach(() => {
     mockCheckForUpdates.mockClear()
+    mockStartImport.mockReset()
+    mockStartImport.mockResolvedValue("run-1")
+    mockUsePlatforms.mockReturnValue({
+      platforms: [],
+      connectedPlatforms: {},
+      loadPlatforms: vi.fn(),
+      refreshConnectedStatus: vi.fn(),
+      getPlatformById: vi.fn(),
+      isPlatformConnected: vi.fn(() => false),
+    })
   })
 
   afterEach(() => {
@@ -94,6 +105,47 @@ describe("Home", () => {
 
     await waitFor(() => {
       expect(mockCheckForUpdates).toHaveBeenCalled()
+    })
+  })
+
+  it("starts import when clicking an available connector", async () => {
+    mockUsePlatforms.mockReturnValue({
+      platforms: [
+        {
+          id: "chatgpt",
+          company: "OpenAI",
+          name: "ChatGPT",
+          filename: "chatgpt",
+          description: "ChatGPT export",
+          isUpdated: false,
+          logoURL: "",
+          needsConnection: true,
+          connectURL: null,
+          connectSelector: null,
+          exportFrequency: null,
+          vectorize_config: null,
+          runtime: null,
+        },
+      ],
+      connectedPlatforms: {},
+      loadPlatforms: vi.fn(),
+      refreshConnectedStatus: vi.fn(),
+      getPlatformById: vi.fn(),
+      isPlatformConnected: vi.fn(() => false),
+    })
+    const { getByRole, router } = renderHome()
+
+    fireEvent.click(getByRole("button", { name: /connect chatgpt/i }))
+
+    await waitFor(() => {
+      expect(mockStartImport).toHaveBeenCalledTimes(1)
+      expect(mockStartImport).toHaveBeenCalledWith(
+        expect.objectContaining({ id: "chatgpt" })
+      )
+      expect(screen.getByText("Settings Route")).not.toBeNull()
+      expect(router.state.location.pathname).toBe(ROUTES.settings)
+      expect(router.state.location.search).toContain("section=imports")
+      expect(router.state.location.search).toContain("source=chatgpt")
     })
   })
 })

@@ -103,7 +103,7 @@ export function SettingsApps({
         <OpenExternalLink
           intent="small"
           className="inline-flex text-current hover:text-foreground"
-          href={LINKS.appDevelopmentDocs}
+          href={LINKS.appBuilderDocs}
           withIcon
         >
           docs

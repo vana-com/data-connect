@@ -1,6 +1,5 @@
 import { useEffect, useMemo, useState } from "react"
 import { useSelector } from "react-redux"
-import { useAuth } from "@/hooks/useAuth"
 import { copyTextToClipboard } from "@/lib/clipboard"
 import { openExportFolderPath } from "@/lib/open-resource"
 import { getPlatformRegistryEntryById } from "@/lib/platform/utils"
@@ -44,7 +43,6 @@ export function useSourceOverviewPage(
 ): SourceOverviewPageState {
   const runs = useSelector((state: RootState) => state.app.runs)
   const platforms = useSelector((state: RootState) => state.app.platforms)
-  const { canAccessDebugRuns } = useAuth()
 
   const [appDataPath, setAppDataPath] = useState<string | null>(null)
   const [preview, setPreview] = useState<SourceExportPreview | null>(null)
@@ -258,7 +256,6 @@ export function useSourceOverviewPage(
     sourceName,
     lastUsedLabel,
     sourcePlatform,
-    canAccessDebugRuns,
     preview,
     isPreviewLoading,
     previewError,

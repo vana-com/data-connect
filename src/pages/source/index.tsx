@@ -13,7 +13,6 @@ export function SourceOverview() {
     sourceEntry,
     sourceName,
     lastUsedLabel,
-    canAccessDebugRuns,
     preview,
     isPreviewLoading,
     previewError,
@@ -54,7 +53,6 @@ export function SourceOverview() {
           sourceId={sourceEntry.id}
           sourceName={sourceName}
           lastUsedLabel={lastUsedLabel}
-          canAccessDebugRuns={canAccessDebugRuns}
           onOpenSourcePath={handleOpenSourcePath}
         />
       }

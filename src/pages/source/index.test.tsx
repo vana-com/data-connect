@@ -30,12 +30,6 @@ vi.mock("react-redux", () => ({
     selector(mockState),
 }))
 
-vi.mock("@/hooks/useAuth", () => ({
-  useAuth: () => ({
-    canAccessDebugRuns: false,
-  }),
-}))
-
 vi.mock("@/lib/tauri-paths", () => ({
   getUserDataPath: () => mockGetUserDataPath(),
   openPlatformExportFolder: (...args: unknown[]) =>

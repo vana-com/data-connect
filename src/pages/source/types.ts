@@ -35,7 +35,6 @@ export interface SourceOverviewPageState {
   sourceName: string
   lastUsedLabel: string
   sourcePlatform: Platform | null
-  canAccessDebugRuns: boolean
   preview: SourceExportPreview | null
   isPreviewLoading: boolean
   previewError: string | null

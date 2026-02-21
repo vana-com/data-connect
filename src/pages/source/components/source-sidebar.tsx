@@ -89,14 +89,14 @@ function SourceActivityLinks({
       >
         Reveal imports folder
       </SourceLinkRow>
-      <SourceLinkRow icon={<ActivityIcon aria-hidden />}>
-        {lastUsedText}
-      </SourceLinkRow>
       <SourceLinkRow
         to={importsSettingsUrl}
         icon={<RefreshCcwIcon aria-hidden />}
       >
         {syncStatusLabel}
+      </SourceLinkRow>
+      <SourceLinkRow icon={<ActivityIcon aria-hidden />}>
+        {lastUsedText}
       </SourceLinkRow>
     </div>
   )

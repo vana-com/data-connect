@@ -1,9 +1,9 @@
-import { CopyIcon, RefreshCcwIcon } from "lucide-react"
+import { CopyIcon } from "lucide-react"
 import { LoadingButton } from "@/components/elements/button-loading"
 import { Text } from "@/components/typography/text"
 import { cn } from "@/lib/classes"
 import type { SourceExportPreview } from "@/lib/tauri-paths"
-import type { CopyStatus, ResetCacheStatus } from "../types"
+import type { CopyStatus } from "../types"
 import { formatBytes } from "../utils"
 
 interface SourcePreviewCardProps {
@@ -12,9 +12,7 @@ interface SourcePreviewCardProps {
   preview: SourceExportPreview | null
   fallbackPreviewJson: string
   copyStatus: CopyStatus
-  resetCacheStatus: ResetCacheStatus
   onCopyFullJson: () => Promise<void>
-  onResetExportedDataCache: () => Promise<void>
 }
 
 export function SourcePreviewCard({
@@ -23,9 +21,7 @@ export function SourcePreviewCard({
   preview,
   fallbackPreviewJson,
   copyStatus,
-  resetCacheStatus,
   onCopyFullJson,
-  onResetExportedDataCache,
 }: SourcePreviewCardProps) {
   return (
     <section className="rounded-card ring ring-border bg-card overflow-hidden flex min-h-[520px] h-full flex-col">
@@ -45,8 +41,15 @@ export function SourcePreviewCard({
           }
           onClick={() => void onCopyFullJson()}
         />
-        <PreviewActionButton
-          icon={<RefreshCcwIcon aria-hidden />}
+        {/* 
+          Reset cache intentionally disabled for now.
+          Why: previous reset behavior wiped local source history and caused data loss.
+          Keep this JSX skeleton here so design/placement is preserved until the
+          backend contract is specified and safety-reviewed end-to-end.
+          Re-enable only with an explicit product + data-safety spec.
+        */}
+        {/* <PreviewActionButton
+          icon={<RefreshCcwIcon aria-hidden />} 
           className="min-w-[105px]"
           isLoading={resetCacheStatus === "resetting"}
           isError={resetCacheStatus === "error"}
@@ -59,7 +62,7 @@ export function SourcePreviewCard({
                 : "Reset cache"
           }
           onClick={() => void onResetExportedDataCache()}
-        />
+        /> */}
       </div>
 
       <div className="min-h-0 flex-1 overflow-auto p-gap">

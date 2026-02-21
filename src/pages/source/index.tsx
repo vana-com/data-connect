@@ -17,11 +17,9 @@ export function SourceOverview() {
     isPreviewLoading,
     previewError,
     copyStatus,
-    resetCacheStatus,
     fallbackPreviewJson,
     handleOpenSourcePath,
     handleCopyFullJson,
-    handleResetExportedDataCache,
   } = useSourceOverviewPage(platformId)
 
   if (!sourceEntry) {
@@ -57,15 +55,24 @@ export function SourceOverview() {
         />
       }
       content={
+        /*
+          RESET CACHE IS DELIBERATELY OFF.
+          Timeline:
+          1) UI reset action existed in this Source page.
+          2) Backend behavior and UX intent diverged and caused destructive outcomes.
+          3) Feature is parked until we have a clear, reviewed contract.
+          Trail:
+          - Source state/orchestration: src/pages/source/use-source-overview-page.ts
+          - Tauri file ops command surface: src-tauri/src/commands/file_ops.rs
+          - IPC bindings: src/lib/tauri-paths.ts
+        */
         <SourcePreviewCard
           isPreviewLoading={isPreviewLoading}
           previewError={previewError}
           preview={preview}
           fallbackPreviewJson={fallbackPreviewJson}
           copyStatus={copyStatus}
-          resetCacheStatus={resetCacheStatus}
           onCopyFullJson={handleCopyFullJson}
-          onResetExportedDataCache={handleResetExportedDataCache}
         />
       }
     />

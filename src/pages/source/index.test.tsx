@@ -251,41 +251,18 @@ describe("SourceOverview", () => {
     }
   })
 
-  it(
-    "shows reset cache success and returns to idle label after timeout",
-    async () => {
-      mockLoadLatestSourceExportPreview.mockResolvedValue({
-        previewJson: "{\n  \"ok\": true\n}",
-        isTruncated: false,
-        filePath: "/tmp/dataconnect/exported_data/OpenAI/ChatGPT/chatgpt.json",
-        fileSizeBytes: 2048,
-        exportedAt: "2026-02-11T10:00:00.000Z",
-      })
+  it("does not show reset cache action while feature is disabled", async () => {
+    mockLoadLatestSourceExportPreview.mockResolvedValue({
+      previewJson: "{\n  \"ok\": true\n}",
+      isTruncated: false,
+      filePath: "/tmp/dataconnect/exported_data/OpenAI/ChatGPT/chatgpt.json",
+      fileSizeBytes: 2048,
+      exportedAt: "2026-02-11T10:00:00.000Z",
+    })
 
-      const view = renderSourcePage()
-      const scoped = within(view.container)
-      const [resetButton] = await scoped.findAllByRole("button", {
-        name: "Reset cache",
-      })
-      fireEvent.click(resetButton)
-
-      await waitFor(
-        () => {
-          expect(scoped.getAllByRole("button", { name: "Cache reset" }).length).toBe(
-            1
-          )
-        },
-        { timeout: 3_000 }
-      )
-
-      await act(async () => {
-        await new Promise(resolve => window.setTimeout(resolve, 1_300))
-      })
-
-      await waitFor(() => {
-        expect(scoped.getAllByRole("button", { name: "Reset cache" }).length).toBe(1)
-      })
-    },
-    12_000
-  )
+    const view = renderSourcePage()
+    const scoped = within(view.container)
+    await scoped.findByRole("button", { name: "Copy JSON" })
+    expect(scoped.queryByRole("button", { name: "Reset cache" })).toBeNull()
+  })
 })

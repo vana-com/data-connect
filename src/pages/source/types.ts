@@ -5,27 +5,32 @@ import type { Platform } from "@/types"
 export type CopyStatus = "idle" | "copying" | "copied" | "error"
 export type ResetCacheStatus = "idle" | "resetting" | "success" | "error"
 
-export type SourceLinkRowProps =
-  | {
-      children: ReactNode
-      icon?: ReactNode
-      trailingIcon?: ReactNode
-      muted?: boolean
-      className?: string
-      onClick?: MouseEventHandler<HTMLAnchorElement>
-      href: string
-      to?: never
-    }
-  | {
-      children: ReactNode
-      icon?: ReactNode
-      trailingIcon?: ReactNode
-      muted?: boolean
-      className?: string
-      onClick?: MouseEventHandler<HTMLAnchorElement>
-      to: string
-      href?: never
-    }
+type SourceLinkRowBaseProps = {
+  children: ReactNode
+  icon?: ReactNode
+  trailingIcon?: ReactNode
+  muted?: boolean
+  className?: string
+}
+
+export type SourceLinkRowProps = SourceLinkRowBaseProps &
+  (
+    | {
+        onClick?: MouseEventHandler<HTMLAnchorElement>
+        href: string
+        to?: never
+      }
+    | {
+        onClick?: MouseEventHandler<HTMLAnchorElement>
+        to: string
+        href?: never
+      }
+    | {
+        onClick?: never
+        to?: never
+        href?: never
+      }
+  )
 
 export interface SourceOverviewPageState {
   sourceEntry: {

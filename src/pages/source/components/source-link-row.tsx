@@ -3,11 +3,12 @@ import { Text } from "@/components/typography/text"
 import { cn } from "@/lib/classes"
 import type { SourceLinkRowProps } from "../types"
 
-const linkStyle = [
+const baseStyle = [
   "flex gap-2.5",
   "[&_svg:not([class*=size-])]:size-[1em]",
-  "no-underline hover:text-foreground",
 ]
+
+const interactiveStyle = "no-underline hover:text-foreground"
 
 export function SourceLinkRow({
   children,
@@ -19,37 +20,51 @@ export function SourceLinkRow({
   href,
   to,
 }: SourceLinkRowProps) {
+  const content = (
+    <>
+      {icon}
+      {children}
+      {trailingIcon}
+    </>
+  )
+
+  const sharedProps = {
+    intent: "small" as const,
+    muted,
+    withIcon: true as const,
+  }
+
   if (to) {
     return (
       <Text
         as={Link}
         to={to}
-        intent="small"
-        muted={muted}
-        withIcon
-        className={cn(linkStyle, className)}
+        {...sharedProps}
+        className={cn(baseStyle, interactiveStyle, className)}
         onClick={onClick}
       >
-        {icon}
-        {children}
-        {trailingIcon}
+        {content}
+      </Text>
+    )
+  }
+
+  if (href) {
+    return (
+      <Text
+        as="a"
+        href={href}
+        {...sharedProps}
+        className={cn(baseStyle, interactiveStyle, className)}
+        onClick={onClick}
+      >
+        {content}
       </Text>
     )
   }
 
   return (
-    <Text
-      as="a"
-      href={href}
-      intent="small"
-      muted={muted}
-      withIcon
-      className={cn(linkStyle, className)}
-      onClick={onClick}
-    >
-      {icon}
-      {children}
-      {trailingIcon}
+    <Text as="div" {...sharedProps} className={cn(baseStyle, className)}>
+      {content}
     </Text>
   )
 }

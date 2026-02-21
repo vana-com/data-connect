@@ -27,6 +27,17 @@ DataConnect is the protocol client: it runs connectors, orchestrates grants, and
 - For routes in `src/pages/*`, keep `index.tsx` as entry/composition (params, guards, wiring) and move side effects/async orchestration into a page-local hook (`use-<page>-*.ts`).
 - If behavior branches by runtime capability (for example Tauri vs browser), add at least one test per branch before commit.
 
+### UI component gate
+
+When the user message contains `UI gate` and the change touches JSX (`.tsx` files or JSX in React components), the agent must:
+
+1. Read `.cursor/skills/ui-component-audit/SKILL.md` before making edits.
+2. Restate 2-4 concrete rules from that skill that will be applied in the current change.
+3. Proceed with edits only after completing steps 1-2.
+
+If no JSX is touched, ignore this gate.
+If the gate is requested and the skill was not read first, stop and ask for confirmation before continuing.
+
 ### Skills (JIT only)
 
 Use skills only when the task matches; explore the code first.

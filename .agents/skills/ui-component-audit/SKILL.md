@@ -36,6 +36,7 @@ about component internals — verify them. Do not pass props that match defaults
 - Use `as` to keep semantic HTML (`h1`, `p`, `li`, etc.).
 - Prefer `muted`/`dim` boolean props on `Text` for muted/dim copy; avoid verbose `color="mutedForeground"` unless a specific semantic color token is required.
 - `Text` has props for icon layout (`withIcon`) and link styling (`link`). Read the component source to understand how they work before using them — do not guess at prop values or manually replicate behavior the component already handles.
+- When `Text` uses `withIcon`, do not add icon sizing classes (`size-*`) to nested icons by default; `Text` already applies fallback icon sizing for nested SVGs. Only add `size-*` when design explicitly requires a non-default icon size.
 - For links, use `Text as="a"` and pass link props (`href`, `target`, `rel`) directly; do not wrap `Text` in an `<a>`.
 - Use typographic ellipsis (`…`) in user-visible UI copy for in-progress/loading/truncated labels (e.g. `Loading…`, `Refreshing…`, `Testing…`), not three periods (`...`).
 - Do not set `weight` unless the Figma design explicitly shows non-normal weight. Models tend to over-apply `font-medium` and `font-bold` — normal weight is almost always correct.

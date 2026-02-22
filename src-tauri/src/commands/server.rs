@@ -217,6 +217,12 @@ pub async fn start_personal_server(
     if let Some(ref addr) = owner_address {
         env_vars.push(("OWNER_ADDRESS", addr.clone()));
     }
+    // Self-registration needs account.vana.org URL and the chain ID.
+    // Default to production values matching the frontend's VITE_* env vars.
+    env_vars.push(("ACCOUNT_URL", std::env::var("VITE_ACCOUNT_URL")
+        .unwrap_or_else(|_| "https://account.vana.org".to_string())));
+    env_vars.push(("CHAIN_ID", std::env::var("VITE_CHAIN_ID")
+        .unwrap_or_else(|_| "1480".to_string())));
 
     // Get config dir (~/data-connect/personal-server)
     if let Some(home) = dirs::home_dir() {

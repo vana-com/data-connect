@@ -262,16 +262,10 @@ export function usePersonalServer() {
     };
   }, []);
 
-  // Phase 1 — start unauthenticated on mount
-  const startedUnauthed = useRef(false);
-  useEffect(() => {
-    if (startedUnauthed.current) return;
-    if (running.current) return;
-    if (_restartCount > MAX_RESTART_ATTEMPTS) return;
-    startedUnauthed.current = true;
-    startServer(null);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  // Phase 1 removed — starting without a wallet was ~3s of throwaway work
+  // (random keypair, no registration, no tunnel). The server now starts
+  // only in Phase 2 when credentials are available, so it can derive the
+  // real identity, self-register, and connect the tunnel in a single pass.
 
   // Phase 2 — restart with credentials so the server derives its keypair.
   // The auth page needs the server identity (keypair address) to register

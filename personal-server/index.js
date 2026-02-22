@@ -9,6 +9,8 @@
  * - VANA_MASTER_KEY_SIGNATURE - hex signature for key derivation
  * - GATEWAY_URL - DP RPC gateway URL
  * - CONFIG_DIR - override ~/.vana config directory
+ * - ACCOUNT_URL - account signing service (default: https://account.vana.org)
+ * - CHAIN_ID - EIP-712 chain ID override (default: from config)
  */
 
 // Set NODE_ENV=production before imports to prevent pino-pretty transport loading
@@ -167,7 +169,7 @@ async function connectTunnel(tunnelManager, storageRoot, send, { refreshAuth, at
   });
   frpc.on('exit', (code, signal) => {
     send({ type: 'log', message: `[tunnel] frpc exited (code: ${code}, signal: ${signal})` });
-    if (!connected && !tokenExpired) {
+    if (!connected && !retrying) {
       send({ type: 'tunnel-failed', message: `frpc exited with code ${code}` });
     }
   });
@@ -179,11 +181,74 @@ async function connectTunnel(tunnelManager, storageRoot, send, { refreshAuth, at
   process.on('SIGINT', killFrpc);
 }
 
+/**
+ * Register the server with the Data Gateway via the account signing service.
+ *
+ * Signs an EIP-712 ServerRegistration using the master key (Privy server
+ * wallet) and POSTs to the gateway. Idempotent — 409 means already registered.
+ */
+async function registerWithGateway({ accountUrl, gatewayConfig, masterKeySignature, ownerAddress, serverAddress, publicKey, send }) {
+  const serverUrl = `https://${serverAddress.toLowerCase()}.server.vana.org`;
+  const typedData = {
+    types: {
+      ServerRegistration: [
+        { name: 'ownerAddress', type: 'address' },
+        { name: 'serverAddress', type: 'address' },
+        { name: 'publicKey', type: 'string' },
+        { name: 'serverUrl', type: 'string' },
+      ],
+    },
+    domain: {
+      name: 'Vana Data Portability',
+      version: '1',
+      chainId: gatewayConfig.chainId,
+      verifyingContract: gatewayConfig.contracts.dataPortabilityServer,
+    },
+    primary_type: 'ServerRegistration',
+    message: { ownerAddress, serverAddress, publicKey, serverUrl },
+  };
+
+  send({ type: 'log', message: `[registration] Signing ServerRegistration via ${accountUrl}/api/sign` });
+  const signRes = await fetch(`${accountUrl}/api/sign`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ masterKeySignature, typedData, type: 'eth_signTypedData_v4' }),
+  });
+  if (!signRes.ok) {
+    const text = await signRes.text().catch(() => '');
+    throw new Error(`Sign failed (${signRes.status}): ${text}`);
+  }
+  const { signature } = await signRes.json();
+
+  send({ type: 'log', message: `[registration] Registering with gateway ${gatewayConfig.url}` });
+  const regRes = await fetch(`${gatewayConfig.url}/v1/servers`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', Authorization: `Web3Signed ${signature}` },
+    body: JSON.stringify({ ownerAddress, serverAddress, publicKey, serverUrl }),
+  });
+
+  if (regRes.status === 409) {
+    const body = await regRes.json().catch(() => ({}));
+    send({ type: 'log', message: `[registration] Already registered (serverId: ${body.serverId ?? 'unknown'})` });
+    return { serverId: body.serverId ?? null, alreadyRegistered: true };
+  }
+  if (!regRes.ok) {
+    const text = await regRes.text().catch(() => '');
+    throw new Error(`Gateway registration failed (${regRes.status}): ${text}`);
+  }
+  const body = await regRes.json();
+  send({ type: 'log', message: `[registration] Registered (serverId: ${body.serverId ?? 'unknown'})` });
+  return { serverId: body.serverId ?? null, alreadyRegistered: false };
+}
+
 async function main() {
   const port = parseInt(process.env.PORT || '8080', 10);
   const configDir = process.env.CONFIG_DIR || undefined;
   const gatewayUrl = process.env.GATEWAY_URL || undefined;
   const ownerAddress = process.env.OWNER_ADDRESS || undefined;
+  const accountUrl = process.env.ACCOUNT_URL || 'https://account.vana.org';
+  const chainId = process.env.CHAIN_ID ? parseInt(process.env.CHAIN_ID, 10) : undefined;
+  const masterKeySignature = process.env.VANA_MASTER_KEY_SIGNATURE || undefined;
 
   try {
     // Load config from file (creates default if missing)
@@ -196,7 +261,12 @@ async function main() {
     config.logging.pretty = false;
     config.devUi = { enabled: true };
     if (gatewayUrl) {
-      config.gatewayUrl = gatewayUrl;
+      config.gateway = config.gateway || {};
+      config.gateway.url = gatewayUrl;
+    }
+    if (chainId) {
+      config.gateway = config.gateway || {};
+      config.gateway.chainId = chainId;
     }
     if (ownerAddress) {
       config.server.address = ownerAddress;
@@ -291,9 +361,51 @@ async function main() {
     );
     killStaleFrpc(storageRoot);
 
-    // Start background services (gateway registration + tunnel setup).
-    // The library creates the tunnel config (TOML) and downloads frpc.
-    send({ type: 'log', message: `[bg] Starting background services... (gatewayUrl: ${config.gatewayUrl || config.gateway?.url || 'none'})` });
+    // --- Pre-registration + background services ---
+    // Ensure the server is registered with the gateway BEFORE starting
+    // background services. This way the library's startBackgroundServices()
+    // finds the registration on its first check and connects the tunnel
+    // immediately — no restart cycle needed.
+    const hasMasterKey = !!masterKeySignature;
+    send({ type: 'log', message: `[bg] hasMasterKey: ${hasMasterKey}, gatewayUrl: ${config.gateway?.url || 'none'}` });
+
+    if (hasMasterKey && context.serverAccount && gatewayClient) {
+      // Check if already registered
+      let serverId = null;
+      try {
+        const existing = await gatewayClient.getServer(context.serverAccount.address);
+        serverId = existing?.id ?? null;
+        send({ type: 'log', message: `[bg] Gateway lookup: serverId=${serverId}` });
+      } catch (lookupErr) {
+        send({ type: 'log', message: `[bg] Gateway lookup failed: ${lookupErr.message}` });
+      }
+
+      // Register if not found
+      if (!serverId) {
+        try {
+          const result = await registerWithGateway({
+            accountUrl,
+            gatewayConfig: config.gateway,
+            masterKeySignature,
+            ownerAddress: config.server.address,
+            serverAddress: context.serverAccount.address,
+            publicKey: context.serverAccount.publicKey,
+            send,
+          });
+          serverId = result.serverId;
+        } catch (regErr) {
+          send({ type: 'log', message: `[bg] Self-registration failed: ${regErr.message}` });
+        }
+      }
+
+      if (serverId) {
+        send({ type: 'server-registered', status: 200, serverId });
+      }
+    }
+
+    // Now start background services — the library will find the registration
+    // and connect the tunnel in a single pass.
+    send({ type: 'log', message: `[bg] Starting background services...` });
     try {
       await context.startBackgroundServices();
       send({ type: 'log', message: '[bg] Background services started' });
@@ -301,34 +413,14 @@ async function main() {
       send({ type: 'log', message: `[bg] Background services FAILED: ${bgErr.message || bgErr}` });
     }
 
-    // Check registration status after background services complete.
-    try {
-      const healthResp = await fetch(`http://localhost:${port}/health`);
-      const health = await healthResp.json();
-      const serverId = health?.identity?.serverId || null;
-      send({ type: 'log', message: `[bg] Post-registration check — serverId: ${serverId}, tunnel.status: ${health?.tunnel?.status}, tunnel.error: ${health?.tunnel?.error || 'none'}` });
-      if (serverId) {
-        send({ type: 'server-registered', status: 200, serverId });
-      }
-    } catch (healthErr) {
-      send({ type: 'log', message: `[bg] Health check failed: ${healthErr.message}` });
-    }
-
-    const hasMasterKey = !!process.env.VANA_MASTER_KEY_SIGNATURE;
-    send({ type: 'log', message: `[bg] hasMasterKey: ${hasMasterKey}` });
-    send({ type: 'log', message: `[bg] tunnelManager: ${!!context.tunnelManager}` });
-    send({ type: 'log', message: `[bg] tunnelUrl: ${context.tunnelUrl || 'none'}` });
+    send({ type: 'log', message: `[bg] tunnelManager: ${!!context.tunnelManager}, tunnelUrl: ${context.tunnelUrl || 'none'}` });
 
     if (context.tunnelManager && context.tunnelManager.status === 'connected' && context.tunnelManager.publicUrl) {
-      // Library already connected the tunnel — use it as-is.
-      // Killing and reconnecting with a new proxy name would invalidate
-      // the auth token that was consumed by the first connection.
-      send({ type: 'log', message: `[bg] Library tunnel already connected, using existing connection` });
+      send({ type: 'log', message: `[bg] Library tunnel already connected` });
       send({ type: 'tunnel', url: context.tunnelManager.publicUrl });
     } else if (context.tunnelManager) {
-      // Library set up tunnel infrastructure (TOML + frpc binary) but
-      // didn't connect. Reconnect with a unique proxy name to avoid
-      // FRP server collisions from previous sessions.
+      // Library set up tunnel infra (TOML + frpc binary) but didn't connect.
+      // Reconnect with a unique proxy name to avoid FRP server collisions.
       connectTunnel(context.tunnelManager, storageRoot, send, {
         refreshAuth: () => context.startBackgroundServices(),
       });

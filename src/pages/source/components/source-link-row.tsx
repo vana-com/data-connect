@@ -4,7 +4,7 @@ import { cn } from "@/lib/classes"
 import type { SourceLinkRowProps } from "../types"
 
 const baseStyle = [
-  "flex gap-2.5",
+  "flex gap-1.5 lg:gap-2.5",
   "[&_svg:not([class*=size-])]:size-[1em]",
 ]
 

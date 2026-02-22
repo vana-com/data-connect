@@ -57,7 +57,7 @@ const buttonVariants = cva(
         pill: [fieldHeight.xs, "rounded-full px-1.5 py-0.5 gap-1", "text-fine"],
         xs: [
           fieldHeight.xs,
-          "rounded-button gap-1 px-2 has-[>svg]:px-2",
+          "rounded-button gap-[5px] px-2 has-[>svg]:px-2",
           "[&_svg:not([class*='size-'])]:size-[0.9em]!",
           "text-fine",
         ],

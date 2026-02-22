@@ -107,7 +107,7 @@ describe("SourceOverview", () => {
     })
   })
 
-  it("opens exports folder from sidebar action", async () => {
+  it("opens exports folder from preview card action", async () => {
     mockLoadLatestSourceExportPreview.mockResolvedValue({
       previewJson: "{\n  \"ok\": true\n}",
       isTruncated: false,
@@ -119,11 +119,12 @@ describe("SourceOverview", () => {
 
     renderSourcePage()
 
-    const [sourcePathLink] = await screen.findAllByRole("link", {
-      name: "Reveal local folder",
-    })
+    const [openFolderButton] = await waitFor(
+      () => screen.getAllByRole("button", { name: "Open folder" }),
+      { timeout: 3000 }
+    )
 
-    fireEvent.click(sourcePathLink)
+    fireEvent.click(openFolderButton)
 
     await waitFor(() => {
       expect(mockOpenPlatformExportFolder).toHaveBeenCalledTimes(1)
@@ -133,7 +134,7 @@ describe("SourceOverview", () => {
   it("shows a back-to-home link in the sidebar", async () => {
     const view = renderSourcePage()
     const scoped = within(view.container)
-    const backLink = await scoped.findByRole("link", { name: "Back to Home" })
+    const backLink = await scoped.findByRole("link", { name: /back to home|^home$/i })
     expect(backLink.getAttribute("href")).toBe(ROUTES.home)
   })
 
@@ -171,7 +172,7 @@ describe("SourceOverview", () => {
 
     await waitFor(() => {
       expect(
-        scoped.getAllByRole("link", { name: "View import history" }).length
+        scoped.getAllByRole("link", { name: /import history/i }).length
       ).toBeGreaterThan(0)
     })
   })

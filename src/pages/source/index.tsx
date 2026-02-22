@@ -52,7 +52,6 @@ export function SourceOverview() {
           sourceId={sourceEntry.id}
           sourceName={sourceName}
           lastUsedLabel={lastUsedLabel}
-          onOpenSourcePath={handleOpenSourcePath}
         />
       }
       content={
@@ -74,6 +73,7 @@ export function SourceOverview() {
           fallbackPreviewJson={fallbackPreviewJson}
           copyStatus={copyStatus}
           onCopyFullJson={handleCopyFullJson}
+          onOpenSourcePath={handleOpenSourcePath}
         />
       }
     />

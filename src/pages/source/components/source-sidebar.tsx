@@ -8,8 +8,7 @@ import {
   ActivityIcon,
   ArrowLeftIcon,
   ArrowUpRightIcon,
-  FolderIcon,
-  RefreshCcwIcon,
+  ArrowRightIcon,
 } from "lucide-react"
 import { SourceLinkRow } from "./source-link-row"
 
@@ -17,105 +16,69 @@ interface SourceSidebarProps {
   sourceId: string
   sourceName: string
   lastUsedLabel: string
-  onOpenSourcePath: () => Promise<void>
 }
 
 export function SourceSidebar({
   sourceId,
   sourceName,
   lastUsedLabel,
-  onOpenSourcePath,
 }: SourceSidebarProps) {
   const importsSettingsUrl = buildSettingsUrl({
     section: "imports",
     source: sourceId,
   })
+  const lastUsedText =
+    lastUsedLabel === "never" ? "Never used" : `Last used ${lastUsedLabel}`
 
   return (
-    <aside className="space-y-6 relative">
-      <div className="space-y-5">
-        <div className="flex items-center gap-1.5 ml-[-0.375em] pt-2">
-          <PlatformIcon
-            iconName={sourceId}
-            fallbackLabel={sourceName.charAt(0).toUpperCase()}
-            size={28}
-          />
-          <Text as="h1" intent="subtitle" weight="medium">
-            {sourceName}
-          </Text>
-        </div>
+    <aside className="space-y-gap px-3 lg:space-y-6 lg:px-0">
+      <div className="flex items-center gap-2 ml-[-0.25em] pt-2">
+        <PlatformIcon
+          iconName={sourceId}
+          fallbackLabel={sourceName.charAt(0).toUpperCase()}
+          size={28}
+        />
+        <Text as="h1" intent="subtitle" weight="medium">
+          {sourceName}
+        </Text>
+      </div>
 
-        <div className="flex flex-wrap items-start gap-small lg:gap-w6 lg:flex-col">
-          <SourceActivityLinks
-            importsSettingsUrl={importsSettingsUrl}
-            lastUsedLabel={lastUsedLabel}
-            onOpenSourcePath={onOpenSourcePath}
-          />
-          <hr className="w-full hidden lg:block" />
-          <SourceActionLinks />
-        </div>
+      <div className="flex flex-wrap items-start gap-w8 lg:gap-3.5 lg:flex-col">
+        <SourceLinkRow icon={<ActivityIcon aria-hidden />}>
+          {lastUsedText}
+        </SourceLinkRow>
+
+        {/* NAV */}
+        <hr className={ruleStyle} />
+        <SourceLinkRow
+          to={importsSettingsUrl}
+          icon={<ArrowRightIcon aria-hidden />}
+        >
+          <span className="lg:hidden">Import history</span>
+          <span className="hidden lg:inline">View import history</span>
+        </SourceLinkRow>
+        <SourceLinkRow to={ROUTES.home} icon={<ArrowLeftIcon aria-hidden />}>
+          <span className="lg:hidden">Home</span>
+          <span className="hidden lg:inline">Back to Home</span>
+        </SourceLinkRow>
+
+        {/* VANA */}
+        <hr className={ruleStyle} />
+        <SourceLinkRow
+          href={LINKS.appBuilderRegistration}
+          muted
+          className="ml-auto lg:ml-0"
+          icon={<ArrowUpRightIcon aria-hidden />}
+          onClick={event => {
+            event.preventDefault()
+            void openExternalUrl(LINKS.appBuilderRegistration)
+          }}
+        >
+          Build on Vana
+        </SourceLinkRow>
       </div>
     </aside>
   )
 }
 
-interface SourceActivityLinksProps {
-  importsSettingsUrl: string
-  lastUsedLabel: string
-  onOpenSourcePath: () => Promise<void>
-}
-
-function SourceActivityLinks({
-  importsSettingsUrl,
-  lastUsedLabel,
-  onOpenSourcePath,
-}: SourceActivityLinksProps) {
-  const lastUsedText =
-    lastUsedLabel === "never" ? "Never used" : `Last used ${lastUsedLabel}`
-
-  return (
-    <div className="space-y-3">
-      <SourceLinkRow to={ROUTES.home} icon={<ArrowLeftIcon aria-hidden />}>
-        Back to Home
-      </SourceLinkRow>
-      <SourceLinkRow
-        href="#"
-        icon={<FolderIcon aria-hidden />}
-        onClick={event => {
-          event.preventDefault()
-          void onOpenSourcePath()
-        }}
-      >
-        Reveal local folder
-      </SourceLinkRow>
-      <SourceLinkRow
-        to={importsSettingsUrl}
-        icon={<RefreshCcwIcon aria-hidden />}
-      >
-        View import history
-      </SourceLinkRow>
-      <SourceLinkRow icon={<ActivityIcon aria-hidden />}>
-        {lastUsedText}
-      </SourceLinkRow>
-    </div>
-  )
-}
-
-function SourceActionLinks() {
-  return (
-    <nav className="space-y-3">
-      <SourceLinkRow
-        href={LINKS.appBuilderRegistration}
-        muted
-        className="gap-1"
-        trailingIcon={<ArrowUpRightIcon aria-hidden />}
-        onClick={event => {
-          event.preventDefault()
-          void openExternalUrl(LINKS.appBuilderRegistration)
-        }}
-      >
-        Build on Vana
-      </SourceLinkRow>
-    </nav>
-  )
-}
+const ruleStyle = "w-full hidden lg:block border-ring/25"

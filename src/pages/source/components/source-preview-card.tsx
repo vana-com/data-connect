@@ -1,4 +1,4 @@
-import { CopyIcon } from "lucide-react"
+import { CopyIcon, FolderIcon } from "lucide-react"
 import { LoadingButton } from "@/components/elements/button-loading"
 import { Text } from "@/components/typography/text"
 import { cn } from "@/lib/classes"
@@ -13,6 +13,7 @@ interface SourcePreviewCardProps {
   fallbackPreviewJson: string
   copyStatus: CopyStatus
   onCopyFullJson: () => Promise<void>
+  onOpenSourcePath: () => Promise<void>
 }
 
 export function SourcePreviewCard({
@@ -22,10 +23,20 @@ export function SourcePreviewCard({
   fallbackPreviewJson,
   copyStatus,
   onCopyFullJson,
+  onOpenSourcePath,
 }: SourcePreviewCardProps) {
   return (
     <section className="rounded-card ring ring-border bg-card overflow-hidden flex min-h-[520px] h-full flex-col">
-      <div className="flex items-center justify-end gap-2 border-b border-border p-3">
+      <div className="flex items-center justify-end gap-1.5 border-b border-border p-3">
+        <PreviewActionButton
+          icon={<FolderIcon aria-hidden />}
+          className="min-w-[105px]"
+          isLoading={false}
+          isError={false}
+          loadingLabel=""
+          label="Open folder"
+          onClick={() => void onOpenSourcePath()}
+        />
         <PreviewActionButton
           icon={<CopyIcon aria-hidden />}
           className="min-w-[105px]"

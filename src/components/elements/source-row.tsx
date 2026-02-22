@@ -111,7 +111,14 @@ export function SourceStack({
           bottomClassName
         )}
       >
-        <Text as="span" intent="button" weight="medium" color={labelColor}>
+        <Text
+          as="span"
+          intent="button"
+          weight="medium"
+          truncate
+          align="left"
+          color={labelColor}
+        >
           {label}
         </Text>
         {shouldRenderMetaSection ? (

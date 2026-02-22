@@ -23,7 +23,11 @@ export function formatRelativeTimeLabel(
   const dayMs = 24 * hourMs
 
   if (absMs < hourMs) {
-    return rtf.format(Math.round(deltaMs / minuteMs), "minute")
+    const mins = Math.round(deltaMs / minuteMs)
+    const absMins = Math.abs(mins)
+    if (absMins === 0) return rtf.format(0, "minute")
+    const unit = `min${absMins === 1 ? "" : "s"}`
+    return mins < 0 ? `${absMins} ${unit} ago` : `in ${absMins} ${unit}`
   }
   if (absMs < dayMs) {
     return rtf.format(Math.round(deltaMs / hourMs), "hour")

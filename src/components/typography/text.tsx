@@ -102,7 +102,8 @@ export const textVariants = cva(
       withIcon: {
         true: [
           "inline-flex items-center gap-2",
-          "[&_svg:not([class*=size-])]:size-[0.9em]",
+          "[&_svg:not([class*=size-]):not([data-slot=spinner])]:size-[0.9em]",
+          "[&_svg[data-slot=spinner]]:size-[0.8em]",
           // "[&_svg]:transform [&_svg]:translate-y-[-0.1em]",
         ],
       },

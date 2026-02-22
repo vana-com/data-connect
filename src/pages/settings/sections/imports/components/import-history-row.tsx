@@ -50,13 +50,7 @@ export function ImportHistoryRow({
   return (
     <SettingsCard>
       <SettingsRow
-        icon={
-          <PlatformIcon
-            iconName={run.platformId}
-            size={24}
-            aria-hidden="true"
-          />
-        }
+        icon={<PlatformIcon iconName={run.platformId} size={24} />}
         title={
           <div className="flex items-center gap-2">
             <Text as="div" intent="body" weight="semi">

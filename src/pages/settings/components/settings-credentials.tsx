@@ -96,7 +96,6 @@ export function SettingsCredentials({
             {effectiveSessions.map(session => (
               <SettingsRow
                 key={session.connectorId}
-                wrapIcon={false}
                 icon={
                   <PlatformIcon
                     iconName={getPlatformIconName(session.connectorId)}

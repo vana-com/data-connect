@@ -210,4 +210,6 @@ page.promptUser(message, checkFn) // Wait for user action
 
 ## License
 
-MIT
+This project is licensed under the Apache License 2.0. See the LICENSE file for details.
+This software is provided as open-source utility software and is not a managed or hosted service.
+See LEGAL.md for additional legal disclaimers and responsibility framing.

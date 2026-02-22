@@ -75,8 +75,12 @@ export function useConnectPage(): UseConnectPageResult {
     if (prefetchedSessionRef.current === sessionIdParam) return
 
     prefetchedSessionRef.current = sessionIdParam
-    let isMounted = true
 
+    // No isMounted guard needed: the prefetchedSessionRef dedup above prevents
+    // duplicate claims, and React 18+ safely ignores setState on unmounted
+    // components. Removing the isMounted pattern fixes a StrictMode bug where
+    // the first mount's cleanup set isMounted=false, the remount skipped the
+    // claim (ref dedup), and setPrefetched was never called.
     void (async (): Promise<void> => {
       let session: GrantSession
 
@@ -104,17 +108,13 @@ export function useConnectPage(): UseConnectPageResult {
         )
         const result: PrefetchedGrantData = { session, builderManifest }
         prefetchedDataRef.current = result
-        if (isMounted) setPrefetched(result)
+        setPrefetched(result)
       } catch {
         const result: PrefetchedGrantData = { session }
         prefetchedDataRef.current = result
-        if (isMounted) setPrefetched(result)
+        setPrefetched(result)
       }
     })()
-
-    return () => {
-      isMounted = false
-    }
   }, [params.secret, params.sessionId])
 
   const { platforms, isPlatformConnected, platformsLoaded, platformLoadError } =

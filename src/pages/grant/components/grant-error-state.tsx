@@ -1,6 +1,7 @@
 import type { ReactNode } from "react"
 import { Link } from "react-router-dom"
 import { ArrowRightIcon, HomeIcon, RotateCcwIcon } from "lucide-react"
+import { PageContainer } from "@/components/elements/page-container"
 import { ActionButton } from "@/components/typography/button-action"
 import { Text } from "@/components/typography/text"
 import { PageHeading } from "@/components/typography/page-heading"
@@ -19,7 +20,7 @@ export function GrantErrorState({
   onRetry,
 }: GrantErrorStateProps) {
   return (
-    <div className="container pt-w16">
+    <PageContainer>
       <div className="space-y-w6">
         <PageHeading color="destructive" className="relative">
           {/* <div className="absolute left-[-1.3em] top-[0.05em]">
@@ -59,7 +60,7 @@ export function GrantErrorState({
           </div>
         )}
       </div>
-    </div>
+    </PageContainer>
   )
 }
 

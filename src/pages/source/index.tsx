@@ -1,5 +1,6 @@
 import { Link, useParams } from "react-router-dom"
 import { ArrowLeftIcon } from "lucide-react"
+import { PageContainer } from "@/components/elements/page-container"
 import { Text } from "@/components/typography/text"
 import { ROUTES } from "@/config/routes"
 import { SourceOverviewLayout } from "./components/source-overview-layout"
@@ -24,7 +25,7 @@ export function SourceOverview() {
 
   if (!sourceEntry) {
     return (
-      <div className="container py-w16 space-y-w8">
+      <PageContainer>
         <Link
           to={ROUTES.home}
           className="inline-flex items-center gap-1.5 text-sm text-muted-foreground hover:text-foreground"
@@ -40,7 +41,7 @@ export function SourceOverview() {
             Source not found for route: {platformId ?? "unknown"}
           </Text>
         </div>
-      </div>
+      </PageContainer>
     )
   }
 

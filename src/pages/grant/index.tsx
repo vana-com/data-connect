@@ -1,6 +1,7 @@
 import { useSearchParams, useLocation } from "react-router-dom"
 import { useState } from "react"
 import { getGrantParamsFromSearchParams } from "@/lib/grant-params"
+import { PageContainer } from "@/components/elements/page-container"
 import { LoadingState } from "@/components/elements/loading-state"
 import { useBrowserStatus } from "./use-browser-status"
 import { useGrantFlow } from "./use-grant-flow"
@@ -104,9 +105,9 @@ export function Grant() {
   let content = null
   if (browserStatus.status !== "ready" && !isDebugging) {
     content = (
-      <div className="container py-w16">
+      <PageContainer>
         <BrowserSetupSection browserStatus={browserStatus} />
-      </div>
+      </PageContainer>
     )
   } else if (isLoadingState || resolvedAuthLoading) {
     const loadingTitle =

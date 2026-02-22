@@ -1,4 +1,5 @@
 import { AlertTriangleIcon, ArrowRightIcon } from "lucide-react"
+import { PageContainer } from "@/components/elements/page-container"
 import { Button } from "@/components/ui/button"
 import { PlatformIcon } from "@/components/icons/platform-icon"
 import { Text } from "@/components/typography/text"
@@ -64,7 +65,7 @@ export function GrantConsentState({
   }
 
   return (
-    <div className="container pt-w16">
+    <PageContainer>
       <div className="space-y-w6">
         <PageHeading>Allow access to your {dataLabel}</PageHeading>
         <Text as="p">
@@ -169,6 +170,6 @@ export function GrantConsentState({
           <GrantWarning align="right" />
         </div> */}
       </div>
-    </div>
+    </PageContainer>
   )
 }

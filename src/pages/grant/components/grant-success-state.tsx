@@ -1,5 +1,6 @@
 import { Link } from "react-router-dom"
 import { CheckIcon, UserRoundCogIcon, HomeIcon } from "lucide-react"
+import { PageContainer } from "@/components/elements/page-container"
 import { PlatformIcon } from "@/components/icons/platform-icon"
 import { ActionPanel } from "@/components/typography/button-action"
 import { Text } from "@/components/typography/text"
@@ -18,7 +19,7 @@ export function GrantSuccessState({ appName, scopes }: GrantSuccessStateProps) {
   const dataLabel = dataSourceLabel ? `${dataSourceLabel} data` : "data"
 
   return (
-    <div className="container pt-w16">
+    <PageContainer>
       <div className="space-y-w6">
         <PageHeading className="relative">
           <div className="absolute left-[-1.5em] top-[0.05em]">
@@ -59,6 +60,6 @@ export function GrantSuccessState({ appName, scopes }: GrantSuccessStateProps) {
           </Text>
         </div>
       </div>
-    </div>
+    </PageContainer>
   )
 }

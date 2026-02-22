@@ -1,4 +1,5 @@
 import { ChevronRight } from "lucide-react"
+import { PageContainer } from "@/components/elements/page-container"
 import { LoadingState } from "@/components/elements/loading-state"
 import { EyebrowBadge } from "@/components/typography/eyebrow-badge"
 import { PlatformIcon } from "@/components/icons/platform-icon"
@@ -30,7 +31,7 @@ export function Connect() {
   if (isAutoRedirecting) return <LoadingState />
 
   return (
-    <div className="container pt-w16">
+    <PageContainer>
       <div className="space-y-w6">
         <PageHeading>{connectTitle}</PageHeading>
         <Text as="p" intent="body">
@@ -102,6 +103,6 @@ export function Connect() {
           </Link>
         </div> */}
       </div>
-    </div>
+    </PageContainer>
   )
 }

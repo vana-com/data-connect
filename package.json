@@ -26,7 +26,8 @@
     "release:versions": "node scripts/release-github.mjs --show-versions",
     "skills:sync": "node scripts/sync-skills.js",
     "skills:watch": "node scripts/watch-skills.js",
-    "postinstall": "node scripts/sync-skills.js"
+    "postinstall": "node scripts/sync-skills.js",
+    "fresh-start": "bash scripts/fresh-start.sh"
   },
   "dependencies": {
     "@base-ui/react": "^1.1.0",

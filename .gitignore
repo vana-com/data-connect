@@ -38,3 +38,4 @@ src-tauri/auth-page/
 # Devcontainer (local dev environment)
 .devcontainer/
 connectors/
+.vercel

@@ -7,7 +7,7 @@ import { corsFetch } from "@/lib/cors-fetch";
 
 const GATEWAY_URL =
   import.meta.env.VITE_GATEWAY_URL ||
-  "https://data-gateway-env-dev-opendatalabs.vercel.app";
+  "https://data-gateway.vana.org";
 
 // --- Types ---
 

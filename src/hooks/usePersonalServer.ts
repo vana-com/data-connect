@@ -3,6 +3,7 @@ import { invoke } from '@tauri-apps/api/core';
 import { listen } from '@tauri-apps/api/event';
 import { useSelector } from 'react-redux';
 import type { RootState } from '../state/store';
+import { registerServer } from '../services/serverRegistration';
 
 interface PersonalServerStatus {
   running: boolean;
@@ -30,6 +31,9 @@ let _pendingTunnelRestart = false;
 // Set when a tunnel restart is scheduled; cleared when tunnel connects, server exits,
 // or a new auth session begins (Phase 2 restart with new wallet).
 let _tunnelRestartScheduled = false;
+// Tracks which wallet we've attempted gateway registration for.
+// Prevents duplicate registration calls across remounts. Reset on new auth session.
+let _registrationWallet: string | null = null;
 
 export function usePersonalServer() {
   const { walletAddress, masterKeySignature } = useSelector(
@@ -64,7 +68,7 @@ export function usePersonalServer() {
       await invoke<PersonalServerStatus>('start_personal_server', {
         port: null,
         masterKeySignature: masterKey ?? null,
-        gatewayUrl: null,
+        gatewayUrl: import.meta.env.VITE_GATEWAY_URL || null,
         ownerAddress: owner,
       });
 
@@ -284,12 +288,74 @@ export function usePersonalServer() {
     _lastStartedWallet = walletAddress;
     _lastMasterKeySignature = masterKeySignature;
     _tunnelRestartScheduled = false; // New auth session — allow a fresh tunnel restart
+    _registrationWallet = null; // New auth session — allow fresh gateway registration
     console.log('[PersonalServer] Credentials available, restarting for identity...');
     _restartCount = 0;
     void stopServer().then(() => {
       setTimeout(() => startServerRef.current(walletAddress), 500);
     });
   }, [walletAddress, masterKeySignature, stopServer]);
+
+  // Phase 2.5 — Register server with gateway after Phase 2 completes.
+  // The personal server now has an identity (address + publicKey) but the
+  // gateway doesn't know about it. Without registration, the FRP tunnel
+  // server rejects connections ("Signer is not a registered server").
+  //
+  // Registration flow:
+  // 1. Get server identity from personal server /health
+  // 2. Sign EIP-712 ServerRegistration via account.vana.org/api/sign
+  // 3. POST to gateway POST /v1/servers
+  // 4. Restart server to establish the tunnel
+  useEffect(() => {
+    if (!isTauriRuntime()) return;
+    if (status !== 'running' || !port) return;
+    if (!walletAddress || !masterKeySignature) return;
+    if (_registrationWallet === walletAddress) return;
+    if (_sharedTunnelUrl || _tunnelRestartScheduled || restartingRef.current) return;
+
+    _registrationWallet = walletAddress;
+
+    void (async () => {
+      try {
+        console.log('[PersonalServer] Checking gateway registration...');
+        const result = await registerServer(port, masterKeySignature, walletAddress);
+        console.log('[PersonalServer] Gateway registration result:', result);
+
+        if (result.alreadyRegistered) {
+          console.log('[PersonalServer] Server already registered with gateway');
+          // Still need to restart if we don't have a tunnel yet — the server's
+          // startBackgroundServices() may have run before registration existed.
+          if (!_sharedTunnelUrl && !_tunnelRestartScheduled) {
+            console.log('[PersonalServer] Restarting to pick up registration and establish tunnel...');
+            _tunnelRestartScheduled = true;
+            restartingRef.current = true;
+            _restartCount = 0;
+            setTimeout(() => {
+              void stopServer().then(() => {
+                setTimeout(() => startServerRef.current(_lastStartedWallet), 500);
+              });
+            }, 1000);
+          }
+          return;
+        }
+
+        // Fresh registration succeeded — restart to establish tunnel
+        console.log('[PersonalServer] Registration complete, restarting for tunnel...');
+        _tunnelRestartScheduled = true;
+        restartingRef.current = true;
+        _restartCount = 0;
+        setTimeout(() => {
+          void stopServer().then(() => {
+            setTimeout(() => startServerRef.current(_lastStartedWallet), 500);
+          });
+        }, 1000);
+      } catch (err) {
+        console.error('[PersonalServer] Gateway registration failed:', err);
+        // Non-fatal — the tunnel won't work but the app can still function locally
+      }
+    })();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [status, port, walletAddress, masterKeySignature]);
 
   return { status, port, tunnelUrl, tunnelFailed, devToken, error, startServer, stopServer, restartServer, restartingRef };
 }

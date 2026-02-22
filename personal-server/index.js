@@ -117,13 +117,14 @@ async function connectTunnel(tunnelManager, storageRoot, send, { refreshAuth, at
   send({ type: 'log', message: `[tunnel] frpc spawned (pid: ${frpc.pid})` });
 
   let connected = false;
-  let tokenExpired = false;
+  let retrying = false;
 
   const retry = async () => {
-    if (connected || attempt >= MAX_RETRIES) return;
+    if (connected || retrying || attempt >= MAX_RETRIES) return;
+    retrying = true;
     try { frpc.kill(); } catch {}
     if (refreshAuth) {
-      send({ type: 'log', message: '[tunnel] Auth token expired, refreshing and retrying...' });
+      send({ type: 'log', message: '[tunnel] Auth rejected, refreshing and retrying...' });
       try {
         await refreshAuth();
       } catch (err) {
@@ -148,11 +149,11 @@ async function connectTunnel(tunnelManager, storageRoot, send, { refreshAuth, at
       send({ type: 'log', message: `[tunnel] Connected successfully!` });
       send({ type: 'tunnel', url: publicUrl });
     }
-    // The FRP server auth token has a short TTL. If the initial connection
-    // takes too long, the token expires and frpc retries forever with the
-    // stale token. Detect this and retry with a fresh auth claim.
-    if (!connected && !tokenExpired && text.includes('Token expired')) {
-      tokenExpired = true;
+    // The FRP server auth token has a short TTL. If the wrapper kills the
+    // library's tunnel and respawns frpc, the original token may have been
+    // consumed or expired. Both "Token expired" and "Signer is not a
+    // registered server" indicate stale auth — retry with a fresh claim.
+    if (!connected && !retrying && (text.includes('Token expired') || text.includes('Signer is not a registered server'))) {
       retry();
     }
   };
@@ -292,20 +293,42 @@ async function main() {
 
     // Start background services (gateway registration + tunnel setup).
     // The library creates the tunnel config (TOML) and downloads frpc.
-    send({ type: 'log', message: '[bg] Starting background services...' });
-    await context.startBackgroundServices();
-    send({ type: 'log', message: '[bg] Background services started' });
+    send({ type: 'log', message: `[bg] Starting background services... (gatewayUrl: ${config.gatewayUrl || config.gateway?.url || 'none'})` });
+    try {
+      await context.startBackgroundServices();
+      send({ type: 'log', message: '[bg] Background services started' });
+    } catch (bgErr) {
+      send({ type: 'log', message: `[bg] Background services FAILED: ${bgErr.message || bgErr}` });
+    }
+
+    // Check registration status after background services complete.
+    try {
+      const healthResp = await fetch(`http://localhost:${port}/health`);
+      const health = await healthResp.json();
+      const serverId = health?.identity?.serverId || null;
+      send({ type: 'log', message: `[bg] Post-registration check — serverId: ${serverId}, tunnel.status: ${health?.tunnel?.status}, tunnel.error: ${health?.tunnel?.error || 'none'}` });
+      if (serverId) {
+        send({ type: 'server-registered', status: 200, serverId });
+      }
+    } catch (healthErr) {
+      send({ type: 'log', message: `[bg] Health check failed: ${healthErr.message}` });
+    }
 
     const hasMasterKey = !!process.env.VANA_MASTER_KEY_SIGNATURE;
     send({ type: 'log', message: `[bg] hasMasterKey: ${hasMasterKey}` });
     send({ type: 'log', message: `[bg] tunnelManager: ${!!context.tunnelManager}` });
     send({ type: 'log', message: `[bg] tunnelUrl: ${context.tunnelUrl || 'none'}` });
 
-    if (context.tunnelManager) {
-      // Library set up tunnel infrastructure (TOML + frpc binary).
-      // Reconnect with a unique proxy name to avoid FRP server collisions.
-      // Pass refreshAuth so connectTunnel can retry with a fresh auth claim
-      // if the FRP server rejects an expired token.
+    if (context.tunnelManager && context.tunnelManager.status === 'connected' && context.tunnelManager.publicUrl) {
+      // Library already connected the tunnel — use it as-is.
+      // Killing and reconnecting with a new proxy name would invalidate
+      // the auth token that was consumed by the first connection.
+      send({ type: 'log', message: `[bg] Library tunnel already connected, using existing connection` });
+      send({ type: 'tunnel', url: context.tunnelManager.publicUrl });
+    } else if (context.tunnelManager) {
+      // Library set up tunnel infrastructure (TOML + frpc binary) but
+      // didn't connect. Reconnect with a unique proxy name to avoid
+      // FRP server collisions from previous sessions.
       connectTunnel(context.tunnelManager, storageRoot, send, {
         refreshAuth: () => context.startBackgroundServices(),
       });

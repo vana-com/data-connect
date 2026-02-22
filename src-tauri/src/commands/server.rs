@@ -437,6 +437,15 @@ pub async fn start_personal_server(
                                     serde_json::json!({ "token": token }),
                                 );
                             }
+                            "server-registered" => {
+                                let status = msg.get("status").and_then(|s| s.as_u64()).unwrap_or(0) as i32;
+                                let server_id = msg.get("serverId").and_then(|id| id.as_str());
+                                log::info!("Personal server registered with gateway (serverId: {:?})", server_id);
+                                let _ = app_handle.emit(
+                                    "server-registered",
+                                    serde_json::json!({ "status": status, "serverId": server_id }),
+                                );
+                            }
                             _ => {
                                 log::debug!("Personal server stdout: {}", line);
                             }

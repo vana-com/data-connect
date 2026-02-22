@@ -9,15 +9,14 @@ import { useConnectedApps } from "@/hooks/useConnectedApps"
 import { usePersonalServer } from "@/hooks/usePersonalServer"
 import type { Platform, RootState } from "@/types"
 import { PageContainer } from "@/components/elements/page-container"
+import { DebugTogglePanel } from "@/components/elements/debug-toggle-panel"
 import { SlidingTabs } from "@/components/elements/sliding-tabs"
 import { Tabs, TabsContent } from "@/components/ui/tabs"
 import { ConnectedAppsList } from "@/pages/home/components/connected-apps-list"
 import { ConnectedSourcesList } from "@/pages/home/components/connected-sources-list"
 import { AvailableSourcesList } from "@/pages/home/components/available-sources-list"
 import { ConnectorUpdates } from "@/pages/home/components/connector-updates"
-import { Text } from "@/components/typography/text"
 import { Button } from "@/components/ui/button"
-import { ChevronUp, ChevronDown } from "lucide-react"
 import { ROUTES } from "@/config/routes"
 import {
   buildGrantSearchParams,
@@ -47,7 +46,6 @@ export function Home() {
   const [activeTab, setActiveTab] = useState("sources")
   const [enableTabMotion, setEnableTabMotion] = useState(false)
   const [deepLinkInput, setDeepLinkInput] = useState("")
-  const [debugOpen, setDebugOpen] = useState(false)
   const knownSuccessfulRunIdsRef = useRef<Set<string> | null>(null)
 
   const tabs = [
@@ -208,53 +206,35 @@ export function Home() {
 
       {/* DEV ONLY SHORTCUT: RickRoll /connect link */}
       {import.meta.env.DEV && (
-        <div className="fixed bottom-4 right-4 z-50">
-          <div className="rounded-card bg-background p-3 shadow-md">
-            <button
-              type="button"
-              onClick={() => setDebugOpen(o => !o)}
-              className="flex w-full items-center justify-between gap-4"
+        <DebugTogglePanel title="Home debug">
+          <div className="flex flex-col gap-3">
+            <div className="flex flex-wrap gap-2">
+              <Button type="button" size="xs" variant="outline" asChild>
+                <a href="/connect?sessionId=grant-session-1770358735328&appId=rickroll&scopes=%5B%22read%3Achatgpt-conversations%22%5D">
+                  Open Rickroll connect
+                </a>
+              </Button>
+            </div>
+            <form
+              className="flex flex-col gap-2"
+              onSubmit={e => {
+                e.preventDefault()
+                handleTestDeepLink()
+              }}
             >
-              <Text intent="small" weight="medium">
-                Home debug
-              </Text>
-              {debugOpen ? (
-                <ChevronUp size={14} className="text-muted-foreground" />
-              ) : (
-                <ChevronDown size={14} className="text-muted-foreground" />
-              )}
-            </button>
-            {debugOpen && (
-              <>
-                <div className="mt-3 flex flex-wrap gap-2">
-                  <Button type="button" size="xs" variant="outline" asChild>
-                    <a href="/connect?sessionId=grant-session-1770358735328&appId=rickroll&scopes=%5B%22read%3Achatgpt-conversations%22%5D">
-                      Open Rickroll connect
-                    </a>
-                  </Button>
-                </div>
-                <form
-                  className="mt-3 flex flex-col gap-2"
-                  onSubmit={e => {
-                    e.preventDefault()
-                    handleTestDeepLink()
-                  }}
-                >
-                  <input
-                    type="text"
-                    value={deepLinkInput}
-                    onChange={e => setDeepLinkInput(e.target.value)}
-                    placeholder="vana://connect?sessionId=...&secret=..."
-                    className="rounded border px-2 py-1 text-xs"
-                  />
-                  <Button type="submit" size="xs" variant="outline">
-                    Test deep link
-                  </Button>
-                </form>
-              </>
-            )}
+              <input
+                type="text"
+                value={deepLinkInput}
+                onChange={e => setDeepLinkInput(e.target.value)}
+                placeholder="vana://connect?sessionId=...&secret=..."
+                className="rounded border px-2 py-1 text-xs"
+              />
+              <Button type="submit" size="xs" variant="outline">
+                Test deep link
+              </Button>
+            </form>
           </div>
-        </div>
+        </DebugTogglePanel>
       )}
     </PageContainer>
   )

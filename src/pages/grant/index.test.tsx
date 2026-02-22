@@ -69,6 +69,7 @@ describe("Grant debug status switching", () => {
       })
     ).toBeTruthy()
 
+    fireEvent.click(screen.getByRole("button", { name: "Grant debug" }))
     fireEvent.click(screen.getByRole("button", { name: "creating-grant" }))
     fireEvent.click(screen.getByRole("button", { name: "consent" }))
 

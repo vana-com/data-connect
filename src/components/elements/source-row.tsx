@@ -16,12 +16,6 @@ export interface SourceRowProps {
   arrowClassName?: string
 }
 
-export interface SourceStackProps extends SourceRowProps {
-  stackPrimaryColor?: string
-  trailingSlot?: ReactNode
-  bottomClassName?: string
-}
-
 export const sourceRowActionStyle =
   "text-foreground/30 group-hover:text-foreground"
 
@@ -68,22 +62,32 @@ export function SourceRow({
   )
 }
 
+export interface SourceStackProps {
+  iconName: string
+  label: string
+  showArrow?: boolean
+  iconClassName?: string
+  labelColor?: "foreground" | "mutedForeground"
+  arrowClassName?: string
+  stackPrimaryColor?: string
+  trailingSlot?: ReactNode
+  infoSlot?: ReactNode
+  bottomClassName?: string
+}
+
 export function SourceStack({
   iconName,
   label,
-  meta,
   showArrow,
   iconClassName,
   labelColor = "foreground",
-  metaColor = "mutedForeground",
   arrowClassName,
   stackPrimaryColor,
   trailingSlot,
+  infoSlot,
   bottomClassName,
 }: SourceStackProps) {
-  const shouldShowArrow = showArrow ?? Boolean(meta)
-  const shouldRenderMetaSection =
-    shouldShowArrow || Boolean(meta) || Boolean(trailingSlot)
+  const shouldShowArrow = Boolean(showArrow)
   void stackPrimaryColor
   // const darkenedStackColor = stackPrimaryColor
   //   ? `color-mix(in srgb, ${stackPrimaryColor} 30%, black)`
@@ -100,6 +104,7 @@ export function SourceStack({
             className={cn("p-3", iconClassName)}
           />
         </div>
+        <div className="flex-1 p-2 text-right">{infoSlot}</div>
       </div>
 
       {/* Bottom */}
@@ -121,25 +126,17 @@ export function SourceStack({
         >
           {label}
         </Text>
-        {shouldRenderMetaSection ? (
-          <div className="flex items-center gap-2 self-end h-full">
-            {meta ? (
-              <Text as="span" intent="small" color={metaColor}>
-                {meta}
-              </Text>
-            ) : null}
+        <div className="flex items-center gap-2 self-end h-full">
+          {trailingSlot}
 
-            {trailingSlot}
-
-            {/* CTA icon */}
-            {shouldShowArrow ? (
-              <ChevronRightIcon
-                className={cn(sourceRowActionStyle, "size-5", arrowClassName)}
-                aria-hidden
-              />
-            ) : null}
-          </div>
-        ) : null}
+          {/* CTA icon */}
+          {shouldShowArrow ? (
+            <ChevronRightIcon
+              className={cn(sourceRowActionStyle, "size-5", arrowClassName)}
+              aria-hidden
+            />
+          ) : null}
+        </div>
       </div>
     </div>
   )

@@ -23,7 +23,14 @@ interface AvailableSourcesListProps {
   connectedPlatformIds: string[]
 }
 
-function getConnectingCardLabel(statusMessage: string | undefined): string {
+function getConnectingStatusLine(
+  statusMessage: string | undefined,
+  phaseLabel: string | undefined
+): string {
+  // Keep this logic in sync with:
+  // docs/260222-home-connectors-info-message-matrix.md
+  const normalizedPhaseLabel = phaseLabel?.trim()
+  if (normalizedPhaseLabel) return normalizedPhaseLabel
   if (!statusMessage) return "Opening browser…"
 
   const normalizedStatus = statusMessage.trim().toLowerCase()
@@ -31,7 +38,7 @@ function getConnectingCardLabel(statusMessage: string | undefined): string {
     normalizedStatus === "waiting for sign in..." ||
     normalizedStatus === "waiting for sign in…"
   ) {
-    return "Waiting…"
+    return "Waiting for sign-in…"
   }
   if (
     normalizedStatus === "collecting data..." ||
@@ -41,6 +48,22 @@ function getConnectingCardLabel(statusMessage: string | undefined): string {
   }
 
   return statusMessage
+}
+
+function getConnectingAccountLine(run: Run | undefined): string | undefined {
+  // Follow-up target: plumb active account identity from connector-data events into
+  // Run while the connector is running, so we are not relying on message text.
+  const exportEmail = run?.exportData?.userInfo?.email?.trim()
+  if (exportEmail) return `Using ${exportEmail}`
+
+  const statusMessage = run?.statusMessage
+  if (!statusMessage) return undefined
+  const emailMatch = statusMessage.match(
+    /[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}/i
+  )
+  if (!emailMatch) return undefined
+
+  return `Using ${emailMatch[0]}`
 }
 
 export function AvailableSourcesList({
@@ -55,13 +78,13 @@ export function AvailableSourcesList({
     () => new Set(connectedPlatformIds),
     [connectedPlatformIds]
   )
-  // Maps platformId → statusMessage (undefined if no message yet)
+  // Maps platformId → run object for status + phase + account hint rendering.
   const connectingPlatforms = useMemo(() => {
-    const map = new Map<string, string | undefined>()
+    const map = new Map<string, Run>()
     runs
       .filter(run => run.status === "running")
       .forEach(run => {
-        map.set(run.platformId, run.statusMessage)
+        map.set(run.platformId, run)
       })
     return map
   }, [runs])
@@ -112,7 +135,7 @@ export function AvailableSourcesList({
             const baseIsConnecting = platform
               ? connectingPlatforms.has(platform.id)
               : false
-            const baseConnectingStatusMessage = platform
+            const baseConnectingRun = platform
               ? connectingPlatforms.get(platform.id)
               : undefined
 
@@ -126,7 +149,10 @@ export function AvailableSourcesList({
                 : baseIsConnecting,
               connectingStatusMessage: shouldForceConnectingPreview
                 ? FORCED_STATUS
-                : baseConnectingStatusMessage,
+                : baseConnectingRun?.statusMessage,
+              connectingRun: shouldForceConnectingPreview
+                ? undefined
+                : baseConnectingRun,
               onClick:
                 state === "available" && platform
                   ? () => onExport(platform)
@@ -148,11 +174,18 @@ export function AvailableSourcesList({
               isAvailable,
               isConnecting,
               connectingStatusMessage,
+              connectingRun,
               onClick,
             }) => {
-              const cardLabel = isConnecting
-                ? getConnectingCardLabel(connectingStatusMessage)
-                : label
+              const connectingStatusLine = isConnecting
+                ? getConnectingStatusLine(
+                    connectingStatusMessage,
+                    connectingRun?.phase?.label
+                  )
+                : undefined
+              const connectingAccountLine = isConnecting
+                ? getConnectingAccountLine(connectingRun)
+                : undefined
               const isPausedByAnotherRun =
                 hasAnyConnectingRun && isAvailable && !isConnecting
 
@@ -168,15 +201,29 @@ export function AvailableSourcesList({
                 >
                   <SourceStack
                     iconName={iconName}
-                    label={cardLabel}
+                    label={label}
                     stackPrimaryColor={stackPrimaryColor}
+                    infoSlot={
+                      isConnecting ? (
+                        <div className="ml-auto max-w-[180px]">
+                          <Text as="p" intent="fine" muted truncate>
+                            {connectingStatusLine}
+                          </Text>
+                          {connectingAccountLine ? (
+                            <Text as="p" intent="fine" muted truncate>
+                              {connectingAccountLine}
+                            </Text>
+                          ) : null}
+                        </div>
+                      ) : null
+                    }
                     showArrow={isAvailable && !hasAnyConnectingRun}
                     trailingSlot={
                       isConnecting ? (
                         <Spinner className="size-4" aria-hidden="true" />
                       ) : isPausedByAnotherRun ? (
                         <PauseIcon
-                          className="size-4 text-foreground/40"
+                          className="size-4 text-foreground-muted/70"
                           aria-hidden="true"
                         />
                       ) : isAvailable ? null : (

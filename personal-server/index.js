@@ -18,7 +18,7 @@
 process.env.NODE_ENV = 'production';
 
 import { join } from 'node:path';
-import { readFileSync, writeFileSync } from 'node:fs';
+import { readFileSync, writeFileSync, unlinkSync } from 'node:fs';
 import { randomUUID } from 'node:crypto';
 import { execSync, spawn } from 'node:child_process';
 import { loadConfig } from '@opendatalabs/personal-server-ts-core/config';
@@ -125,8 +125,13 @@ async function connectTunnel(tunnelManager, storageRoot, send, { refreshAuth, at
     if (connected || retrying || attempt >= MAX_RETRIES) return;
     retrying = true;
     try { frpc.kill(); } catch {}
+    // Delete stale TOML so refreshAuth regenerates fresh tunnel credentials
+    try { unlinkSync(tomlPath); } catch {}
     if (refreshAuth) {
-      send({ type: 'log', message: '[tunnel] Auth rejected, refreshing and retrying...' });
+      send({ type: 'log', message: '[tunnel] Auth rejected, deleting stale TOML and refreshing...' });
+      // Reset tunnel manager state so the library performs full tunnel setup
+      tunnelManager.status = 'stopped';
+      tunnelManager.publicUrl = null;
       try {
         await refreshAuth();
       } catch (err) {
@@ -169,7 +174,13 @@ async function connectTunnel(tunnelManager, storageRoot, send, { refreshAuth, at
   });
   frpc.on('exit', (code, signal) => {
     send({ type: 'log', message: `[tunnel] frpc exited (code: ${code}, signal: ${signal})` });
-    if (!connected && !retrying) {
+    if (connected) {
+      // Tunnel was live and just dropped
+      send({ type: 'tunnel-disconnected', message: `frpc exited after connection (code: ${code}, signal: ${signal})` });
+      connected = false;
+      // Attempt reconnect
+      connectTunnel(tunnelManager, storageRoot, send, { refreshAuth, attempt: 0 });
+    } else if (!retrying) {
       send({ type: 'tunnel-failed', message: `frpc exited with code ${code}` });
     }
   });
@@ -239,6 +250,21 @@ async function registerWithGateway({ accountUrl, gatewayConfig, masterKeySignatu
   const body = await regRes.json();
   send({ type: 'log', message: `[registration] Registered (serverId: ${body.serverId ?? 'unknown'})` });
   return { serverId: body.serverId ?? null, alreadyRegistered: false };
+}
+
+/**
+ * Quick reachability check against the tunnel's public URL.
+ * Returns true if the tunnel responds with an OK status.
+ */
+async function verifyTunnel(publicUrl, send) {
+  try {
+    const res = await fetch(`${publicUrl}/health`, { signal: AbortSignal.timeout(5000) });
+    send({ type: 'log', message: `[tunnel] Health check: ${res.status}` });
+    return res.ok;
+  } catch (err) {
+    send({ type: 'log', message: `[tunnel] Health check failed: ${err.message}` });
+    return false;
+  }
 }
 
 async function main() {
@@ -416,8 +442,28 @@ async function main() {
     send({ type: 'log', message: `[bg] tunnelManager: ${!!context.tunnelManager}, tunnelUrl: ${context.tunnelUrl || 'none'}` });
 
     if (context.tunnelManager && context.tunnelManager.status === 'connected' && context.tunnelManager.publicUrl) {
-      send({ type: 'log', message: `[bg] Library tunnel already connected` });
-      send({ type: 'tunnel', url: context.tunnelManager.publicUrl });
+      send({ type: 'log', message: `[bg] Library tunnel reports connected, verifying...` });
+      const tunnelOk = await verifyTunnel(context.tunnelManager.publicUrl, send);
+      if (tunnelOk) {
+        send({ type: 'log', message: `[bg] Library tunnel verified` });
+        send({ type: 'tunnel', url: context.tunnelManager.publicUrl });
+      } else {
+        send({ type: 'log', message: `[bg] Library tunnel unreachable, resetting tunnel state` });
+        // Force full tunnel re-setup: reset manager state and delete stale TOML
+        // so startBackgroundServices regenerates fresh credentials
+        context.tunnelManager.status = 'stopped';
+        context.tunnelManager.publicUrl = null;
+        try { unlinkSync(join(storageRoot, 'tunnel', 'frpc.toml')); } catch {}
+        try {
+          await context.startBackgroundServices();
+          send({ type: 'log', message: `[bg] Tunnel credentials refreshed, reconnecting with unique proxy name` });
+        } catch (err) {
+          send({ type: 'log', message: `[bg] Tunnel credential refresh failed: ${err.message}` });
+        }
+        connectTunnel(context.tunnelManager, storageRoot, send, {
+          refreshAuth: () => context.startBackgroundServices(),
+        });
+      }
     } else if (context.tunnelManager) {
       // Library set up tunnel infra (TOML + frpc binary) but didn't connect.
       // Reconnect with a unique proxy name to avoid FRP server collisions.

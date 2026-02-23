@@ -432,6 +432,14 @@ pub async fn start_personal_server(
                                     serde_json::json!({ "message": message }),
                                 );
                             }
+                            "tunnel-disconnected" => {
+                                let message = msg.get("message").and_then(|m| m.as_str()).unwrap_or("");
+                                log::warn!("Personal server tunnel disconnected: {}", message);
+                                let _ = app_handle.emit(
+                                    "personal-server-tunnel-disconnected",
+                                    serde_json::json!({ "message": message }),
+                                );
+                            }
                             "dev-token" => {
                                 let token = msg.get("token").and_then(|t| t.as_str()).unwrap_or("");
                                 log::info!("Personal server dev token received");

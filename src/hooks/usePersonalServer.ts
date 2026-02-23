@@ -180,6 +180,14 @@ export function usePersonalServer() {
       setTunnelFailed(true);
     }).then((fn) => unlisteners.push(fn));
 
+    listen<{ message: string }>('personal-server-tunnel-disconnected', (event) => {
+      console.warn('[PersonalServer] Tunnel disconnected:', event.payload.message);
+      _sharedTunnelUrl = null;
+      _sharedTunnelFailed = true;
+      setTunnelUrl(null);
+      setTunnelFailed(true);
+    }).then((fn) => unlisteners.push(fn));
+
     // The wrapper now self-registers and connects the tunnel in a single
     // pass, so we just log the event — no restart needed.
     listen<{ status: number; serverId: string | null }>('server-registered', (event) => {

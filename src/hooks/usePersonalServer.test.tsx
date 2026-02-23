@@ -89,38 +89,23 @@ describe("usePersonalServer", () => {
 
     const { result } = renderHook(() => usePersonalServer())
 
-    // Let the mount effect fire and invoke resolve
+    // Let effects flush
     await act(async () => {
       await vi.runAllTimersAsync()
     })
 
-    expect(mockInvoke).toHaveBeenCalledWith("start_personal_server", {
-      port: null,
-      masterKeySignature: null,
-      gatewayUrl: null,
-      ownerAddress: null,
-    })
-
-    expect(result.current.status).toBe("starting")
+    // Phase 1 was removed; server should not auto-start without credentials.
+    expect(mockInvoke).not.toHaveBeenCalledWith(
+      "start_personal_server",
+      expect.any(Object)
+    )
+    expect(result.current.status).toBe("stopped")
   })
 
   it("restarts with credentials when walletAddress changes (Phase 2)", async () => {
     const usePersonalServer = await importHook()
 
-    const { result, rerender } = renderHook(() => usePersonalServer())
-
-    // Let initial unauthenticated start complete
-    await act(async () => {
-      await vi.runAllTimersAsync()
-    })
-
-    // Simulate the ready event from the first start
-    act(() => {
-      emit("personal-server-ready", { port: 8080 })
-    })
-
-    expect(result.current.status).toBe("running")
-    mockInvoke.mockClear()
+    const { rerender } = renderHook(() => usePersonalServer())
 
     // Sign in — set walletAddress + masterKeySignature
     authState = { walletAddress: "0xabc", masterKeySignature: "sig123" }
@@ -132,62 +117,41 @@ describe("usePersonalServer", () => {
     })
 
     expect(mockInvoke).toHaveBeenCalledWith("stop_personal_server")
-    expect(mockInvoke).toHaveBeenCalledWith("start_personal_server", {
-      port: null,
-      masterKeySignature: "sig123",
-      gatewayUrl: null,
-      ownerAddress: "0xabc",
-    })
+    expect(mockInvoke).toHaveBeenCalledWith(
+      "start_personal_server",
+      expect.objectContaining({
+        port: null,
+        masterKeySignature: "sig123",
+        ownerAddress: "0xabc",
+      })
+    )
   })
 
-  it("restarts again after server-registered for tunnel", async () => {
+  it("does not restart again after server-registered for tunnel", async () => {
     const usePersonalServer = await importHook()
 
-    const { rerender } = renderHook(() => usePersonalServer())
-
-    // Let initial unauthenticated start complete
-    await act(async () => {
-      await vi.runAllTimersAsync()
-    })
-
-    act(() => {
-      emit("personal-server-ready", { port: 8080 })
-    })
-
-    mockInvoke.mockClear()
-
-    // Sign in → Phase 2 restart
     authState = { walletAddress: "0xabc", masterKeySignature: "sig123" }
-    rerender()
+    renderHook(() => usePersonalServer())
 
     await act(async () => {
       await vi.runAllTimersAsync()
     })
 
-    // Phase 2 server is ready
-    act(() => {
-      emit("personal-server-ready", { port: 8080 })
-    })
-
     mockInvoke.mockClear()
-
-    // Gateway registration completes → tunnel restart
     act(() => {
       emit("server-registered", { status: 200, serverId: "srv-123" })
     })
 
-    // Let the 1s delay + stop + 500ms delay + start resolve
     await act(async () => {
       await vi.runAllTimersAsync()
     })
 
-    expect(mockInvoke).toHaveBeenCalledWith("stop_personal_server")
-    expect(mockInvoke).toHaveBeenCalledWith("start_personal_server", {
-      port: null,
-      masterKeySignature: "sig123",
-      gatewayUrl: null,
-      ownerAddress: "0xabc",
-    })
+    // Wrapper now handles registration+tunnel in one pass; no extra restart.
+    expect(mockInvoke).not.toHaveBeenCalledWith("stop_personal_server")
+    expect(mockInvoke).not.toHaveBeenCalledWith(
+      "start_personal_server",
+      expect.any(Object)
+    )
   })
 
   it("resets running.current on error event", async () => {
@@ -486,22 +450,10 @@ describe("usePersonalServer", () => {
     )
   })
 
-  it("defers tunnel restart when server-registered fires during Phase 2", async () => {
+  it("does not schedule tunnel restart when server-registered fires during Phase 2", async () => {
     const usePersonalServer = await importHook()
 
     const { result, rerender } = renderHook(() => usePersonalServer())
-
-    // Phase 1: unauthenticated start
-    await act(async () => {
-      await vi.runAllTimersAsync()
-    })
-
-    act(() => {
-      emit("personal-server-ready", { port: 8080 })
-    })
-
-    expect(result.current.status).toBe("running")
-    mockInvoke.mockClear()
 
     // Sign in → Phase 2 begins
     authState = { walletAddress: "0xabc", masterKeySignature: "sig123" }
@@ -516,9 +468,12 @@ describe("usePersonalServer", () => {
     expect(result.current.status).toBe("starting")
     expect(result.current.restartingRef.current).toBe(true)
 
-    // Record how many times stop was called so far (1 from Phase 2)
+    // Record Phase 2 calls.
     const stopCallsAfterPhase2 = mockInvoke.mock.calls.filter(
       (c) => c[0] === "stop_personal_server"
+    ).length
+    const startCallsAfterPhase2 = mockInvoke.mock.calls.filter(
+      (c) => c[0] === "start_personal_server"
     ).length
 
     // Gateway registration completes while Phase 2 is still starting
@@ -531,37 +486,17 @@ describe("usePersonalServer", () => {
       await vi.runAllTimersAsync()
     })
 
-    // stop should NOT have been called again (restart was deferred)
+    // No additional restart should be scheduled.
     const stopCallsAfterRegistered = mockInvoke.mock.calls.filter(
       (c) => c[0] === "stop_personal_server"
     ).length
+    const startCallsAfterRegistered = mockInvoke.mock.calls.filter(
+      (c) => c[0] === "start_personal_server"
+    ).length
     expect(stopCallsAfterRegistered).toBe(stopCallsAfterPhase2)
-
-    mockInvoke.mockClear()
+    expect(startCallsAfterRegistered).toBe(startCallsAfterPhase2)
 
     // Phase 2 completes — ready event fires
-    act(() => {
-      emit("personal-server-ready", { port: 9090 })
-    })
-
-    // restartingRef should still be true (tunnel restart is about to happen)
-    expect(result.current.restartingRef.current).toBe(true)
-
-    // Let the deferred tunnel restart proceed (1s delay + stop + 500ms + start)
-    await act(async () => {
-      await vi.runAllTimersAsync()
-    })
-
-    // Tunnel restart should have called stop + start
-    expect(mockInvoke).toHaveBeenCalledWith("stop_personal_server")
-    expect(mockInvoke).toHaveBeenCalledWith("start_personal_server", {
-      port: null,
-      masterKeySignature: "sig123",
-      gatewayUrl: null,
-      ownerAddress: "0xabc",
-    })
-
-    // Final ready event — tunnel established
     act(() => {
       emit("personal-server-ready", { port: 9090 })
     })

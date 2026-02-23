@@ -41,32 +41,30 @@ describe("GrantConsentState scope action label", () => {
     expect(screen.getAllByText("See your ChatGPT Conversations").length).toBeGreaterThan(0)
   })
 
-  it("renders a two-scope action label with 'and'", () => {
+  it("renders two independent scope action labels", () => {
     renderConsent(["chatgpt.conversations", "spotify.playlists"])
 
-    expect(
-      screen.getByText("See your ChatGPT Conversations and Spotify Playlists")
-    ).toBeTruthy()
+    expect(screen.getByText("See your ChatGPT Conversations")).toBeTruthy()
+    expect(screen.getByText("See your Spotify Playlists")).toBeTruthy()
   })
 
-  it("renders a three-scope action label with Oxford comma", () => {
+  it("renders three independent scope action labels", () => {
     renderConsent([
       "chatgpt.conversations",
       "spotify.playlists",
       "instagram.posts",
     ])
 
-    expect(
-      screen.getByText(
-        "See your ChatGPT Conversations, Spotify Playlists, and Instagram Posts"
-      )
-    ).toBeTruthy()
+    expect(screen.getByText("See your ChatGPT Conversations")).toBeTruthy()
+    expect(screen.getByText("See your Spotify Playlists")).toBeTruthy()
+    expect(screen.getByText("See your Instagram Posts")).toBeTruthy()
   })
 
   it("falls back to generic copy when scopes are empty", () => {
     renderConsent([])
 
-    expect(screen.getByText("See your data")).toBeTruthy()
+    expect(screen.getByText("Allow access to your data")).toBeTruthy()
+    expect(screen.queryByText(/^See your /)).toBeNull()
   })
 
   it("allows immediately without checkbox acknowledgement", () => {

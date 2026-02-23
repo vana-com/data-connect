@@ -120,7 +120,7 @@ describe("SourceOverview", () => {
     renderSourcePage()
 
     const [openFolderButton] = await waitFor(
-      () => screen.getAllByRole("button", { name: "Open folder" }),
+      () => screen.getAllByRole("button", { name: "Open Folder" }),
       { timeout: 3000 }
     )
 

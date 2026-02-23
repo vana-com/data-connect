@@ -34,7 +34,7 @@ export function SourcePreviewCard({
           isLoading={false}
           isError={false}
           loadingLabel=""
-          label="Open folder"
+          label="Open Folder"
           onClick={() => void onOpenSourcePath()}
         />
         <PreviewActionButton

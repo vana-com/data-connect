@@ -31,8 +31,8 @@ export function SourceSidebar({
     lastUsedLabel === "never" ? "Never used" : `Last used ${lastUsedLabel}`
 
   return (
-    <aside className="space-y-gap px-3 lg:space-y-6 lg:px-0">
-      <div className="flex items-center gap-2 ml-[-0.25em] pt-2">
+    <aside className="space-y-gap px-3 lg:px-0">
+      <div className="flex items-center gap-2 ml-[-0.25em] pt-2 pb-0">
         <PlatformIcon
           iconName={sourceId}
           fallbackLabel={sourceName.charAt(0).toUpperCase()}
@@ -42,6 +42,16 @@ export function SourceSidebar({
           {sourceName}
         </Text>
       </div>
+
+      <Text
+        as="p"
+        intent="small"
+        muted
+        className="text-balance lg:text-pretty pb-1"
+      >
+        Full export JSON on your Personal Server. Use Open Folder for the file
+        path or Copy JSON to paste into your app/agent.
+      </Text>
 
       <div className="flex flex-wrap items-start gap-w8 lg:gap-3.5 lg:flex-col">
         <SourceLinkRow icon={<ActivityIcon aria-hidden />}>

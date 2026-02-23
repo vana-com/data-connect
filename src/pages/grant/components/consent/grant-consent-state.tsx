@@ -85,25 +85,34 @@ export function GrantConsentState({
           </div>
         )}
 
-        <div className="action-outset">
-          <ActionPanel className="justify-start gap-w4">
-            <div className="h-full flex items-center gap-1">
-              <PlatformIcon
-                iconName={dataSourceLabel ?? "Data"}
-                aria-hidden="true"
-              />
-              <ArrowRightIcon aria-hidden="true" className="size-[1.5em]" />
-              <PlatformIcon
-                iconName={appName}
-                imageSrc={builderIconSrc}
-                aria-hidden="true"
-              />
-            </div>
-            {/* Scope list */}
-            <Text as="p" intent="button" weight="medium">
-              See your {scopeActionLabel}
-            </Text>
-          </ActionPanel>
+        <div className="action-outset space-y-px">
+          {scopeLabels.map((label, i) => (
+            <ActionPanel
+              key={label}
+              className={cn(
+                "justify-start gap-w4",
+                scopeLabels.length > 1 && i === 0 && "rounded-b-none",
+                scopeLabels.length > 1 && i > 0 && i < scopeLabels.length - 1 && "rounded-none",
+                scopeLabels.length > 1 && i === scopeLabels.length - 1 && "rounded-t-none"
+              )}
+            >
+              <div className="h-full flex items-center gap-1">
+                <PlatformIcon
+                  iconName={dataSourceLabel ?? "Data"}
+                  aria-hidden="true"
+                />
+                <ArrowRightIcon aria-hidden="true" className="size-[1.5em]" />
+                <PlatformIcon
+                  iconName={appName}
+                  imageSrc={builderIconSrc}
+                  aria-hidden="true"
+                />
+              </div>
+              <Text as="p" intent="button" weight="medium">
+                See your {label}
+              </Text>
+            </ActionPanel>
+          ))}
         </div>
 
         <Text as="p" intent="fine" dim align="left" balance>

@@ -20,7 +20,7 @@ import type {
   ProgressPhase,
 } from '../types';
 import { normalizeExportData } from '../lib/export-data';
-import { getScopeForPlatform, ingestData } from '../services/personalServerIngest';
+import { getScopeForPlatform, ingestData, ingestExportData } from '../services/personalServerIngest';
 
 const isDev = import.meta.env.DEV;
 
@@ -93,9 +93,6 @@ async function deliverRunToPersonalServer(
 ): Promise<boolean> {
   if (!run.exportPath || run.syncedToPersonalServer) return false;
 
-  const scope = getScopeForPlatform(run.platformId);
-  if (!scope) return false;
-
   // Normalize exportPath to directory
   const dirPath = run.exportPath.endsWith('.json')
     ? run.exportPath.replace(/\/[^/]+$/, '')
@@ -106,8 +103,9 @@ async function deliverRunToPersonalServer(
       runId: run.id,
       exportPath: dirPath,
     });
-    const payload = (data.content ?? data) as object;
-    await ingestData(port, scope, payload);
+    const payload = (data.content ?? data) as Record<string, unknown>;
+    const ingested = await ingestExportData(port, run.platformId, payload);
+    if (ingested.length === 0) return false;
 
     // Mark staging as synced (trims the large JSON)
     await invoke('mark_export_synced', {
@@ -115,11 +113,11 @@ async function deliverRunToPersonalServer(
       exportPath: run.exportPath,
       itemsExported: run.itemsExported ?? null,
       itemLabel: run.itemLabel ?? null,
-      scope,
+      scope: ingested[0],
     });
 
     dispatch(markRunSynced(run.id));
-    debugLog('[Data Delivery] Synced run', run.id, 'to personal server, scope:', scope);
+    debugLog('[Data Delivery] Synced run', run.id, 'scopes:', ingested);
     return true;
   } catch (err) {
     if (isDev) {
@@ -180,22 +178,21 @@ async function persistAndDeliverExport({
       })
     );
 
-    const scope = getScopeForPlatform(platformId);
-    if (!scope) return;
-
     const serverStatus = await invoke<{ running: boolean; port?: number }>('get_personal_server_status');
     if (!serverStatus.running || !serverStatus.port) return;
 
-    await ingestData(serverStatus.port, scope, exportData as object);
+    const ingested = await ingestExportData(serverStatus.port, platformId, exportData as Record<string, unknown>);
+    if (ingested.length === 0) return;
+
     await invoke('mark_export_synced', {
       runId,
       exportPath,
       itemsExported: itemsExported ?? null,
       itemLabel: itemLabel ?? null,
-      scope,
+      scope: ingested[0],
     });
     dispatch(markRunSynced(runId));
-    debugLog('[Data Delivery] Synced run', runId, 'immediately after export');
+    debugLog('[Data Delivery] Synced run', runId, 'scopes:', ingested);
   } catch (err) {
     persistedRunIds.delete(runId);
     const message = err instanceof Error ? err.message : String(err);

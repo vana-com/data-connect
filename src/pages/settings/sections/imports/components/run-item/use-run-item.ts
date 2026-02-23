@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useMemo, useState } from "react"
 import { invoke } from "@tauri-apps/api/core"
-import { getScopeForPlatform, ingestData } from "@/services/personalServerIngest"
+import { ingestExportData } from "@/services/personalServerIngest"
 import { openExportFolderPath } from "@/lib/open-resource"
 import type { Run } from "@/types"
 import {
@@ -34,8 +34,7 @@ export function useRunItem({ run, serverPort, serverReady }: UseRunItemProps) {
     }
   }, [run.syncedToPersonalServer])
 
-  const scope = useMemo(() => getScopeForPlatform(run.platformId), [run.platformId])
-  const canIngest = serverReady && !!serverPort && !!run.exportPath && !!scope
+  const canIngest = serverReady && !!serverPort && !!run.exportPath
   const conversations = exportData?.conversations || []
   const ingestButtonLabel = getIngestButtonLabel(ingestStatus)
   const formattedDate = formatRunDate(run.startDate)
@@ -77,14 +76,14 @@ export function useRunItem({ run, serverPort, serverReady }: UseRunItemProps) {
         runId: run.id,
         exportPath: dirPath,
       })
-      const payload = (data.content ?? data) as object
-      await ingestData(serverPort!, scope!, payload)
+      const payload = (data.content ?? data) as Record<string, unknown>
+      await ingestExportData(serverPort!, run.platformId, payload)
       setIngestStatus("sent")
     } catch (err) {
       console.error("[Ingest] Failed:", err)
       setIngestStatus("error")
     }
-  }, [canIngest, run, serverPort, scope])
+  }, [canIngest, run, serverPort])
 
   const openFolder = useCallback(async () => {
     if (run.exportPath) {

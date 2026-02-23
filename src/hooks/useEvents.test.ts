@@ -27,6 +27,7 @@ vi.mock("@tauri-apps/api/event", () => ({
 vi.mock("../services/personalServerIngest", () => ({
   getScopeForPlatform: vi.fn(() => null),
   ingestData: vi.fn(),
+  ingestExportData: vi.fn(() => Promise.resolve([])),
 }))
 
 vi.mock("../state/store", async importOriginal => {

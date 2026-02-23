@@ -1,56 +1,114 @@
 ---
 name: commit-discipline
-description: Enforce commit safety and approval gates. Use when asked to commit, amend,
-  rebase, or generate a commit message.
+description: Enforce clean, spec-compliant commit messages and commit hygiene. Use when writing, reviewing, or correcting commit messages, deciding commit scope, or preparing a commit for merge.
 ---
 
 # Commit Discipline
 
-## Hard gate
+Use Conventional Commits 1.0.0 with minimal noise and maximum signal.
 
-**NEVER commit unless the user explicitly says to commit in this conversation.**
+## Required reference
 
-- No `git commit`, `git commit --amend`, rebase/squash, or any git operation
-  that _creates or rewrites commits_ unless explicitly asked.
-- Default: make code changes, show a tight diff summary, and ask for approval.
-- If the user asks for a commit message, only provide the message — do not
-  commit unless they also explicitly say to commit.
-- If the user explicitly says not to push (for example "do not push"), treat
-  that as binding for the rest of the current commit workflow unless they later
-  revoke it.
-- If tests exist for the changes being committed, they must be run first.
-- Prefer scoped tests for the changed area (page dir or specific files).
-- If the user gave prior commit-structure instructions in this thread (for example "series of atomic commits"), treat them as binding. If a later request could conflict (for example "commit all"), stop and ask for explicit confirmation before committing.
+- Read `.agents/skills/conventional-commits/SKILL.md` first.
+- Treat this skill as stricter commit-hygiene guidance layered on top of that baseline.
 
-## Pre-commit staging hygiene
+## Message format
 
-- Always stage explicit file paths only (no `git add .`, `-A`, `-u`, `-i`,
-  `git commit -a`).
-- Do not reset or unstage anything as part of this workflow (no `git reset`,
-  `git restore --staged`, or `git reset --mixed`) unless the user explicitly
-  asks for it.
-- Never stage unrelated files or any untracked files unless the user explicitly
-  asked to include them.
-- Before committing, run `git diff --staged` and confirm **only** the intended
-  files are staged. If anything unexpected is staged, STOP and ask.
-- Before each commit in a multi-commit sequence, run both:
-  - `git diff --staged --name-only`
-  - `git diff --staged`
-  and verify the staged set still matches the intended atomic scope.
-- Before running `git commit`, post a short pre-commit checklist in chat:
-  - files to include
-  - files to exclude
-  - number of commits to create
-  - tests run for this commit set
-- If the working tree is dirty and unrelated changes are present, keep them
-  untouched and out of staged changes; if unrelated files are accidentally
-  staged, STOP and ask before proceeding.
-- After each successful commit, run `git show --name-only --oneline -1` and
-  verify only the intended files were captured before moving to the next commit.
+```text
+<type>[optional scope][optional !]: <description>
 
-## Speed rule (no back-and-forth on commit failures)
+[optional body]
 
-- If the user explicitly asked you to commit and the commit fails due to
-  sandbox/permissions or `.git/index.lock`, automatically retry using the
-  appropriate permissions and clear a stale lock (see
-  `git-troubleshooting.mdc`).
+[optional footer(s)]
+```
+
+## Required rules
+
+- Use lowercase `type`.
+- Use imperative subject (`add`, `fix`, `refactor`, `remove`, `rename`).
+- Do not end subject with a period.
+- Keep subject concise; prefer clarity over arbitrary length limits.
+- Separate header/body/footer with one blank line.
+
+## Types
+
+- `feat`: user-facing feature
+- `fix`: user-facing bug fix
+- `docs`: documentation only
+- `refactor`: no user-visible behavior change
+- `perf`: performance improvement
+- `test`: tests only
+- `build`: build tooling/dependencies
+- `ci`: CI/CD pipeline/workflow
+- `chore`: maintenance not covered above
+- `revert`: reverts a previous commit
+
+Prefer `feat` or `fix` when either is true.
+
+## Scope
+
+- Use scope only when it improves precision, e.g. `fix(connect): ...`.
+- Keep scope short and noun-like.
+- Omit scope for cross-cutting or obvious changes.
+
+## Breaking changes
+
+Use one of these patterns:
+
+1. `type(scope)!: description`
+2. Footer: `BREAKING CHANGE: <details>`
+3. Both, when clarity matters
+
+`BREAKING CHANGE` footer token must be uppercase.
+
+## Body: when to include
+
+Include a body only when it adds non-obvious context:
+
+- why a change exists
+- design tradeoffs
+- migration or rollback notes
+- constraints reviewers need to know
+
+Do not restate the diff.
+
+## Footers
+
+Use footers for structured metadata:
+
+- `BREAKING CHANGE: ...`
+- `Refs: #123`
+- `Reviewed-by: Name`
+- `Co-authored-by: Name <email>`
+
+## Commit hygiene
+
+- Keep each commit to one primary intent.
+- If a change mixes intents (e.g. refactor + feature), split into separate commits when feasible.
+- Stage intentionally; avoid accidental files.
+- Avoid empty, vague subjects (`update stuff`, `fix things`).
+
+## Rewrite policy
+
+When asked to improve a message:
+
+1. Preserve intent.
+2. Normalize to Conventional Commits format.
+3. Add scope/body/footer only if they add signal.
+4. Return the final commit message text only.
+
+## Examples
+
+```text
+fix(connect): preserve return path after auth handoff
+```
+
+```text
+feat(auth)!: require signed nonce for session creation
+
+BREAKING CHANGE: unsigned nonce requests are now rejected by default.
+```
+
+```text
+refactor(login): isolate callback parsing from page state updates
+```

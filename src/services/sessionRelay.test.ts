@@ -18,6 +18,18 @@ function jsonResponse(body: unknown, status = 200): Response {
   } as Response;
 }
 
+function pathnameOf(url: unknown): string {
+  return new URL(String(url)).pathname;
+}
+
+function originOf(url: unknown): string {
+  return new URL(String(url)).origin;
+}
+
+const EXPECTED_RELAY_ORIGIN = new URL(
+  import.meta.env.VITE_SESSION_RELAY_URL || "https://session-relay.vana.org"
+).origin;
+
 beforeEach(() => {
   fetchSpy.mockReset();
   _resetClaimCache();
@@ -42,7 +54,8 @@ describe("claimSession", () => {
 
     expect(fetchSpy).toHaveBeenCalledOnce();
     const [url, init] = fetchSpy.mock.calls[0];
-    expect(url).toBe("https://session-relay-git-dev-opendatalabs.vercel.app/v1/session/claim");
+    expect(originOf(url)).toBe(EXPECTED_RELAY_ORIGIN);
+    expect(pathnameOf(url)).toBe("/v1/session/claim");
     expect(init.method).toBe("POST");
     expect(init.headers).toEqual({ "Content-Type": "application/json" });
     expect(JSON.parse(init.body)).toEqual({
@@ -178,9 +191,8 @@ describe("approveSession", () => {
     });
 
     const [url, init] = fetchSpy.mock.calls[0];
-    expect(url).toBe(
-      "https://session-relay-git-dev-opendatalabs.vercel.app/v1/session/sess-1/approve"
-    );
+    expect(originOf(url)).toBe(EXPECTED_RELAY_ORIGIN);
+    expect(pathnameOf(url)).toBe("/v1/session/sess-1/approve");
     expect(init.method).toBe("POST");
     expect(JSON.parse(init.body)).toEqual({
       secret: "s3cret",
@@ -279,7 +291,8 @@ describe("denySession", () => {
     });
 
     const [url, init] = fetchSpy.mock.calls[0];
-    expect(url).toBe("https://session-relay-git-dev-opendatalabs.vercel.app/v1/session/sess-1/deny");
+    expect(originOf(url)).toBe(EXPECTED_RELAY_ORIGIN);
+    expect(pathnameOf(url)).toBe("/v1/session/sess-1/deny");
     expect(init.method).toBe("POST");
     expect(JSON.parse(init.body)).toEqual({
       secret: "s3cret",

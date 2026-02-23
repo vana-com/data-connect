@@ -111,9 +111,9 @@ describe("Connect", () => {
     mockStartImport.mockReset()
     mockClaimSession.mockReset()
     mockVerifyBuilder.mockReset()
-    // Default: background pre-fetch returns pending promise (never resolves in tests)
-    mockClaimSession.mockReturnValue(new Promise(() => {}))
-    mockVerifyBuilder.mockReturnValue(new Promise(() => {}))
+    // Default: pre-fetch resolves quickly so grant-session tests don't get stuck on Loading.
+    mockClaimSession.mockResolvedValue(CLAIMED_SESSION)
+    mockVerifyBuilder.mockResolvedValue(BUILDER_MANIFEST)
     mockRuns = []
   })
 
@@ -124,22 +124,24 @@ describe("Connect", () => {
   // -------- rendering / copy --------
 
   describe("title and copy", () => {
-    it("shows 'Connect your ChatGPT' when scopes resolve to ChatGPT", () => {
+    it("shows 'Connect your ChatGPT' when scopes resolve to ChatGPT", async () => {
       mockUsePlatforms.mockReturnValue(defaultPlatforms())
       renderConnect(REAL_SESSION_SEARCH)
-      expect(screen.getByText("Connect your ChatGPT")).toBeTruthy()
+      expect(await screen.findByText("Connect your ChatGPT")).toBeTruthy()
     })
 
-    it("does not fall back to default app scopes when appId is unknown for grant sessions", () => {
+    it("does not fall back to default app scopes when appId is unknown for grant sessions", async () => {
+      mockClaimSession.mockRejectedValueOnce(new Error("prefetch failed"))
       mockUsePlatforms.mockReturnValue(defaultPlatforms())
       renderConnect("?sessionId=sess-123&secret=my-secret&appId=nonexistent")
-      expect(screen.getByText("Connect your data")).toBeTruthy()
+      expect(await screen.findByText("Connect your data")).toBeTruthy()
     })
 
-    it("does not fall back to app scopes when appId is known but grant scopes are missing", () => {
+    it("does not fall back to app scopes when appId is known but grant scopes are missing", async () => {
+      mockClaimSession.mockRejectedValueOnce(new Error("prefetch failed"))
       mockUsePlatforms.mockReturnValue(defaultPlatforms())
       renderConnect("?sessionId=sess-123&secret=my-secret&appId=rickroll")
-      expect(screen.getByText("Connect your data")).toBeTruthy()
+      expect(await screen.findByText("Connect your data")).toBeTruthy()
     })
 
     it("auto-navigates to grant when platform is already connected", async () => {
@@ -214,13 +216,13 @@ describe("Connect", () => {
       expect(screen.getByText("Checking connectors...")).toBeTruthy()
     })
 
-    it("enables the connect button when platform is available", () => {
+    it("enables the connect button when platform is available", async () => {
       mockUsePlatforms.mockReturnValue(
         defaultPlatforms({ platforms: [CHATGPT_PLATFORM] })
       )
       renderConnect(REAL_SESSION_SEARCH)
 
-      const connectButton = screen.getByRole("button", {
+      const connectButton = await screen.findByRole("button", {
         name: /connect chatgpt/i,
       })
       expect(connectButton.hasAttribute("disabled")).toBe(false)
@@ -250,6 +252,21 @@ describe("Connect", () => {
           CLAIMED_SESSION.webhookUrl
         )
       })
+    })
+
+    it("keeps loading UI visible while pre-fetch is pending", async () => {
+      mockClaimSession.mockReturnValue(new Promise(() => {}))
+      mockUsePlatforms.mockReturnValue(defaultPlatforms({ platforms: [CHATGPT_PLATFORM] }))
+
+      renderConnect(REAL_SESSION_SEARCH)
+
+      await waitFor(() => {
+        expect(mockClaimSession).toHaveBeenCalledWith({
+          sessionId: "sess-123",
+          secret: "my-secret",
+        })
+      })
+      expect(screen.getByText("Loading…")).toBeTruthy()
     })
 
     it("does not pre-fetch when secret is missing", () => {
@@ -284,7 +301,7 @@ describe("Connect", () => {
       })
 
       // UI should still be functional
-      expect(screen.getByText("Connect your ChatGPT")).toBeTruthy()
+      expect(await screen.findByText("Connect your ChatGPT")).toBeTruthy()
     })
 
     it("deduplicates pre-fetch for same session ID across re-renders", async () => {
@@ -316,7 +333,7 @@ describe("Connect", () => {
       )
 
       renderConnect(REAL_SESSION_SEARCH)
-      const connectButton = screen.getByRole("button", {
+      const connectButton = await screen.findByRole("button", {
         name: /connect chatgpt/i,
       })
 
@@ -344,7 +361,7 @@ describe("Connect", () => {
       })
 
       // Start the connector
-      const connectButton = screen.getByRole("button", {
+      const connectButton = await screen.findByRole("button", {
         name: /connect chatgpt/i,
       })
       await act(async () => {
@@ -377,7 +394,7 @@ describe("Connect", () => {
       const { router } = renderConnect(REAL_SESSION_SEARCH)
 
       // Start import
-      const connectButton = screen.getByRole("button", {
+      const connectButton = await screen.findByRole("button", {
         name: /connect chatgpt/i,
       })
       await act(async () => {
@@ -404,7 +421,7 @@ describe("Connect", () => {
 
       const { router } = renderConnect(REAL_SESSION_SEARCH)
 
-      const connectButton = screen.getByRole("button", {
+      const connectButton = await screen.findByRole("button", {
         name: /connect chatgpt/i,
       })
       await act(async () => {
@@ -439,7 +456,7 @@ describe("Connect", () => {
       })
 
       // Start import and simulate success
-      const connectButton = screen.getByRole("button", {
+      const connectButton = await screen.findByRole("button", {
         name: /connect chatgpt/i,
       })
       await act(async () => {
@@ -467,7 +484,7 @@ describe("Connect", () => {
       )
 
       const { router } = renderConnect(REAL_SESSION_SEARCH)
-      const connectButton = screen.getByRole("button", {
+      const connectButton = await screen.findByRole("button", {
         name: /connect chatgpt/i,
       })
 

@@ -14,6 +14,8 @@ const mockOpenPlatformExportFolder = vi.fn()
 const mockLoadLatestSourceExportPreview = vi.fn()
 const mockLoadLatestSourceExportFull = vi.fn()
 const mockOpenExportFolderPath = vi.fn()
+const silenceConsoleError = () =>
+  vi.spyOn(console, "error").mockImplementation(() => {})
 
 vi.mock("react-redux", () => ({
   useSelector: (selector: (state: typeof mockState) => unknown) =>
@@ -122,6 +124,7 @@ describe("useSourceOverviewPage", () => {
   })
 
   it("sets copy status to error when clipboard copy fails", async () => {
+    const consoleErrorSpy = silenceConsoleError()
     const originalClipboard = navigator.clipboard
     const originalExecCommand = document.execCommand
 
@@ -145,7 +148,12 @@ describe("useSourceOverviewPage", () => {
       })
 
       expect(result.current.copyStatus).toBe("error")
+      expect(consoleErrorSpy).toHaveBeenCalledWith(
+        "Failed to copy full JSON:",
+        expect.any(Error)
+      )
     } finally {
+      consoleErrorSpy.mockRestore()
       Object.defineProperty(navigator, "clipboard", {
         configurable: true,
         value: originalClipboard,
@@ -192,6 +200,7 @@ describe("useSourceOverviewPage", () => {
   })
 
   it("falls back to preview JSON when full export load fails", async () => {
+    const consoleErrorSpy = silenceConsoleError()
     mockLoadLatestSourceExportPreview.mockResolvedValue({
       previewJson: "{\n  \"from\": \"preview\"\n}",
       isTruncated: false,
@@ -219,9 +228,14 @@ describe("useSourceOverviewPage", () => {
         await result.current.handleCopyFullJson()
       })
 
+      expect(consoleErrorSpy).toHaveBeenCalledWith(
+        "Failed to load full source export JSON:",
+        expect.any(Error)
+      )
       expect(writeText).toHaveBeenCalledWith("{\n  \"from\": \"preview\"\n}")
       expect(result.current.copyStatus).toBe("copied")
     } finally {
+      consoleErrorSpy.mockRestore()
       Object.defineProperty(navigator, "clipboard", {
         configurable: true,
         value: originalClipboard,

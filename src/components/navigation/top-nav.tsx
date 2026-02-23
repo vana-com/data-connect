@@ -41,8 +41,8 @@ export function TopNav() {
         data-tauri-drag-region
         className={cn(
           "h-[48px] px-inset",
-          "backdrop-blur-sm flex items-center justify-between",
-          "border-t"
+          "backdrop-blur-sm flex items-center justify-between"
+          // "border-t"
         )}
       >
         {/* Logo/Brand */}

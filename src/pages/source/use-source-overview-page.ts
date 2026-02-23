@@ -37,6 +37,7 @@ export function useSourceOverviewPage(
     : null
 
   const sourceName = sourceEntry?.displayName ?? platformId ?? "Unknown source"
+  const sourceScope = sourceEntry?.ingestScope
 
   const latestSourceRun = useMemo(() => {
     if (!platformId) return null
@@ -89,7 +90,8 @@ export function useSourceOverviewPage(
 
     void loadLatestSourceExportPreview(
       sourcePlatform.company,
-      sourcePlatform.name
+      sourcePlatform.name,
+      sourceScope
     )
       .then(result => {
         if (!cancelled) {
@@ -117,7 +119,7 @@ export function useSourceOverviewPage(
     return () => {
       cancelled = true
     }
-  }, [sourcePlatform])
+  }, [sourcePlatform, sourceScope])
 
   useEffect(() => {
     if (copyStatus !== "copied" && copyStatus !== "error") {
@@ -143,9 +145,18 @@ export function useSourceOverviewPage(
     [latestSourceRun?.startDate, preview?.exportedAt]
   )
   const handleOpenSourcePath = async () => {
+    if (preview?.filePath) {
+      await openExportFolderPath(preview.filePath)
+      return
+    }
+
     if (sourcePlatform) {
       try {
-        await openPlatformExportFolder(sourcePlatform.company, sourcePlatform.name)
+        await openPlatformExportFolder(
+          sourcePlatform.company,
+          sourcePlatform.name,
+          sourceScope
+        )
         return
       } catch {
         // Fall through to generic local path fallback.
@@ -173,7 +184,8 @@ export function useSourceOverviewPage(
         try {
           const fullJson = await loadLatestSourceExportFull(
             sourcePlatform.company,
-            sourcePlatform.name
+            sourcePlatform.name,
+            sourceScope
           )
           copyPayload = fullJson ?? null
         } catch (error) {

@@ -41,30 +41,118 @@ fn parse_export_timestamp(path: &Path) -> Option<u64> {
     ts_str.parse::<u64>().ok()
 }
 
-fn find_latest_export_json(platform_dir: &Path) -> Result<Option<(PathBuf, u64)>, String> {
-    if !platform_dir.exists() {
-        return Ok(None);
-    }
+fn normalized_scope_segments(scope: Option<&str>) -> Vec<String> {
+    scope
+        .unwrap_or_default()
+        .split('.')
+        .map(sanitize_path_component)
+        .filter(|segment| segment != "unknown")
+        .collect()
+}
 
-    let mut latest_json: Option<(PathBuf, u64)> = None;
+fn build_source_data_candidates(
+    app: &AppHandle,
+    company: &str,
+    name: &str,
+    scope: Option<&str>,
+) -> Result<Vec<PathBuf>, String> {
+    let mut candidates: Vec<PathBuf> = Vec::new();
+    let scope_segments = normalized_scope_segments(scope);
 
-    for run_entry in fs::read_dir(platform_dir).map_err(|e| e.to_string())?.flatten() {
-        if !run_entry.path().is_dir() {
-            continue;
-        }
-        for file_entry in fs::read_dir(run_entry.path()).map_err(|e| e.to_string())?.flatten() {
-            let path = file_entry.path();
-            if path.extension().map_or(false, |ext| ext == "json") {
-                if let Some(ts) = parse_export_timestamp(&path) {
-                    if latest_json.as_ref().map_or(true, |(_, prev_ts)| ts > *prev_ts) {
-                        latest_json = Some((path, ts));
-                    }
+    if let Some(home) = home_dir() {
+        let config_roots = [
+            home.join("data-connect"),
+            home.join("dev.dataconnect"),
+            home.join(".dataconnect"),
+        ];
+
+        for root in config_roots {
+            if !scope_segments.is_empty() {
+                let mut scope_path = root.join("data");
+                for segment in &scope_segments {
+                    scope_path = scope_path.join(segment);
                 }
+                candidates.push(scope_path);
+
+                let mut nested_scope_path = root.join("personal-server").join("data");
+                for segment in &scope_segments {
+                    nested_scope_path = nested_scope_path.join(segment);
+                }
+                candidates.push(nested_scope_path);
             }
         }
     }
 
-    Ok(latest_json)
+    candidates.push(
+        app.path()
+            .app_data_dir()
+            .map_err(|e| format!("Failed to get app data dir: {}", e))?
+            .join("exported_data")
+            .join(company)
+            .join(name),
+    );
+
+    Ok(candidates)
+}
+
+fn json_timestamp(path: &Path) -> i64 {
+    if let Some(parsed) = parse_export_timestamp(path) {
+        return parsed as i64;
+    }
+
+    fs::metadata(path)
+        .and_then(|meta| meta.modified())
+        .ok()
+        .and_then(|modified| {
+            modified
+                .duration_since(std::time::UNIX_EPOCH)
+                .ok()
+                .map(|duration| duration.as_secs() as i64)
+        })
+        .unwrap_or(0)
+}
+
+fn scan_latest_json_in_tree(dir: &Path, latest: &mut Option<(PathBuf, i64)>) -> Result<(), String> {
+    if !dir.exists() {
+        return Ok(());
+    }
+
+    for entry in fs::read_dir(dir).map_err(|e| e.to_string())?.flatten() {
+        let path = entry.path();
+        if path.is_dir() {
+            scan_latest_json_in_tree(&path, latest)?;
+            continue;
+        }
+        if !path.extension().map_or(false, |ext| ext == "json") {
+            continue;
+        }
+
+        let timestamp = json_timestamp(&path);
+        if latest
+            .as_ref()
+            .map_or(true, |(_, current_timestamp)| timestamp > *current_timestamp)
+        {
+            *latest = Some((path, timestamp));
+        }
+    }
+
+    Ok(())
+}
+
+fn find_latest_source_json(
+    app: &AppHandle,
+    company: &str,
+    name: &str,
+    scope: Option<&str>,
+) -> Result<Option<(PathBuf, i64)>, String> {
+    let candidate_dirs = build_source_data_candidates(app, company, name, scope)?;
+    let mut latest: Option<(PathBuf, i64)> = None;
+
+    for candidate in &candidate_dirs {
+        scan_latest_json_in_tree(candidate, &mut latest)?;
+    }
+
+    Ok(latest)
 }
 
 fn read_export_content(path: &Path) -> Result<serde_json::Value, String> {
@@ -476,17 +564,12 @@ pub async fn load_latest_source_export_preview(
     app: AppHandle,
     company: String,
     name: String,
+    scope: Option<String>,
     max_bytes: Option<usize>,
 ) -> Result<Option<SourceExportPreview>, String> {
-    let platform_dir = app
-        .path()
-        .app_data_dir()
-        .map_err(|e| format!("Failed to get app data dir: {}", e))?
-        .join("exported_data")
-        .join(&company)
-        .join(&name);
-
-    let Some((json_path, timestamp)) = find_latest_export_json(&platform_dir)? else {
+    let Some((json_path, timestamp)) =
+        find_latest_source_json(&app, &company, &name, scope.as_deref())?
+    else {
         return Ok(None);
     };
 
@@ -495,7 +578,7 @@ pub async fn load_latest_source_export_preview(
     let (preview_json, is_truncated) =
         build_source_export_preview(&json_path, byte_limit, file_size_bytes)?;
 
-    let exported_at = chrono::DateTime::from_timestamp(timestamp as i64, 0)
+    let exported_at = chrono::DateTime::from_timestamp(timestamp, 0)
         .map(|dt| dt.to_rfc3339())
         .unwrap_or_else(|| chrono::Utc::now().to_rfc3339());
 
@@ -514,16 +597,11 @@ pub async fn load_latest_source_export_full(
     app: AppHandle,
     company: String,
     name: String,
+    scope: Option<String>,
 ) -> Result<Option<String>, String> {
-    let platform_dir = app
-        .path()
-        .app_data_dir()
-        .map_err(|e| format!("Failed to get app data dir: {}", e))?
-        .join("exported_data")
-        .join(&company)
-        .join(&name);
-
-    let Some((json_path, _)) = find_latest_export_json(&platform_dir)? else {
+    let Some((json_path, _)) =
+        find_latest_source_json(&app, &company, &name, scope.as_deref())?
+    else {
         return Ok(None);
     };
 
@@ -538,19 +616,20 @@ pub async fn open_platform_export_folder(
     app: AppHandle,
     company: String,
     name: String,
+    scope: Option<String>,
 ) -> Result<(), String> {
-    let data_dir = app
-        .path()
-        .app_data_dir()
-        .map_err(|e| format!("Failed to get app data dir: {}", e))?
-        .join("exported_data")
-        .join(&company)
-        .join(&name);
-
-    if !data_dir.exists() {
-        return Err("Export folder does not exist".to_string());
+    if let Some((latest_json_path, _)) =
+        find_latest_source_json(&app, &company, &name, scope.as_deref())?
+    {
+        if let Some(parent) = latest_json_path.parent() {
+            return super::download::open_folder(parent.to_string_lossy().to_string()).await;
+        }
     }
 
+    let candidate_dirs =
+        build_source_data_candidates(&app, &company, &name, scope.as_deref())?;
+    let existing_dir = candidate_dirs.into_iter().find(|dir| dir.exists());
+    let data_dir = existing_dir.ok_or_else(|| "Export folder does not exist".to_string())?;
     super::download::open_folder(data_dir.to_string_lossy().to_string()).await
 }
 

@@ -96,7 +96,7 @@ function DropdownMenuItem({
         // focus
         "outline-hidden focus:bg-accent focus:text-accent-foreground not-data-[variant=destructive]:focus:**:text-accent-foreground",
         // variant
-        "data-[variant=destructive]:text-destructive data-[variant=destructive]:focus:bg-destructive/10 data-[variant=destructive]:focus:text-destructive data-[variant=destructive]:*:[svg]:text-destructive dark:data-[variant=destructive]:focus:bg-destructive/20",
+        "data-[variant=destructive]:text-destructive-foreground data-[variant=destructive]:focus:bg-destructive/[0.07] data-[variant=destructive]:focus:text-destructive-foreground data-[variant=destructive]:*:[svg]:text-destructive-foreground dark:data-[variant=destructive]:focus:bg-destructive/10",
         // disabled
         "data-[disabled]:pointer-events-none data-[disabled]:opacity-50",
         // svg
@@ -145,8 +145,7 @@ function DropdownMenuCheckboxItem({
         data-slot="dropdown-menu-checkbox-item-indicator"
       >
         <DropdownMenuPrimitive.ItemIndicator>
-          <IconCheck
-          />
+          <IconCheck />
         </DropdownMenuPrimitive.ItemIndicator>
       </span>
       {children}
@@ -200,8 +199,7 @@ function DropdownMenuRadioItem({
         data-slot="dropdown-menu-radio-item-indicator"
       >
         <DropdownMenuPrimitive.ItemIndicator>
-          <IconCheck
-          />
+          <IconCheck />
         </DropdownMenuPrimitive.ItemIndicator>
       </span>
       {children}

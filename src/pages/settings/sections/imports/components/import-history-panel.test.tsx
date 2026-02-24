@@ -66,18 +66,25 @@ function buildRun(
 
 type ImportsSectionPanelState = Pick<
   ReturnType<typeof useImportsSection>,
-  "activeImports" | "finishedImports" | "platforms" | "startImport" | "stopExport"
+  | "activeImports"
+  | "finishedImports"
+  | "platforms"
+  | "startImport"
+  | "stopExport"
+  | "removeRun"
 >
 
 function renderPanel(overrides: Partial<ImportsSectionPanelState> = {}) {
   const startImport = vi.fn()
   const stopExport = vi.fn()
+  const removeRun = vi.fn()
   const value: ImportsSectionPanelState = {
     activeImports: [],
     finishedImports: [],
     platforms,
     startImport,
     stopExport,
+    removeRun,
     ...overrides,
   }
 
@@ -91,7 +98,7 @@ function renderPanel(overrides: Partial<ImportsSectionPanelState> = {}) {
     </MemoryRouter>
   )
 
-  return { ...view, startImport, stopExport }
+  return { ...view, startImport, stopExport, removeRun }
 }
 
 describe("ImportHistoryPanel", () => {
@@ -146,6 +153,7 @@ describe("ImportHistoryPanel", () => {
       finishedImports: [buildRun("run-finished", "github", "success")],
     })
 
+    fireEvent.click(screen.getByRole("button", { name: "More actions" }))
     expect(screen.queryByText("Run again")).toBeNull()
   })
 
@@ -155,7 +163,8 @@ describe("ImportHistoryPanel", () => {
       finishedImports: [buildRun("run-finished", "github", "success")],
     })
 
-    fireEvent.click(screen.getByRole("button", { name: "Run again" }))
+    fireEvent.pointerDown(screen.getByRole("button", { name: "More actions" }))
+    fireEvent.click(screen.getByText("Run again"))
 
     expect(startImport).toHaveBeenCalledTimes(1)
     expect(startImport).toHaveBeenCalledWith(githubPlatform)
@@ -167,7 +176,27 @@ describe("ImportHistoryPanel", () => {
     })
 
     expect(
-      screen.getByRole("link", { name: "View Source" }).getAttribute("href")
+      screen.getByRole("link", { name: "Open" }).getAttribute("href")
     ).toBe("/sources/github")
+  })
+
+  it("shows remove actions for terminal runs and removes selected run", () => {
+    const { removeRun } = renderPanel({
+      finishedImports: [
+        buildRun("run-success", "github", "success"),
+        buildRun("run-error", "linkedin", "error"),
+        buildRun("run-stopped", "github", "stopped"),
+      ],
+    })
+
+    const moreActionsButtons = screen.getAllByRole("button", {
+      name: "More actions",
+    })
+    expect(moreActionsButtons).toHaveLength(3)
+    fireEvent.pointerDown(moreActionsButtons[1])
+    fireEvent.click(screen.getByText("Remove"))
+
+    expect(removeRun).toHaveBeenCalledTimes(1)
+    expect(removeRun).toHaveBeenCalledWith("run-error")
   })
 })

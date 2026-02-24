@@ -1,10 +1,18 @@
 import { ArrowUpRightIcon, BoxIcon } from "lucide-react"
+import { useCallback } from "react"
+import { useLocation, useNavigate } from "react-router-dom"
 import type { ConnectedApp } from "@/types"
 import { PlatformIcon } from "@/components/icons/platform-icon"
+import { DebugTogglePanel } from "@/components/elements/debug-toggle-panel"
 import { OpenExternalLink } from "@/components/typography/link-open-external"
 import { Text } from "@/components/typography/text"
-import { DEV_FLAGS } from "@/config/dev-flags"
 import { LINKS } from "@/config/links"
+import { Button } from "@/components/ui/button"
+import {
+  SETTINGS_APPS_UI_DEBUG_SCENARIO_VALUES,
+  isSettingsAppsUiDebugEnabled,
+  resolveSettingsAppsUiDebugApps,
+} from "./settings-apps-ui-debug"
 import { SettingsConfirmAction } from "./settings-confirm-action"
 import { SettingsCard, SettingsCardStack } from "./settings-shared"
 import { SettingsRow } from "./settings-row"
@@ -12,24 +20,6 @@ import { SettingsRow } from "./settings-row"
 // Settings surface for Connected apps.
 // This is a permission management surface: it shows granted scopes and supports revoke actions.
 // It is intentionally different from Home's quick-launch/activity list.
-
-const TEST_APPS_UI_STATE: "real" | "populated" = DEV_FLAGS.useSettingsUiMocks
-  ? "populated"
-  : "real"
-const TEST_CONNECTED_APPS: ConnectedApp[] = [
-  {
-    id: "test-app-even-stevens",
-    name: "Even Stevens",
-    permissions: ["Read", "Write"],
-    connectedAt: new Date().toISOString(),
-  },
-  {
-    id: "test-app-rickroll",
-    name: "RickRoll",
-    permissions: ["Read", "Receive Realtime Updates"],
-    connectedAt: new Date().toISOString(),
-  },
-]
 
 interface SettingsAppsProps {
   connectedApps: ConnectedApp[]
@@ -40,8 +30,21 @@ export function SettingsApps({
   connectedApps,
   onRevokeApp,
 }: SettingsAppsProps) {
-  const effectiveConnectedApps =
-    TEST_APPS_UI_STATE === "populated" ? TEST_CONNECTED_APPS : connectedApps
+  const location = useLocation()
+  const navigate = useNavigate()
+  const effectiveConnectedApps = resolveSettingsAppsUiDebugApps({
+    connectedApps,
+    search: location.search,
+  })
+  const setSettingsAppsDebugScenario = useCallback(
+    (scenario: string | null) => {
+      const nextParams = new URLSearchParams(location.search)
+      if (scenario) nextParams.set("settingsAppsScenario", scenario)
+      else nextParams.delete("settingsAppsScenario")
+      navigate({ search: `?${nextParams.toString()}` }, { replace: true })
+    },
+    [location.search, navigate]
+  )
 
   return (
     <div className="space-y-8">
@@ -109,6 +112,37 @@ export function SettingsApps({
           <ArrowUpRightIcon aria-hidden="true" />
         </OpenExternalLink>
       </Text>
+      {import.meta.env.DEV ? (
+        <DebugTogglePanel title="Settings apps debug">
+          <div className="flex flex-wrap gap-2">
+            {SETTINGS_APPS_UI_DEBUG_SCENARIO_VALUES.map(scenario => (
+              <Button
+                key={scenario}
+                type="button"
+                size="xs"
+                variant={
+                  new URLSearchParams(location.search).get(
+                    "settingsAppsScenario"
+                  ) === scenario
+                    ? "default"
+                    : "outline"
+                }
+                onClick={() => setSettingsAppsDebugScenario(scenario)}
+              >
+                {scenario}
+              </Button>
+            ))}
+            <Button
+              type="button"
+              size="xs"
+              variant={isSettingsAppsUiDebugEnabled(location.search) ? "outline" : "default"}
+              onClick={() => setSettingsAppsDebugScenario(null)}
+            >
+              real
+            </Button>
+          </div>
+        </DebugTogglePanel>
+      ) : null}
     </div>
   )
 }

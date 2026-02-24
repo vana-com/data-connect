@@ -1,5 +1,9 @@
 import type { ReactNode } from "react"
 import { settingsSidebarItemClassName } from "@/components/navigation/nav-item-styles"
+import {
+  compactNavTooltipClassName,
+  compactNavTooltipSide,
+} from "@/components/navigation/nav-tooltip"
 import { Button } from "@/components/ui/button"
 import {
   Tooltip,
@@ -44,7 +48,10 @@ export function SettingsSidebar({
                 <span className="hidden md:inline">{section.label}</span>
               </Button>
             </TooltipTrigger>
-            <TooltipContent side="right" className="md:hidden">
+            <TooltipContent
+              side={compactNavTooltipSide}
+              className={compactNavTooltipClassName}
+            >
               {section.label}
             </TooltipContent>
           </Tooltip>

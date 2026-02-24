@@ -1,14 +1,29 @@
 import { DcLogotype } from "@/components/icons/dc-logotype"
 import { IconMcp } from "@/components/icons/icon-mcp"
 import { topNavItemClassName } from "@/components/navigation/nav-item-styles"
+import { navTooltipClassName } from "@/components/navigation/nav-tooltip"
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipTrigger,
+} from "@/components/ui/tooltip"
 import { ROUTES } from "@/config/routes"
 import { cn } from "@/lib/classes"
+import { buildSettingsUrl } from "@/pages/settings/url"
 import type { LucideIcon } from "lucide-react"
-import { HomeIcon, UserRoundCogIcon } from "lucide-react"
+import {
+  BookOpenIcon,
+  HomeIcon,
+  ServerIcon,
+  UserRoundCogIcon,
+} from "lucide-react"
 import type { CSSProperties } from "react"
-import { NavLink } from "react-router-dom"
+import { useSelector } from "react-redux"
+import { Link, NavLink } from "react-router-dom"
+import type { RootState } from "@/state/store"
 
 type NavItem = {
+  id: "home" | "docs" | "server" | "settings"
   to: string
   label: string
   Icon: LucideIcon | React.ComponentType<{ className?: string }>
@@ -16,23 +31,54 @@ type NavItem = {
 }
 
 const navIconClasses = "size-[18px]"
+type PersonalServerStatus = "stopped" | "starting" | "running" | "error"
 
 const navItems: NavItem[] = [
-  { to: ROUTES.home, label: "Home", Icon: HomeIcon },
+  { id: "home", to: ROUTES.home, label: "Home", Icon: HomeIcon },
   // { to: ROUTES.apps, label: "Apps", Icon: BoxIcon },
   // { to: ROUTES.mcp, label: "MCP", Icon: IconMcp },
-  // {
-  //   to: "https://docs.dataconnect.com",
-  //   label: "Docs",
-  //   Icon: BookOpenIcon,
-  //   external: true,
-  // },
-  // { to: ROUTES.docs, label: "Docs", Icon: BookOpenIcon },
+  {
+    id: "docs",
+    to: "https://github.com/vana-com/data-connect",
+    label: "Docs",
+    Icon: BookOpenIcon,
+    external: true,
+  },
   // { to: "/activity", label: "Activity", Icon: ActivityIcon },
-  { to: ROUTES.settings, label: "Settings", Icon: UserRoundCogIcon },
+  {
+    id: "server",
+    to: buildSettingsUrl({ section: "personalServer" }),
+    label: "Server",
+    Icon: ServerIcon,
+  },
+  { id: "settings", to: ROUTES.settings, label: "Settings", Icon: UserRoundCogIcon },
 ]
 
-export function TopNav() {
+function getStatusDotClassName(status: PersonalServerStatus) {
+  if (status === "running") return "bg-success-foreground"
+  if (status === "starting") return "bg-amber-500 animate-pulse"
+  return "bg-destructive-foreground"
+}
+
+function getPersonalServerStatusLabel(status: PersonalServerStatus) {
+  if (status === "running") return "Running"
+  if (status === "starting") return "Starting"
+  if (status === "error") return "Error"
+  return "Stopped"
+}
+
+interface TopNavProps {
+  personalServerStatus: PersonalServerStatus
+}
+
+const selectHasSuccessfulSourceExport = (state: RootState) =>
+  state.app.runs.some(
+    run => run.status === "success" && Boolean(run.exportPath?.trim())
+  )
+
+export function TopNav({ personalServerStatus }: TopNavProps) {
+  const hasSuccessfulSourceExport = useSelector(selectHasSuccessfulSourceExport)
+
   return (
     <div data-component="top-nav" className="relative z-20 w-full">
       {/* spacer covering the dot pattern, sets the nav under the macOS traffic lights bar */}
@@ -65,38 +111,80 @@ export function TopNav() {
 
         {/* Navigation Icons */}
         <nav className="flex items-center gap-[3px]">
-          {navItems.map(({ to, label, Icon, external }) => {
-            if (external) {
-              return (
-                <a
-                  key={to}
-                  href={to}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  title={label}
-                  aria-label={label}
-                  className={topNavItemClassName}
-                >
-                  <Icon className={navIconClasses} aria-hidden />
-                  <span className="sr-only">{label}</span>
-                </a>
-              )
-            }
-            return (
-              <NavLink
-                key={to}
-                to={to}
-                title={label}
-                aria-label={label}
-                className={topNavItemClassName}
-              >
+          {navItems.map(({ id, to, label, Icon, external }) => {
+            const shouldShowServerStatus =
+              id === "server" && hasSuccessfulSourceExport
+            const isStatusPointerItem = id === "server"
+            const iconWithStatusDot = (
+              <span className="relative inline-flex">
                 {Icon === IconMcp ? (
                   <IconMcp boxSize="18px" aria-hidden />
                 ) : (
                   <Icon className={navIconClasses} aria-hidden />
                 )}
-                <span className="sr-only">{label}</span>
-              </NavLink>
+                {shouldShowServerStatus ? (
+                  <span
+                    className={cn(
+                      "absolute -right-0.5 -top-0.5 size-1.75 rounded-full",
+                      "ring-2 ring-muted",
+                      getStatusDotClassName(personalServerStatus)
+                    )}
+                    aria-hidden
+                  />
+                ) : null}
+              </span>
+            )
+
+            if (external) {
+              return (
+                <Tooltip key={to}>
+                  <TooltipTrigger asChild>
+                    <a
+                      href={to}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      aria-label={label}
+                      className={topNavItemClassName}
+                    >
+                      {iconWithStatusDot}
+                      <span className="sr-only">{label}</span>
+                    </a>
+                  </TooltipTrigger>
+                  <TooltipContent side="bottom" className={navTooltipClassName}>
+                    {label}
+                  </TooltipContent>
+                </Tooltip>
+              )
+            }
+            return (
+              <Tooltip key={to}>
+                <TooltipTrigger asChild>
+                  {isStatusPointerItem ? (
+                    <Link
+                      to={to}
+                      aria-label={label}
+                      className={topNavItemClassName}
+                    >
+                      {iconWithStatusDot}
+                      <span className="sr-only">{label}</span>
+                    </Link>
+                  ) : (
+                    <NavLink
+                      to={to}
+                      aria-label={label}
+                      className={topNavItemClassName}
+                    >
+                      {iconWithStatusDot}
+                      <span className="sr-only">{label}</span>
+                    </NavLink>
+                  )}
+                </TooltipTrigger>
+                <TooltipContent side="bottom" className={navTooltipClassName}>
+                  {shouldShowServerStatus
+                    ? `${label} • ${getPersonalServerStatusLabel(personalServerStatus)}`
+                    : label}
+                </TooltipContent>
+              </Tooltip>
             )
           })}
         </nav>

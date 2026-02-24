@@ -19,18 +19,20 @@ const isTerminalRun = (status: Run["status"]) =>
 interface ImportHistoryRowProps {
   run: Run
   isStopping: boolean
+  isRemoving: boolean
   canRunAgain: boolean
   rerunPlatform?: Platform
   isErrorExpanded: boolean
   onStop: (runId: string) => void
   onRunAgain: (platform: Platform) => void
-  onRemove: (runId: string) => void
+  onRemove: (runId: string) => Promise<void>
   onToggleErrorDetail: (runId: string) => void
 }
 
 export const ImportHistoryRow = memo(function ImportHistoryRow({
   run,
   isStopping,
+  isRemoving,
   canRunAgain,
   rerunPlatform,
   isErrorExpanded,
@@ -88,6 +90,7 @@ export const ImportHistoryRow = memo(function ImportHistoryRow({
             <ImportHistoryRowActions
               run={run}
               isStopping={isStopping}
+              isRemoving={isRemoving}
               needsStopConfirm={needsStopConfirm}
               canRunAgain={canRunAgain}
               rerunPlatform={rerunPlatform}

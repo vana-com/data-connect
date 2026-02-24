@@ -18,6 +18,9 @@ interface ConfirmActionProps {
   description: ReactNode
   actionLabel: string
   onAction: () => void
+  open?: boolean
+  onOpenChange?: (open: boolean) => void
+  showTrigger?: boolean
   trigger?: ReactNode
   triggerLabel?: string
   triggerButtonProps?: Omit<ComponentProps<typeof Button>, "children">
@@ -29,25 +32,30 @@ export function ConfirmAction({
   description,
   actionLabel,
   onAction,
+  open,
+  onOpenChange,
+  showTrigger = true,
   trigger,
   triggerLabel,
   triggerButtonProps,
   media,
 }: ConfirmActionProps) {
   return (
-    <AlertDialog>
-      <AlertDialogTrigger asChild>
-        {trigger ?? (
-          <Button
-            type="button"
-            variant="ghost"
-            size="sm"
-            {...triggerButtonProps}
-          >
-            {triggerLabel ?? actionLabel}
-          </Button>
-        )}
-      </AlertDialogTrigger>
+    <AlertDialog open={open} onOpenChange={onOpenChange}>
+      {showTrigger ? (
+        <AlertDialogTrigger asChild>
+          {trigger ?? (
+            <Button
+              type="button"
+              variant="ghost"
+              size="sm"
+              {...triggerButtonProps}
+            >
+              {triggerLabel ?? actionLabel}
+            </Button>
+          )}
+        </AlertDialogTrigger>
+      ) : null}
       <AlertDialogContent size="sm" className="max-w-[380px]! rounded-card">
         <AlertDialogHeader>
           {media ? (

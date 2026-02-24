@@ -1,6 +1,8 @@
 import { useCallback, useMemo, useState } from "react"
-import { Link } from "react-router-dom"
+import { Link, useLocation, useNavigate } from "react-router-dom"
 import { ActivityIcon } from "lucide-react"
+import { Button } from "@/components/ui/button"
+import { DebugTogglePanel } from "@/components/elements/debug-toggle-panel"
 import { Text } from "@/components/typography/text"
 import { ROUTES } from "@/config/routes"
 import {
@@ -11,11 +13,18 @@ import { SettingsRow } from "@/pages/settings/components/settings-row"
 import type { Platform } from "@/types"
 import { useImportsSection } from "../use-imports-section"
 import { resolveImportHistoryRuns } from "./import-history-panel-state"
+import {
+  IMPORT_HISTORY_UI_DEBUG_SCENARIO_VALUES,
+  isImportHistoryUiDebugEnabled,
+  resolveImportHistoryUiDebug,
+} from "./import-history-ui-debug"
 import { ImportHistoryRow } from "./import-history-row"
 
 const STOPPING_UI_MIN_MS = 600
 
 export function ImportHistoryPanel() {
+  const location = useLocation()
+  const navigate = useNavigate()
   const {
     activeImports,
     finishedImports,
@@ -30,11 +39,19 @@ export function ImportHistoryPanel() {
   const [stoppingRunIds, setStoppingRunIds] = useState<Set<string>>(
     () => new Set()
   )
+  const [removingRunIds, setRemovingRunIds] = useState<Set<string>>(
+    () => new Set()
+  )
+  const importHistoryUiDebug = useMemo(
+    () => resolveImportHistoryUiDebug(location.search),
+    [location.search]
+  )
 
   const { effectiveActiveImports, effectiveFinishedImports } =
     resolveImportHistoryRuns({
       activeImports,
       finishedImports,
+      uiState: importHistoryUiDebug.uiState ?? undefined,
     })
 
   const hasNoImports =
@@ -54,6 +71,26 @@ export function ImportHistoryPanel() {
   const platformById = useMemo(
     () => new Map(platforms.map(platform => [platform.id, platform])),
     [platforms]
+  )
+  const effectiveStoppingRunIds = useMemo(() => {
+    const merged = new Set(stoppingRunIds)
+    importHistoryUiDebug.stoppingRunIds.forEach(runId => merged.add(runId))
+    return merged
+  }, [importHistoryUiDebug.stoppingRunIds, stoppingRunIds])
+  const effectiveRemovingRunIds = useMemo(() => {
+    const merged = new Set(removingRunIds)
+    importHistoryUiDebug.removingRunIds.forEach(runId => merged.add(runId))
+    return merged
+  }, [importHistoryUiDebug.removingRunIds, removingRunIds])
+
+  const setImportsDebugScenario = useCallback(
+    (scenario: string | null) => {
+      const nextParams = new URLSearchParams(location.search)
+      if (scenario) nextParams.set("importsScenario", scenario)
+      else nextParams.delete("importsScenario")
+      navigate({ search: `?${nextParams.toString()}` }, { replace: true })
+    },
+    [location.search, navigate]
   )
 
   const handleStop = useCallback(
@@ -87,6 +124,28 @@ export function ImportHistoryPanel() {
       return next
     })
   }, [])
+
+  const handleRemove = useCallback(
+    async (runId: string) => {
+      setRemovingRunIds(prev => {
+        if (prev.has(runId)) return prev
+        return new Set(prev).add(runId)
+      })
+
+      try {
+        await removeRun(runId)
+      } catch (error) {
+        console.error("Failed to remove imported data:", error)
+      } finally {
+        setRemovingRunIds(prev => {
+          const next = new Set(prev)
+          next.delete(runId)
+          return next
+        })
+      }
+    },
+    [removeRun]
+  )
 
   const handleRunAgain = useCallback(
     (platform: Platform) => {
@@ -153,17 +212,49 @@ export function ImportHistoryPanel() {
             <ImportHistoryRow
               key={run.id}
               run={run}
-              isStopping={stoppingRunIds.has(run.id)}
+              isStopping={effectiveStoppingRunIds.has(run.id)}
+              isRemoving={effectiveRemovingRunIds.has(run.id)}
               canRunAgain={!activePlatformIds.has(run.platformId)}
               rerunPlatform={platformById.get(run.platformId)}
               isErrorExpanded={expandedErrorRunIds.has(run.id)}
               onStop={handleStop}
               onRunAgain={handleRunAgain}
-              onRemove={removeRun}
+              onRemove={handleRemove}
               onToggleErrorDetail={toggleErrorDetail}
             />
           ))}
         </SettingsCardStack>
+      ) : null}
+
+      {import.meta.env.DEV ? (
+        <DebugTogglePanel title="Import history debug">
+          <div className="flex flex-wrap gap-2">
+            {IMPORT_HISTORY_UI_DEBUG_SCENARIO_VALUES.map(scenario => (
+              <Button
+                key={scenario}
+                type="button"
+                size="xs"
+                variant={
+                  new URLSearchParams(location.search).get("importsScenario") ===
+                  scenario
+                    ? "default"
+                    : "outline"
+                }
+                onClick={() => setImportsDebugScenario(scenario)}
+              >
+                {scenario}
+              </Button>
+            ))}
+            <Button
+              type="button"
+              size="xs"
+              variant={isImportHistoryUiDebugEnabled(location.search) ? "outline" : "default"}
+              onClick={() => setImportsDebugScenario(null)}
+            >
+              real
+            </Button>
+          </div>
+        </DebugTogglePanel>
       ) : null}
     </div>
   )

@@ -1,5 +1,5 @@
 import { beforeEach, describe, expect, it, vi } from "vitest"
-import { cleanup, fireEvent, render, screen } from "@testing-library/react"
+import { cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react"
 import { MemoryRouter } from "react-router-dom"
 import type { Platform, Run } from "@/types"
 import { ImportHistoryPanel } from "./import-history-panel"
@@ -195,8 +195,61 @@ describe("ImportHistoryPanel", () => {
     expect(moreActionsButtons).toHaveLength(3)
     fireEvent.pointerDown(moreActionsButtons[1])
     fireEvent.click(screen.getByText("Remove"))
-
+    expect(removeRun).not.toHaveBeenCalled()
+    fireEvent.click(screen.getByRole("button", { name: "Remove data" }))
     expect(removeRun).toHaveBeenCalledTimes(1)
     expect(removeRun).toHaveBeenCalledWith("run-error")
+  })
+
+  it("disables duplicate remove submits while removal is pending", async () => {
+    let resolveRemove: (() => void) | null = null
+    const removePromise = new Promise<void>(resolve => {
+      resolveRemove = resolve
+    })
+    const removeRun = vi.fn(() => removePromise)
+
+    renderPanel({
+      finishedImports: [buildRun("run-error", "linkedin", "error")],
+      removeRun,
+    })
+
+    fireEvent.pointerDown(screen.getByRole("button", { name: "More actions" }))
+    fireEvent.click(screen.getByText("Remove"))
+    fireEvent.click(screen.getByRole("button", { name: "Remove data" }))
+
+    await waitFor(() => {
+      expect(screen.queryByRole("button", { name: "Remove data" })).toBeNull()
+    })
+
+    expect(removeRun).toHaveBeenCalledTimes(1)
+    expect(screen.getByRole("button", { name: "Removing…" })).not.toBeNull()
+
+    resolveRemove?.()
+    await waitFor(() => {
+      expect(screen.queryByRole("button", { name: "Removing…" })).toBeNull()
+    })
+  })
+
+  it("logs remove errors when removal fails after confirmation", async () => {
+    const removeRun = vi.fn(() => Promise.reject(new Error("delete failed")))
+    const errorSpy = vi.spyOn(console, "error").mockImplementation(() => {})
+
+    renderPanel({
+      finishedImports: [buildRun("run-error", "linkedin", "error")],
+      removeRun,
+    })
+
+    fireEvent.pointerDown(screen.getByRole("button", { name: "More actions" }))
+    fireEvent.click(screen.getByText("Remove"))
+    fireEvent.click(screen.getByRole("button", { name: "Remove data" }))
+
+    await waitFor(() => {
+      expect(errorSpy).toHaveBeenCalledWith(
+        "Failed to remove imported data:",
+        expect.any(Error)
+      )
+    })
+
+    errorSpy.mockRestore()
   })
 })

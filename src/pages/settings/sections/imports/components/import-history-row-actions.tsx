@@ -1,6 +1,5 @@
-import { memo } from "react"
+import { memo, useState } from "react"
 import {
-  CheckIcon,
   ChevronDownIcon,
   ChevronUpIcon,
   EllipsisVerticalIcon,
@@ -10,6 +9,7 @@ import { cn } from "@/lib/classes"
 import { ROUTES } from "@/config/routes"
 import { getPlatformRegistryEntryById } from "@/lib/platform/utils"
 import { PlatformIcon } from "@/components/icons/platform-icon"
+import { ConfirmAction } from "@/components/elements/confirm-action"
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -24,19 +24,21 @@ import type { Platform, Run } from "@/types"
 interface ImportHistoryRowActionsProps {
   run: Run
   isStopping: boolean
+  isRemoving: boolean
   needsStopConfirm: boolean
   canRunAgain: boolean
   rerunPlatform?: Platform
   isErrorExpanded: boolean
   onStop: () => void
   onRunAgain: (platform: Platform) => void
-  onRemove: () => void
+  onRemove: () => Promise<void>
   onToggleErrorDetail: () => void
 }
 
 const ImportHistoryRowActionsInner = ({
   run,
   isStopping,
+  isRemoving,
   needsStopConfirm,
   canRunAgain,
   rerunPlatform,
@@ -46,18 +48,34 @@ const ImportHistoryRowActionsInner = ({
   onRemove,
   onToggleErrorDetail,
 }: ImportHistoryRowActionsProps) => {
+  const [isMenuOpen, setIsMenuOpen] = useState(false)
+  const [isRemoveConfirmOpen, setIsRemoveConfirmOpen] = useState(false)
   const sourceOverviewRoute = ROUTES.source.replace(
     ":platformId",
     getPlatformRegistryEntryById(run.platformId)?.id ?? run.platformId
   )
   const actionSvgClass =
     "gap-1 [--lucide-stroke-width:2.5] [&_svg:not([data-slot=spinner])]:size-[1.25em]"
-  const leftIconPaddingClass = "pl-1"
-  const rightIconPaddingClass = "pr-1"
+  const leftIconPaddingClass = "pl-1!"
+  const rightIconPaddingClass = "pr-1!"
   const hasMenuActions =
     run.status === "success" ||
     run.status === "error" ||
     run.status === "stopped"
+
+  if (isRemoving) {
+    return (
+      <div className="flex items-center gap-2">
+        <SettingsRowAction
+          isLoading
+          loadingLabel="Removing…"
+          className={actionSvgClass}
+        >
+          Remove
+        </SettingsRowAction>
+      </div>
+    )
+  }
 
   if (run.status === "running") {
     return (
@@ -78,7 +96,7 @@ const ImportHistoryRowActionsInner = ({
             trigger={
               <SettingsRowAction
                 isLoading={isStopping}
-                loadingLabel="Stopping..."
+                loadingLabel="Stopping…"
                 className={actionSvgClass}
               >
                 Stop
@@ -88,7 +106,7 @@ const ImportHistoryRowActionsInner = ({
         ) : (
           <SettingsRowAction
             isLoading={isStopping}
-            loadingLabel="Stopping..."
+            loadingLabel="Stopping…"
             className={cn(
               actionSvgClass,
               "text-foreground-dim hover:text-destructive focus-visible:text-destructive"
@@ -133,7 +151,7 @@ const ImportHistoryRowActionsInner = ({
         </SettingsRowAction>
       ) : null}
       {hasMenuActions ? (
-        <DropdownMenu>
+        <DropdownMenu open={isMenuOpen} onOpenChange={setIsMenuOpen}>
           <DropdownMenuTrigger
             aria-label="More actions"
             className={cn(
@@ -163,13 +181,29 @@ const ImportHistoryRowActionsInner = ({
             <DropdownMenuItem
               className={itemStyle}
               variant="destructive"
-              onSelect={onRemove}
+              onSelect={event => {
+                event.preventDefault()
+                setIsMenuOpen(false)
+                setIsRemoveConfirmOpen(true)
+              }}
             >
               Remove
             </DropdownMenuItem>
           </DropdownMenuContent>
         </DropdownMenu>
       ) : null}
+      <ConfirmAction
+        title="Remove imported data?"
+        description="This deletes the imported data from this device. You can import it again later if needed."
+        actionLabel="Remove data"
+        onAction={() => void onRemove()}
+        open={isRemoveConfirmOpen}
+        onOpenChange={setIsRemoveConfirmOpen}
+        showTrigger={false}
+        media={
+          <PlatformIcon iconName={run.platformId} size={24} aria-hidden="true" />
+        }
+      />
     </div>
   )
 }
@@ -184,6 +218,7 @@ function areImportHistoryRowActionsPropsEqual(
     prev.run.status === next.run.status &&
     prev.run.platformId === next.run.platformId &&
     prev.isStopping === next.isStopping &&
+    prev.isRemoving === next.isRemoving &&
     prev.needsStopConfirm === next.needsStopConfirm &&
     prev.canRunAgain === next.canRunAgain &&
     prev.rerunPlatform?.id === next.rerunPlatform?.id &&

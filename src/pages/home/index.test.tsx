@@ -130,7 +130,7 @@ describe("Home", () => {
     const { getByRole } = renderHome()
 
     expect(
-      getByRole("heading", { name: /your connected data/i })
+      getByRole("heading", { name: /your imported data/i })
     ).toBeTruthy()
 
     await waitFor(() => {

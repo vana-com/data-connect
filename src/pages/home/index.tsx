@@ -206,7 +206,7 @@ export function Home() {
           <ConnectedSourcesList
             platforms={connectedPlatformsList}
             runs={runs}
-            headline="Your connected data"
+            headline="Your imported data"
             onOpenRuns={platform =>
               navigate(
                 ROUTES.source.replace(

@@ -104,7 +104,7 @@ export function SourceStack({
             className={cn("p-3", iconClassName)}
           />
         </div>
-        <div className="flex-1 p-2 text-right">{infoSlot}</div>
+        <div className="min-w-0 flex-1 p-2">{infoSlot}</div>
       </div>
 
       {/* Bottom */}

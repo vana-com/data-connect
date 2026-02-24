@@ -193,12 +193,18 @@ export function AvailableSourcesList({
                   stackPrimaryColor={stackPrimaryColor}
                   infoSlot={
                     isConnecting ? (
-                      <div className="ml-auto max-w-[180px]">
-                        <Text as="p" intent="fine" muted truncate>
+                      <div className="ml-auto flex max-w-full flex-col items-end">
+                        <Text as="p" intent="fine" muted truncate align="right">
                           {connectingStatusLine}
                         </Text>
                         {connectingAccountLine ? (
-                          <Text as="p" intent="fine" muted truncate>
+                          <Text
+                            as="p"
+                            intent="fine"
+                            muted
+                            truncate
+                            align="right"
+                          >
                             {connectingAccountLine}
                           </Text>
                         ) : null}

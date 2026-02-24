@@ -1,22 +1,23 @@
 import type { ReactNode } from "react"
 import { cn } from "@/lib/classes"
+import { PAGE_CONTAINER_PT_CLASS } from "@/components/elements/page-container"
 
-interface SettingsOverviewLayoutProps {
+interface SettingsLayoutProps {
   sidebar: ReactNode
   content: ReactNode
 }
 
-export function SettingsOverviewLayout({
+export function SettingsLayout({
   sidebar,
   content,
-}: SettingsOverviewLayoutProps) {
+}: SettingsLayoutProps) {
   return (
     <div
       data-component="settings-overview"
       className={cn(
         "h-full w-full flex-1",
-        // padding
-        "pt-w16 px-inset pb-inset"
+        PAGE_CONTAINER_PT_CLASS,
+        "px-inset pb-inset"
       )}
     >
       {/* 1) Layout mode switch:

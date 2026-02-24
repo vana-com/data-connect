@@ -1,17 +1,17 @@
 import type { ReactNode } from "react"
 import { Text } from "@/components/typography/text"
 
-interface SettingsContentProps {
+interface SettingsLayoutContentProps {
   title: string
   description?: string
   children: ReactNode
 }
 
-export function SettingsContent({
+export function SettingsLayoutContent({
   title,
   description,
   children,
-}: SettingsContentProps) {
+}: SettingsLayoutContentProps) {
   return (
     <section className="space-y-small pb-super">
       <header className="space-y-2">

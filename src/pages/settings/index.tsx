@@ -11,10 +11,10 @@ import type { ReactNode } from "react"
 import { SettingsAbout } from "./components/settings-about"
 import { SettingsAccount } from "./components/settings-account"
 import { SettingsApps } from "./components/settings-apps"
-import { SettingsContent } from "./components/settings-content"
+import { SettingsLayoutContent } from "./components/settings-content"
 import { SettingsCredentials } from "./components/settings-credentials"
-import { SettingsOverviewLayout } from "./components/settings-overview-layout"
-import { SettingsSidebar } from "./components/settings-sidebar"
+import { SettingsLayout } from "./components/settings-overview-layout"
+import { SettingsLayoutSidebar } from "./components/settings-sidebar"
 import { SettingsImportsSection } from "./sections/imports/index"
 import { SettingsPersonalServer } from "./components/settings-personal-server"
 import { SettingsStorageSection } from "./sections/storage/index"
@@ -151,21 +151,21 @@ export function Settings() {
   }
 
   return (
-    <SettingsOverviewLayout
+    <SettingsLayout
       sidebar={
-        <SettingsSidebar
+        <SettingsLayoutSidebar
           items={settingsSections}
           activeSection={activeSection}
           onSectionChange={setActiveSection}
         />
       }
       content={
-        <SettingsContent
+        <SettingsLayoutContent
           title={sectionMeta.title}
           description={sectionMeta.description}
         >
           {content}
-        </SettingsContent>
+        </SettingsLayoutContent>
       }
     />
   )

@@ -12,23 +12,23 @@ import {
 } from "@/components/ui/tooltip"
 import type { SettingsSection } from "../types"
 
-interface SettingsSidebarItem {
+interface SettingsLayoutSidebarItem {
   key: SettingsSection
   label: string
   icon: ReactNode
 }
 
-interface SettingsSidebarProps {
-  items: SettingsSidebarItem[]
+interface SettingsLayoutSidebarProps {
+  items: SettingsLayoutSidebarItem[]
   activeSection: SettingsSection
   onSectionChange: (section: SettingsSection) => void
 }
 
-export function SettingsSidebar({
+export function SettingsLayoutSidebar({
   items,
   activeSection,
   onSectionChange,
-}: SettingsSidebarProps) {
+}: SettingsLayoutSidebarProps) {
   return (
     <aside className="pt-w16">
       <nav className="sticky top-6 space-y-0.5 pt-1">

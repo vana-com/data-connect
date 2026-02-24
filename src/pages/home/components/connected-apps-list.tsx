@@ -5,7 +5,6 @@ import { ActionPanel } from "@/components/typography/button-action"
 import { stateFocus } from "@/components/typography/field"
 import { Text } from "@/components/typography/text"
 import { buttonVariants } from "@/components/ui/button"
-import { DEV_FLAGS } from "@/config/dev-flags"
 import { cn } from "@/lib/classes"
 import { openExternalUrl } from "@/lib/open-resource"
 import { buildSettingsUrl } from "@/pages/settings/url"
@@ -38,9 +37,6 @@ async function openExternalApp(url: string) {
 }
 
 function getConnectedAppUrl(app: ConnectedApp) {
-  if (!DEV_FLAGS.useHomeTestFixtures) {
-    return null
-  }
   const entry = getAppRegistryEntry(app.id)
   return entry?.status === "live"
     ? new URL(entry.externalUrl, window.location.origin)

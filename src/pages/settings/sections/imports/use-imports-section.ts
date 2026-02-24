@@ -8,8 +8,6 @@ import { usePersonalServer } from "@/hooks/usePersonalServer"
 import { fetchServerIdentity } from "@/services/serverRegistration"
 import { deleteRun } from "@/state/store"
 import type { RootState } from "@/state/store"
-import { DEV_FLAGS } from "@/config/dev-flags"
-import { testConnectedPlatforms } from "@/pages/home/fixtures"
 
 interface ServerRegisteredPayload {
   status: number
@@ -75,10 +73,9 @@ export function useImportsSection() {
   const serverReady = personalServer.status === "running" && !!serverId
 
   const sourceFilterOptions = useMemo<ImportSourceFilterOption[]>(() => {
-    const connectedSources =
-      DEV_FLAGS.useHomeTestFixtures && platforms.length === 0
-        ? testConnectedPlatforms
-        : platforms.filter(platform => connectedPlatforms[platform.id])
+    const connectedSources = platforms.filter(
+      platform => connectedPlatforms[platform.id]
+    )
 
     return [
       { value: IMPORTS_SOURCE_FILTER_ALL, label: "All" },

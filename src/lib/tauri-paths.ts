@@ -39,3 +39,6 @@ export const loadLatestSourceExportFull = (
     name,
     scope,
   })
+
+export const deleteExportedRun = (exportPath: string) =>
+  invoke("delete_exported_run", { exportPath })

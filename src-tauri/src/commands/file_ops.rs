@@ -714,6 +714,70 @@ pub async fn mark_export_synced(
     Ok(())
 }
 
+/// Delete a stored export run from disk.
+#[tauri::command]
+pub async fn delete_exported_run(app: AppHandle, export_path: String) -> Result<(), String> {
+    let mut dir_path = PathBuf::from(&export_path);
+    if dir_path.extension().map_or(false, |ext| ext == "json") || dir_path.is_file() {
+        dir_path = dir_path
+            .parent()
+            .ok_or_else(|| "Invalid export path".to_string())?
+            .to_path_buf();
+    }
+
+    if !dir_path.exists() {
+        log::info!("Export path already removed: {:?}", dir_path);
+        return Ok(());
+    }
+
+    let data_dir = app
+        .path()
+        .app_data_dir()
+        .map_err(|e| format!("Failed to get app data dir: {}", e))?
+        .join("exported_data");
+
+    let canonical_data_dir = fs::canonicalize(&data_dir)
+        .map_err(|e| format!("Failed to resolve exported_data path: {}", e))?;
+    let canonical_dir_path = fs::canonicalize(&dir_path)
+        .map_err(|e| format!("Failed to resolve export path: {}", e))?;
+
+    if !canonical_dir_path.starts_with(&canonical_data_dir) {
+        return Err(format!(
+            "Refusing to delete path outside exported_data: {}",
+            export_path
+        ));
+    }
+
+    fs::remove_dir_all(&canonical_dir_path)
+        .map_err(|e| format!("Failed to delete export directory: {}", e))?;
+
+    fn remove_dir_if_empty(path: &Path) -> Result<bool, String> {
+        if !path.exists() {
+            return Ok(false);
+        }
+        let mut entries = fs::read_dir(path).map_err(|e| e.to_string())?;
+        if entries.next().is_none() {
+            fs::remove_dir(path).map_err(|e| e.to_string())?;
+            return Ok(true);
+        }
+        Ok(false)
+    }
+
+    let mut current = canonical_dir_path.parent();
+    while let Some(parent) = current {
+        if parent == canonical_data_dir {
+            break;
+        }
+        if !remove_dir_if_empty(parent)? {
+            break;
+        }
+        current = parent.parent();
+    }
+
+    log::info!("Deleted export data at {:?}", canonical_dir_path);
+    Ok(())
+}
+
 /// App configuration structure
 #[derive(Debug, Serialize, Deserialize)]
 pub struct AppConfig {

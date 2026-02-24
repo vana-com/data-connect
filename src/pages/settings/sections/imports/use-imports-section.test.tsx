@@ -7,8 +7,14 @@ import { setConnectedPlatforms, setPlatforms, setRuns, store } from "@/state/sto
 import type { Platform, Run } from "@/types"
 import { useImportsSection } from "./use-imports-section"
 
+const mockInvoke = vi.fn()
+
 vi.mock("@tauri-apps/api/event", () => ({
   listen: vi.fn(() => Promise.resolve(() => {})),
+}))
+
+vi.mock("@tauri-apps/api/core", () => ({
+  invoke: (...args: unknown[]) => mockInvoke(...args),
 }))
 
 vi.mock("@/hooks/useConnector", () => ({
@@ -67,7 +73,8 @@ function buildRun(
   id: string,
   platformId: string,
   status: Run["status"],
-  startDate: string
+  startDate: string,
+  overrides: Partial<Run> = {}
 ): Run {
   return {
     id,
@@ -79,6 +86,7 @@ function buildRun(
     url: `https://example.com/${platformId}`,
     company: platformId,
     name: platformId,
+    ...overrides,
   }
 }
 
@@ -124,6 +132,7 @@ const testRuns: Run[] = [
 describe("useImportsSection source filter URL behavior", () => {
   beforeEach(() => {
     cleanup()
+    mockInvoke.mockReset()
     store.dispatch(setPlatforms(testPlatforms))
     store.dispatch(setConnectedPlatforms({ github: true, linkedin: true }))
     store.dispatch(setRuns(testRuns))
@@ -194,6 +203,72 @@ describe("useImportsSection source filter URL behavior", () => {
     fireEvent.click(getByRole("button", { name: "set all" }))
     await waitFor(() => {
       expect(getByTestId("search").textContent).toBe("?section=imports")
+    })
+  })
+})
+
+describe("useImportsSection remove behavior", () => {
+  beforeEach(() => {
+    cleanup()
+    mockInvoke.mockReset()
+    store.dispatch(setPlatforms(testPlatforms))
+    store.dispatch(setConnectedPlatforms({ github: true, linkedin: true }))
+  })
+
+  it("deletes export data and removes the run", async () => {
+    const exportPath =
+      "/tmp/dataconnect/exported_data/LinkedIn/LinkedIn/run-1/linkedin_123.json"
+    store.dispatch(
+      setRuns([
+        buildRun("run-linkedin-success", "linkedin", "success", "2026-01-02T00:00:00.000Z", {
+          exportPath,
+        }),
+      ])
+    )
+    mockInvoke.mockImplementation((command: string) => {
+      if (command === "delete_exported_run") return Promise.resolve(null)
+      if (command === "check_connected_platforms") {
+        return Promise.resolve({ github: true, linkedin: false })
+      }
+      return Promise.resolve(null)
+    })
+
+    function RemoveHarness() {
+      const { removeRun } = useImportsSection()
+      return (
+        <button type="button" onClick={() => removeRun("run-linkedin-success")}>
+          remove
+        </button>
+      )
+    }
+
+    const router = createMemoryRouter(
+      [{ path: ROUTES.settings, element: <RemoveHarness /> }],
+      {
+        initialEntries: [`${ROUTES.settings}?section=imports`],
+      }
+    )
+
+    const { getByRole } = render(
+      <Provider store={store}>
+        <RouterProvider router={router} />
+      </Provider>
+    )
+
+    fireEvent.click(getByRole("button", { name: "remove" }))
+
+    await waitFor(() => {
+      expect(mockInvoke).toHaveBeenCalledWith("delete_exported_run", {
+        exportPath,
+      })
+    })
+    await waitFor(() => {
+      expect(store.getState().app.runs).toHaveLength(0)
+    })
+    await waitFor(() => {
+      expect(mockInvoke).toHaveBeenCalledWith("check_connected_platforms", {
+        platformIds: ["github", "linkedin"],
+      })
     })
   })
 })

@@ -1,12 +1,14 @@
-import { useCallback, useEffect, useMemo, useState } from "react"
+import { useCallback, useEffect, useMemo, useRef, useState } from "react"
 import { useSearchParams } from "react-router-dom"
 import { useDispatch, useSelector } from "react-redux"
+import { invoke } from "@tauri-apps/api/core"
 import { listen } from "@tauri-apps/api/event"
 import { useConnector } from "@/hooks/useConnector"
 import { useAuth } from "@/hooks/useAuth"
 import { usePersonalServer } from "@/hooks/usePersonalServer"
+import { deleteExportedRun } from "@/lib/tauri-paths"
 import { fetchServerIdentity } from "@/services/serverRegistration"
-import { deleteRun } from "@/state/store"
+import { deleteRun, setConnectedPlatforms } from "@/state/store"
 import type { RootState } from "@/state/store"
 
 interface ServerRegisteredPayload {
@@ -36,6 +38,16 @@ export function useImportsSection() {
   const [serverId, setServerId] = useState<string | null>(null)
   // Bumped when the HTTP server is actually ready (not just spawned)
   const [readyTick, setReadyTick] = useState(0)
+  const runsRef = useRef(runs)
+  const platformsRef = useRef(platforms)
+
+  useEffect(() => {
+    runsRef.current = runs
+  }, [runs])
+
+  useEffect(() => {
+    platformsRef.current = platforms
+  }, [platforms])
 
   // Listen for server-registered event from auth flow
   // and personal-server-ready (HTTP server actually listening)
@@ -137,8 +149,25 @@ export function useImportsSection() {
   }, [filteredRuns])
 
   const removeRun = useCallback(
-    (runId: string) => {
+    async (runId: string) => {
+      const run = runsRef.current.find(entry => entry.id === runId)
+      if (!run) return
+
+      if (run.exportPath) {
+        await deleteExportedRun(run.exportPath)
+      }
+
       dispatch(deleteRun(runId))
+
+      const activePlatforms = platformsRef.current
+      if (activePlatforms.length === 0) return
+
+      const platformIds = activePlatforms.map(platform => platform.id)
+      const connected = await invoke<Record<string, boolean>>(
+        "check_connected_platforms",
+        { platformIds }
+      )
+      dispatch(setConnectedPlatforms(connected))
     },
     [dispatch]
   )

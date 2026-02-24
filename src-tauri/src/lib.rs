@@ -22,6 +22,14 @@ pub fn run() {
     let _ = dotenvy::dotenv();
 
     let builder = tauri::Builder::default()
+        .plugin(tauri_plugin_single_instance::init(|app, _args, _cwd| {
+            // Focus the existing window when a second instance is intercepted.
+            // The deep-link URL is forwarded automatically via the `deep-link`
+            // cargo feature — no manual arg parsing needed.
+            if let Some(window) = app.get_webview_window("main") {
+                let _ = window.set_focus();
+            }
+        }))
         .plugin(tauri_plugin_fs::init())
         .plugin(tauri_plugin_shell::init())
         .plugin(tauri_plugin_http::init())

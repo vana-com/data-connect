@@ -39,6 +39,7 @@ dotenvy = "0.15"
 mime_guess = "2.0.5"
 tauri-plugin-mcp-bridge = "0.8.2"
 tauri-plugin-clipboard-manager = "2.3.2"
+tauri-plugin-single-instance = { version = "2", features = ["deep-link"] }
 
 [target.'cfg(unix)'.dependencies]
 libc = "0.2"

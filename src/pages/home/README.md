@@ -38,10 +38,10 @@
 
 ## Mock system (dev)
 
-- `homeDebug=1&scenario=<name>` (URL params) enables Home UI debug scenarios.
+- `scenario=<name>` (URL param, DEV-only) enables Home UI debug scenarios.
 - When Home debug is enabled and live platforms are empty, fixture data is used.
 
 ## Notes
 
 - Not part of the grant flow.
-- Uses DEV-only Home debug fixtures when `homeDebug` is enabled.
+- Uses DEV-only Home debug fixtures when `scenario` is set to a valid debug case.

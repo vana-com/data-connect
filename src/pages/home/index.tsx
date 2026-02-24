@@ -52,6 +52,10 @@ export function Home() {
     { value: "sources", label: "Your data" },
     { value: "apps", label: "Connected apps" },
   ]
+  const homeUiDebugEnabled = useMemo(
+    () => isHomeUiDebugEnabled(location.search),
+    [location.search]
+  )
 
   const displayPlatforms = platforms
   const displayConnectedApps = connectedApps
@@ -145,12 +149,11 @@ export function Home() {
   }, [deepLinkInput, navigate])
 
   const availablePlatforms = useMemo(() => {
-    const homeUiDebugEnabled = isHomeUiDebugEnabled(location.search)
     if (homeUiDebugEnabled && displayPlatforms.length === 0) {
       return testPlatforms
     }
     return displayPlatforms
-  }, [displayPlatforms, location.search])
+  }, [displayPlatforms, homeUiDebugEnabled])
 
   const displayRuns = useMemo(
     () =>
@@ -182,7 +185,7 @@ export function Home() {
 
   // Separate available platforms (memoized to avoid re-filtering on every render)
   const connectedPlatformsList = useMemo(() => {
-    if (isHomeUiDebugEnabled(location.search) && displayPlatforms.length === 0) {
+    if (homeUiDebugEnabled && displayPlatforms.length === 0) {
       return testConnectedPlatforms
     }
     return displayPlatforms.filter(platform => {
@@ -193,9 +196,26 @@ export function Home() {
   }, [
     connectedCanonicalIdsFromRuns,
     displayPlatforms,
+    homeUiDebugEnabled,
     isPlatformConnected,
-    location.search,
   ])
+
+  const connectedPlatformIds = useMemo(
+    () => connectedPlatformsList.map(platform => platform.id),
+    [connectedPlatformsList]
+  )
+
+  const handleOpenRuns = useCallback(
+    (platform: Platform) => {
+      navigate(
+        ROUTES.source.replace(
+          ":platformId",
+          getPlatformRegistryEntry(platform)?.id ?? platform.id
+        )
+      )
+    },
+    [navigate]
+  )
 
   return (
     <PageContainer>
@@ -219,21 +239,14 @@ export function Home() {
             platforms={connectedPlatformsList}
             runs={displayRuns}
             headline="Your imported data"
-            onOpenRuns={platform =>
-              navigate(
-                ROUTES.source.replace(
-                  ":platformId",
-                  getPlatformRegistryEntry(platform)?.id ?? platform.id
-                )
-              )
-            }
+            onOpenRuns={handleOpenRuns}
           />
           <AvailableSourcesList
             platforms={availablePlatforms}
             runs={displayRuns}
             onExport={handleImportSource}
             onStopRun={handleStopImport}
-            connectedPlatformIds={connectedPlatformsList.map(p => p.id)}
+            connectedPlatformIds={connectedPlatformIds}
           />
         </TabsContent>
 

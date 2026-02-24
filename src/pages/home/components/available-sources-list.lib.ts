@@ -25,9 +25,6 @@ interface BuildAvailableCardsInput {
   platforms: Platform[]
   connectedPlatformIdSet: Set<string>
   connectingPlatforms: Map<string, Run>
-  forceConnectingPreview: boolean
-  forcedPlatformId: string
-  forcedStatus: string | undefined
   onExport: (platform: Platform) => void
 }
 
@@ -36,9 +33,6 @@ export function buildAvailableCards({
   platforms,
   connectedPlatformIdSet,
   connectingPlatforms,
-  forceConnectingPreview,
-  forcedPlatformId,
-  forcedStatus,
   onExport,
 }: BuildAvailableCardsInput): AvailableSourceCard[] {
   const cards: AvailableSourceCard[] = []
@@ -48,16 +42,10 @@ export function buildAvailableCards({
     if (platform && connectedPlatformIdSet.has(platform.id)) return
 
     const state = getConnectSourceState(entry, platform)
-    const shouldForceConnectingPreview =
-      forceConnectingPreview &&
-      (entry.id === forcedPlatformId || platform?.id === forcedPlatformId)
-
     const baseConnectingRun = platform
       ? connectingPlatforms.get(platform.id)
       : undefined
-    const isConnecting = shouldForceConnectingPreview
-      ? true
-      : Boolean(platform && connectingPlatforms.has(platform.id))
+    const isConnecting = Boolean(platform && connectingPlatforms.has(platform.id))
 
     cards.push({
       cardId: platform?.id ?? entry.id,
@@ -66,10 +54,8 @@ export function buildAvailableCards({
       stackPrimaryColor: getPlatformPrimaryColor(entry),
       isAvailable: state === "available",
       isConnecting,
-      connectingStatusMessage: shouldForceConnectingPreview
-        ? forcedStatus
-        : baseConnectingRun?.statusMessage,
-      connectingRun: shouldForceConnectingPreview ? undefined : baseConnectingRun,
+      connectingStatusMessage: baseConnectingRun?.statusMessage,
+      connectingRun: baseConnectingRun,
       onClick:
         state === "available" && platform ? () => onExport(platform) : undefined,
       priority: state === "available" ? 0 : 1,

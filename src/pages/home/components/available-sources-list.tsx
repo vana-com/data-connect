@@ -38,7 +38,7 @@ export function AvailableSourcesList({
   connectedPlatformIds,
 }: AvailableSourcesListProps) {
   const [stoppingRunId, setStoppingRunId] = useState<string | null>(null)
-  const connectEntries = getConnectSourceEntries()
+  const connectEntries = useMemo(() => getConnectSourceEntries(), [])
   const connectedPlatformIdSet = useMemo(
     () => new Set(connectedPlatformIds),
     [connectedPlatformIds]
@@ -65,9 +65,6 @@ export function AvailableSourcesList({
         platforms,
         connectedPlatformIdSet,
         connectingPlatforms,
-        forceConnectingPreview: false,
-        forcedPlatformId: "",
-        forcedStatus: undefined,
         onExport,
       }),
     [

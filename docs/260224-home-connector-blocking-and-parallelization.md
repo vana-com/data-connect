@@ -57,7 +57,7 @@ The home "Import sources" grid should:
 - **Stop/cancel surface area:** support stopping from both Home and Import History.
   - Import History already has a running-row **Stop** action.
   - Home should add a matching **Cancel** action on connecting cards.
-- **Confirmation threshold:** if run duration is under 10 minutes, stop immediately; at 10+ minutes, show confirm dialog.
+- **Stop confirmation policy:** no duration-based threshold in this iteration.
 - **ETA messaging:** do not fake a precise ETA yet. Use coarse language first (for example: "Large imports can take a while; you can continue using the app.").
 - **Resume behavior:** keep it simple — no true resume. Use existing **Run again** semantics (restart from scratch).
 - **Parallel cap (initial):** postpone hard cap UI in this iteration. Current behavior allows parallel background runs once user-action blocking clears.

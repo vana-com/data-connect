@@ -19,6 +19,7 @@ interface SettingsRowDescriptionCopyProps {
   iconPosition?: "before" | "after"
   title?: string
   className?: string
+  buttonClassName?: string
 }
 
 export function SettingsRowDescriptionCopy({
@@ -30,6 +31,7 @@ export function SettingsRowDescriptionCopy({
   iconPosition = "before",
   title,
   className,
+  buttonClassName,
 }: SettingsRowDescriptionCopyProps) {
   const [copied, setCopied] = useState(false)
   const gapClassName = intent === "fine" ? "gap-[5px]" : "gap-1.5"
@@ -81,7 +83,8 @@ export function SettingsRowDescriptionCopy({
           "rounded-soft py-1",
           iconPosition === "before" ? "-mr-1 pl-2 pr-1" : "-ml-1 pr-2 pl-1",
           "text-foreground-dim",
-          "hover:bg-foreground/3 hover:text-foreground"
+          "hover:bg-foreground/3 hover:text-foreground",
+          buttonClassName
         )}
       >
         {iconPosition === "before" ? (

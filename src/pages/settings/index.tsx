@@ -101,7 +101,13 @@ export function Settings() {
       />
     )
   } else if (activeSection === "personalServer") {
-    content = <SettingsPersonalServer personalServer={personalServer} />
+    content = (
+      <SettingsPersonalServer
+        personalServer={personalServer}
+        onRestartPersonalServer={personalServer.startServer}
+        onStopPersonalServer={personalServer.stopServer}
+      />
+    )
   } else if (activeSection === "storage") {
     content = (
       <SettingsStorageSection

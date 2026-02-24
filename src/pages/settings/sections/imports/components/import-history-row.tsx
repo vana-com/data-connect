@@ -1,4 +1,5 @@
-import { LoaderCircleIcon } from "lucide-react"
+import { memo, useCallback } from "react"
+import { CheckIcon, LoaderCircleIcon, SquareIcon } from "lucide-react"
 import { PlatformIcon } from "@/components/icons/platform-icon"
 import { Text } from "@/components/typography/text"
 import { openExportFolderPath } from "@/lib/open-resource"
@@ -23,10 +24,11 @@ interface ImportHistoryRowProps {
   isErrorExpanded: boolean
   onStop: (runId: string) => void
   onRunAgain: (platform: Platform) => void
+  onRemove: (runId: string) => void
   onToggleErrorDetail: (runId: string) => void
 }
 
-export function ImportHistoryRow({
+export const ImportHistoryRow = memo(function ImportHistoryRow({
   run,
   isStopping,
   canRunAgain,
@@ -34,18 +36,23 @@ export function ImportHistoryRow({
   isErrorExpanded,
   onStop,
   onRunAgain,
+  onRemove,
   onToggleErrorDetail,
 }: ImportHistoryRowProps) {
-  const isRunning = run.status === "running"
-  const isPending = run.status === "pending"
   const canRevealExport = Boolean(run.exportPath && isTerminalRun(run.status))
   const needsStopConfirm = shouldConfirmStop(run)
   const errorDetail = getErrorDetail(run)
 
-  const handleRevealExport = async () => {
+  const handleRevealExport = useCallback(async () => {
     if (!run.exportPath) return
     await openExportFolderPath(run.exportPath)
-  }
+  }, [run.exportPath])
+  const handleStop = useCallback(() => onStop(run.id), [onStop, run.id])
+  const handleRemove = useCallback(() => onRemove(run.id), [onRemove, run.id])
+  const handleToggleErrorDetail = useCallback(
+    () => onToggleErrorDetail(run.id),
+    [onToggleErrorDetail, run.id]
+  )
 
   return (
     <SettingsCard>
@@ -56,23 +63,7 @@ export function ImportHistoryRow({
             <Text as="div" intent="body" weight="semi">
               {run.name}
             </Text>
-            {isRunning ? (
-              <Text
-                as="span"
-                intent="fine"
-                withIcon
-                color="success"
-                weight="medium"
-              >
-                <LoaderCircleIcon aria-hidden="true" className="animate-spin" />
-                Running
-              </Text>
-            ) : null}
-            {isPending ? (
-              <Text as="span" intent="fine" muted weight="medium">
-                Pending
-              </Text>
-            ) : null}
+            <ImportRunStateLabel status={run.status} />
           </div>
         }
         description={
@@ -101,9 +92,10 @@ export function ImportHistoryRow({
               canRunAgain={canRunAgain}
               rerunPlatform={rerunPlatform}
               isErrorExpanded={isErrorExpanded}
-              onStop={() => onStop(run.id)}
+              onStop={handleStop}
               onRunAgain={onRunAgain}
-              onToggleErrorDetail={() => onToggleErrorDetail(run.id)}
+              onRemove={handleRemove}
+              onToggleErrorDetail={handleToggleErrorDetail}
             />
           </div>
         }
@@ -120,4 +112,44 @@ export function ImportHistoryRow({
       />
     </SettingsCard>
   )
+})
+ImportHistoryRow.displayName = "ImportHistoryRow"
+
+function ImportRunStateLabel({ status }: { status: Run["status"] }) {
+  if (status === "running") {
+    return (
+      <Text as="span" intent="fine" withIcon color="success" weight="medium">
+        <LoaderCircleIcon aria-hidden="true" className="animate-spin" />
+        Running
+      </Text>
+    )
+  }
+
+  if (status === "pending") {
+    return (
+      <Text as="span" intent="fine" muted weight="medium">
+        Pending
+      </Text>
+    )
+  }
+
+  if (status === "stopped") {
+    return (
+      <Text as="span" intent="fine" withIcon muted weight="medium">
+        <SquareIcon aria-hidden="true" />
+        Stopped
+      </Text>
+    )
+  }
+
+  if (status === "success") {
+    return (
+      <Text as="span" intent="fine" withIcon color="success" weight="medium">
+        <CheckIcon aria-hidden="true" className="size-3.5" />
+        Imported
+      </Text>
+    )
+  }
+
+  return null
 }

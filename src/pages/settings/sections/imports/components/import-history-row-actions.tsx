@@ -1,13 +1,25 @@
-import { CheckIcon, ChevronDownIcon, ChevronUpIcon } from "lucide-react"
+import { memo } from "react"
+import {
+  CheckIcon,
+  ChevronDownIcon,
+  ChevronUpIcon,
+  EllipsisVerticalIcon,
+} from "lucide-react"
 import { Link } from "react-router-dom"
 import { cn } from "@/lib/classes"
 import { ROUTES } from "@/config/routes"
 import { getPlatformRegistryEntryById } from "@/lib/platform/utils"
 import { PlatformIcon } from "@/components/icons/platform-icon"
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu"
+import { buttonVariants } from "@/components/ui/button"
 import { SettingsConfirmAction } from "@/pages/settings/components/settings-confirm-action"
 import { SettingsRowAction } from "@/pages/settings/components/settings-shared"
 import type { Platform, Run } from "@/types"
-import { getStatusLabel } from "./import-history-row-utils"
 
 interface ImportHistoryRowActionsProps {
   run: Run
@@ -18,10 +30,11 @@ interface ImportHistoryRowActionsProps {
   isErrorExpanded: boolean
   onStop: () => void
   onRunAgain: (platform: Platform) => void
+  onRemove: () => void
   onToggleErrorDetail: () => void
 }
 
-export function ImportHistoryRowActions({
+const ImportHistoryRowActionsInner = ({
   run,
   isStopping,
   needsStopConfirm,
@@ -30,8 +43,9 @@ export function ImportHistoryRowActions({
   isErrorExpanded,
   onStop,
   onRunAgain,
+  onRemove,
   onToggleErrorDetail,
-}: ImportHistoryRowActionsProps) {
+}: ImportHistoryRowActionsProps) => {
   const sourceOverviewRoute = ROUTES.source.replace(
     ":platformId",
     getPlatformRegistryEntryById(run.platformId)?.id ?? run.platformId
@@ -40,6 +54,10 @@ export function ImportHistoryRowActions({
     "gap-1 [--lucide-stroke-width:2.5] [&_svg:not([data-slot=spinner])]:size-[1.25em]"
   const leftIconPaddingClass = "pl-1"
   const rightIconPaddingClass = "pr-1"
+  const hasMenuActions =
+    run.status === "success" ||
+    run.status === "error" ||
+    run.status === "stopped"
 
   if (run.status === "running") {
     return (
@@ -85,16 +103,13 @@ export function ImportHistoryRowActions({
   }
 
   return (
-    <div className="flex items-center gap-2">
+    <div className={cn("flex items-center gap-0", hasMenuActions && "-mr-1.5")}>
       {run.status === "success" ? (
         <SettingsRowAction
           asChild
           className={cn(actionSvgClass, leftIconPaddingClass)}
         >
-          <Link to={sourceOverviewRoute}>
-            <CheckIcon aria-hidden="true" className="text-success-foreground" />
-            View Source
-          </Link>
+          <Link to={sourceOverviewRoute}>Open</Link>
         </SettingsRowAction>
       ) : null}
       {run.status === "error" ? (
@@ -117,31 +132,71 @@ export function ImportHistoryRowActions({
           )}
         </SettingsRowAction>
       ) : null}
-      {run.status === "stopped" ? (
-        <SettingsRowAction
-          type="button"
-          disabled
-          className={cn(actionSvgClass, "text-foreground-dim")}
-        >
-          {getStatusLabel(run.status)}
-        </SettingsRowAction>
-      ) : null}
-
-      {/* Purposefully hidden for now.  */}
-      {canRunAgain && rerunPlatform ? (
-        <SettingsRowAction
-          type="button"
-          className={cn(
-            actionSvgClass,
-            "text-foreground-dim hover:text-foreground",
-            // hide it for now!
-            "hidden"
-          )}
-          onClick={() => onRunAgain(rerunPlatform)}
-        >
-          Run again
-        </SettingsRowAction>
+      {hasMenuActions ? (
+        <DropdownMenu>
+          <DropdownMenuTrigger
+            aria-label="More actions"
+            className={cn(
+              buttonVariants({ variant: "ghost", size: "sm" }),
+              "[&_svg]:size-[1.25em]!",
+              "transition-none",
+              "px-1.5!"
+            )}
+          >
+            <EllipsisVerticalIcon aria-hidden="true" />
+          </DropdownMenuTrigger>
+          <DropdownMenuContent
+            align="end"
+            className={cn(
+              "w-40 rounded-button px-1 py-1 shadow-lg",
+              "data-open:animate-none data-closed:animate-none duration-0"
+            )}
+          >
+            {canRunAgain && rerunPlatform ? (
+              <DropdownMenuItem
+                className={itemStyle}
+                onSelect={() => onRunAgain(rerunPlatform)}
+              >
+                Run again
+              </DropdownMenuItem>
+            ) : null}
+            <DropdownMenuItem
+              className={itemStyle}
+              variant="destructive"
+              onSelect={onRemove}
+            >
+              Remove
+            </DropdownMenuItem>
+          </DropdownMenuContent>
+        </DropdownMenu>
       ) : null}
     </div>
   )
 }
+
+const itemStyle = "text-compact font-medium px-2.5 py-2.5"
+
+function areImportHistoryRowActionsPropsEqual(
+  prev: ImportHistoryRowActionsProps,
+  next: ImportHistoryRowActionsProps
+) {
+  return (
+    prev.run.status === next.run.status &&
+    prev.run.platformId === next.run.platformId &&
+    prev.isStopping === next.isStopping &&
+    prev.needsStopConfirm === next.needsStopConfirm &&
+    prev.canRunAgain === next.canRunAgain &&
+    prev.rerunPlatform?.id === next.rerunPlatform?.id &&
+    prev.isErrorExpanded === next.isErrorExpanded &&
+    prev.onStop === next.onStop &&
+    prev.onRunAgain === next.onRunAgain &&
+    prev.onRemove === next.onRemove &&
+    prev.onToggleErrorDetail === next.onToggleErrorDetail
+  )
+}
+
+export const ImportHistoryRowActions = memo(
+  ImportHistoryRowActionsInner,
+  areImportHistoryRowActionsPropsEqual
+)
+ImportHistoryRowActions.displayName = "ImportHistoryRowActions"

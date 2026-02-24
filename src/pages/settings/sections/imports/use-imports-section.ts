@@ -1,11 +1,12 @@
 import { useCallback, useEffect, useMemo, useState } from "react"
 import { useSearchParams } from "react-router-dom"
-import { useSelector } from "react-redux"
+import { useDispatch, useSelector } from "react-redux"
 import { listen } from "@tauri-apps/api/event"
 import { useConnector } from "@/hooks/useConnector"
 import { useAuth } from "@/hooks/useAuth"
 import { usePersonalServer } from "@/hooks/usePersonalServer"
 import { fetchServerIdentity } from "@/services/serverRegistration"
+import { deleteRun } from "@/state/store"
 import type { RootState } from "@/state/store"
 import { DEV_FLAGS } from "@/config/dev-flags"
 import { testConnectedPlatforms } from "@/pages/home/fixtures"
@@ -24,6 +25,7 @@ export interface ImportSourceFilterOption {
 }
 
 export function useImportsSection() {
+  const dispatch = useDispatch()
   const [searchParams, setSearchParams] = useSearchParams()
   const runs = useSelector((state: RootState) => state.app.runs)
   const platforms = useSelector((state: RootState) => state.app.platforms)
@@ -137,6 +139,13 @@ export function useImportsSection() {
       .sort((a, b) => new Date(b.startDate).getTime() - new Date(a.startDate).getTime())
   }, [filteredRuns])
 
+  const removeRun = useCallback(
+    (runId: string) => {
+      dispatch(deleteRun(runId))
+    },
+    [dispatch]
+  )
+
   return {
     activeImports,
     finishedImports,
@@ -146,6 +155,7 @@ export function useImportsSection() {
     platforms,
     startImport,
     stopExport,
+    removeRun,
     isAuthenticated,
     personalServer,
     serverId,

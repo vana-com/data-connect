@@ -62,7 +62,8 @@
       "../connectors/openai/**/*": "connectors/openai/",
       "../connectors/spotify/**/*": "connectors/spotify/",
       "../playwright-runner/dist/*": "playwright-runner/dist/",
-      "../personal-server/dist/personal-server*": "personal-server/dist/"
+      "../personal-server/dist/personal-server*": "personal-server/dist/",
+      "../personal-server/dist/node_modules/": "personal-server/dist/node_modules/"
     },
     "windows": {
       "nsis": {

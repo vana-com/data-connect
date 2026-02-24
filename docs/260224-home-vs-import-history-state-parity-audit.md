@@ -134,3 +134,7 @@ If parity is a goal, create a shared run-state policy module (for example `src/l
 - common stop-confirm trigger policy
 
 Then keep Home and Import History as presentation-specific consumers of the same policy.
+
+### Specific TODOs
+
+- [ ] Fix Import History row `Reveal` action so clicking it opens the user's Personal Server folder in the OS file manager (not just row-level UI feedback/no-op). Use shared path/open helpers (`src/lib/tauri-paths.ts`, `src/lib/open-resource.ts`) so this works correctly in Tauri on the user's machine.

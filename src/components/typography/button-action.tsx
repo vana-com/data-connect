@@ -4,6 +4,17 @@ import { cn } from "@/lib/classes"
 
 type ActionButtonProps = ComponentProps<typeof Button>
 
+export const actionButtonSurfaceClass = [
+  // Base layout spacing
+  "px-4",
+  // Hover treatment
+  "hover:border-black hover:ring-4 hover:ring-accent/[0.07]",
+  // Focus-visible treatment
+  "focus-visible:border-black focus-visible:ring-4 focus-visible:ring-accent/[0.07] focus-visible:ring-offset-0",
+  // Selected treatment (persistent active card state)
+  "aria-selected:border-black aria-selected:ring-4 aria-selected:ring-accent/[0.15] aria-selected:ring-offset-0",
+]
+
 export function ActionButton({
   className,
   children,
@@ -19,17 +30,7 @@ export function ActionButton({
       variant={variant}
       size={size}
       fullWidth={fullWidth}
-      className={cn(
-        // Base layout spacing
-        "px-4",
-        // Hover treatment
-        "hover:border-black hover:ring-4 hover:ring-accent/[0.07]",
-        // Focus-visible treatment
-        "focus-visible:border-black focus-visible:ring-4 focus-visible:ring-accent/[0.07] focus-visible:ring-offset-0",
-        // Selected treatment (persistent active card state)
-        "aria-selected:border-black aria-selected:ring-4 aria-selected:ring-accent/[0.15] aria-selected:ring-offset-0",
-        className
-      )}
+      className={cn(actionButtonSurfaceClass, className)}
       {...props}
     >
       {children}

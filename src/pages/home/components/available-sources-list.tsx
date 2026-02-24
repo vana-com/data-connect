@@ -1,76 +1,43 @@
-import { useMemo } from "react"
+import { useMemo, useState } from "react"
 import { ArrowUpRight, PauseIcon } from "lucide-react"
 import {
   ActionButton,
   ActionPanel,
+  actionButtonSurfaceClass,
 } from "@/components/typography/button-action"
 import { EyebrowBadge } from "@/components/typography/eyebrow-badge"
 import { Text } from "@/components/typography/text"
 import { Spinner } from "@/components/elements/spinner"
 import { SourceStack } from "@/components/elements/source-row"
 import { cn } from "@/lib/classes"
-import { DEV_FLAGS } from "@/config/dev-flags"
 import type { Platform, Run } from "@/types"
 import { getConnectSourceEntries } from "@/lib/platform/utils"
 import { OpenExternalLink } from "@/components/typography/link-open-external"
 import { buildAvailableCards } from "./available-sources-list.lib"
+import { ConfirmAction } from "@/components/elements/confirm-action"
+import { buttonVariants } from "@/components/ui/button"
+import {
+  getConnectingAccountLine,
+  getConnectingStatusLine,
+  isBlockingRun,
+} from "./available-sources-list.policy"
 
 interface AvailableSourcesListProps {
   platforms: Platform[]
   runs: Run[]
   onExport: (platform: Platform) => void
+  onStopRun: (runId: string) => Promise<void> | void
   connectedPlatformIds: string[]
-}
-
-function getConnectingStatusLine(
-  statusMessage: string | undefined,
-  phaseLabel: string | undefined
-): string {
-  // Keep this logic in sync with:
-  // docs/260222-home-connectors-info-message-matrix.md
-  const normalizedPhaseLabel = phaseLabel?.trim()
-  if (normalizedPhaseLabel) return normalizedPhaseLabel
-  if (!statusMessage) return "Opening browser…"
-
-  const normalizedStatus = statusMessage.trim().toLowerCase()
-  if (
-    normalizedStatus === "waiting for sign in..." ||
-    normalizedStatus === "waiting for sign in…"
-  ) {
-    return "Waiting for sign-in…"
-  }
-  if (
-    normalizedStatus === "collecting data..." ||
-    normalizedStatus === "collecting data…"
-  ) {
-    return "Importing data…"
-  }
-
-  return statusMessage
-}
-
-function getConnectingAccountLine(run: Run | undefined): string | undefined {
-  // Follow-up target: plumb active account identity from connector-data events into
-  // Run while the connector is running, so we are not relying on message text.
-  const exportEmail = run?.exportData?.userInfo?.email?.trim()
-  if (exportEmail) return `Using ${exportEmail}`
-
-  const statusMessage = run?.statusMessage
-  if (!statusMessage) return undefined
-  const emailMatch = statusMessage.match(
-    /[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}/i
-  )
-  if (!emailMatch) return undefined
-
-  return `Using ${emailMatch[0]}`
 }
 
 export function AvailableSourcesList({
   platforms,
   runs,
   onExport,
+  onStopRun,
   connectedPlatformIds,
 }: AvailableSourcesListProps) {
+  const [stoppingRunId, setStoppingRunId] = useState<string | null>(null)
   const connectEntries = getConnectSourceEntries()
   const connectedPlatformIdSet = useMemo(
     () => new Set(connectedPlatformIds),
@@ -87,32 +54,9 @@ export function AvailableSourcesList({
     return map
   }, [runs])
 
-  // ===========================================================================
-  // DEBUG ONLY: Home connecting preview override
-  // ---------------------------------------------------------------------------
-  // ON:  set VITE_USE_HOME_CONNECTING_PREVIEW=true in .env.local
-  // OFF: set VITE_USE_HOME_CONNECTING_PREVIEW=false (or remove it)
-  //
-  // When ON, one card is forced into connecting state so you can QA quickly.
-  // - Set an entry id (registry id): "instagram" | "linkedin" | "spotify" | "chatgpt"
-  // - Set status to test label mapping:
-  //   undefined -> Opening browser…
-  //   "Waiting for sign in..." -> Waiting…
-  //   "Collecting data..." -> Importing data…
-  //
-  // IMPORTANT: This is preview scaffolding. Keep it gated by DEV_FLAGS only.
-  // ===========================================================================
-  const CONNECTING_PREVIEW = {
-    enabled: import.meta.env.DEV && DEV_FLAGS.useHomeConnectingPreview,
-    platformId: "instagram",
-    status: "Importing data…" as string | undefined,
-  }
-
-  const hasAnyConnectingRun = useMemo(
-    () =>
-      CONNECTING_PREVIEW.enabled || runs.some(run => run.status === "running"),
-    [CONNECTING_PREVIEW.enabled, runs]
-  )
+  const hasBlockingRun = useMemo(() => {
+    return runs.some(run => isBlockingRun(run))
+  }, [runs])
 
   const availableCards = useMemo(
     () =>
@@ -121,9 +65,9 @@ export function AvailableSourcesList({
         platforms,
         connectedPlatformIdSet,
         connectingPlatforms,
-        forceConnectingPreview: CONNECTING_PREVIEW.enabled,
-        forcedPlatformId: CONNECTING_PREVIEW.platformId,
-        forcedStatus: CONNECTING_PREVIEW.status,
+        forceConnectingPreview: false,
+        forcedPlatformId: "",
+        forcedStatus: undefined,
         onExport,
       }),
     [
@@ -131,10 +75,18 @@ export function AvailableSourcesList({
       platforms,
       connectedPlatformIdSet,
       connectingPlatforms,
-      CONNECTING_PREVIEW.enabled,
       onExport,
     ]
   )
+
+  const stopRun = async (runId: string) => {
+    setStoppingRunId(runId)
+    try {
+      await onStopRun(runId)
+    } finally {
+      setStoppingRunId(current => (current === runId ? null : current))
+    }
+  }
 
   if (availableCards.length === 0) {
     return (
@@ -175,62 +127,102 @@ export function AvailableSourcesList({
               ? getConnectingAccountLine(connectingRun)
               : undefined
             const isPausedByAnotherRun =
-              hasAnyConnectingRun && isAvailable && !isConnecting
+              hasBlockingRun && isAvailable && !isConnecting
+
+            const infoSlot = isConnecting ? (
+              <div className="ml-auto flex max-w-full flex-col items-end gap-0.5">
+                {connectingAccountLine ? (
+                  <Text as="p" intent="fine" muted truncate align="right">
+                    {connectingAccountLine}
+                  </Text>
+                ) : null}
+                <Text as="p" intent="fine" muted truncate align="right">
+                  {connectingStatusLine}
+                </Text>
+                {connectingRun ? (
+                  <ConfirmAction
+                    title="Cancel import?"
+                    description="This run will stop before completion. You can run it again later."
+                    actionLabel="Stop import"
+                    onAction={() => {
+                      void stopRun(connectingRun.id)
+                    }}
+                    triggerLabel={
+                      stoppingRunId === connectingRun.id
+                        ? "Stopping…"
+                        : "Cancel import"
+                    }
+                    triggerButtonProps={{
+                      className: cn(
+                        "h-auto p-0 text-fine font-normal link text-foreground-muted hover:text-foreground",
+                        "disabled:pointer-events-none disabled:opacity-50"
+                      ),
+                      disabled: stoppingRunId === connectingRun.id,
+                    }}
+                  />
+                ) : null}
+              </div>
+            ) : null
+
+            const cardContent = (
+              <SourceStack
+                iconName={iconName}
+                label={label}
+                stackPrimaryColor={stackPrimaryColor}
+                infoSlot={infoSlot}
+                showArrow={isAvailable && !isConnecting && !hasBlockingRun}
+                trailingSlot={
+                  isConnecting ? (
+                    <Spinner className="size-4" aria-hidden="true" />
+                  ) : isPausedByAnotherRun ? (
+                    <PauseIcon
+                      className="size-4 text-foreground-muted/70"
+                      aria-hidden="true"
+                    />
+                  ) : isAvailable ? null : (
+                    <EyebrowBadge
+                      variant="outline"
+                      className="text-foreground-muted"
+                    >
+                      soon
+                    </EyebrowBadge>
+                  )
+                }
+                labelColor={isAvailable ? "foreground" : "mutedForeground"}
+              />
+            )
+
+            if (isConnecting) {
+              return (
+                <div
+                  key={cardId}
+                  aria-busy
+                  aria-selected
+                  className={cn(
+                    buttonVariants({
+                      variant: "outline",
+                      size: "xl",
+                      fullWidth: true,
+                    }),
+                    actionButtonSurfaceClass,
+                    "h-auto cursor-default p-0 transition-none"
+                  )}
+                >
+                  {cardContent}
+                </div>
+              )
+            }
 
             return (
               <ActionButton
                 key={cardId}
                 onClick={onClick}
-                disabled={!isAvailable || hasAnyConnectingRun}
-                selected={isConnecting}
+                disabled={!isAvailable || hasBlockingRun}
+                selected={false}
                 size="xl"
                 className={cn("h-auto p-0 disabled:opacity-100")}
-                aria-busy={isConnecting}
               >
-                <SourceStack
-                  iconName={iconName}
-                  label={label}
-                  stackPrimaryColor={stackPrimaryColor}
-                  infoSlot={
-                    isConnecting ? (
-                      <div className="ml-auto flex max-w-full flex-col items-end">
-                        <Text as="p" intent="fine" muted truncate align="right">
-                          {connectingStatusLine}
-                        </Text>
-                        {connectingAccountLine ? (
-                          <Text
-                            as="p"
-                            intent="fine"
-                            muted
-                            truncate
-                            align="right"
-                          >
-                            {connectingAccountLine}
-                          </Text>
-                        ) : null}
-                      </div>
-                    ) : null
-                  }
-                  showArrow={isAvailable && !hasAnyConnectingRun}
-                  trailingSlot={
-                    isConnecting ? (
-                      <Spinner className="size-4" aria-hidden="true" />
-                    ) : isPausedByAnotherRun ? (
-                      <PauseIcon
-                        className="size-4 text-foreground-muted/70"
-                        aria-hidden="true"
-                      />
-                    ) : isAvailable ? null : (
-                      <EyebrowBadge
-                        variant="outline"
-                        className="text-foreground-muted"
-                      >
-                        soon
-                      </EyebrowBadge>
-                    )
-                  }
-                  labelColor={isAvailable ? "foreground" : "mutedForeground"}
-                />
+                {cardContent}
               </ActionButton>
             )
           }
@@ -244,7 +236,7 @@ const Header = () => {
   return (
     <div className="flex items-baseline justify-between">
       <Text as="h2" weight="medium">
-        Connected sources
+        Import sources
       </Text>
       <Text as="p" intent="small" muted>
         <OpenExternalLink

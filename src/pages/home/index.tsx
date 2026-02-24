@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react"
 import { MotionConfig } from "motion/react"
-import { useNavigate } from "react-router-dom"
+import { useLocation, useNavigate } from "react-router-dom"
 import { useSelector } from "react-redux"
 import { usePlatforms } from "@/hooks/usePlatforms"
 import { useConnector } from "@/hooks/useConnector"
@@ -23,14 +23,14 @@ import {
   getGrantParamsFromSearchParams,
 } from "@/lib/grant-params"
 import { getPlatformRegistryEntry } from "@/lib/platform/utils"
-import { DEV_FLAGS } from "@/config/dev-flags"
 import {
-  testConnectedApps,
   testConnectedPlatforms,
   testPlatforms,
-} from "./fixtures"
+} from "./home-debug-fixtures"
+import { isHomeUiDebugEnabled, resolveHomeUiDebugRuns } from "./home-ui-debug"
 
 export function Home() {
+  const location = useLocation()
   const navigate = useNavigate()
   const {
     platforms,
@@ -38,7 +38,7 @@ export function Home() {
     loadPlatforms,
     refreshConnectedStatus,
   } = usePlatforms()
-  const { startImport } = useConnector()
+  const { startImport, stopExport } = useConnector()
   const { checkForUpdates } = useConnectorUpdates()
   const { connectedApps, fetchConnectedApps } = useConnectedApps()
   const personalServer = usePersonalServer()
@@ -53,18 +53,8 @@ export function Home() {
     { value: "apps", label: "Connected apps" },
   ]
 
-  const displayPlatforms =
-    platforms.length > 0
-      ? platforms
-      : DEV_FLAGS.useHomeTestFixtures
-        ? testPlatforms
-        : []
-  const displayConnectedApps =
-    connectedApps.length > 0
-      ? connectedApps
-      : DEV_FLAGS.useHomeTestFixtures
-        ? testConnectedApps
-        : []
+  const displayPlatforms = platforms
+  const displayConnectedApps = connectedApps
 
   // Fetch connected apps from Personal Server when it becomes available
   useEffect(() => {
@@ -128,6 +118,17 @@ export function Home() {
     [startImport]
   )
 
+  const handleStopImport = useCallback(
+    async (runId: string) => {
+      try {
+        await stopExport(runId)
+      } catch (error) {
+        console.error("Stop import failed:", error)
+      }
+    },
+    [stopExport]
+  )
+
   const handleTestDeepLink = useCallback(() => {
     const trimmed = deepLinkInput.trim()
     if (!trimmed) return
@@ -144,16 +145,27 @@ export function Home() {
   }, [deepLinkInput, navigate])
 
   const availablePlatforms = useMemo(() => {
-    if (DEV_FLAGS.useHomeTestFixtures && platforms.length === 0) {
+    const homeUiDebugEnabled = isHomeUiDebugEnabled(location.search)
+    if (homeUiDebugEnabled && displayPlatforms.length === 0) {
       return testPlatforms
     }
     return displayPlatforms
-  }, [displayPlatforms, platforms.length])
+  }, [displayPlatforms, location.search])
+
+  const displayRuns = useMemo(
+    () =>
+      resolveHomeUiDebugRuns({
+        runs,
+        platforms: availablePlatforms,
+        search: location.search,
+      }),
+    [availablePlatforms, location.search, runs]
+  )
 
   const connectedCanonicalIdsFromRuns = useMemo(
     () =>
       new Set(
-        runs
+        displayRuns
           .filter(run => run.status === "success" && Boolean(run.exportPath))
           .map(
             run =>
@@ -165,12 +177,12 @@ export function Home() {
           )
           .filter((id): id is string => Boolean(id))
       ),
-    [runs]
+    [displayRuns]
   )
 
   // Separate available platforms (memoized to avoid re-filtering on every render)
   const connectedPlatformsList = useMemo(() => {
-    if (DEV_FLAGS.useHomeTestFixtures && platforms.length === 0) {
+    if (isHomeUiDebugEnabled(location.search) && displayPlatforms.length === 0) {
       return testConnectedPlatforms
     }
     return displayPlatforms.filter(platform => {
@@ -182,7 +194,7 @@ export function Home() {
     connectedCanonicalIdsFromRuns,
     displayPlatforms,
     isPlatformConnected,
-    platforms.length,
+    location.search,
   ])
 
   return (
@@ -205,7 +217,7 @@ export function Home() {
         <TabsContent value="sources" className="space-y-w8">
           <ConnectedSourcesList
             platforms={connectedPlatformsList}
-            runs={runs}
+            runs={displayRuns}
             headline="Your imported data"
             onOpenRuns={platform =>
               navigate(
@@ -218,8 +230,9 @@ export function Home() {
           />
           <AvailableSourcesList
             platforms={availablePlatforms}
-            runs={runs}
+            runs={displayRuns}
             onExport={handleImportSource}
+            onStopRun={handleStopImport}
             connectedPlatformIds={connectedPlatformsList.map(p => p.id)}
           />
         </TabsContent>

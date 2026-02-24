@@ -7,7 +7,7 @@
 ## Files
 
 - `index.tsx`: route entry, tab layout, hook orchestration.
-- `fixtures.ts`: optional test data for empty states.
+- `home-debug-fixtures.ts`: DEV-only fixture data for Home debug scenarios.
 - `components/BrowserSetupSection.tsx`: browser availability and download UI.
 - `components/available-sources-list.tsx`: available connector cards.
 - `components/connected-sources-list.tsx`: connected sources list and runs link.
@@ -38,13 +38,10 @@
 
 ## Mock system (dev)
 
-- `VITE_USE_HOME_TEST_FIXTURES=true` swaps in fixture data for connected apps and sources.
-- Connected apps open in the browser using the same rules as Data Apps:
-  - `VITE_USE_RICKROLL_MOCK=true` forces RickRoll for all apps.
-  - Otherwise, live apps must define `externalUrl` in the app registry.
-  - Outside test/mock mode, connected apps do not open a URL.
+- `homeDebug=1&scenario=<name>` (URL params) enables Home UI debug scenarios.
+- When Home debug is enabled and live platforms are empty, fixture data is used.
 
 ## Notes
 
 - Not part of the grant flow.
-- Uses optional test fixtures when platform data is empty.
+- Uses DEV-only Home debug fixtures when `homeDebug` is enabled.

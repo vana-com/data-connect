@@ -1,6 +1,7 @@
 import type { ConnectedApp, Platform } from "@/types"
 
-// Used when DEV_FLAGS.useHomeTestFixtures is true (see dev-flags.ts).
+// DEV/UI debug fixtures for Home surfaces only.
+// Not production data; safe to change/remove as UI scenarios evolve.
 export const testPlatforms: Platform[] = [
   {
     id: "instagram",
@@ -82,7 +83,7 @@ export const testConnectedPlatforms: Platform[] = [
   },
 ]
 
-// When useHomeTestFixtures: Connected Apps list uses testConnectedApps
+// DEV/UI debug sample for Connected Apps.
 export const testConnectedApps: ConnectedApp[] = [
   {
     id: "rickroll",

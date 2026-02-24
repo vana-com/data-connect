@@ -86,11 +86,11 @@ export function SourcePreviewCard({
             {previewError}
           </Text>
         ) : preview ? (
-          <pre className="font-mono text-sm leading-6 text-foreground/80">
+          <pre className="font-mono text-compact leading-6 text-foreground/80">
             {preview.previewJson}
           </pre>
         ) : (
-          <pre className="font-mono text-sm leading-6 text-foreground/80">
+          <pre className="font-mono text-compact leading-6 text-foreground/80">
             {fallbackPreviewJson}
           </pre>
         )}

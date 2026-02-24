@@ -1,8 +1,7 @@
 export const LINKS = {
   docs: "https://github.com/vana-com/data-connect",
   appBuilderDocs: "https://github.com/vana-com/data-connect",
-  appBuilderExample:
-    "https://github.com/vana-com/vana-connect/tree/main/examples/nextjs-starter",
+  appBuilderExample: "https://github.com/vana-com/vana-connect-starter",
   appBuilderRegistration: "https://connect.vana.org/admin",
   githubRepo: "https://github.com/vana-com/data-connect",
   vanaDocs: "https://docs.vana.org",

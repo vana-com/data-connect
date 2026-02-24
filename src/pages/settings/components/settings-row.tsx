@@ -72,7 +72,7 @@ export function SettingsRow({
     <div data-component="settings-row">
       <div
         className={cn(
-          "flex gap-3 px-4 py-3",
+          "flex gap-3 px-4 py-3 h-row",
           // descriptionContent ? "items-start" : "items-center",
           "items-center",
           className

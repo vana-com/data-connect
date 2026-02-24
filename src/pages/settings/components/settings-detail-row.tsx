@@ -36,8 +36,9 @@ export function SettingsDetailRow({
 
   return (
     <div
+      data-slot="settings-detail-row"
       className={cn(
-        "flex items-center justify-between gap-4 py-4",
+        "flex items-center justify-between gap-4 py-4 h-tab",
         !isLast && "border-b border-border"
       )}
     >

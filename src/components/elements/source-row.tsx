@@ -96,7 +96,7 @@ export function SourceStack({
 
   return (
     <div className="w-full">
-      <div className="h-[72px] flex items-start border-b">
+      <div className="h-[96px] flex items-start border-b">
         <div className="p-2">
           <PlatformIcon
             iconName={iconName}
@@ -104,7 +104,7 @@ export function SourceStack({
             className={cn("p-3", iconClassName)}
           />
         </div>
-        <div className="min-w-0 flex-1 p-2">{infoSlot}</div>
+        <div className="min-w-0 flex-1 p-2.5">{infoSlot}</div>
       </div>
 
       {/* Bottom */}

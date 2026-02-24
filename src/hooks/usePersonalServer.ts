@@ -25,6 +25,36 @@ const MAX_RESTART_ATTEMPTS = 3;
 let _restartCount = 0;
 let _lastStartedWallet: string | null = null;
 let _lastMasterKeySignature: string | null = null;
+const FALLBACK_START_ERROR = 'Failed to start Personal Server';
+
+function getSafeErrorMessage(error: unknown): string {
+  if (error instanceof Error && error.message) {
+    if (error.message.includes('cyclic structures')) {
+      return FALLBACK_START_ERROR;
+    }
+    return error.message;
+  }
+
+  if (typeof error === 'string') {
+    if (error.includes('cyclic structures')) {
+      return FALLBACK_START_ERROR;
+    }
+    return error;
+  }
+
+  try {
+    const serialized = JSON.stringify(error);
+    if (!serialized || serialized === '{}') {
+      return FALLBACK_START_ERROR;
+    }
+    if (serialized.includes('cyclic structures')) {
+      return FALLBACK_START_ERROR;
+    }
+    return serialized;
+  } catch {
+    return FALLBACK_START_ERROR;
+  }
+}
 
 export function usePersonalServer() {
   const { walletAddress, masterKeySignature } = useSelector(
@@ -70,7 +100,7 @@ export function usePersonalServer() {
       console.error('[PersonalServer] Failed to start:', err);
       running.current = false;
       _sharedStatus = 'error';
-      _sharedError = err instanceof Error ? err.message : String(err);
+      _sharedError = getSafeErrorMessage(err);
       setStatus('error');
       setError(_sharedError);
     }
@@ -128,9 +158,9 @@ export function usePersonalServer() {
       console.error('[PersonalServer] Error:', event.payload.message);
       running.current = false;
       _sharedStatus = 'error';
-      _sharedError = event.payload.message;
+      _sharedError = getSafeErrorMessage(event.payload.message);
       setStatus('error');
-      setError(event.payload.message);
+      setError(_sharedError);
     }).then((fn) => unlisteners.push(fn));
 
     listen<{ exitCode: number | null; crashed: boolean }>('personal-server-exited', (event) => {

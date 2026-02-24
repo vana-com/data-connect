@@ -279,12 +279,12 @@ export function SettingsAbout({
               }
               right={
                 personalServer.status === "running" ? (
-                  <SettingsRowAction onClick={onStopPersonalServer}>
+                  <SettingsRowAction onClick={() => onStopPersonalServer()}>
                     Stop
                   </SettingsRowAction>
                 ) : (
                   <SettingsRowAction
-                    onClick={onRestartPersonalServer}
+                    onClick={() => onRestartPersonalServer()}
                     isLoading={personalServer.status === "starting"}
                     loadingLabel="Starting…"
                   >

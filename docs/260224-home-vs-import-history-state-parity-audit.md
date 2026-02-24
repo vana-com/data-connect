@@ -138,3 +138,4 @@ Then keep Home and Import History as presentation-specific consumers of the same
 ### Specific TODOs
 
 - [ ] Fix Import History row `Reveal` action so clicking it opens the user's Personal Server folder in the OS file manager (not just row-level UI feedback/no-op). Use shared path/open helpers (`src/lib/tauri-paths.ts`, `src/lib/open-resource.ts`) so this works correctly in Tauri on the user's machine.
+- [ ] Add import-duration expectation parity: Home connecting card and Import History running row should both show consistent "progress expectation" copy (for example: `X items found · Xm elapsed · Can take a while`) via shared run-state policy helpers.

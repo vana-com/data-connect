@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react"
+import { useEffect, useMemo, useState } from "react"
 import { ArrowUpRight, PauseIcon } from "lucide-react"
 import {
   ActionButton,
@@ -38,6 +38,7 @@ export function AvailableSourcesList({
   connectedPlatformIds,
 }: AvailableSourcesListProps) {
   const [stoppingRunId, setStoppingRunId] = useState<string | null>(null)
+  const [nowMs, setNowMs] = useState(() => Date.now())
   const connectEntries = useMemo(() => getConnectSourceEntries(), [])
   const connectedPlatformIdSet = useMemo(
     () => new Set(connectedPlatformIds),
@@ -56,6 +57,19 @@ export function AvailableSourcesList({
 
   const hasBlockingRun = useMemo(() => {
     return runs.some(run => isBlockingRun(run))
+  }, [runs])
+
+  useEffect(() => {
+    const hasRunning = runs.some(run => run.status === "running")
+    if (!hasRunning) return
+
+    const interval = window.setInterval(() => {
+      setNowMs(Date.now())
+    }, 15000)
+
+    return () => {
+      window.clearInterval(interval)
+    }
   }, [runs])
 
   const availableCards = useMemo(
@@ -123,6 +137,10 @@ export function AvailableSourcesList({
             const connectingAccountLine = isConnecting
               ? getConnectingAccountLine(connectingRun)
               : undefined
+            const connectingExpectationLine =
+              isConnecting && connectingRun
+                ? getConnectingExpectationLine(connectingRun, nowMs)
+                : undefined
             const isPausedByAnotherRun =
               hasBlockingRun && isAvailable && !isConnecting
 
@@ -131,6 +149,11 @@ export function AvailableSourcesList({
                 {connectingAccountLine ? (
                   <Text as="p" intent="fine" muted truncate align="right">
                     {connectingAccountLine}
+                  </Text>
+                ) : null}
+                {connectingExpectationLine ? (
+                  <Text as="p" intent="fine" muted truncate align="right">
+                    {connectingExpectationLine}
                   </Text>
                 ) : null}
                 <Text as="p" intent="fine" muted truncate align="right">
@@ -227,6 +250,25 @@ export function AvailableSourcesList({
       </div>
     </section>
   )
+}
+
+function getConnectingExpectationLine(run: Run, nowMs: number): string {
+  if (import.meta.env.DEV && run.id.startsWith("home-debug-")) {
+    return "1438 items · 2m run · ETA 7m"
+  }
+
+  const elapsedMs = nowMs - new Date(run.startDate).getTime()
+  const safeElapsedMs = Number.isFinite(elapsedMs) ? Math.max(0, elapsedMs) : 0
+  const elapsedMinutes = Math.floor(safeElapsedMs / 60000)
+  const elapsedLabel =
+    elapsedMinutes < 1 ? "<1m elapsed" : `${elapsedMinutes}m elapsed`
+
+  const itemCount = run.itemCount
+  if (typeof itemCount === "number" && itemCount >= 0) {
+    return `${new Intl.NumberFormat().format(itemCount)} items found · ${elapsedLabel} · Can take a while`
+  }
+
+  return `Import in progress · ${elapsedLabel} · Can take a while`
 }
 
 const Header = () => {

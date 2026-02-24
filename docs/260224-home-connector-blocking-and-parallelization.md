@@ -41,6 +41,37 @@ The home "Import sources" grid should:
 - Add long-run UX improvements (ETA/confidence band, progress semantics, "safe to keep using app" messaging).
 - Keep `available-sources-list.tsx` under watch for complexity growth; split policy helpers/view-model if readability drops further.
 
+### Size-aware ETA bands (proposal)
+
+Goal: set user expectations without fake precision by showing coarse, confidence-labeled time bands.
+
+Lead copy on Home running card:
+
+- `Usually 10-25 min for this account`
+- `7m elapsed · You can keep using the app`
+
+How to compute:
+
+1. Build history windows from completed runs with duration:
+   - key by `platformId` + account identity when available
+   - fallback key by `platformId` only when account identity is missing
+2. Make estimate size-aware:
+   - use prior `itemsExported` + duration to derive throughput (items/min)
+   - use live `itemCount` growth + phase to classify current run as small/medium/large
+3. Emit ETA as a range, not a point:
+   - use percentile band (p25-p75) for enough samples
+   - sparse samples fall back to wider `~X+ min` copy
+4. Attach confidence level:
+   - high: >= 5 similar runs
+   - medium: 2-4 runs
+   - low: 0-1 runs (show only coarse guidance)
+
+Guardrails:
+
+- Never show a precise countdown (`3m 12s left`).
+- Prefer truthful uncertainty language (`Usually`, `Can take a while`).
+- If signal is weak, show elapsed-only plus reassurance copy.
+
 ### Open verification gap
 
 - `connectingAccountLine` is not fully production-plumbed yet.

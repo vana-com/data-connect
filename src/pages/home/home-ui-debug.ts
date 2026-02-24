@@ -43,6 +43,12 @@ const HOME_UI_DEBUG_SCENARIOS: Record<HomeUiDebugScenario, Partial<Run>> = {
   },
 }
 
+export const HOME_UI_DEBUG_SCENARIO_VALUES: HomeUiDebugScenario[] = [
+  "blocking-waiting",
+  "background",
+  "phase-label",
+]
+
 function isHomeUiDebugScenario(
   value: string | null
 ): value is HomeUiDebugScenario {

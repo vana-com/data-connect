@@ -24,10 +24,19 @@ import {
 } from "@/lib/grant-params"
 import { getPlatformRegistryEntry } from "@/lib/platform/utils"
 import {
+  CONNECTED_SOURCES_UI_DEBUG_SCENARIO_VALUES,
+  isConnectedSourcesUiDebugEnabled,
+  resolveConnectedSourcesUiDebugPlatforms,
+} from "./connected-sources-ui-debug"
+import {
   testConnectedPlatforms,
   testPlatforms,
 } from "./home-debug-fixtures"
-import { isHomeUiDebugEnabled, resolveHomeUiDebugRuns } from "./home-ui-debug"
+import {
+  HOME_UI_DEBUG_SCENARIO_VALUES,
+  isHomeUiDebugEnabled,
+  resolveHomeUiDebugRuns,
+} from "./home-ui-debug"
 
 export function Home() {
   const location = useLocation()
@@ -54,6 +63,18 @@ export function Home() {
   ]
   const homeUiDebugEnabled = useMemo(
     () => isHomeUiDebugEnabled(location.search),
+    [location.search]
+  )
+  const currentHomeUiDebugScenario = useMemo(
+    () => new URLSearchParams(location.search).get("scenario"),
+    [location.search]
+  )
+  const connectedSourcesUiDebugEnabled = useMemo(
+    () => isConnectedSourcesUiDebugEnabled(location.search),
+    [location.search]
+  )
+  const currentConnectedSourcesUiDebugScenario = useMemo(
+    () => new URLSearchParams(location.search).get("connectedSourcesScenario"),
     [location.search]
   )
 
@@ -148,6 +169,25 @@ export function Home() {
     }
   }, [deepLinkInput, navigate])
 
+  const setHomeUiDebugScenario = useCallback(
+    (scenario: string | null) => {
+      const nextParams = new URLSearchParams(location.search)
+      if (scenario) nextParams.set("scenario", scenario)
+      else nextParams.delete("scenario")
+      navigate({ search: `?${nextParams.toString()}` }, { replace: true })
+    },
+    [location.search, navigate]
+  )
+  const setConnectedSourcesUiDebugScenario = useCallback(
+    (scenario: string | null) => {
+      const nextParams = new URLSearchParams(location.search)
+      if (scenario) nextParams.set("connectedSourcesScenario", scenario)
+      else nextParams.delete("connectedSourcesScenario")
+      navigate({ search: `?${nextParams.toString()}` }, { replace: true })
+    },
+    [location.search, navigate]
+  )
+
   const availablePlatforms = useMemo(() => {
     if (homeUiDebugEnabled && displayPlatforms.length === 0) {
       return testPlatforms
@@ -204,6 +244,14 @@ export function Home() {
     () => connectedPlatformsList.map(platform => platform.id),
     [connectedPlatformsList]
   )
+  const connectedSourcesPlatforms = useMemo(
+    () =>
+      resolveConnectedSourcesUiDebugPlatforms({
+        platforms: connectedPlatformsList,
+        search: location.search,
+      }),
+    [connectedPlatformsList, location.search]
+  )
 
   const handleOpenRuns = useCallback(
     (platform: Platform) => {
@@ -236,7 +284,7 @@ export function Home() {
         {/* SOURCES */}
         <TabsContent value="sources" className="space-y-w8">
           <ConnectedSourcesList
-            platforms={connectedPlatformsList}
+            platforms={connectedSourcesPlatforms}
             runs={displayRuns}
             headline="Your imported data"
             onOpenRuns={handleOpenRuns}
@@ -259,32 +307,87 @@ export function Home() {
       {/* DEV ONLY SHORTCUT: RickRoll /connect link */}
       {import.meta.env.DEV && (
         <DebugTogglePanel title="Home debug">
-          <div className="flex flex-col gap-3">
-            <div className="flex flex-wrap gap-2">
-              <Button type="button" size="xs" variant="outline" asChild>
-                <a href="/connect?sessionId=grant-session-1770358735328&appId=rickroll&scopes=%5B%22read%3Achatgpt-conversations%22%5D">
-                  Open Rickroll connect
-                </a>
-              </Button>
+          <div className="grid grid-cols-2 divide-x">
+            <div className="space-y-2 pr-4">
+              <p className="text-xs font-medium">Home UI scenario</p>
+              <div className="flex flex-wrap gap-2">
+                {HOME_UI_DEBUG_SCENARIO_VALUES.map(scenario => (
+                  <Button
+                    key={scenario}
+                    type="button"
+                    size="xs"
+                    variant={currentHomeUiDebugScenario === scenario ? "default" : "outline"}
+                    onClick={() => setHomeUiDebugScenario(scenario)}
+                  >
+                    {scenario}
+                  </Button>
+                ))}
+                <Button
+                  type="button"
+                  size="xs"
+                  variant={homeUiDebugEnabled ? "outline" : "default"}
+                  onClick={() => setHomeUiDebugScenario(null)}
+                >
+                  real
+                </Button>
+              </div>
+              <div className="space-y-2 pt-1">
+                <p className="text-xs font-medium">Connected sources UI</p>
+                <div className="flex flex-wrap gap-2">
+                  {CONNECTED_SOURCES_UI_DEBUG_SCENARIO_VALUES.map(scenario => (
+                    <Button
+                      key={scenario}
+                      type="button"
+                      size="xs"
+                      variant={
+                        currentConnectedSourcesUiDebugScenario === scenario
+                          ? "default"
+                          : "outline"
+                      }
+                      onClick={() => setConnectedSourcesUiDebugScenario(scenario)}
+                    >
+                      {scenario}
+                    </Button>
+                  ))}
+                  <Button
+                    type="button"
+                    size="xs"
+                    variant={connectedSourcesUiDebugEnabled ? "outline" : "default"}
+                    onClick={() => setConnectedSourcesUiDebugScenario(null)}
+                  >
+                    real
+                  </Button>
+                </div>
+              </div>
             </div>
-            <form
-              className="flex flex-col gap-2"
-              onSubmit={e => {
-                e.preventDefault()
-                handleTestDeepLink()
-              }}
-            >
-              <input
-                type="text"
-                value={deepLinkInput}
-                onChange={e => setDeepLinkInput(e.target.value)}
-                placeholder="vana://connect?sessionId=...&secret=..."
-                className="rounded border px-2 py-1 text-xs"
-              />
-              <Button type="submit" size="xs" variant="outline">
-                Test deep link
-              </Button>
-            </form>
+            <div className="space-y-3 pl-4">
+              <p className="text-xs font-medium">Grant flow</p>
+              <div className="flex flex-wrap gap-2">
+                <Button type="button" size="xs" variant="outline" asChild>
+                  <a href="/connect?sessionId=grant-session-1770358735328&appId=rickroll&scopes=%5B%22read%3Achatgpt-conversations%22%5D">
+                    Open Rickroll connect
+                  </a>
+                </Button>
+              </div>
+              <form
+                className="flex flex-col gap-2"
+                onSubmit={e => {
+                  e.preventDefault()
+                  handleTestDeepLink()
+                }}
+              >
+                <input
+                  type="text"
+                  value={deepLinkInput}
+                  onChange={e => setDeepLinkInput(e.target.value)}
+                  placeholder="vana://connect?sessionId=...&secret=..."
+                  className="rounded border px-2 py-1 text-xs"
+                />
+                <Button type="submit" size="xs" variant="outline">
+                  Test deep link
+                </Button>
+              </form>
+            </div>
           </div>
         </DebugTogglePanel>
       )}

@@ -113,7 +113,22 @@ export function SettingsPersonalServer({
               }
             />
             <SettingsDetailRow
+              label="Public endpoint"
+              labelInfo="Public URL that routes requests to your Personal Server."
+              value={
+                <SettingsRowDescriptionCopy
+                  value={endpoint}
+                  intent="small"
+                  emptyLabel="Not available yet"
+                  copyLabel="Copy URL"
+                  // Callum says I know but don't touch please! :)
+                  buttonClassName="max-h-[21.17px]"
+                />
+              }
+            />
+            <SettingsDetailRow
               label="Server controls"
+              isLast
               value={
                 previewStatus === "running" ? (
                   <SettingsRowAction onClick={() => onStopPersonalServer()}>
@@ -128,21 +143,6 @@ export function SettingsPersonalServer({
                     Start
                   </SettingsRowAction>
                 )
-              }
-            />
-            <SettingsDetailRow
-              label="Public endpoint"
-              isLast
-              labelInfo="Public URL that routes requests to your Personal Server."
-              value={
-                <SettingsRowDescriptionCopy
-                  value={endpoint}
-                  intent="small"
-                  emptyLabel="Not available yet"
-                  copyLabel="Copy URL"
-                  // Callum says I know but don't touch please! :)
-                  buttonClassName="max-h-[21.17px]"
-                />
               }
             />
           </div>

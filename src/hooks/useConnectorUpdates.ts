@@ -2,12 +2,10 @@ import { useCallback, useMemo, useState } from 'react';
 import { invoke } from '@tauri-apps/api/core';
 import { useDispatch, useSelector } from 'react-redux';
 import {
-  setConnectorUpdates,
-  setIsCheckingUpdates,
   removeConnectorUpdate,
 } from '../state/store';
 import type { RootState } from '../state/store';
-import type { ConnectorUpdateInfo } from '../types';
+import { checkConnectorUpdates } from './check-connector-updates';
 
 export function useConnectorUpdates() {
   const dispatch = useDispatch();
@@ -24,24 +22,15 @@ export function useConnectorUpdates() {
   const checkForUpdates = useCallback(
     async (force = false) => {
       setError(null);
-      dispatch(setIsCheckingUpdates(true));
-
-      try {
-        const result = await invoke<ConnectorUpdateInfo[]>(
-          'check_connector_updates',
-          { force }
-        );
-        dispatch(setConnectorUpdates(result));
-        return result;
-      } catch (err) {
-        const errorMsg =
-          err instanceof Error ? err.message : 'Failed to check for updates';
-        setError(errorMsg);
-        console.error('Failed to check for updates:', err);
-        return [];
-      } finally {
-        dispatch(setIsCheckingUpdates(false));
-      }
+      return checkConnectorUpdates(dispatch, {
+        force,
+        onError: err => {
+          const errorMsg =
+            err instanceof Error ? err.message : 'Failed to check for updates';
+          setError(errorMsg);
+          console.error('Failed to check for updates:', err);
+        },
+      });
     },
     [dispatch]
   );

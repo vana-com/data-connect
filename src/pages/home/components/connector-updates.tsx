@@ -15,6 +15,10 @@ import { cn } from "@/lib/utils"
 import { useConnectorUpdates } from "@/hooks/useConnectorUpdates"
 import type { ConnectorUpdateInfo } from "@/types"
 
+// NOTE(callum): This component is intentionally not mounted right now.
+// We keep it as a ready-to-reuse UI surface for connector update/install flows.
+// The app still performs silent background checks at startup via useInitialize.
+
 const updatesPanelClassName = cn([
   // layout
   "space-y-3",

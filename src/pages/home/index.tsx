@@ -4,7 +4,6 @@ import { useLocation, useNavigate } from "react-router-dom"
 import { useSelector } from "react-redux"
 import { usePlatforms } from "@/hooks/usePlatforms"
 import { useConnector } from "@/hooks/useConnector"
-import { useConnectorUpdates } from "@/hooks/useConnectorUpdates"
 import { useConnectedApps } from "@/hooks/useConnectedApps"
 import { usePersonalServer } from "@/hooks/usePersonalServer"
 import type { Platform, RootState } from "@/types"
@@ -15,7 +14,6 @@ import { Tabs, TabsContent } from "@/components/ui/tabs"
 import { ConnectedAppsList } from "@/pages/home/components/connected-apps-list"
 import { ConnectedSourcesList } from "@/pages/home/components/connected-sources-list"
 import { AvailableSourcesList } from "@/pages/home/components/available-sources-list"
-import { ConnectorUpdates } from "@/pages/home/components/connector-updates"
 import { Button } from "@/components/ui/button"
 import { ROUTES } from "@/config/routes"
 import {
@@ -44,11 +42,9 @@ export function Home() {
   const {
     platforms,
     isPlatformConnected,
-    loadPlatforms,
     refreshConnectedStatus,
   } = usePlatforms()
   const { startImport, stopExport } = useConnector()
-  const { checkForUpdates } = useConnectorUpdates()
   const { connectedApps, fetchConnectedApps } = useConnectedApps()
   const personalServer = usePersonalServer()
   const runs = useSelector((state: RootState) => state.app.runs)
@@ -92,11 +88,6 @@ export function Home() {
     personalServer.devToken,
     fetchConnectedApps,
   ])
-
-  // Derived state: recently completed platform IDs (memoized, not effect-stored)
-  useEffect(() => {
-    checkForUpdates()
-  }, [checkForUpdates])
 
   useEffect(() => {
     const frame = requestAnimationFrame(() => setEnableTabMotion(true))
@@ -267,9 +258,6 @@ export function Home() {
 
   return (
     <PageContainer>
-      {/* Connector Updates - show when browser is ready */}
-      <ConnectorUpdates onReloadPlatforms={loadPlatforms} />
-
       {/* Tabs */}
       <Tabs value={activeTab} onValueChange={setActiveTab}>
         <MotionConfig reducedMotion={enableTabMotion ? "never" : "always"}>

@@ -4,7 +4,6 @@ import { createMemoryRouter, RouterProvider } from "react-router-dom"
 import { ROUTES } from "@/config/routes"
 import { Home } from "./index"
 
-const mockCheckForUpdates = vi.fn()
 const mockUsePlatforms = vi.fn()
 const mockStartImport = vi.fn()
 const mockStopExport = vi.fn()
@@ -44,22 +43,6 @@ vi.mock("@/hooks/useConnector", () => ({
   useConnector: () => ({
     startImport: mockStartImport,
     stopExport: mockStopExport,
-  }),
-}))
-
-vi.mock("@/hooks/useConnectorUpdates", () => ({
-  useConnectorUpdates: () => ({
-    updates: [],
-    isCheckingUpdates: false,
-    error: null,
-    checkForUpdates: mockCheckForUpdates,
-    downloadConnector: vi.fn(),
-    isDownloading: () => false,
-    lastUpdateCheck: null,
-    hasUpdates: false,
-    updateCount: 0,
-    newConnectorCount: 0,
-    updateableCount: 0,
   }),
 }))
 
@@ -108,7 +91,6 @@ function renderHome() {
 
 describe("Home", () => {
   beforeEach(() => {
-    mockCheckForUpdates.mockClear()
     mockStartImport.mockReset()
     mockStopExport.mockReset()
     mockNavigate.mockReset()
@@ -131,16 +113,12 @@ describe("Home", () => {
     cleanup()
   })
 
-  it("shows sources tab content and checks for updates", async () => {
+  it("shows sources tab content", async () => {
     const { getByRole } = renderHome()
 
     expect(
       getByRole("heading", { name: /your imported data/i })
     ).toBeTruthy()
-
-    await waitFor(() => {
-      expect(mockCheckForUpdates).toHaveBeenCalled()
-    })
   })
 
   it("starts import without navigating to import history", async () => {

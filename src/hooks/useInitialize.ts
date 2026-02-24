@@ -1,9 +1,13 @@
 import { useEffect, useRef } from 'react';
 import { invoke } from '@tauri-apps/api/core';
 import { useDispatch, useSelector } from 'react-redux';
-import { setRuns } from '../state/store';
+import {
+  setConnectorUpdates,
+  setIsCheckingUpdates,
+  setRuns,
+} from '../state/store';
 import type { RootState } from '../state/store';
-import type { Run } from '../types';
+import type { ConnectorUpdateInfo, Run } from '../types';
 interface SavedRun {
   id: string;
   platformId: string;
@@ -68,6 +72,22 @@ export function useInitialize() {
       }
     };
 
+    const checkConnectorUpdates = async () => {
+      dispatch(setIsCheckingUpdates(true));
+      try {
+        const updates = await invoke<ConnectorUpdateInfo[]>('check_connector_updates', {
+          force: false,
+        });
+        dispatch(setConnectorUpdates(updates));
+      } catch (error) {
+        // Silent background check: failures are intentionally non-blocking.
+        console.error('[Initialize] Failed to check connector updates:', error);
+      } finally {
+        dispatch(setIsCheckingUpdates(false));
+      }
+    };
+
     loadSavedRuns();
+    checkConnectorUpdates();
   }, [dispatch, currentRuns]);
 }

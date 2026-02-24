@@ -65,6 +65,18 @@
       "../personal-server/dist/personal-server*": "personal-server/dist/",
       "../personal-server/dist/node_modules/": "personal-server/dist/node_modules/"
     },
+    "linux": {
+      "deb": {
+        "desktopTemplate": "desktop-template.desktop",
+        "postInstallScript": "scripts/post-install.sh",
+        "postRemoveScript": "scripts/post-remove.sh"
+      },
+      "rpm": {
+        "desktopTemplate": "desktop-template.desktop",
+        "postInstallScript": "scripts/post-install.sh",
+        "postRemoveScript": "scripts/post-remove.sh"
+      }
+    },
     "windows": {
       "nsis": {
         "installMode": "currentUser"

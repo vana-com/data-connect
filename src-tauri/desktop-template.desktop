@@ -1,0 +1,21 @@
+{{!--
+  Custom desktop template: adds %u to Exec for deep-link URL handling.
+  Tauri's default template omits %u, which breaks KDE/KIO protocol dispatch.
+  See: https://github.com/tauri-apps/tauri/issues/10570
+  See: https://github.com/tauri-apps/tauri/issues/5176
+  Upstream default: https://github.com/tauri-apps/tauri/blob/dev/crates/tauri-bundler/src/bundle/linux/freedesktop/main.desktop
+--}}
+[Desktop Entry]
+Categories={{categories}}
+{{#if comment}}
+Comment={{comment}}
+{{/if}}
+Exec={{exec}} %u
+StartupWMClass={{exec}}
+Icon={{icon}}
+Name={{name}}
+Terminal=false
+Type=Application
+{{#if mime_type}}
+MimeType={{mime_type}}
+{{/if}}

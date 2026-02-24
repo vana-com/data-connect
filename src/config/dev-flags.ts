@@ -1,9 +1,4 @@
-const parseEnvFlag = (value: string | undefined) => value === "true"
-const isTestMode = import.meta.env.MODE === "test"
-
 export const DEV_FLAGS = {
-  // .env.local: VITE_USE_SETTINGS_UI_MOCKS=true
-  // Enable mocked/preview-only Settings UI states (safe default: false).
-  useSettingsUiMocks:
-    !isTestMode && parseEnvFlag(import.meta.env.VITE_USE_SETTINGS_UI_MOCKS),
+  // Legacy flag retained for compatibility; settings UI mocks are disabled.
+  useSettingsUiMocks: false,
 } as const

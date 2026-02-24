@@ -1,10 +1,8 @@
-import { DEV_FLAGS } from "@/config/dev-flags"
 import type { Run } from "@/types"
 
 export type TestImportsUiState = "empty" | "active" | "finished" | "mixed"
 
-export const IMPORT_HISTORY_UI_STATE: "real" | TestImportsUiState =
-  DEV_FLAGS.useSettingsUiMocks ? "mixed" : "real"
+export const IMPORT_HISTORY_UI_STATE: "real" | TestImportsUiState = "real"
 
 export const TEST_ACTIVE_IMPORTS: Run[] = [
   {

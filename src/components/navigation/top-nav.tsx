@@ -11,19 +11,12 @@ import { ROUTES } from "@/config/routes"
 import { cn } from "@/lib/classes"
 import { buildSettingsUrl } from "@/pages/settings/url"
 import type { LucideIcon } from "lucide-react"
-import {
-  BookOpenIcon,
-  HomeIcon,
-  ServerIcon,
-  UserRoundCogIcon,
-} from "lucide-react"
+import { HomeIcon, ServerIcon, UserRoundCogIcon, BoxIcon } from "lucide-react"
 import type { CSSProperties } from "react"
-import { useSelector } from "react-redux"
 import { Link, NavLink } from "react-router-dom"
-import type { RootState } from "@/state/store"
 
 type NavItem = {
-  id: "home" | "docs" | "server" | "settings"
+  id: "home" | "apps" | "docs" | "server" | "settings"
   to: string
   label: string
   Icon: LucideIcon | React.ComponentType<{ className?: string }>
@@ -35,15 +28,15 @@ type PersonalServerStatus = "stopped" | "starting" | "running" | "error"
 
 const navItems: NavItem[] = [
   { id: "home", to: ROUTES.home, label: "Home", Icon: HomeIcon },
-  // { to: ROUTES.apps, label: "Apps", Icon: BoxIcon },
+  { id: "apps", to: ROUTES.apps, label: "Apps", Icon: BoxIcon },
   // { to: ROUTES.mcp, label: "MCP", Icon: IconMcp },
-  {
-    id: "docs",
-    to: "https://github.com/vana-com/data-connect",
-    label: "Docs",
-    Icon: BookOpenIcon,
-    external: true,
-  },
+  // {
+  //   id: "docs",
+  //   to: "https://github.com/vana-com/data-connect",
+  //   label: "Docs",
+  //   Icon: BookOpenIcon,
+  //   external: true,
+  // },
   // { to: "/activity", label: "Activity", Icon: ActivityIcon },
   {
     id: "server",
@@ -51,7 +44,12 @@ const navItems: NavItem[] = [
     label: "Server",
     Icon: ServerIcon,
   },
-  { id: "settings", to: ROUTES.settings, label: "Settings", Icon: UserRoundCogIcon },
+  {
+    id: "settings",
+    to: ROUTES.settings,
+    label: "Settings",
+    Icon: UserRoundCogIcon,
+  },
 ]
 
 function getStatusDotClassName(status: PersonalServerStatus) {
@@ -71,14 +69,7 @@ interface TopNavProps {
   personalServerStatus: PersonalServerStatus
 }
 
-const selectHasSuccessfulSourceExport = (state: RootState) =>
-  state.app.runs.some(
-    run => run.status === "success" && Boolean(run.exportPath?.trim())
-  )
-
 export function TopNav({ personalServerStatus }: TopNavProps) {
-  const hasSuccessfulSourceExport = useSelector(selectHasSuccessfulSourceExport)
-
   return (
     <div data-component="top-nav" className="relative z-20 w-full">
       {/* spacer covering the dot pattern, sets the nav under the macOS traffic lights bar */}
@@ -112,8 +103,7 @@ export function TopNav({ personalServerStatus }: TopNavProps) {
         {/* Navigation Icons */}
         <nav className="flex items-center gap-[3px]">
           {navItems.map(({ id, to, label, Icon, external }) => {
-            const shouldShowServerStatus =
-              id === "server" && hasSuccessfulSourceExport
+            const shouldShowServerStatus = id === "server"
             const isStatusPointerItem = id === "server"
             const iconWithStatusDot = (
               <span className="relative inline-flex">
@@ -137,7 +127,7 @@ export function TopNav({ personalServerStatus }: TopNavProps) {
 
             if (external) {
               return (
-                <Tooltip key={to}>
+                <Tooltip key={id}>
                   <TooltipTrigger asChild>
                     <a
                       href={to}
@@ -157,7 +147,7 @@ export function TopNav({ personalServerStatus }: TopNavProps) {
               )
             }
             return (
-              <Tooltip key={to}>
+              <Tooltip key={id}>
                 <TooltipTrigger asChild>
                   {isStatusPointerItem ? (
                     <Link

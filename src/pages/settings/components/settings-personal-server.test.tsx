@@ -28,7 +28,7 @@ describe("SettingsPersonalServer", () => {
 
   const getLocationRowOpenButton = () => {
     const locationRow = screen
-      .getByText("Location")
+      .getByText("Data location")
       .closest('[data-slot="settings-detail-row"]')
     if (!locationRow) {
       throw new Error("Location row not found")

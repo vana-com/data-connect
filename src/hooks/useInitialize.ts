@@ -18,6 +18,7 @@ interface SavedRun {
   itemsExported?: number;
   itemLabel?: string;
   syncedToPersonalServer?: boolean;
+  scope?: string;
 }
 
 export function useInitialize() {
@@ -53,6 +54,7 @@ export function useInitialize() {
           itemsExported: saved.itemsExported,
           itemLabel: saved.itemLabel,
           syncedToPersonalServer: saved.syncedToPersonalServer,
+          scope: saved.scope,
           logs: '',
         }));
 

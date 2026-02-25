@@ -116,7 +116,7 @@ async function deliverRunToPersonalServer(
       scope: ingested[0],
     });
 
-    dispatch(markRunSynced(run.id));
+    dispatch(markRunSynced({ runId: run.id, scope: ingested[0] }));
     debugLog('[Data Delivery] Synced run', run.id, 'scopes:', ingested);
     return true;
   } catch (err) {
@@ -191,7 +191,7 @@ async function persistAndDeliverExport({
       itemLabel: itemLabel ?? null,
       scope: ingested[0],
     });
-    dispatch(markRunSynced(runId));
+    dispatch(markRunSynced({ runId, scope: ingested[0] }));
     debugLog('[Data Delivery] Synced run', runId, 'scopes:', ingested);
   } catch (err) {
     persistedRunIds.delete(runId);

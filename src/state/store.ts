@@ -231,10 +231,16 @@ const appSlice = createSlice({
     setAppConfig(state, action: PayloadAction<Partial<AppConfig>>) {
       state.appConfig = { ...state.appConfig, ...action.payload };
     },
-    markRunSynced(state, action: PayloadAction<string>) {
-      const run = state.runs.find((r) => r.id === action.payload);
+    markRunSynced(
+      state,
+      action: PayloadAction<{ runId: string; scope?: string }>
+    ) {
+      const run = state.runs.find((r) => r.id === action.payload.runId);
       if (run) {
         run.syncedToPersonalServer = true;
+        if (action.payload.scope) {
+          run.scope = action.payload.scope;
+        }
       }
     },
   },

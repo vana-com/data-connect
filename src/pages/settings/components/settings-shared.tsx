@@ -45,7 +45,6 @@ export function SettingsSection({
 interface SettingsCardProps {
   children: ReactNode
   className?: string
-  contentClassName?: string
   divided?: boolean
 }
 
@@ -57,12 +56,11 @@ interface SettingsCardStackProps {
 export function SettingsCard({
   children,
   className,
-  contentClassName,
   divided = false,
 }: SettingsCardProps) {
   const items = divided ? Children.toArray(children) : []
   const content = divided ? (
-    <div className={contentClassName}>
+    <div>
       {items.map((child, index) => (
         <Fragment key={index}>
           {child}
@@ -70,8 +68,6 @@ export function SettingsCard({
         </Fragment>
       ))}
     </div>
-  ) : contentClassName ? (
-    <div className={contentClassName}>{children}</div>
   ) : (
     children
   )
@@ -80,7 +76,8 @@ export function SettingsCard({
     <div
       data-component="settings-card"
       className={cn(
-        "rounded-card overflow-hidden ring ring-border/30 bg-background",
+        "rounded-card ring ring-border/30 bg-background",
+        divided ? "overflow-hidden" : null,
         className
       )}
     >

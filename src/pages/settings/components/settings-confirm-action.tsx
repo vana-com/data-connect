@@ -44,16 +44,16 @@ export function SettingsConfirmAction({
       <AlertDialogContent size="sm">
         <AlertDialogHeader>
           {media ? (
-            <AlertDialogMedia className="bg-transparent">
+            <AlertDialogMedia className="bg-transparent mb-1 mt-1 size-9">
               {media}
             </AlertDialogMedia>
           ) : null}
           <AlertDialogTitle>{title}</AlertDialogTitle>
-          <AlertDialogDescription className="text-small text-foreground-dim">
+          <AlertDialogDescription className="text-small text-foreground">
             {description}
           </AlertDialogDescription>
         </AlertDialogHeader>
-        <AlertDialogFooter>
+        <AlertDialogFooter className="pt-gap">
           <AlertDialogCancel size="sm">Cancel</AlertDialogCancel>
           <AlertDialogAction size="sm" variant="destructive" onClick={onAction}>
             {actionLabel}

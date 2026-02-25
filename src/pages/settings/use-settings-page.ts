@@ -39,6 +39,10 @@ export function useSettingsPage() {
   const [browserStatus, setBrowserStatus] = useState<BrowserStatus | null>(null)
   const [browserSessions, setBrowserSessions] = useState<BrowserSession[]>([])
   const [simulateNoChrome, setSimulateNoChrome] = useState(false)
+  const [clearPersonalServerDataStatus, setClearPersonalServerDataStatus] = useState<
+    "idle" | "deleting" | "success" | "error"
+  >("idle")
+  const [clearPersonalServerDataError, setClearPersonalServerDataError] = useState<string | null>(null)
 
   useEffect(() => {
     let cancelled = false
@@ -205,6 +209,23 @@ export function useSettingsPage() {
     openExternalUrl(accountUrl)
   }, [])
 
+  const clearPersonalServerData = useCallback(async () => {
+    if (clearPersonalServerDataStatus === "deleting") {
+      return
+    }
+
+    setClearPersonalServerDataStatus("deleting")
+    setClearPersonalServerDataError(null)
+    try {
+      await invoke("clear_personal_server_data")
+      await personalServer.stopServer()
+      setClearPersonalServerDataStatus("success")
+    } catch (error) {
+      setClearPersonalServerDataStatus("error")
+      setClearPersonalServerDataError(String(error))
+    }
+  }, [clearPersonalServerDataStatus, personalServer.stopServer])
+
   const setActiveSection = useCallback(
     (nextSection: SettingsSection) => {
       const nextSearchParams = new URLSearchParams(searchParams)
@@ -247,6 +268,9 @@ export function useSettingsPage() {
     onCheckBrowserStatus: checkBrowserStatus,
     onSimulateNoChromeChange: setSimulateNoChrome,
     onClearBrowserSession: handleClearSession,
+    clearPersonalServerDataStatus,
+    clearPersonalServerDataError,
+    onClearPersonalServerData: clearPersonalServerData,
     onRevokeApp: handleRevokeApp,
     onLogout: handleLogout,
     onSignIn: handleSignIn,

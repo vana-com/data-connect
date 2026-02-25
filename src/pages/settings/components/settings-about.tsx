@@ -10,6 +10,7 @@ import {
   PanelTopIcon,
   FlaskConicalIcon,
   ServerIcon,
+  Trash2Icon,
 } from "lucide-react"
 import { SettingsRowDescriptionCopy } from "@/pages/settings/components/settings-row-description-copy"
 import { SettingsRowDescriptionStatus } from "@/pages/settings/components/settings-row-description-status"
@@ -17,6 +18,7 @@ import { Text } from "@/components/typography/text"
 import { Switch } from "@/components/ui/switch"
 import { LINKS } from "@/config/links"
 import { cn } from "@/lib/classes"
+import { SettingsConfirmAction } from "./settings-confirm-action"
 import type {
   BrowserStatus,
   NodeJsTestResult,
@@ -48,6 +50,9 @@ interface SettingsAboutProps {
   onStopPersonalServer: () => void
   onSimulateNoChromeChange: (value: boolean) => void
   onOpenLogFolder: () => void
+  clearPersonalServerDataStatus: "idle" | "deleting" | "success" | "error"
+  clearPersonalServerDataError: string | null
+  onClearPersonalServerData: () => void
 }
 
 const BROWSER_REFRESH_FEEDBACK_MS = 700
@@ -70,6 +75,9 @@ export function SettingsAbout({
   onStopPersonalServer,
   onSimulateNoChromeChange,
   onOpenLogFolder,
+  clearPersonalServerDataStatus,
+  clearPersonalServerDataError,
+  onClearPersonalServerData,
 }: SettingsAboutProps) {
   const [isBrowserRefreshLoading, setIsBrowserRefreshLoading] = useState(false)
   const [isNodeTestResultOpen, setIsNodeTestResultOpen] = useState(false)
@@ -158,6 +166,29 @@ export function SettingsAbout({
                 : "Downloaded Chromium found",
           }
         : { tone: "destructive" as const, label: "No browser found" }
+
+  const clearPersonalServerDataDescription =
+    clearPersonalServerDataStatus === "success"
+      ? {
+          tone: "success" as const,
+          label: "Deleted. You can re-import from Home.",
+        }
+      : clearPersonalServerDataStatus === "error"
+        ? {
+            tone: "destructive" as const,
+            label:
+              clearPersonalServerDataError ||
+              "Failed to delete personal server data",
+          }
+        : clearPersonalServerDataStatus === "deleting"
+          ? {
+              tone: "warning" as const,
+              label: "Deleting…",
+            }
+          : {
+              tone: "muted" as const,
+              label: "You can re-import from Home",
+            }
 
   return (
     <div className="space-y-6">
@@ -390,7 +421,7 @@ export function SettingsAbout({
         description="Share these logs with support when reporting issues."
       >
         <SettingsCardStack>
-          <SettingsCard divided>
+          <SettingsCard>
             <SettingsRow
               icon={<ScrollTextIcon aria-hidden="true" />}
               title="Application Logs"
@@ -409,6 +440,35 @@ export function SettingsAbout({
                 >
                   Open
                 </SettingsRowAction>
+              }
+            />
+          </SettingsCard>
+        </SettingsCardStack>
+      </SettingsSection>
+
+      <SettingsSection title="Reset">
+        <SettingsCardStack>
+          <SettingsCard>
+            <SettingsRow
+              icon={<Trash2Icon aria-hidden="true" />}
+              title="Delete your data"
+              description={clearPersonalServerDataDescription.label}
+              right={
+                <SettingsConfirmAction
+                  title="Delete your Personal Server data?"
+                  description="This permanently deletes your local Personal Server data. You will need to re-import from Home."
+                  actionLabel="Delete"
+                  media={<Trash2Icon aria-hidden="true" />}
+                  onAction={onClearPersonalServerData}
+                  trigger={
+                    <SettingsRowAction
+                      isLoading={clearPersonalServerDataStatus === "deleting"}
+                      loadingLabel="Deleting…"
+                    >
+                      Delete
+                    </SettingsRowAction>
+                  }
+                />
               }
             />
           </SettingsCard>

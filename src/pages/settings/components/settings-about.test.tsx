@@ -34,6 +34,9 @@ describe("SettingsAbout", () => {
           onStopPersonalServer={vi.fn()}
           onSimulateNoChromeChange={vi.fn()}
           onOpenLogFolder={vi.fn()}
+          clearPersonalServerDataStatus="idle"
+          clearPersonalServerDataError={null}
+          onClearPersonalServerData={vi.fn()}
         />
       </TooltipProvider>
     )
@@ -77,6 +80,9 @@ describe("SettingsAbout", () => {
           onStopPersonalServer={vi.fn()}
           onSimulateNoChromeChange={vi.fn()}
           onOpenLogFolder={vi.fn()}
+          clearPersonalServerDataStatus="idle"
+          clearPersonalServerDataError={null}
+          onClearPersonalServerData={vi.fn()}
         />
       </TooltipProvider>
     )
@@ -116,6 +122,9 @@ describe("SettingsAbout", () => {
           onStopPersonalServer={vi.fn()}
           onSimulateNoChromeChange={vi.fn()}
           onOpenLogFolder={vi.fn()}
+          clearPersonalServerDataStatus="idle"
+          clearPersonalServerDataError={null}
+          onClearPersonalServerData={vi.fn()}
         />
       </TooltipProvider>
     )
@@ -146,6 +155,9 @@ describe("SettingsAbout", () => {
           onStopPersonalServer={vi.fn()}
           onSimulateNoChromeChange={vi.fn()}
           onOpenLogFolder={vi.fn()}
+          clearPersonalServerDataStatus="idle"
+          clearPersonalServerDataError={null}
+          onClearPersonalServerData={vi.fn()}
         />
       </TooltipProvider>
     )
@@ -160,5 +172,44 @@ describe("SettingsAbout", () => {
       .getAllByRole("link")
       .find(link => link.getAttribute("href")?.includes("/commit/"))
     expect(commitLink).toBeTruthy()
+  })
+
+  it("confirms deletion and triggers personal server data clear action", () => {
+    const onClearPersonalServerData = vi.fn()
+    render(
+      <TooltipProvider delayDuration={120}>
+        <SettingsAbout
+          appVersion="1.2.3"
+          logPath="/tmp/logs"
+          nodeTestStatus="idle"
+          nodeTestResult={null}
+          nodeTestError={null}
+          browserStatus={{ available: true, browser_type: "system" }}
+          pathsDebug={null}
+          personalServer={{ status: "stopped", port: null, error: null }}
+          simulateNoChrome={false}
+          onTestNodeJs={vi.fn()}
+          onCheckBrowserStatus={vi.fn()}
+          onDebugPaths={vi.fn()}
+          onClearDebugPaths={vi.fn()}
+          onRestartPersonalServer={vi.fn()}
+          onStopPersonalServer={vi.fn()}
+          onSimulateNoChromeChange={vi.fn()}
+          onOpenLogFolder={vi.fn()}
+          clearPersonalServerDataStatus="success"
+          clearPersonalServerDataError={null}
+          onClearPersonalServerData={onClearPersonalServerData}
+        />
+      </TooltipProvider>
+    )
+
+    expect(
+      screen.getByText("Deleted. You can re-import from Home.")
+    ).toBeTruthy()
+
+    fireEvent.click(screen.getAllByRole("button", { name: "Delete" })[0])
+    fireEvent.click(screen.getByRole("button", { name: "Delete" }))
+
+    expect(onClearPersonalServerData).toHaveBeenCalledTimes(1)
   })
 })

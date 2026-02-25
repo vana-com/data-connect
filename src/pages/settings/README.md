@@ -26,6 +26,7 @@
   - `invoke("test_nodejs")`
   - `invoke("check_browser_available")`
   - `invoke("debug_connector_paths")`
+  - `invoke("clear_personal_server_data")`
   - `invoke("open_folder", { path })`
 - Auth + server:
   - `useAuth` provides `user`, `logout`, `isAuthenticated`, `walletAddress`.
@@ -45,6 +46,7 @@
 
 - Left nav switches sections without changing the route.
 - Diagnostics show Node.js runtime check results, browser availability, and server controls.
+- About & Diagnostics includes a destructive reset action that deletes only local personal-server data after confirmation.
 - Storage shows current export location and storage/server options.
 
 ### Notes

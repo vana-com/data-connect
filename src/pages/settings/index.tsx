@@ -72,6 +72,9 @@ export function Settings() {
     onCheckBrowserStatus,
     onSimulateNoChromeChange,
     onClearBrowserSession,
+    clearPersonalServerDataStatus,
+    clearPersonalServerDataError,
+    onClearPersonalServerData,
     onRevokeApp,
     onLogout,
     onSignIn,
@@ -144,6 +147,9 @@ export function Settings() {
         onStopPersonalServer={personalServer.stopServer}
         onSimulateNoChromeChange={onSimulateNoChromeChange}
         onOpenLogFolder={onOpenLogFolder}
+        clearPersonalServerDataStatus={clearPersonalServerDataStatus}
+        clearPersonalServerDataError={clearPersonalServerDataError}
+        onClearPersonalServerData={onClearPersonalServerData}
       />
     )
   } else if (activeSection === "imports") {

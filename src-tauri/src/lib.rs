@@ -4,6 +4,7 @@ mod processors;
 use commands::{
     check_browser_available, check_connected_platforms, check_connector_updates,
     cleanup_personal_server, cleanup_playwright_processes, clear_browser_session,
+    clear_personal_server_data,
     debug_connector_paths, delete_exported_run, download_browser, download_chromium_rust,
     download_connector, get_app_config, get_installed_connectors, get_log_path,
     get_personal_server_status, get_platforms, get_registry_url, get_run_files,
@@ -89,6 +90,7 @@ pub fn run() {
             get_log_path,
             start_personal_server,
             stop_personal_server,
+            clear_personal_server_data,
             get_personal_server_status,
             list_browser_sessions,
             clear_browser_session,

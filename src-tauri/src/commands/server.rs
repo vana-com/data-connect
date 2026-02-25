@@ -1,7 +1,7 @@
 use serde::{Deserialize, Serialize};
 use std::path::PathBuf;
 use std::sync::Mutex;
-use tauri::{AppHandle, Emitter, Manager};
+use tauri::{AppHandle, Emitter, Manager, WebviewWindow};
 
 /// Send a signal to an entire process group (negative PID).
 /// Falls back to single-process signal if pgid lookup fails.
@@ -609,6 +609,30 @@ pub async fn stop_personal_server() -> Result<(), String> {
         }
     }
 
+    Ok(())
+}
+
+/// Delete local personal server data directory after stopping the server.
+#[tauri::command]
+pub async fn clear_personal_server_data(window: WebviewWindow) -> Result<(), String> {
+    if window.label() != "main" {
+        return Err("Command only available from main window".to_string());
+    }
+
+    // Ensure no process is still holding files in the personal-server directory.
+    stop_personal_server().await?;
+
+    let home = dirs::home_dir().ok_or("Failed to get home directory")?;
+    let personal_server_dir = home.join("data-connect").join("personal-server");
+
+    if !personal_server_dir.exists() {
+        return Ok(());
+    }
+
+    std::fs::remove_dir_all(&personal_server_dir)
+        .map_err(|e| format!("Failed to delete personal server directory: {}", e))?;
+
+    log::info!("Deleted personal server directory: {:?}", personal_server_dir);
     Ok(())
 }
 

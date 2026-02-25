@@ -10,6 +10,9 @@ export const openPlatformExportFolder = (
   scope?: string
 ) => invoke("open_platform_export_folder", { company, name, scope })
 
+export const openPersonalServerScopeFolder = (scope: string) =>
+  invoke("open_personal_server_scope_folder", { scope })
+
 export interface SourceExportPreview {
   previewJson: string
   isTruncated: boolean

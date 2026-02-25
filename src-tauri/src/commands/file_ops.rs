@@ -360,6 +360,7 @@ pub struct SavedRun {
     pub item_label: Option<String>,
     #[serde(rename = "syncedToPersonalServer")]
     pub synced_to_personal_server: Option<bool>,
+    pub scope: Option<String>,
 }
 
 /// Load all runs from the exported_data directory
@@ -424,6 +425,10 @@ pub async fn load_runs(app: AppHandle) -> Result<Vec<SavedRun>, String> {
                             let synced = data.get("syncedToPersonalServer")
                                 .and_then(|v| v.as_bool())
                                 .unwrap_or(false);
+                            let scope = data
+                                .get("scope")
+                                .and_then(|v| v.as_str())
+                                .map(|s| s.to_string());
 
                             // For synced runs, read item metadata from top-level fields
                             // (content was stripped during sync). For unsynced, parse from content.
@@ -503,6 +508,7 @@ pub async fn load_runs(app: AppHandle) -> Result<Vec<SavedRun>, String> {
                                 items_exported,
                                 item_label,
                                 synced_to_personal_server: if synced { Some(true) } else { None },
+                                scope,
                             });
                         }
                     }
@@ -631,6 +637,37 @@ pub async fn open_platform_export_folder(
     let existing_dir = candidate_dirs.into_iter().find(|dir| dir.exists());
     let data_dir = existing_dir.ok_or_else(|| "Export folder does not exist".to_string())?;
     super::download::open_folder(data_dir.to_string_lossy().to_string()).await
+}
+
+/// Open a scoped personal server data folder.
+#[tauri::command]
+pub async fn open_personal_server_scope_folder(scope: String) -> Result<(), String> {
+    let scope_segments = normalized_scope_segments(Some(scope.as_str()));
+    if scope_segments.is_empty() {
+        return Err("Scope is required".to_string());
+    }
+
+    let home = home_dir().ok_or_else(|| "Failed to get home directory".to_string())?;
+    let roots = [
+        home.join("data-connect").join("personal-server").join("data"),
+        home.join("dev.dataconnect").join("personal-server").join("data"),
+        home.join(".dataconnect").join("personal-server").join("data"),
+    ];
+
+    for root in roots {
+        let mut scoped_path = root;
+        for segment in &scope_segments {
+            scoped_path = scoped_path.join(sanitize_path_component(segment));
+        }
+        if scoped_path.exists() {
+            return super::download::open_folder(scoped_path.to_string_lossy().to_string()).await;
+        }
+    }
+
+    Err(format!(
+        "Personal server scope folder does not exist for scope: {}",
+        scope
+    ))
 }
 
 /// Mark an export as synced after successful delivery to the personal server.

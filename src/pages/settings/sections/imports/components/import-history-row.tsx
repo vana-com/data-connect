@@ -3,6 +3,7 @@ import { CheckIcon, LoaderCircleIcon, SquareIcon } from "lucide-react"
 import { PlatformIcon } from "@/components/icons/platform-icon"
 import { Text } from "@/components/typography/text"
 import { openExportFolderPath } from "@/lib/open-resource"
+import { openPersonalServerScopeFolder } from "@/lib/tauri-paths"
 import { SettingsCard } from "@/pages/settings/components/settings-shared"
 import { SettingsRow } from "@/pages/settings/components/settings-row"
 import type { Platform, Run } from "@/types"
@@ -46,9 +47,19 @@ export const ImportHistoryRow = memo(function ImportHistoryRow({
   const errorDetail = getErrorDetail(run)
 
   const handleRevealExport = useCallback(async () => {
+    const scope = run.scope
+    if (run.syncedToPersonalServer && scope) {
+      try {
+        await openPersonalServerScopeFolder(scope)
+        return
+      } catch (error) {
+        console.warn("Failed to open personal server scope folder:", error)
+      }
+    }
+
     if (!run.exportPath) return
     await openExportFolderPath(run.exportPath)
-  }, [run.exportPath])
+  }, [run.exportPath, run.scope, run.syncedToPersonalServer])
   const handleStop = useCallback(() => onStop(run.id), [onStop, run.id])
   const handleRemove = useCallback(() => onRemove(run.id), [onRemove, run.id])
   const handleToggleErrorDetail = useCallback(

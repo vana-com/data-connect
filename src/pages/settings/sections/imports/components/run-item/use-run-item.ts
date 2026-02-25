@@ -2,6 +2,7 @@ import { useCallback, useEffect, useState } from "react"
 import { invoke } from "@tauri-apps/api/core"
 import { ingestExportData } from "@/services/personalServerIngest"
 import { openExportFolderPath } from "@/lib/open-resource"
+import { openPersonalServerScopeFolder } from "@/lib/tauri-paths"
 import type { Run } from "@/types"
 import {
   buildExportData,
@@ -86,10 +87,19 @@ export function useRunItem({ run, serverPort, serverReady }: UseRunItemProps) {
   }, [canIngest, run, serverPort])
 
   const openFolder = useCallback(async () => {
+    if (run.syncedToPersonalServer && run.scope) {
+      try {
+        await openPersonalServerScopeFolder(run.scope)
+        return
+      } catch (error) {
+        console.warn("Failed to open personal server scope folder:", error)
+      }
+    }
+
     if (run.exportPath) {
       await openExportFolderPath(run.exportPath)
     }
-  }, [run.exportPath])
+  }, [run.exportPath, run.scope, run.syncedToPersonalServer])
 
   return {
     expanded,

@@ -50,6 +50,7 @@ export function Settings() {
     activeSection,
     setActiveSection,
     dataPath,
+    personalServerDataPath,
     appVersion,
     logPath,
     nodeTestStatus,
@@ -65,6 +66,7 @@ export function Settings() {
     isAuthenticated,
     walletAddress,
     onOpenDataFolder,
+    onOpenPersonalServerFolder,
     onOpenLogFolder,
     onTestNodeJs,
     onDebugPaths,
@@ -109,6 +111,8 @@ export function Settings() {
         personalServer={personalServer}
         onRestartPersonalServer={personalServer.startServer}
         onStopPersonalServer={personalServer.stopServer}
+        personalServerDataPath={personalServerDataPath}
+        onOpenPersonalServerFolder={onOpenPersonalServerFolder}
       />
     )
   } else if (activeSection === "storage") {

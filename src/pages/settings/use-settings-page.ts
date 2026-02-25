@@ -7,7 +7,7 @@ import { usePersonalServer } from "@/hooks/usePersonalServer"
 import { useConnectedApps } from "@/hooks/useConnectedApps"
 import { ROUTES } from "@/config/routes"
 import { openLocalPath, openExternalUrl } from "@/lib/open-resource"
-import { getUserDataPath } from "@/lib/tauri-paths"
+import { getPersonalServerDataPath, getUserDataPath } from "@/lib/tauri-paths"
 import type { BrowserSession, BrowserStatus, NodeJsTestResult, SettingsSection } from "./types"
 import {
   DEFAULT_SETTINGS_SECTION,
@@ -28,6 +28,7 @@ export function useSettingsPage() {
     ? sectionParam
     : DEFAULT_SETTINGS_SECTION
   const [dataPath, setDataPath] = useState<string>("")
+  const [personalServerDataPath, setPersonalServerDataPath] = useState<string>("")
   const [appVersion, setAppVersion] = useState<string>("")
   const [logPath, setLogPath] = useState<string>("")
   const [nodeTestStatus, setNodeTestStatus] = useState<
@@ -48,11 +49,13 @@ export function useSettingsPage() {
     let cancelled = false
 
     const loadSettings = async () => {
-      const [dataPathResult, versionResult, logPathResult] = await Promise.allSettled([
-        getUserDataPath(),
-        getVersion(),
-        invoke<string>("get_log_path"),
-      ])
+      const [dataPathResult, personalServerDataPathResult, versionResult, logPathResult] =
+        await Promise.allSettled([
+          getUserDataPath(),
+          getPersonalServerDataPath(),
+          getVersion(),
+          invoke<string>("get_log_path"),
+        ])
 
       if (cancelled) return
 
@@ -66,6 +69,15 @@ export function useSettingsPage() {
         setAppVersion(versionResult.value)
       } else {
         console.error("Failed to get app version:", versionResult.reason)
+      }
+
+      if (personalServerDataPathResult.status === "fulfilled") {
+        setPersonalServerDataPath(personalServerDataPathResult.value)
+      } else {
+        console.error(
+          "Failed to get personal server data path:",
+          personalServerDataPathResult.reason
+        )
       }
 
       if (logPathResult.status === "fulfilled") {
@@ -91,6 +103,11 @@ export function useSettingsPage() {
     if (!logPath) return
     await invoke("open_folder", { path: logPath })
   }, [logPath])
+
+  const openPersonalServerFolder = useCallback(async () => {
+    if (!personalServerDataPath) return
+    await openLocalPath(personalServerDataPath)
+  }, [personalServerDataPath])
 
   const testNodeJs = useCallback(async () => {
     setNodeTestStatus("testing")
@@ -246,6 +263,7 @@ export function useSettingsPage() {
     activeSection,
     setActiveSection,
     dataPath,
+    personalServerDataPath,
     appVersion,
     logPath,
     nodeTestStatus,
@@ -261,6 +279,7 @@ export function useSettingsPage() {
     isAuthenticated,
     walletAddress,
     onOpenDataFolder: openDataFolder,
+    onOpenPersonalServerFolder: openPersonalServerFolder,
     onOpenLogFolder: openLogFolder,
     onTestNodeJs: testNodeJs,
     onDebugPaths: debugPaths,

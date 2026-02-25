@@ -94,6 +94,9 @@ beforeEach(() => {
     if (command === "get_user_data_path") {
       return Promise.resolve("/tmp/dataconnect")
     }
+    if (command === "get_personal_server_data_path") {
+      return Promise.resolve("/tmp/dataconnect/personal-server")
+    }
     if (command === "list_browser_sessions") {
       return Promise.resolve([])
     }

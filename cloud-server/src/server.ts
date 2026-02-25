@@ -1,17 +1,28 @@
 import express from "express";
 import http from "node:http";
+import net from "node:net";
 import path from "node:path";
+import { createProxyMiddleware } from "http-proxy-middleware";
 import { getAuthToken, authMiddleware } from "./auth.js";
-import { setupEventRelay } from "./events.js";
 import { setupCdpRelay } from "./cdp-relay.js";
+import { setupEventRelay } from "./events.js";
 import invokeRoutes from "./routes/invoke.js";
 
 const PORT = parseInt(process.env.PORT || "3000", 10);
+const NEKO_ORIGIN = process.env.NEKO_ORIGIN || "http://localhost:8080";
 const STATIC_DIR =
   process.env.STATIC_DIR || path.resolve(import.meta.dirname, "../../dist");
 
 const app = express();
 const server = http.createServer(app);
+
+// Reverse-proxy n.eko so the iframe is same-origin (fixes clipboard access)
+const nekoProxy = createProxyMiddleware({
+  target: NEKO_ORIGIN,
+  changeOrigin: true,
+  pathRewrite: { "^/neko": "" },
+});
+app.use("/neko", nekoProxy);
 
 app.use(express.json({ limit: "50mb" }));
 app.use("/api/invoke", authMiddleware, invokeRoutes);
@@ -32,6 +43,15 @@ app.get("*", (_req, res) => {
 
 setupEventRelay(server);
 setupCdpRelay(server);
+
+// Forward n.eko WebSocket upgrades through the proxy
+server.on("upgrade", (req, socket, head) => {
+  if (!(socket instanceof net.Socket)) return;
+  const url = new URL(req.url || "/", `http://${req.headers.host}`);
+  if (url.pathname.startsWith("/neko")) {
+    nekoProxy.upgrade!(req, socket, head);
+  }
+});
 
 server.listen(PORT, () => {
   const token = getAuthToken();

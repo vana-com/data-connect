@@ -9,6 +9,7 @@ import { usePersonalServer } from "@/hooks/usePersonalServer"
 import { useRuntime } from "@/lib/runtime/context"
 import type { Platform, RootState } from "@/types"
 import { ScreencastModal } from "@/components/connector-view/screencast-modal"
+import { parseViewMode } from "@/components/connector-view/types"
 import { PageContainer } from "@/components/elements/page-container"
 import { DebugTogglePanel } from "@/components/elements/debug-toggle-panel"
 import { SlidingTabs } from "@/components/elements/sliding-tabs"
@@ -171,15 +172,32 @@ export function Home() {
     [stopExport]
   )
 
-  // In HTTP (cloud) mode, show the ConnectorView screencast when a connector is running
+  // In HTTP (cloud) mode, show the n.eko browser view when a connector is running
   const hasRunningConnector = runs.some(run => run.status === "running")
-  const screencastWsUrl = useMemo(() => {
+  const nekoUrl = useMemo(() => {
     if (runtime.mode !== "http" || !hasRunningConnector) return null
-    const protocol = window.location.protocol === "https:" ? "wss:" : "ws:"
-    const token = sessionStorage.getItem("cloud_auth_token")
-    const qs = token ? `?token=${encodeURIComponent(token)}` : ""
-    return `${protocol}//${window.location.host}/ws/screencast${qs}`
+    return `${window.location.origin}/neko`
   }, [runtime.mode, hasRunningConnector])
+
+  const viewMode = useMemo(
+    () => parseViewMode(new URLSearchParams(location.search).get("view")),
+    [location.search]
+  )
+
+  const screencastWsUrl = useMemo(() => {
+    if (runtime.mode !== "http" || !hasRunningConnector) return undefined
+    const token = sessionStorage.getItem("cloud_auth_token") ?? ""
+    const wsProtocol = window.location.protocol === "https:" ? "wss:" : "ws:"
+    return `${wsProtocol}//${window.location.host}/ws/screencast?token=${encodeURIComponent(token)}`
+  }, [runtime.mode, hasRunningConnector])
+
+  const handleCloseScreencast = useCallback(() => {
+    for (const run of runs) {
+      if (run.status === "running") {
+        stopExport(run.id).catch(console.error)
+      }
+    }
+  }, [runs, stopExport])
 
   const handleTestDeepLink = useCallback(() => {
     const trimmed = deepLinkInput.trim()
@@ -336,8 +354,13 @@ export function Home() {
             onStopRun={handleStopImport}
             connectedPlatformIds={homeImportSourcesDebug.connectedPlatformIds}
           />
-          {screencastWsUrl && (
-            <ScreencastModal wsUrl={screencastWsUrl} />
+          {nekoUrl && (
+            <ScreencastModal
+              nekoUrl={nekoUrl}
+              viewMode={viewMode}
+              screencastWsUrl={screencastWsUrl}
+              onClose={handleCloseScreencast}
+            />
           )}
         </TabsContent>
 

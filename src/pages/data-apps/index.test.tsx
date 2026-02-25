@@ -1,4 +1,4 @@
-import { describe, expect, it } from "vitest"
+import { describe, expect, it, vi } from "vitest"
 import { render, screen } from "@testing-library/react"
 import { createMemoryRouter, RouterProvider } from "react-router-dom"
 import { getAppRegistryEntries } from "@/apps/registry"
@@ -12,7 +12,7 @@ vi.mock("@tauri-apps/plugin-shell", () => ({
 }))
 
 vi.mock("@/lib/runtime", () => ({
-  isTauri: true,
+  useRuntime: () => ({ mode: "tauri", invoke: vi.fn(), fetch: vi.fn(), onEvent: vi.fn(), getAppVersion: vi.fn() }),
 }))
 
 vi.mock("react-router", async () => {

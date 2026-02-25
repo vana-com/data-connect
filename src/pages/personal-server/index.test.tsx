@@ -30,6 +30,10 @@ vi.mock("@tauri-apps/api/app", () => ({
   getVersion: () => mockGetVersion(),
 }))
 
+vi.mock("@/lib/runtime", () => ({
+  useRuntime: () => ({ mode: "tauri", invoke: (...args: unknown[]) => mockInvoke(...args), fetch: vi.fn(), onEvent: vi.fn(), getAppVersion: () => mockGetVersion() }),
+}))
+
 vi.mock("@tauri-apps/api/core", () => ({
   invoke: (...args: unknown[]) => mockInvoke(...args),
 }))

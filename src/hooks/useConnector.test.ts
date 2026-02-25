@@ -10,8 +10,8 @@ const updateRunStatus = vi.fn(payload => ({ type: "updateRunStatus", payload }))
 const stopRun = vi.fn(payload => ({ type: "stopRun", payload }))
 const deleteRun = vi.fn(payload => ({ type: "deleteRun", payload }))
 
-vi.mock("@tauri-apps/api/core", () => ({
-  invoke: (...args: unknown[]) => mockInvoke(...args),
+vi.mock("@/lib/runtime", () => ({
+  useRuntime: () => ({ mode: "tauri", invoke: (...args: unknown[]) => mockInvoke(...args), fetch: vi.fn(), onEvent: vi.fn(), getAppVersion: vi.fn() }),
 }))
 
 vi.mock("react-redux", () => ({

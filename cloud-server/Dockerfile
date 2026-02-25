@@ -1,44 +1,39 @@
 # DataConnect Cloud Connector Runtime
-# Runs headed Chromium via Xvfb with the API server, connectors, and built frontend.
+# Extends n.eko chromium with our API server and connector automation.
 #
 # Build:  docker build -f cloud-server/Dockerfile -t data-connect-cloud .
-# Run:    docker run --shm-size=2g -v profile-data:/data -p 3000:3000 data-connect-cloud
+# Run:    docker compose up
 
-FROM mcr.microsoft.com/playwright:v1.57.0-noble
+FROM ghcr.io/m1k1o/neko/chromium:3.0
 
-# Xvfb provides a virtual framebuffer so headed Chromium can render off-screen.
-RUN apt-get update && apt-get install -y --no-install-recommends xvfb \
+# Install Node.js for our API server
+RUN curl -fsSL https://deb.nodesource.com/setup_22.x | bash - \
+    && apt-get install -y --no-install-recommends nodejs \
     && rm -rf /var/lib/apt/lists/*
 
 WORKDIR /app
 
-# --- Layer-cached dependency install ---
-# Copy package manifests first so that npm ci is only re-run when deps change.
+# Layer-cached dependency install
 COPY cloud-server/package.json cloud-server/package-lock.json* ./cloud-server/
 COPY playwright-runner/package.json playwright-runner/package-lock.json* ./playwright-runner/
-
 RUN cd cloud-server && npm ci --ignore-scripts
 RUN cd playwright-runner && npm ci --ignore-scripts
 
-# Install Playwright's bundled Chromium (uses the base image's browser deps).
-RUN cd playwright-runner && npx playwright install chromium
-
-# --- Source & build ---
+# Source & build
 COPY connectors/ ./connectors/
 COPY cloud-server/ ./cloud-server/
 COPY playwright-runner/ ./playwright-runner/
-
 RUN cd cloud-server && npm run build
 
-# Copy the pre-built frontend (run `npm run build` in the repo root before docker build).
+# Pre-built frontend
 COPY dist/ ./dist/
 
-# --- Runtime environment ---
-ENV DISPLAY=:99
-ENV NODE_ENV=production
-ENV DATA_DIR=/data
+# Supervisord configs for our services
+COPY cloud-server/supervisord/*.conf /etc/neko/supervisord/
 
-VOLUME ["/data"]
+# Override Chromium config to add --remote-debugging-port and relax policies
+COPY cloud-server/neko/chromium.conf /etc/neko/supervisord/chromium.conf
+COPY cloud-server/neko/policies.json /etc/chromium/policies/managed/policies.json
+
+VOLUME ["/home/neko/.config/chromium"]
 EXPOSE 3000
-
-ENTRYPOINT ["./cloud-server/entrypoint.sh"]

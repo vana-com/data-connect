@@ -143,13 +143,13 @@ describe("ConnectorView", () => {
     })
 
     await act(async () => {
-      fireEvent.click(canvas, { clientX: 400, clientY: 300 })
+      fireEvent.mouseDown(canvas, { clientX: 400, clientY: 300 })
     })
 
     expect(ws.sentMessages.length).toBeGreaterThan(0)
     const msg = JSON.parse(ws.sentMessages[ws.sentMessages.length - 1])
     expect(msg.type).toBe("mouse")
-    expect(msg.action).toBe("click")
+    expect(msg.action).toBe("mousedown")
   })
 
   it("sends keyboard events when canvas is focused", async () => {

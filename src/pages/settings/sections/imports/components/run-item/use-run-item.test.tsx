@@ -10,6 +10,10 @@ vi.mock("@/lib/open-resource", () => ({
   openExportFolderPath: (...args: unknown[]) => mockOpenExportFolderPath(...args),
 }))
 
+vi.mock("@/lib/runtime", () => ({
+  useRuntime: () => ({ mode: "tauri", invoke: vi.fn(), fetch: vi.fn(), onEvent: vi.fn(), getAppVersion: vi.fn() }),
+}))
+
 vi.mock("@/lib/tauri-paths", () => ({
   openPersonalServerScopeFolder: (...args: unknown[]) =>
     mockOpenPersonalServerScopeFolder(...args),

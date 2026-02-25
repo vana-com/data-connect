@@ -638,7 +638,11 @@ pub async fn clear_personal_server_data(window: WebviewWindow) -> Result<(), Str
 
 /// Get the local personal server data directory path.
 #[tauri::command]
-pub fn get_personal_server_data_path() -> Result<String, String> {
+pub fn get_personal_server_data_path(window: WebviewWindow) -> Result<String, String> {
+    if window.label() != "main" {
+        return Err("Command only available from main window".to_string());
+    }
+
     let home = dirs::home_dir().ok_or("Failed to get home directory")?;
     let personal_server_dir = home.join("data-connect").join("personal-server");
     Ok(personal_server_dir.to_string_lossy().to_string())

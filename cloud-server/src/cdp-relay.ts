@@ -1,15 +1,20 @@
 import { WebSocketServer, WebSocket } from "ws";
 import type { Server } from "node:http";
 import { validateToken } from "./auth.js";
-import { getPageDebuggerUrl } from "./chromium.js";
+
+const CHROMIUM_PORT = 9222;
 
 /**
  * CDP screencast relay.
  *
- * Connects to Chromium via CDP, starts Page.startScreencast,
+ * Connects to a Chromium page target via CDP, starts Page.startScreencast,
  * and forwards JPEG frames to connected frontend clients.
  * Receives mouse/keyboard events from clients and translates
  * them to CDP Input.dispatch*Event calls.
+ *
+ * Uses polling to find the connector's page target (skips about:blank
+ * and chrome:// pages). Retries for up to 15 seconds to handle the case
+ * where the screencast client connects before the connector creates its page.
  */
 
 export function setupCdpRelay(server: Server): void {
@@ -39,6 +44,49 @@ export function setupCdpRelay(server: Server): void {
   });
 }
 
+interface PageTarget {
+  id: string;
+  type: string;
+  url: string;
+  webSocketDebuggerUrl: string;
+}
+
+/** Fetch page targets from Chromium's CDP HTTP endpoint. */
+async function getPageTargets(): Promise<PageTarget[]> {
+  const res = await fetch(`http://127.0.0.1:${CHROMIUM_PORT}/json`);
+  const targets = (await res.json()) as PageTarget[];
+  return targets.filter(
+    (t) =>
+      t.type === "page" &&
+      t.url !== "about:blank" &&
+      !t.url.startsWith("chrome://"),
+  );
+}
+
+/**
+ * Poll for a non-default page target. Retries up to maxWaitMs to allow
+ * the connector time to create and navigate its page.
+ */
+async function waitForConnectorPage(maxWaitMs = 15_000): Promise<PageTarget> {
+  const start = Date.now();
+
+  while (Date.now() - start < maxWaitMs) {
+    const pages = await getPageTargets();
+    // If there are multiple pages, prefer the last one (most recently created).
+    // If there's only one non-chrome page, use it.
+    if (pages.length > 0) {
+      const target = pages[pages.length - 1];
+      console.log(
+        `[cdp-relay] Found page target: ${target.url} (${pages.length} pages total)`,
+      );
+      return target;
+    }
+    await new Promise((r) => setTimeout(r, 500));
+  }
+
+  throw new Error("No page target found after waiting");
+}
+
 async function handleScreencastClient(client: WebSocket): Promise<void> {
   let cdp: WebSocket | null = null;
   let nextId = 1;
@@ -63,13 +111,22 @@ async function handleScreencastClient(client: WebSocket): Promise<void> {
   }
 
   try {
-    const debuggerUrl = await getPageDebuggerUrl();
-    cdp = new WebSocket(debuggerUrl);
+    const target = await waitForConnectorPage();
+
+    // The webSocketDebuggerUrl from Chromium may use 0.0.0.0 — normalize to 127.0.0.1
+    const wsUrl = target.webSocketDebuggerUrl.replace(
+      "ws://0.0.0.0:",
+      "ws://127.0.0.1:",
+    );
+    console.log(`[cdp-relay] Connecting to: ${wsUrl}`);
+    cdp = new WebSocket(wsUrl);
 
     await new Promise<void>((resolve, reject) => {
       cdp!.once("open", resolve);
       cdp!.once("error", reject);
     });
+
+    console.log("[cdp-relay] Connected, starting screencast");
 
     cdp.on("message", (raw) => {
       const msg = JSON.parse(raw.toString());
@@ -99,6 +156,7 @@ async function handleScreencastClient(client: WebSocket): Promise<void> {
     });
 
     cdp.on("close", () => {
+      console.log("[cdp-relay] CDP connection closed");
       if (client.readyState === WebSocket.OPEN) {
         client.send(JSON.stringify({ type: "cdp-disconnected" }));
         client.close();
@@ -111,6 +169,8 @@ async function handleScreencastClient(client: WebSocket): Promise<void> {
       maxWidth: 1280,
       maxHeight: 720,
     });
+
+    console.log("[cdp-relay] Screencast started");
 
     client.on("message", (raw) => {
       let msg: Record<string, unknown>;
@@ -134,13 +194,14 @@ async function handleScreencastClient(client: WebSocket): Promise<void> {
     });
 
     client.on("close", () => {
+      console.log("[cdp-relay] Client disconnected");
       sendCdp("Page.stopScreencast").catch(() => {});
       cdp?.close();
     });
   } catch (err) {
     const message =
       err instanceof Error ? err.message : "CDP connection failed";
-    console.error("[cdp-relay]", message);
+    console.error("[cdp-relay] Error:", message);
     if (client.readyState === WebSocket.OPEN) {
       client.send(JSON.stringify({ type: "error", message }));
       client.close();
@@ -223,38 +284,122 @@ function handleMouseEvent(
   }
 }
 
+/**
+ * Key definitions ported from Puppeteer's USKeyboardLayout.
+ * Maps key names to the CDP fields required by Input.dispatchKeyEvent.
+ * The critical field is `keyCode` (windowsVirtualKeyCode) — without it,
+ * special keys like Backspace and Delete are silently ignored by Chrome.
+ */
+interface KeyDef {
+  keyCode: number;
+  code: string;
+  key: string;
+  text?: string;
+}
+
+const KEY_DEFINITIONS: Record<string, KeyDef> = {
+  Backspace:  { keyCode: 8,  code: "Backspace",  key: "Backspace" },
+  Tab:        { keyCode: 9,  code: "Tab",         key: "Tab" },
+  Enter:      { keyCode: 13, code: "Enter",       key: "Enter", text: "\r" },
+  Escape:     { keyCode: 27, code: "Escape",      key: "Escape" },
+  Delete:     { keyCode: 46, code: "Delete",      key: "Delete" },
+  ArrowUp:    { keyCode: 38, code: "ArrowUp",     key: "ArrowUp" },
+  ArrowDown:  { keyCode: 40, code: "ArrowDown",   key: "ArrowDown" },
+  ArrowLeft:  { keyCode: 37, code: "ArrowLeft",   key: "ArrowLeft" },
+  ArrowRight: { keyCode: 39, code: "ArrowRight",  key: "ArrowRight" },
+  Home:       { keyCode: 36, code: "Home",         key: "Home" },
+  End:        { keyCode: 35, code: "End",          key: "End" },
+  PageUp:     { keyCode: 33, code: "PageUp",       key: "PageUp" },
+  PageDown:   { keyCode: 34, code: "PageDown",     key: "PageDown" },
+  Insert:     { keyCode: 45, code: "Insert",       key: "Insert" },
+  F1:         { keyCode: 112, code: "F1",  key: "F1" },
+  F2:         { keyCode: 113, code: "F2",  key: "F2" },
+  F3:         { keyCode: 114, code: "F3",  key: "F3" },
+  F4:         { keyCode: 115, code: "F4",  key: "F4" },
+  F5:         { keyCode: 116, code: "F5",  key: "F5" },
+  F6:         { keyCode: 117, code: "F6",  key: "F6" },
+  F7:         { keyCode: 118, code: "F7",  key: "F7" },
+  F8:         { keyCode: 119, code: "F8",  key: "F8" },
+  F9:         { keyCode: 120, code: "F9",  key: "F9" },
+  F10:        { keyCode: 121, code: "F10", key: "F10" },
+  F11:        { keyCode: 122, code: "F11", key: "F11" },
+  F12:        { keyCode: 123, code: "F12", key: "F12" },
+};
+
 function handleKeyboardEvent(
   sendCdp: CdpSend,
   msg: Record<string, unknown>,
 ): void {
   const action = msg.action as string;
+  const key = msg.key as string;
+  const code = msg.code as string | undefined;
+  const modifiers = (msg.modifiers ?? {}) as Record<string, boolean>;
+
+  // CDP modifier flags bitfield: 1=Alt, 2=Ctrl, 4=Meta, 8=Shift
+  const modifierFlags =
+    (modifiers.alt ? 1 : 0) |
+    (modifiers.ctrl ? 2 : 0) |
+    (modifiers.meta ? 4 : 0) |
+    (modifiers.shift ? 8 : 0);
+
+  const hasModifier = modifiers.ctrl || modifiers.meta || modifiers.alt;
+  const def = KEY_DEFINITIONS[key];
 
   switch (action) {
-    case "type": {
-      const text = msg.text as string;
-      for (const char of text) {
+    case "keyDown":
+      if (def) {
+        // Special key: use rawKeyDown with windowsVirtualKeyCode (required by CDP)
         sendCdp("Input.dispatchKeyEvent", {
-          type: "char",
-          text: char,
+          type: def.text ? "keyDown" : "rawKeyDown",
+          key: def.key,
+          code: def.code,
+          windowsVirtualKeyCode: def.keyCode,
+          nativeVirtualKeyCode: def.keyCode,
+          text: def.text ?? "",
+          unmodifiedText: def.text ?? "",
+          modifiers: modifierFlags,
+        }).catch(() => {});
+      } else if (hasModifier) {
+        // Modifier combo (Ctrl+A, Ctrl+C, etc.): dispatch as rawKeyDown
+        sendCdp("Input.dispatchKeyEvent", {
+          type: "rawKeyDown",
+          key,
+          code,
+          windowsVirtualKeyCode: key.length === 1 ? key.toUpperCase().charCodeAt(0) : 0,
+          modifiers: modifierFlags,
+        }).catch(() => {});
+      } else if (key.length === 1) {
+        // Printable character: use insertText (avoids double-char bugs)
+        sendCdp("Input.insertText", { text: key }).catch(() => {});
+      }
+      break;
+    case "keyUp":
+      if (def) {
+        sendCdp("Input.dispatchKeyEvent", {
+          type: "keyUp",
+          key: def.key,
+          code: def.code,
+          windowsVirtualKeyCode: def.keyCode,
+          nativeVirtualKeyCode: def.keyCode,
+          modifiers: modifierFlags,
+        }).catch(() => {});
+      } else if (hasModifier) {
+        sendCdp("Input.dispatchKeyEvent", {
+          type: "keyUp",
+          key,
+          code,
+          windowsVirtualKeyCode: key.length === 1 ? key.toUpperCase().charCodeAt(0) : 0,
+          modifiers: modifierFlags,
         }).catch(() => {});
       }
       break;
+    case "type": {
+      // Paste: insert entire string at once
+      const text = msg.text as string;
+      if (text) {
+        sendCdp("Input.insertText", { text }).catch(() => {});
+      }
+      break;
     }
-    case "keyDown":
-      sendCdp("Input.dispatchKeyEvent", {
-        type: "keyDown",
-        key: msg.key as string,
-        code: msg.code as string | undefined,
-        windowsVirtualKeyCode: msg.keyCode as number | undefined,
-      }).catch(() => {});
-      break;
-    case "keyUp":
-      sendCdp("Input.dispatchKeyEvent", {
-        type: "keyUp",
-        key: msg.key as string,
-        code: msg.code as string | undefined,
-        windowsVirtualKeyCode: msg.keyCode as number | undefined,
-      }).catch(() => {});
-      break;
   }
 }

@@ -9,12 +9,22 @@ export function createHttpRuntime(): Runtime {
   let socketReady: Promise<void> | null = null
   const eventHandlers = new Map<string, Set<(payload: unknown) => void>>()
 
+  // Capture token once at creation time — BrowserRouter may strip query params on navigation
+  const token =
+    new URLSearchParams(window.location.search).get("token") ??
+    sessionStorage.getItem("cloud_auth_token")
+  if (token) {
+    sessionStorage.setItem("cloud_auth_token", token)
+  }
+
   function getEventSocket(): Promise<void> {
     if (socketReady) return socketReady
 
     socketReady = new Promise<void>((resolve, reject) => {
       const protocol = window.location.protocol === "https:" ? "wss:" : "ws:"
-      const wsUrl = `${protocol}//${window.location.host}/ws/events`
+
+      const qs = token ? `?token=${encodeURIComponent(token)}` : ""
+      const wsUrl = `${protocol}//${window.location.host}/ws/events${qs}`
       const ws = new WebSocket(wsUrl)
 
       ws.onopen = () => {
@@ -58,9 +68,12 @@ export function createHttpRuntime(): Runtime {
     mode: "http",
 
     async invoke<T>(command: string, args?: Record<string, unknown>): Promise<T> {
+
+      const headers: Record<string, string> = { "Content-Type": "application/json" }
+      if (token) headers["Authorization"] = `Bearer ${token}`
       const res = await fetch(`/api/invoke/${command}`, {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers,
         body: JSON.stringify(args ?? {}),
       })
       if (!res.ok) {
@@ -131,8 +144,10 @@ export function createHttpRuntime(): Runtime {
     },
 
     async getAppVersion(): Promise<string> {
-      // In cloud mode, version comes from the API server
-      const res = await fetch("/api/version")
+
+      const headers: Record<string, string> = {}
+      if (token) headers["Authorization"] = `Bearer ${token}`
+      const res = await fetch("/api/version", { headers })
       if (!res.ok) return "unknown"
       const data = await res.json()
       return data.version ?? "unknown"

@@ -9,29 +9,35 @@ EXPORT_DIR="${DATA_DIR}/exports"
 mkdir -p "$PROFILE_DIR" "$EXPORT_DIR"
 
 # ── Cleanup on exit ───────────────────────────────────────────────
+XVFB_PID=""
+CHROME_PID=""
 cleanup() {
-  kill "$CHROME_PID" 2>/dev/null || true
-  kill "$XVFB_PID" 2>/dev/null || true
+  [ -n "$CHROME_PID" ] && kill "$CHROME_PID" 2>/dev/null || true
+  [ -n "$XVFB_PID" ] && kill "$XVFB_PID" 2>/dev/null || true
 }
 trap cleanup EXIT
 
 # ── Xvfb (virtual framebuffer) ────────────────────────────────────
+rm -f /tmp/.X99-lock
 Xvfb :99 -screen 0 1920x1080x24 -ac &
 XVFB_PID=$!
 echo "Xvfb started (PID $XVFB_PID)"
 sleep 1
 
 # ── Chromium ──────────────────────────────────────────────────────
-CHROMIUM_PATH=$(find /root/.cache/ms-playwright -name "chrome" -type f 2>/dev/null | head -1)
+CHROMIUM_PATH=$(find /root/.cache/ms-playwright -name "chrome" -type f 2>/dev/null | head -1 || true)
 if [ -z "$CHROMIUM_PATH" ]; then
-  CHROMIUM_PATH=$(find /ms-playwright -name "chrome" -type f 2>/dev/null | head -1)
+  CHROMIUM_PATH=$(find /ms-playwright -name "chrome" -type f 2>/dev/null | head -1 || true)
 fi
 if [ -z "$CHROMIUM_PATH" ]; then
   echo "ERROR: Chromium binary not found" >&2
+  echo "Searched /root/.cache/ms-playwright and /ms-playwright" >&2
   exit 1
 fi
+echo "Found Chromium at $CHROMIUM_PATH"
 
 "$CHROMIUM_PATH" \
+  --no-sandbox \
   --remote-debugging-port=9222 \
   --user-data-dir="$PROFILE_DIR" \
   --no-first-run \

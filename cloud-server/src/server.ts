@@ -20,6 +20,10 @@ app.get("/health", (_req, res) => {
   res.json({ status: "ok" });
 });
 
+app.get("/api/version", (_req, res) => {
+  res.json({ version: "0.1.0-cloud" });
+});
+
 app.use(express.static(STATIC_DIR));
 
 app.get("*", (_req, res) => {

@@ -70,14 +70,18 @@ export async function waitForChromium(
   throw new Error("Chromium did not start in time");
 }
 
-/** Get the CDP WebSocket debugger URL for the first page target. */
+/** Get the CDP WebSocket debugger URL for the most recently opened page target.
+ *  Connectors create new pages via context.newPage(), so the last page target
+ *  is the one being automated — not the default new-tab page.
+ */
 export async function getPageDebuggerUrl(): Promise<string> {
   const targets = (await fetchJson(
     `http://localhost:${CHROMIUM_PORT}/json`,
-  )) as unknown as Array<{ type: string; webSocketDebuggerUrl: string }>;
-  const page = targets.find((t) => t.type === "page");
-  if (!page) throw new Error("No page target found");
-  return page.webSocketDebuggerUrl;
+  )) as unknown as Array<{ type: string; url: string; webSocketDebuggerUrl: string }>;
+  const pages = targets.filter((t) => t.type === "page");
+  if (pages.length === 0) throw new Error("No page target found");
+  // The last entry is the most recently created page
+  return pages[pages.length - 1].webSocketDebuggerUrl;
 }
 
 /** Get the browser-level CDP WebSocket URL from /json/version. */

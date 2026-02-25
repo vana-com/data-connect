@@ -3,6 +3,7 @@ import {
   useEffect,
   useRef,
   useState,
+  type ClipboardEvent as ReactClipboardEvent,
   type KeyboardEvent as ReactKeyboardEvent,
   type MouseEvent as ReactMouseEvent,
   type WheelEvent as ReactWheelEvent,
@@ -10,7 +11,7 @@ import {
 
 const WS_OPEN = 1
 
-type ConnectionState = "connecting" | "connected" | "disconnected"
+export type ConnectionState = "connecting" | "connected" | "disconnected"
 
 interface FrameMessage {
   type: "frame"
@@ -198,6 +199,10 @@ export function ConnectorView({
       e: ReactKeyboardEvent<HTMLCanvasElement>,
       action: "keyDown" | "keyUp"
     ) => {
+      // Let Ctrl+V / Cmd+V through so the onPaste handler fires
+      if (action === "keyDown" && e.key === "v" && (e.ctrlKey || e.metaKey)) {
+        return
+      }
       e.preventDefault()
       sendInput({
         type: "keyboard",
@@ -215,22 +220,33 @@ export function ConnectorView({
     [sendInput]
   )
 
+  const handlePaste = useCallback(
+    (e: ReactClipboardEvent<HTMLCanvasElement>) => {
+      e.preventDefault()
+      const text = e.clipboardData.getData("text/plain")
+      if (text) {
+        sendInput({ type: "keyboard", action: "type", text })
+      }
+    },
+    [sendInput]
+  )
+
   return (
     <div className={className}>
       {connectionState === "connecting" && (
-        <div className="flex items-center justify-center p-8 text-muted-foreground">
+        <div className="flex items-center justify-center p-8 text-white/60">
           Connecting to browser...
         </div>
       )}
       {connectionState === "disconnected" && (
-        <div className="flex items-center justify-center p-8 text-muted-foreground">
+        <div className="flex items-center justify-center p-8 text-white/60">
           Disconnected. Reconnecting...
         </div>
       )}
       <canvas
         ref={canvasRef}
         tabIndex={0}
-        className="w-full outline-none"
+        className="max-h-full max-w-full outline-none"
         style={{
           display: connectionState === "connected" ? "block" : "none",
           aspectRatio: frameSize
@@ -238,13 +254,13 @@ export function ConnectorView({
             : "16 / 9",
           cursor: "default",
         }}
-        onClick={(e) => handleMouseEvent(e, "click")}
         onMouseMove={(e) => handleMouseEvent(e, "mousemove")}
         onMouseDown={(e) => handleMouseEvent(e, "mousedown")}
         onMouseUp={(e) => handleMouseEvent(e, "mouseup")}
         onWheel={handleWheel}
         onKeyDown={(e) => handleKeyboard(e, "keyDown")}
         onKeyUp={(e) => handleKeyboard(e, "keyUp")}
+        onPaste={handlePaste}
         onContextMenu={(e) => e.preventDefault()}
       />
     </div>

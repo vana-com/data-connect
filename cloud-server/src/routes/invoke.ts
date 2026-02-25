@@ -15,16 +15,19 @@ interface ConnectorProcess {
 
 const connectorProcesses = new Map<string, ConnectorProcess>();
 
+// import.meta.dirname = cloud-server/dist/routes/ at runtime
+// Resolve paths relative to the repo root (/app in Docker)
+const REPO_ROOT = path.resolve(import.meta.dirname, "../../..");
+
 const CONNECTORS_DIR =
-  process.env.CONNECTORS_DIR ||
-  path.resolve(import.meta.dirname, "../../connectors");
+  process.env.CONNECTORS_DIR || path.join(REPO_ROOT, "connectors");
 
 const DATA_DIR =
   process.env.DATA_DIR || path.join(process.env.HOME || "/data", "data-connect");
 
 const PLAYWRIGHT_RUNNER =
   process.env.PLAYWRIGHT_RUNNER ||
-  path.resolve(import.meta.dirname, "../../playwright-runner/index.cjs");
+  path.join(REPO_ROOT, "playwright-runner/index.cjs");
 
 function timestamp(): string {
   return new Date().toISOString();
@@ -91,12 +94,12 @@ function getPlatforms(): unknown[] {
 }
 
 function startConnector(body: Record<string, unknown>): void {
-  const runId = body.run_id as string;
-  const platformId = body.platform_id as string;
+  const runId = body.runId as string;
+  const platformId = body.platformId as string;
   const filename = body.filename as string;
   const company = body.company as string;
   const name = body.name as string;
-  const connectUrl = body.connect_url as string;
+  const connectUrl = body.connectUrl as string;
 
   if (connectorProcesses.has(runId)) {
     throw new Error(`Run ${runId} is already active`);
@@ -122,9 +125,9 @@ function startConnector(body: Record<string, unknown>): void {
   }
 
   const env: Record<string, string> = { ...process.env as Record<string, string> };
-  if (process.env.CDP_ENDPOINT) {
-    env.CDP_ENDPOINT = process.env.CDP_ENDPOINT;
-  }
+  // Always set CDP_ENDPOINT so playwright-runner connects to the container's Chromium.
+  // Use http:// — Playwright's connectOverCDP discovers the WS debugger URL automatically.
+  env.CDP_ENDPOINT = process.env.CDP_ENDPOINT || "http://127.0.0.1:9222";
 
   const child = spawn("node", [PLAYWRIGHT_RUNNER], {
     stdio: ["pipe", "pipe", "pipe"],
@@ -160,7 +163,7 @@ function startConnector(body: Record<string, unknown>): void {
           runId,
           connectorPath,
           url: connectUrl,
-          headless: true,
+          headless: false,
         });
         child.stdin!.write(runCmd + "\n");
         broadcastEvent("connector-status", {
@@ -240,7 +243,7 @@ function startConnector(body: Record<string, unknown>): void {
 }
 
 function stopConnector(body: Record<string, unknown>): void {
-  const runId = body.run_id as string;
+  const runId = body.runId as string;
   const proc = connectorProcesses.get(runId);
   if (!proc) return;
 
@@ -260,15 +263,15 @@ function stopConnector(body: Record<string, unknown>): void {
 }
 
 function getConnectorStatus(body: Record<string, unknown>): unknown {
-  const runId = body.run_id as string;
+  const runId = body.runId as string;
   const proc = connectorProcesses.get(runId);
   if (!proc) return { running: false, status: null };
   return { running: true, status: proc.status };
 }
 
 function writeExportData(body: Record<string, unknown>): string {
-  const runId = body.run_id as string;
-  const platformId = body.platform_id as string;
+  const runId = body.runId as string;
+  const platformId = body.platformId as string;
   const company = sanitizePathComponent(body.company as string);
   const name = sanitizePathComponent(
     (body.name as string) || platformId,
@@ -397,6 +400,60 @@ function setAppConfig(body: Record<string, unknown>): void {
   );
 }
 
+function loadRunExportData(body: Record<string, unknown>): unknown {
+  const exportPath = body.exportPath as string;
+  if (!exportPath) return null;
+  const dataPath = path.join(exportPath, "export.json");
+  if (!fs.existsSync(dataPath)) return null;
+  return JSON.parse(fs.readFileSync(dataPath, "utf-8"));
+}
+
+function loadLatestSourceExportPreview(body: Record<string, unknown>): unknown {
+  const company = sanitizePathComponent(body.company as string);
+  const platformName = sanitizePathComponent(body.name as string);
+  const scope = body.scope ? sanitizePathComponent(body.scope as string) : null;
+  const baseDir = path.join(DATA_DIR, "exports", company, platformName);
+  if (!fs.existsSync(baseDir)) return null;
+  const runs = readdirSafe(baseDir).sort().reverse();
+  for (const run of runs) {
+    const exportFile = scope
+      ? path.join(baseDir, run, scope, "export.json")
+      : path.join(baseDir, run, "export.json");
+    if (fs.existsSync(exportFile)) {
+      const data = JSON.parse(fs.readFileSync(exportFile, "utf-8"));
+      return { ...data, exportPath: path.dirname(exportFile) };
+    }
+  }
+  return null;
+}
+
+function loadLatestSourceExportFull(body: Record<string, unknown>): unknown {
+  const company = sanitizePathComponent(body.company as string);
+  const platformName = sanitizePathComponent(body.name as string);
+  const scope = body.scope ? sanitizePathComponent(body.scope as string) : null;
+  const baseDir = path.join(DATA_DIR, "exports", company, platformName);
+  if (!fs.existsSync(baseDir)) return null;
+  const runs = readdirSafe(baseDir).sort().reverse();
+  for (const run of runs) {
+    const exportFile = scope
+      ? path.join(baseDir, run, scope, "export.json")
+      : path.join(baseDir, run, "export.json");
+    if (fs.existsSync(exportFile)) {
+      return fs.readFileSync(exportFile, "utf-8");
+    }
+  }
+  return null;
+}
+
+function deleteExportedRun(body: Record<string, unknown>): unknown {
+  const exportPath = body.exportPath as string;
+  if (!exportPath) return { ok: false };
+  if (fs.existsSync(exportPath)) {
+    fs.rmSync(exportPath, { recursive: true, force: true });
+  }
+  return { ok: true };
+}
+
 const COMMAND_MAP: Record<
   string,
   (body: Record<string, unknown>) => unknown
@@ -419,6 +476,41 @@ const COMMAND_MAP: Record<
   get_app_config: () => getAppConfig(),
   set_app_config: (b) => {
     setAppConfig(b);
+    return { ok: true };
+  },
+  check_connected_platforms: () => ({}),
+  start_personal_server: () => {
+    throw new Error("Personal server is not available in cloud mode");
+  },
+  stop_personal_server: () => ({ ok: true }),
+  check_browser_available: () => ({
+    installed: true,
+    version: "chromium",
+    needs_download: false,
+  }),
+  download_browser: () => ({ ok: true }),
+  get_user_data_path: () => process.env.DATA_DIR || "/data",
+  get_log_path: () =>
+    path.join(process.env.DATA_DIR || "/data", "logs", "cloud-server.log"),
+  open_folder: () => ({ ok: true }),
+  open_platform_export_folder: () => ({ ok: true }),
+  test_nodejs: () => ({ success: true, version: process.version }),
+  debug_connector_paths: () => ({
+    connectors_dir: CONNECTORS_DIR,
+    data_dir: DATA_DIR,
+    playwright_runner: PLAYWRIGHT_RUNNER,
+  }),
+  list_browser_sessions: () => [],
+  clear_browser_session: () => ({ ok: true }),
+  check_connector_updates: () => [],
+  download_connector: () => ({ ok: true }),
+  load_run_export_data: (b) => loadRunExportData(b),
+  load_latest_source_export_preview: (b) => loadLatestSourceExportPreview(b),
+  load_latest_source_export_full: (b) => loadLatestSourceExportFull(b),
+  delete_exported_run: (b) => deleteExportedRun(b),
+  mark_export_synced: () => ({ ok: true }),
+  stop_connector_run: (b) => {
+    stopConnector(b);
     return { ok: true };
   },
 };

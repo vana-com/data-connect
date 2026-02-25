@@ -66,6 +66,10 @@ vi.mock("@/hooks/usePersonalServer", () => ({
   }),
 }))
 
+vi.mock("@/lib/runtime/context", () => ({
+  useRuntime: () => ({ mode: "tauri" }),
+}))
+
 vi.mock("react-redux", async () => {
   const actual = await vi.importActual<object>("react-redux")
   return {

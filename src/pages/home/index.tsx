@@ -6,7 +6,9 @@ import { usePlatforms } from "@/hooks/usePlatforms"
 import { useConnector } from "@/hooks/useConnector"
 import { useConnectedApps } from "@/hooks/useConnectedApps"
 import { usePersonalServer } from "@/hooks/usePersonalServer"
+import { useRuntime } from "@/lib/runtime/context"
 import type { Platform, RootState } from "@/types"
+import { ScreencastModal } from "@/components/connector-view/screencast-modal"
 import { PageContainer } from "@/components/elements/page-container"
 import { DebugTogglePanel } from "@/components/elements/debug-toggle-panel"
 import { SlidingTabs } from "@/components/elements/sliding-tabs"
@@ -61,6 +63,7 @@ export function Home() {
   const { startImport, stopExport } = useConnector()
   const { connectedApps, fetchConnectedApps } = useConnectedApps()
   const personalServer = usePersonalServer()
+  const runtime = useRuntime()
   const runs = useSelector((state: RootState) => state.app.runs)
   const [activeTab, setActiveTab] = useState("sources")
   const [enableTabMotion, setEnableTabMotion] = useState(false)
@@ -167,6 +170,16 @@ export function Home() {
     },
     [stopExport]
   )
+
+  // In HTTP (cloud) mode, show the ConnectorView screencast when a connector is running
+  const hasRunningConnector = runs.some(run => run.status === "running")
+  const screencastWsUrl = useMemo(() => {
+    if (runtime.mode !== "http" || !hasRunningConnector) return null
+    const protocol = window.location.protocol === "https:" ? "wss:" : "ws:"
+    const token = sessionStorage.getItem("cloud_auth_token")
+    const qs = token ? `?token=${encodeURIComponent(token)}` : ""
+    return `${protocol}//${window.location.host}/ws/screencast${qs}`
+  }, [runtime.mode, hasRunningConnector])
 
   const handleTestDeepLink = useCallback(() => {
     const trimmed = deepLinkInput.trim()
@@ -323,6 +336,9 @@ export function Home() {
             onStopRun={handleStopImport}
             connectedPlatformIds={homeImportSourcesDebug.connectedPlatformIds}
           />
+          {screencastWsUrl && (
+            <ScreencastModal wsUrl={screencastWsUrl} />
+          )}
         </TabsContent>
 
         {/* APPS */}

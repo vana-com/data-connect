@@ -66,12 +66,16 @@ interface SettingsPersonalServerSectionProps {
   personalServer: ReturnType<typeof usePersonalServer>
   onRestartPersonalServer: () => void
   onStopPersonalServer: () => void
+  personalServerDataPath: string
+  onOpenPersonalServerFolder: () => void
 }
 
 export function SettingsPersonalServer({
   personalServer,
   onRestartPersonalServer,
   onStopPersonalServer,
+  personalServerDataPath,
+  onOpenPersonalServerFolder,
 }: SettingsPersonalServerSectionProps) {
   const isTestMode =
     DEV_FLAGS.useSettingsUiMocks && TEST_SERVER_STATUS_OVERRIDE !== null
@@ -128,7 +132,6 @@ export function SettingsPersonalServer({
             />
             <SettingsDetailRow
               label="Server controls"
-              isLast
               value={
                 previewStatus === "running" ? (
                   <SettingsRowAction onClick={() => onStopPersonalServer()}>
@@ -143,6 +146,19 @@ export function SettingsPersonalServer({
                     Start
                   </SettingsRowAction>
                 )
+              }
+            />
+            <SettingsDetailRow
+              isLast
+              label="Location"
+              labelInfo="The local folder where your Personal Server data is stored."
+              value={
+                <SettingsRowAction
+                  onClick={onOpenPersonalServerFolder}
+                  disabled={!personalServerDataPath}
+                >
+                  Open
+                </SettingsRowAction>
               }
             />
           </div>

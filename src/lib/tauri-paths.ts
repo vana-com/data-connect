@@ -1,6 +1,8 @@
 import { invoke } from "@tauri-apps/api/core"
 
 export const getUserDataPath = () => invoke<string>("get_user_data_path")
+export const getPersonalServerDataPath = () =>
+  invoke<string>("get_personal_server_data_path")
 
 export const openPlatformExportFolder = (
   company: string,

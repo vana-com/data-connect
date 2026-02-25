@@ -25,11 +25,9 @@ import {
   CONNECTED_SOURCES_UI_DEBUG_SCENARIO_VALUES,
   isConnectedSourcesUiDebugEnabled,
   resolveConnectedSourcesUiDebugPlatforms,
+  resolveConnectedSourcesUiDebugRuns,
 } from "./connected-sources-ui-debug"
-import {
-  testConnectedPlatforms,
-  testPlatforms,
-} from "./home-debug-fixtures"
+import { testConnectedPlatforms, testPlatforms } from "./home-debug-fixtures"
 import {
   HOME_UI_DEBUG_SCENARIO_VALUES,
   isHomeUiDebugEnabled,
@@ -39,11 +37,8 @@ import {
 export function Home() {
   const location = useLocation()
   const navigate = useNavigate()
-  const {
-    platforms,
-    isPlatformConnected,
-    refreshConnectedStatus,
-  } = usePlatforms()
+  const { platforms, isPlatformConnected, refreshConnectedStatus } =
+    usePlatforms()
   const { startImport, stopExport } = useConnector()
   const { connectedApps, fetchConnectedApps } = useConnectedApps()
   const personalServer = usePersonalServer()
@@ -222,7 +217,9 @@ export function Home() {
     return displayPlatforms.filter(platform => {
       if (isPlatformConnected(platform.id)) return true
       const canonicalId = getPlatformRegistryEntry(platform)?.id
-      return canonicalId ? connectedCanonicalIdsFromRuns.has(canonicalId) : false
+      return canonicalId
+        ? connectedCanonicalIdsFromRuns.has(canonicalId)
+        : false
     })
   }, [
     connectedCanonicalIdsFromRuns,
@@ -242,6 +239,15 @@ export function Home() {
         search: location.search,
       }),
     [connectedPlatformsList, location.search]
+  )
+  const connectedSourcesRuns = useMemo(
+    () =>
+      resolveConnectedSourcesUiDebugRuns({
+        runs: displayRuns,
+        platforms: connectedSourcesPlatforms,
+        search: location.search,
+      }),
+    [connectedSourcesPlatforms, displayRuns, location.search]
   )
 
   const handleOpenRuns = useCallback(
@@ -273,7 +279,7 @@ export function Home() {
         <TabsContent value="sources" className="space-y-w8">
           <ConnectedSourcesList
             platforms={connectedSourcesPlatforms}
-            runs={displayRuns}
+            runs={connectedSourcesRuns}
             headline="Your imported data"
             onOpenRuns={handleOpenRuns}
           />
@@ -295,16 +301,20 @@ export function Home() {
       {/* DEV ONLY SHORTCUT: RickRoll /connect link */}
       {import.meta.env.DEV && (
         <DebugTogglePanel title="Home debug">
-          <div className="grid grid-cols-2 divide-x">
-            <div className="space-y-2 pr-4">
-              <p className="text-xs font-medium">Home UI scenario</p>
+          <div className="grid grid-cols-12 divide-x">
+            <div className="col-span-7 space-y-2 pr-4">
+              <p className="text-xs font-medium">Import sources</p>
               <div className="flex flex-wrap gap-2">
                 {HOME_UI_DEBUG_SCENARIO_VALUES.map(scenario => (
                   <Button
                     key={scenario}
                     type="button"
                     size="xs"
-                    variant={currentHomeUiDebugScenario === scenario ? "default" : "outline"}
+                    variant={
+                      currentHomeUiDebugScenario === scenario
+                        ? "default"
+                        : "outline"
+                    }
                     onClick={() => setHomeUiDebugScenario(scenario)}
                   >
                     {scenario}
@@ -320,7 +330,7 @@ export function Home() {
                 </Button>
               </div>
               <div className="space-y-2 pt-1">
-                <p className="text-xs font-medium">Connected sources UI</p>
+                <p className="text-xs font-medium">Imported data</p>
                 <div className="flex flex-wrap gap-2">
                   {CONNECTED_SOURCES_UI_DEBUG_SCENARIO_VALUES.map(scenario => (
                     <Button
@@ -332,7 +342,9 @@ export function Home() {
                           ? "default"
                           : "outline"
                       }
-                      onClick={() => setConnectedSourcesUiDebugScenario(scenario)}
+                      onClick={() =>
+                        setConnectedSourcesUiDebugScenario(scenario)
+                      }
                     >
                       {scenario}
                     </Button>
@@ -340,7 +352,9 @@ export function Home() {
                   <Button
                     type="button"
                     size="xs"
-                    variant={connectedSourcesUiDebugEnabled ? "outline" : "default"}
+                    variant={
+                      connectedSourcesUiDebugEnabled ? "outline" : "default"
+                    }
                     onClick={() => setConnectedSourcesUiDebugScenario(null)}
                   >
                     real
@@ -348,7 +362,7 @@ export function Home() {
                 </div>
               </div>
             </div>
-            <div className="space-y-3 pl-4">
+            <div className="col-span-5 space-y-3 pl-4">
               <p className="text-xs font-medium">Grant flow</p>
               <div className="flex flex-wrap gap-2">
                 <Button type="button" size="xs" variant="outline" asChild>

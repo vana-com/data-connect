@@ -125,4 +125,16 @@ export const PLATFORM_REGISTRY: PlatformRegistryEntry[] = [
     primaryColor: "#FF0000",
     platformIds: ["youtube"],
   },
+  {
+    id: "shop",
+    displayName: "Shop",
+    iconKey: "shop",
+    iconEmoji: "🛒",
+    primaryColor: "#5433EB",
+    platformIds: ["shop-playwright", "shop"],
+    aliases: ["shopify"],
+    availability: "requiresConnector",
+    showInConnectList: true,
+    ingestScope: "shop.orders",
+  },
 ]

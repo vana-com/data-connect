@@ -4,6 +4,7 @@ import { PlatformChatGPTIcon } from "@/components/icons/platform-chatgpt"
 import { PlatformGithubIcon } from "@/components/icons/platform-github"
 import { PlatformInstagramGlyphIcon } from "@/components/icons/platform-instagram-glyph"
 import { PlatformLinkedinIcon } from "@/components/icons/platform-linkedin"
+import { PlatformShopIcon } from "@/components/icons/platform-shop"
 import { PlatformSpotifyIcon } from "@/components/icons/platform-spotify"
 import type { PlatformRegistryEntry } from "./registry"
 import {
@@ -19,6 +20,7 @@ const PLATFORM_ICON_COMPONENTS: Record<string, PlatformIconComponent> = {
   github: PlatformGithubIcon,
   instagram: PlatformInstagramGlyphIcon,
   linkedin: PlatformLinkedinIcon,
+  shop: PlatformShopIcon,
   spotify: PlatformSpotifyIcon,
   x: IconX,
 }

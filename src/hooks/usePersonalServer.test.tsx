@@ -5,19 +5,19 @@ import { renderHook, act } from "@testing-library/react"
 
 const mockInvoke = vi.fn()
 
-vi.mock("@tauri-apps/api/core", () => ({
-  invoke: (...args: unknown[]) => mockInvoke(...args),
-}))
-
-type EventHandler = (event: { payload: unknown }) => void
+type EventHandler = (payload: unknown) => void
 const listeners = new Map<string, EventHandler>()
 
-vi.mock("@tauri-apps/api/event", () => ({
-  listen: vi.fn((eventName: string, handler: EventHandler) => {
-    listeners.set(eventName, handler)
-    return Promise.resolve(() => {
-      listeners.delete(eventName)
-    })
+vi.mock("@/lib/runtime", () => ({
+  useRuntime: () => ({
+    mode: "tauri",
+    invoke: (...args: unknown[]) => mockInvoke(...args),
+    onEvent: (eventName: string, handler: EventHandler) => {
+      listeners.set(eventName, handler)
+      return () => {
+        listeners.delete(eventName)
+      }
+    },
   }),
 }))
 
@@ -46,7 +46,7 @@ vi.mock("../state/store", () => ({
 function emit(event: string, payload: unknown) {
   const handler = listeners.get(event)
   if (!handler) throw new Error(`No listener for ${event}`)
-  handler({ payload })
+  handler(payload)
 }
 
 // Reset module-level state between tests by re-importing the hook.
@@ -63,9 +63,6 @@ describe("usePersonalServer", () => {
     listeners.clear()
     mockInvoke.mockReset()
     authState = { walletAddress: null, masterKeySignature: null }
-    // Simulate Tauri runtime so isTauriRuntime() returns true
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    ;(window as any).__TAURI_INTERNALS__ = {}
     // Default: invoke succeeds with a running server
     mockInvoke.mockImplementation((cmd: string) => {
       if (cmd === "start_personal_server") {
@@ -80,8 +77,6 @@ describe("usePersonalServer", () => {
 
   afterEach(() => {
     vi.useRealTimers()
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    delete (window as any).__TAURI_INTERNALS__
   })
 
   it("starts in unauthenticated mode on mount", async () => {

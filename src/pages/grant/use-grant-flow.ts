@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from "react"
 import { useNavigate } from "react-router-dom"
 import { useDispatch } from "react-redux"
+import { useRuntime } from "@/lib/runtime"
 import { useAuth } from "../../hooks/useAuth"
 import { addConnectedApp } from "../../state/store"
 import {
@@ -62,6 +63,7 @@ function createDemoBuilderManifest(): BuilderManifest {
 export function useGrantFlow(params: GrantFlowParams, prefetched?: PrefetchedGrantData) {
   const navigate = useNavigate()
   const dispatch = useDispatch()
+  const runtime = useRuntime()
   const { isAuthenticated, isLoading: authLoading, walletAddress } = useAuth()
   const personalServer = usePersonalServer()
   const [flowState, setFlowState] = useState<GrantFlowState>({
@@ -319,7 +321,7 @@ export function useGrantFlow(params: GrantFlowParams, prefetched?: PrefetchedGra
 
       // Fetch the Personal Server's own address so the builder can resolve
       // the server via Gateway (registered under this address, not the user's).
-      const { address: serverAddress } = await fetchServerIdentity(personalServer.port)
+      const { address: serverAddress } = await fetchServerIdentity(runtime, personalServer.port)
 
       // Step: Approve session via Session Relay
       setFlowState(prev => ({ ...prev, status: "approving" }))

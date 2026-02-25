@@ -1,7 +1,6 @@
 import { useEffect, useRef } from 'react';
-import { listen } from '@tauri-apps/api/event';
-import { invoke } from '@tauri-apps/api/core';
 import { useDispatch } from 'react-redux';
+import { useRuntime, type Runtime } from '@/lib/runtime';
 import {
   updateRunLogs,
   updateRunStatus,
@@ -87,6 +86,7 @@ function toExportedData(
  * Returns true on success, false on failure (non-throwing).
  */
 async function deliverRunToPersonalServer(
+  runtime: Runtime,
   run: { id: string; platformId: string; exportPath?: string; itemsExported?: number; itemLabel?: string; syncedToPersonalServer?: boolean },
   port: number,
   dispatch: AppDispatch,
@@ -99,7 +99,7 @@ async function deliverRunToPersonalServer(
     : run.exportPath;
 
   try {
-    const data = await invoke<Record<string, unknown>>('load_run_export_data', {
+    const data = await runtime.invoke<Record<string, unknown>>('load_run_export_data', {
       runId: run.id,
       exportPath: dirPath,
     });
@@ -108,7 +108,7 @@ async function deliverRunToPersonalServer(
     if (ingested.length === 0) return false;
 
     // Mark staging as synced (trims the large JSON)
-    await invoke('mark_export_synced', {
+    await runtime.invoke('mark_export_synced', {
       runId: run.id,
       exportPath: run.exportPath,
       itemsExported: run.itemsExported ?? null,
@@ -128,6 +128,7 @@ async function deliverRunToPersonalServer(
 }
 
 async function persistAndDeliverExport({
+  runtime,
   runId,
   platformId,
   company,
@@ -136,6 +137,7 @@ async function persistAndDeliverExport({
   dispatch,
   persistedRunIds,
 }: {
+  runtime: Runtime;
   runId: string;
   platformId: string;
   company: string;
@@ -162,7 +164,7 @@ async function persistAndDeliverExport({
   persistedRunIds.add(runId);
 
   try {
-    const exportPath = await invoke<string>('write_export_data', {
+    const exportPath = await runtime.invoke<string>('write_export_data', {
       runId,
       platformId,
       company,
@@ -178,13 +180,13 @@ async function persistAndDeliverExport({
       })
     );
 
-    const serverStatus = await invoke<{ running: boolean; port?: number }>('get_personal_server_status');
+    const serverStatus = await runtime.invoke<{ running: boolean; port?: number }>('get_personal_server_status');
     if (!serverStatus.running || !serverStatus.port) return;
 
     const ingested = await ingestExportData(serverStatus.port, platformId, exportData as unknown as Record<string, unknown>);
     if (ingested.length === 0) return;
 
-    await invoke('mark_export_synced', {
+    await runtime.invoke('mark_export_synced', {
       runId,
       exportPath,
       itemsExported: itemsExported ?? null,
@@ -216,6 +218,7 @@ async function persistAndDeliverExport({
 
 export function useEvents() {
   const dispatch = useDispatch();
+  const runtime = useRuntime();
   const deliveryInProgressRef = useRef(false);
 
   /**
@@ -229,19 +232,12 @@ export function useEvents() {
     const unlistenFns: (() => void)[] = [];
     const persistedRunIds = new Set<string>();
 
-    // Helper: register a Tauri event listener with automatic cleanup on unmount.
-    // Handles the race where unmount happens before listen() resolves.
     function addListener<T>(eventName: string, handler: (payload: T) => void) {
-      listen<T>(eventName, (event) => {
+      const unlisten = runtime.onEvent<T>(eventName, (payload) => {
         if (cancelled) return;
-        handler(event.payload);
-      }).then((unlisten) => {
-        if (cancelled) {
-          unlisten();
-        } else {
-          unlistenFns.push(unlisten);
-        }
+        handler(payload);
       });
+      unlistenFns.push(unlisten);
     }
 
     // Listen for connector log events
@@ -319,6 +315,7 @@ export function useEvents() {
           });
           if (!normalizedData) return;
           void persistAndDeliverExport({
+            runtime,
             runId,
             platformId: normalizedData.platform,
             company: normalizedData.company,
@@ -377,7 +374,7 @@ export function useEvents() {
         debugLog('[Data Delivery]', pending.length, 'pending exports to deliver');
         for (const run of pending) {
           if (cancelled) break;
-          await deliverRunToPersonalServer(run, port, dispatch);
+          await deliverRunToPersonalServer(runtime, run, port, dispatch);
         }
       } finally {
         deliveryInProgressRef.current = false;
@@ -401,6 +398,7 @@ export function useEvents() {
       );
 
       void persistAndDeliverExport({
+        runtime,
         runId,
         platformId,
         company,
@@ -428,5 +426,5 @@ export function useEvents() {
       cancelled = true;
       unlistenFns.forEach((fn) => fn());
     };
-  }, [dispatch]);
+  }, [dispatch, runtime]);
 }

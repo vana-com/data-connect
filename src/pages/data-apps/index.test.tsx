@@ -5,6 +5,24 @@ import { getAppRegistryEntries } from "@/apps/registry"
 import { LINKS } from "@/config/links"
 import { DataApps } from "./index"
 
+const mockNavigate = vi.fn()
+
+vi.mock("@tauri-apps/plugin-shell", () => ({
+  open: vi.fn().mockResolvedValue(undefined),
+}))
+
+vi.mock("@/lib/runtime", () => ({
+  isTauri: true,
+}))
+
+vi.mock("react-router", async () => {
+  const actual = await vi.importActual<object>("react-router")
+  return {
+    ...actual,
+    useNavigate: () => mockNavigate,
+  }
+})
+
 const renderDataApps = () => {
   const router = createMemoryRouter(
     [{ path: "/apps", element: <DataApps /> }],

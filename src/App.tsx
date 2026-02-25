@@ -2,6 +2,7 @@ import { lazy, Suspense } from "react"
 import { BrowserRouter, Routes, Route } from "react-router-dom"
 import { Provider } from "react-redux"
 import { store } from "./state/store"
+import { RuntimeProvider } from "./lib/runtime"
 import { useEvents } from "./hooks/useEvents"
 import { useInitialize } from "./hooks/useInitialize"
 import { TopNav } from "./components/navigation/top-nav"
@@ -83,11 +84,13 @@ function AppContent() {
 function App() {
   return (
     <Provider store={store}>
-      <div style={dotPatternStyle} className="min-h-screen">
-        <BrowserRouter>
-          <AppContent />
-        </BrowserRouter>
-      </div>
+      <RuntimeProvider>
+        <div style={dotPatternStyle} className="min-h-screen">
+          <BrowserRouter>
+            <AppContent />
+          </BrowserRouter>
+        </div>
+      </RuntimeProvider>
     </Provider>
   )
 }

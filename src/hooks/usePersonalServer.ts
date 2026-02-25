@@ -1,7 +1,6 @@
 import { useEffect, useRef, useState, useCallback } from 'react';
-import { invoke } from '@tauri-apps/api/core';
-import { listen } from '@tauri-apps/api/event';
 import { useSelector } from 'react-redux';
+import { useRuntime } from '@/lib/runtime';
 import type { RootState } from '../state/store';
 
 interface PersonalServerStatus {
@@ -17,10 +16,6 @@ let _sharedTunnelUrl: string | null = null;
 let _sharedTunnelFailed = false;
 let _sharedDevToken: string | null = null;
 let _sharedError: string | null = null;
-const isTauriRuntime = () =>
-  typeof window !== 'undefined' &&
-  ('__TAURI__' in window || '__TAURI_INTERNALS__' in window);
-
 const MAX_RESTART_ATTEMPTS = 3;
 let _restartCount = 0;
 let _lastStartedWallet: string | null = null;
@@ -65,6 +60,7 @@ function getSafeErrorMessage(error: unknown): string {
 }
 
 export function usePersonalServer() {
+  const runtime = useRuntime();
   const { walletAddress, masterKeySignature } = useSelector(
     (state: RootState) => state.app.auth
   );
@@ -97,7 +93,6 @@ export function usePersonalServer() {
   }, []);
 
   const startServer = useCallback(async (wallet?: string | null) => {
-    if (!isTauriRuntime()) return;
     if (running.current) return;
     running.current = true;
     _sharedStatus = 'starting';
@@ -113,7 +108,7 @@ export function usePersonalServer() {
       // remounts or React StrictMode recreates the callback between phases.
       const masterKey = masterKeySignature ?? _lastMasterKeySignature;
       console.log('[PersonalServer] Starting with wallet:', owner ?? 'none', 'masterKey:', masterKey ? 'present' : 'null');
-      await invoke<PersonalServerStatus>('start_personal_server', {
+      await runtime.invoke<PersonalServerStatus>('start_personal_server', {
         port: null,
         masterKeySignature: masterKey ?? null,
         gatewayUrl: import.meta.env.VITE_GATEWAY_URL || null,
@@ -132,15 +127,14 @@ export function usePersonalServer() {
       setError(_sharedError);
       _notifyAll();
     }
-  }, [walletAddress, masterKeySignature]);
+  }, [walletAddress, masterKeySignature, runtime]);
 
   startServerRef.current = startServer;
 
   const stopServer = useCallback(async () => {
-    if (!isTauriRuntime()) return;
     running.current = false;
     try {
-      await invoke('stop_personal_server');
+      await runtime.invoke('stop_personal_server');
       _sharedStatus = 'stopped';
       _sharedPort = null;
       _sharedTunnelUrl = null;
@@ -155,7 +149,7 @@ export function usePersonalServer() {
     } catch (err) {
       console.error('[PersonalServer] Failed to stop:', err);
     }
-  }, []);
+  }, [runtime]);
 
   const restartServer = useCallback(async (wallet?: string | null) => {
     console.log('[PersonalServer] Restarting with wallet:', wallet ?? 'none');
@@ -169,33 +163,31 @@ export function usePersonalServer() {
 
   // Listen for server events
   useEffect(() => {
-    if (!isTauriRuntime()) return;
     const unlisteners: (() => void)[] = [];
 
-    listen<{ port: number }>('personal-server-ready', (event) => {
-      console.log('[PersonalServer] Ready on port', event.payload.port);
+    unlisteners.push(runtime.onEvent<{ port: number }>('personal-server-ready', ({ port: p }) => {
+      console.log('[PersonalServer] Ready on port', p);
       _sharedStatus = 'running';
-      _sharedPort = event.payload.port;
+      _sharedPort = p;
       _restartCount = 0;
       setStatus('running');
-      setPort(event.payload.port);
+      setPort(p);
 
       restartingRef.current = false;
       _notifyAll();
-    }).then((fn) => unlisteners.push(fn));
+    }));
 
-    listen<{ message: string }>('personal-server-error', (event) => {
-      console.error('[PersonalServer] Error:', event.payload.message);
+    unlisteners.push(runtime.onEvent<{ message: string }>('personal-server-error', ({ message }) => {
+      console.error('[PersonalServer] Error:', message);
       running.current = false;
       _sharedStatus = 'error';
-      _sharedError = getSafeErrorMessage(event.payload.message);
+      _sharedError = getSafeErrorMessage(message);
       setStatus('error');
       setError(_sharedError);
       _notifyAll();
-    }).then((fn) => unlisteners.push(fn));
+    }));
 
-    listen<{ exitCode: number | null; crashed: boolean }>('personal-server-exited', (event) => {
-      const { exitCode, crashed } = event.payload;
+    unlisteners.push(runtime.onEvent<{ exitCode: number | null; crashed: boolean }>('personal-server-exited', ({ exitCode, crashed }) => {
       console.log('[PersonalServer] Exited:', { exitCode, crashed });
 
       running.current = false;
@@ -230,45 +222,43 @@ export function usePersonalServer() {
         setStatus('stopped');
         _notifyAll();
       }
-    }).then((fn) => unlisteners.push(fn));
+    }));
 
-    listen<{ url: string }>('personal-server-tunnel', (event) => {
-      console.log('[PersonalServer] Tunnel:', event.payload.url);
-      _sharedTunnelUrl = event.payload.url;
+    unlisteners.push(runtime.onEvent<{ url: string }>('personal-server-tunnel', ({ url }) => {
+      console.log('[PersonalServer] Tunnel:', url);
+      _sharedTunnelUrl = url;
       _sharedTunnelFailed = false;
-      setTunnelUrl(event.payload.url);
+      setTunnelUrl(url);
       setTunnelFailed(false);
       _notifyAll();
-    }).then((fn) => unlisteners.push(fn));
+    }));
 
-    listen<{ message: string }>('personal-server-tunnel-failed', (event) => {
-      console.warn('[PersonalServer] Tunnel failed:', event.payload.message);
+    unlisteners.push(runtime.onEvent<{ message: string }>('personal-server-tunnel-failed', ({ message }) => {
+      console.warn('[PersonalServer] Tunnel failed:', message);
       _sharedTunnelFailed = true;
       setTunnelFailed(true);
       _notifyAll();
-    }).then((fn) => unlisteners.push(fn));
+    }));
 
-    // The wrapper now self-registers and connects the tunnel in a single
-    // pass, so we just log the event — no restart needed.
-    listen<{ status: number; serverId: string | null }>('server-registered', (event) => {
-      console.log('[PersonalServer] Server registered with gateway:', event.payload);
-    }).then((fn) => unlisteners.push(fn));
+    unlisteners.push(runtime.onEvent<{ status: number; serverId: string | null }>('server-registered', (payload) => {
+      console.log('[PersonalServer] Server registered with gateway:', payload);
+    }));
 
-    listen<{ message: string }>('personal-server-log', (event) => {
-      console.log('[PersonalServer]', event.payload.message);
-    }).then((fn) => unlisteners.push(fn));
+    unlisteners.push(runtime.onEvent<{ message: string }>('personal-server-log', ({ message }) => {
+      console.log('[PersonalServer]', message);
+    }));
 
-    listen<{ token: string }>('personal-server-dev-token', (event) => {
+    unlisteners.push(runtime.onEvent<{ token: string }>('personal-server-dev-token', ({ token }) => {
       console.log('[PersonalServer] Dev token received');
-      _sharedDevToken = event.payload.token;
-      setDevToken(event.payload.token);
+      _sharedDevToken = token;
+      setDevToken(token);
       _notifyAll();
-    }).then((fn) => unlisteners.push(fn));
+    }));
 
     return () => {
       unlisteners.forEach((fn) => fn());
     };
-  }, []);
+  }, [runtime]);
 
   // Phase 1 removed — starting without a wallet was ~3s of throwaway work
   // (random keypair, no registration, no tunnel). The server now starts

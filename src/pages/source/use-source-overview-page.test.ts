@@ -32,6 +32,10 @@ vi.mock("@/lib/tauri-paths", () => ({
     mockLoadLatestSourceExportFull(...args),
 }))
 
+vi.mock("@/lib/runtime", () => ({
+  useRuntime: () => ({ mode: "tauri", invoke: vi.fn() }),
+}))
+
 vi.mock("@/lib/open-resource", () => ({
   openExportFolderPath: (...args: unknown[]) => mockOpenExportFolderPath(...args),
   toFileUrl: (path: string) => `file://${path}`,
@@ -107,6 +111,7 @@ describe("useSourceOverviewPage", () => {
     })
 
     expect(mockLoadLatestSourceExportPreview).toHaveBeenCalledWith(
+      expect.objectContaining({ mode: "tauri" }),
       "OpenAI",
       "ChatGPT",
       "chatgpt.conversations"
@@ -117,6 +122,7 @@ describe("useSourceOverviewPage", () => {
     })
 
     expect(mockLoadLatestSourceExportFull).toHaveBeenCalledWith(
+      expect.objectContaining({ mode: "tauri" }),
       "OpenAI",
       "ChatGPT",
       "chatgpt.conversations"
@@ -279,7 +285,7 @@ describe("useSourceOverviewPage", () => {
     }
   })
 
-  it("suppresses preview error in non-tauri runtime", async () => {
+  it("surfaces preview error in any runtime mode", async () => {
     mockLoadLatestSourceExportPreview.mockRejectedValue(new Error("IPC unavailable"))
 
     const { result } = renderHook(() => useSourceOverviewPage("chatgpt"))
@@ -288,39 +294,21 @@ describe("useSourceOverviewPage", () => {
       expect(result.current.isPreviewLoading).toBe(false)
     })
 
-    expect(result.current.previewError).toBe(null)
+    expect(result.current.previewError).toBe("IPC unavailable")
     expect(result.current.preview).toBe(null)
   })
 
-  it("surfaces preview error in tauri runtime", async () => {
+  it("surfaces preview error message from thrown Error", async () => {
     mockLoadLatestSourceExportPreview.mockRejectedValue(new Error("IPC unavailable"))
 
-    const hadTauri = "__TAURI__" in window
-    const previousTauri = (window as { __TAURI__?: unknown }).__TAURI__
-    Object.defineProperty(window, "__TAURI__", {
-      configurable: true,
-      value: {},
+    const { result } = renderHook(() => useSourceOverviewPage("chatgpt"))
+
+    await waitFor(() => {
+      expect(result.current.isPreviewLoading).toBe(false)
     })
 
-    try {
-      const { result } = renderHook(() => useSourceOverviewPage("chatgpt"))
-
-      await waitFor(() => {
-        expect(result.current.isPreviewLoading).toBe(false)
-      })
-
-      expect(result.current.previewError).toBe("IPC unavailable")
-      expect(result.current.preview).toBe(null)
-    } finally {
-      if (hadTauri) {
-        Object.defineProperty(window, "__TAURI__", {
-          configurable: true,
-          value: previousTauri,
-        })
-      } else {
-        delete (window as { __TAURI__?: unknown }).__TAURI__
-      }
-    }
+    expect(result.current.previewError).toBe("IPC unavailable")
+    expect(result.current.preview).toBe(null)
   })
 
 })

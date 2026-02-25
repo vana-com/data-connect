@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useState } from "react"
-import { invoke } from "@tauri-apps/api/core"
+import { useRuntime } from "@/lib/runtime"
 import { ingestExportData } from "@/services/personalServerIngest"
 import { openExportFolderPath } from "@/lib/open-resource"
 import { openPersonalServerScopeFolder } from "@/lib/tauri-paths"
@@ -18,6 +18,7 @@ export interface UseRunItemProps {
 }
 
 export function useRunItem({ run, serverPort, serverReady }: UseRunItemProps) {
+  const runtime = useRuntime()
   const [expanded, setExpanded] = useState(false)
   const [exportData, setExportData] = useState<Run["exportData"]>(run.exportData)
   const [loadingData, setLoadingData] = useState(false)
@@ -46,7 +47,7 @@ export function useRunItem({ run, serverPort, serverReady }: UseRunItemProps) {
     if (!expanded && !exportData && run.exportPath) {
       setLoadingData(true)
       try {
-        const data = await invoke<Record<string, unknown>>("load_run_export_data", {
+        const data = await runtime.invoke<Record<string, unknown>>("load_run_export_data", {
           runId: run.id,
           exportPath: run.exportPath,
         })
@@ -73,7 +74,7 @@ export function useRunItem({ run, serverPort, serverReady }: UseRunItemProps) {
       const dirPath = exportPath.endsWith(".json")
         ? exportPath.replace(/\/[^/]+$/, "")
         : exportPath
-      const data = await invoke<Record<string, unknown>>("load_run_export_data", {
+      const data = await runtime.invoke<Record<string, unknown>>("load_run_export_data", {
         runId: run.id,
         exportPath: dirPath,
       })

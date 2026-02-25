@@ -1,12 +1,13 @@
 import { useEffect, useCallback, useState } from "react"
-import { invoke } from "@tauri-apps/api/core"
 import { useDispatch, useSelector } from "react-redux"
+import { useRuntime } from "@/lib/runtime"
 import { setPlatforms, setConnectedPlatforms } from "../state/store"
 import type { RootState } from "../state/store"
 import type { Platform } from "../types"
 
 export function usePlatforms() {
   const dispatch = useDispatch()
+  const runtime = useRuntime()
   const platforms = useSelector((state: RootState) => state.app.platforms)
   const connectedPlatforms = useSelector(
     (state: RootState) => state.app.connectedPlatforms
@@ -20,12 +21,12 @@ export function usePlatforms() {
     setPlatformsLoaded(false)
     setPlatformLoadError(null)
     try {
-      const loadedPlatforms = await invoke<Platform[]>("get_platforms")
+      const loadedPlatforms = await runtime.invoke<Platform[]>("get_platforms")
       dispatch(setPlatforms(loadedPlatforms))
 
       // Check which platforms are connected
       const platformIds = loadedPlatforms.map(p => p.id)
-      const connected = await invoke<Record<string, boolean>>(
+      const connected = await runtime.invoke<Record<string, boolean>>(
         "check_connected_platforms",
         { platformIds }
       )
@@ -38,7 +39,7 @@ export function usePlatforms() {
     } finally {
       setPlatformsLoaded(true)
     }
-  }, [dispatch])
+  }, [dispatch, runtime])
 
   useEffect(() => {
     loadPlatforms()
@@ -49,7 +50,7 @@ export function usePlatforms() {
 
     try {
       const platformIds = platforms.map(p => p.id)
-      const connected = await invoke<Record<string, boolean>>(
+      const connected = await runtime.invoke<Record<string, boolean>>(
         "check_connected_platforms",
         { platformIds }
       )
@@ -57,7 +58,7 @@ export function usePlatforms() {
     } catch (error) {
       console.error("Failed to check connected platforms:", error)
     }
-  }, [dispatch, platforms])
+  }, [dispatch, platforms, runtime])
 
   const getPlatformById = useCallback(
     (id: string) => {

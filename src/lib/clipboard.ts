@@ -1,4 +1,4 @@
-import { writeText } from "@tauri-apps/plugin-clipboard-manager"
+import { isTauri } from "@/lib/runtime"
 
 export async function copyTextToClipboard(text: string): Promise<boolean> {
   try {
@@ -36,13 +36,9 @@ export async function copyTextToClipboard(text: string): Promise<boolean> {
 }
 
 async function tauriClipboardFallback(text: string): Promise<boolean> {
-  if (
-    typeof window === "undefined" ||
-    (!("__TAURI__" in window) && !("__TAURI_INTERNALS__" in window))
-  ) {
-    return false
-  }
+  if (!isTauri) return false
   try {
+    const { writeText } = await import("@tauri-apps/plugin-clipboard-manager")
     await writeText(text)
     return true
   } catch {

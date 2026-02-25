@@ -1,6 +1,6 @@
 import { useCallback } from 'react';
-import { invoke } from '@tauri-apps/api/core';
 import { useDispatch, useSelector } from 'react-redux';
+import { useRuntime } from '@/lib/runtime';
 import { deleteRun, startRun, updateRunStatus, stopRun } from '../state/store';
 import type { RootState } from '../state/store';
 import type { Platform, Run } from '../types';
@@ -19,6 +19,7 @@ function isDuplicateStartError(error: unknown): boolean {
 
 export function useConnector() {
   const dispatch = useDispatch();
+  const runtime = useRuntime();
   const runs = useSelector((state: RootState) => state.app.runs);
 
   const startImport = useCallback(
@@ -44,7 +45,7 @@ export function useConnector() {
         // Check if simulate no chrome is enabled (for testing download flow)
         const simulateNoChrome = localStorage.getItem('dataconnect_simulate_no_chrome') === 'true';
 
-        await invoke('start_connector_run', {
+        await runtime.invoke('start_connector_run', {
           runId,
           platformId: platform.id,
           filename: platform.filename,
@@ -72,7 +73,7 @@ export function useConnector() {
 
       return runId;
     },
-    [dispatch]
+    [dispatch, runtime]
   );
 
   const stopExport = useCallback(
@@ -82,13 +83,13 @@ export function useConnector() {
 
       // Then try to close the window (may fail if already closed)
       try {
-        await invoke('stop_connector_run', { runId });
+        await runtime.invoke('stop_connector_run', { runId });
       } catch (error) {
         // Window may already be closed, that's ok
         console.log('Stop connector run (window may be closed):', error);
       }
     },
-    [dispatch]
+    [dispatch, runtime]
   );
 
   const getRunById = useCallback(

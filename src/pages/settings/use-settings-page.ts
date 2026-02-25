@@ -1,7 +1,6 @@
-import { getVersion } from "@tauri-apps/api/app"
-import { invoke } from "@tauri-apps/api/core"
 import { useCallback, useEffect, useState } from "react"
 import { useNavigate, useSearchParams } from "react-router-dom"
+import { useRuntime } from "@/lib/runtime"
 import { useAuth } from "@/hooks/useAuth"
 import { useAppUpdate } from "@/hooks/use-app-update"
 import { usePersonalServer } from "@/hooks/usePersonalServer"
@@ -25,6 +24,7 @@ const IMPORTS_SECTION: SettingsSection = "imports"
 
 export function useSettingsPage() {
   const navigate = useNavigate()
+  const runtime = useRuntime()
   const [searchParams, setSearchParams] = useSearchParams()
   const { user, logout, isAuthenticated, walletAddress } = useAuth()
   const { checkForUpdates, lastStatus: appUpdateCheckStatus } = useAppUpdate()
@@ -67,10 +67,10 @@ export function useSettingsPage() {
         versionResult,
         logPathResult,
       ] = await Promise.allSettled([
-        getUserDataPath(),
-        getPersonalServerDataPath(),
-        getVersion(),
-        invoke<string>("get_log_path"),
+        getUserDataPath(runtime),
+        getPersonalServerDataPath(runtime),
+        runtime.getAppVersion(),
+        runtime.invoke<string>("get_log_path"),
       ])
 
       if (cancelled) return
@@ -117,7 +117,7 @@ export function useSettingsPage() {
 
   const openLogFolder = useCallback(async () => {
     if (!logPath) return
-    await invoke("open_folder", { path: logPath })
+    await runtime.invoke("open_folder", { path: logPath })
   }, [logPath])
 
   const openPersonalServerFolder = useCallback(async () => {
@@ -130,7 +130,7 @@ export function useSettingsPage() {
     setNodeTestResult(null)
     setNodeTestError(null)
     try {
-      const result = await invoke<NodeJsTestResult>("test_nodejs")
+      const result = await runtime.invoke<NodeJsTestResult>("test_nodejs")
       setNodeTestResult(result)
       setNodeTestStatus("success")
     } catch (error) {
@@ -141,7 +141,7 @@ export function useSettingsPage() {
 
   const debugPaths = useCallback(async () => {
     try {
-      const result = await invoke<Record<string, unknown>>(
+      const result = await runtime.invoke<Record<string, unknown>>(
         "debug_connector_paths"
       )
       setPathsDebug(result)
@@ -181,7 +181,7 @@ export function useSettingsPage() {
 
     const checkBrowser = async () => {
       try {
-        const result = await invoke<
+        const result = await runtime.invoke<
           BrowserStatus & { needs_download: boolean }
         >("check_browser_available", { simulateNoChrome })
         if (!cancelled) {
@@ -201,7 +201,7 @@ export function useSettingsPage() {
 
   const loadBrowserSessions = useCallback(async () => {
     try {
-      const sessions = await invoke<BrowserSession[]>("list_browser_sessions")
+      const sessions = await runtime.invoke<BrowserSession[]>("list_browser_sessions")
       setBrowserSessions(sessions)
     } catch (error) {
       console.error("Failed to load browser sessions:", error)
@@ -215,7 +215,7 @@ export function useSettingsPage() {
   const handleClearSession = useCallback(
     async (connectorId: string) => {
       try {
-        await invoke("clear_browser_session", { connectorId })
+        await runtime.invoke("clear_browser_session", { connectorId })
         await loadBrowserSessions()
       } catch (error) {
         console.error("Failed to clear browser session:", error)
@@ -226,7 +226,7 @@ export function useSettingsPage() {
 
   const checkBrowserStatus = useCallback(async () => {
     try {
-      const result = await invoke<BrowserStatus & { needs_download: boolean }>(
+      const result = await runtime.invoke<BrowserStatus & { needs_download: boolean }>(
         "check_browser_available",
         { simulateNoChrome }
       )
@@ -234,7 +234,7 @@ export function useSettingsPage() {
     } catch (error) {
       console.error("Browser check error:", error)
     }
-  }, [simulateNoChrome])
+  }, [runtime, simulateNoChrome])
 
   const handleRevokeApp = useCallback(
     (appId: string) => {
@@ -279,7 +279,7 @@ export function useSettingsPage() {
     setClearPersonalServerDataStatus("deleting")
     setClearPersonalServerDataError(null)
     try {
-      await invoke("clear_personal_server_data")
+      await runtime.invoke("clear_personal_server_data")
       await personalServer.stopServer()
       setClearPersonalServerDataStatus("success")
     } catch (error) {

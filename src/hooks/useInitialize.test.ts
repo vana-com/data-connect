@@ -20,8 +20,13 @@ vi.mock("react-redux", () => ({
     selector(mockState),
 }))
 
-vi.mock("@tauri-apps/api/core", () => ({
+const mockRuntime = {
+  mode: "tauri" as const,
   invoke: (...args: unknown[]) => mockInvoke(...args),
+}
+
+vi.mock("@/lib/runtime", () => ({
+  useRuntime: () => mockRuntime,
 }))
 
 vi.mock("./check-connector-updates", () => ({
@@ -45,6 +50,7 @@ describe("useInitialize", () => {
     })
 
     expect(mockCheckConnectorUpdates).toHaveBeenCalledWith(
+      mockRuntime,
       mockDispatch,
       expect.objectContaining({
         onError: expect.any(Function),

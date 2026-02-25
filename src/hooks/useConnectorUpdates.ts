@@ -1,6 +1,6 @@
 import { useCallback, useMemo, useState } from 'react';
-import { invoke } from '@tauri-apps/api/core';
 import { useDispatch, useSelector } from 'react-redux';
+import { useRuntime } from '@/lib/runtime';
 import {
   removeConnectorUpdate,
 } from '../state/store';
@@ -9,6 +9,7 @@ import { checkConnectorUpdates } from './check-connector-updates';
 
 export function useConnectorUpdates() {
   const dispatch = useDispatch();
+  const runtime = useRuntime();
   const updates = useSelector((state: RootState) => state.app.connectorUpdates);
   const lastUpdateCheck = useSelector(
     (state: RootState) => state.app.lastUpdateCheck
@@ -22,7 +23,7 @@ export function useConnectorUpdates() {
   const checkForUpdates = useCallback(
     async (force = false) => {
       setError(null);
-      return checkConnectorUpdates(dispatch, {
+      return checkConnectorUpdates(runtime, dispatch, {
         force,
         onError: err => {
           const errorMsg =
@@ -32,7 +33,7 @@ export function useConnectorUpdates() {
         },
       });
     },
-    [dispatch]
+    [dispatch, runtime]
   );
 
   const downloadConnector = useCallback(
@@ -41,7 +42,7 @@ export function useConnectorUpdates() {
       setDownloadingIds((prev) => new Set(prev).add(id));
 
       try {
-        await invoke('download_connector', { id });
+        await runtime.invoke('download_connector', { id });
         // Remove from updates list after successful download
         dispatch(removeConnectorUpdate(id));
         // Note: Caller is responsible for reloading platforms after successful download
@@ -60,7 +61,7 @@ export function useConnectorUpdates() {
         });
       }
     },
-    [dispatch]
+    [dispatch, runtime]
   );
 
   const isDownloading = useCallback(

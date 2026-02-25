@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from "react"
-import { invoke } from "@tauri-apps/api/core"
+import { useRuntime } from "@/lib/runtime"
 
 interface BrowserStatus {
   available: boolean
@@ -18,6 +18,7 @@ export interface BrowserSetupState {
 }
 
 export function useBrowserStatus(): BrowserSetupState {
+  const runtime = useRuntime()
   const [status, setStatus] = useState<BrowserSetupStatus>("checking")
   const [progress, setProgress] = useState(0)
   const [error, setError] = useState<string | null>(null)
@@ -48,7 +49,7 @@ export function useBrowserStatus(): BrowserSetupState {
     }, 500)
 
     try {
-      await invoke("download_browser")
+      await runtime.invoke("download_browser")
       if (progressIntervalRef.current) {
         clearInterval(progressIntervalRef.current)
         progressIntervalRef.current = null
@@ -72,7 +73,7 @@ export function useBrowserStatus(): BrowserSetupState {
     const checkBrowser = async () => {
       try {
         console.log("Checking browser availability...")
-        const result = await invoke<BrowserStatus>("check_browser_available")
+        const result = await runtime.invoke<BrowserStatus>("check_browser_available")
         if (cancelled) return
         console.log("Browser check result:", result)
 
@@ -109,7 +110,7 @@ export function useBrowserStatus(): BrowserSetupState {
 
     try {
       console.log("Retrying browser check...")
-      const result = await invoke<BrowserStatus>("check_browser_available")
+      const result = await runtime.invoke<BrowserStatus>("check_browser_available")
       console.log("Browser check result:", result)
 
       if (result.available) {
@@ -128,7 +129,7 @@ export function useBrowserStatus(): BrowserSetupState {
         setStatus("needs_browser")
       }
     }
-  }, [])
+  }, [runtime])
 
   const startDownload = useCallback(() => {
     downloadBrowser()

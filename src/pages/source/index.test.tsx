@@ -38,6 +38,11 @@ vi.mock("@/lib/tauri-paths", () => ({
     mockLoadLatestSourceExportFull(...args),
 }))
 
+vi.mock("@/lib/runtime", () => ({
+  useRuntime: () => ({ mode: "tauri", invoke: vi.fn() }),
+  isTauri: true,
+}))
+
 vi.mock("@/lib/open-resource", () => ({
   openExportFolderPath: (...args: unknown[]) =>
     mockOpenExportFolderPath(...args),
@@ -95,14 +100,14 @@ describe("SourceOverview", () => {
     ).toBeTruthy()
   })
 
-  it("shows fallback preview in browser when tauri preview loading fails", async () => {
+  it("shows error message when preview loading fails", async () => {
     mockLoadLatestSourceExportPreview.mockRejectedValue(new Error("IPC unavailable"))
 
     renderSourcePage()
 
     await waitFor(() => {
       expect(
-        screen.getByText(/Local browser fallback preview/i)
+        screen.getByText(/IPC unavailable/i)
       ).toBeTruthy()
     })
   })

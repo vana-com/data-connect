@@ -77,6 +77,10 @@ vi.mock("../../services/serverRegistration", () => ({
     mockFetchServerIdentity.apply(null, args as []),
 }))
 
+vi.mock("@/lib/runtime", () => ({
+  useRuntime: () => ({ mode: "tauri", invoke: vi.fn(), fetch: vi.fn() }),
+}))
+
 beforeEach(() => {
   mockNavigate.mockReset()
   mockClaimSession.mockReset()

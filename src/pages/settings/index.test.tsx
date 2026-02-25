@@ -33,12 +33,15 @@ vi.mock("@/hooks/useConnectedApps", () => ({
   useConnectedApps: () => mockUseConnectedApps(),
 }))
 
-vi.mock("@tauri-apps/api/app", () => ({
-  getVersion: () => mockGetVersion(),
-}))
-
-vi.mock("@tauri-apps/api/core", () => ({
-  invoke: (...args: unknown[]) => mockInvoke(...args),
+vi.mock("@/lib/runtime", () => ({
+  useRuntime: () => ({
+    mode: "tauri",
+    invoke: (...args: unknown[]) => mockInvoke(...args),
+    onEvent: () => () => {},
+    fetch: vi.fn(),
+    getAppVersion: () => mockGetVersion(),
+  }),
+  isTauri: true,
 }))
 
 function SettingsRouteHarness() {

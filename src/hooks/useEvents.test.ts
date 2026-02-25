@@ -4,23 +4,23 @@ import { renderHook, act } from "@testing-library/react"
 const mockDispatch = vi.fn()
 const mockInvoke = vi.fn()
 
-type EventHandler<T = unknown> = (event: { payload: T }) => void
+type EventHandler<T = unknown> = (payload: T) => void
 const listeners = new Map<string, EventHandler>()
 
 vi.mock("react-redux", () => ({
   useDispatch: () => mockDispatch,
 }))
 
-vi.mock("@tauri-apps/api/core", () => ({
-  invoke: (...args: unknown[]) => mockInvoke(...args),
-}))
-
-vi.mock("@tauri-apps/api/event", () => ({
-  listen: vi.fn((eventName: string, handler: EventHandler) => {
-    listeners.set(eventName, handler)
-    return Promise.resolve(() => {
-      listeners.delete(eventName)
-    })
+vi.mock("@/lib/runtime", () => ({
+  useRuntime: () => ({
+    mode: "tauri",
+    invoke: (...args: unknown[]) => mockInvoke(...args),
+    onEvent: (eventName: string, handler: EventHandler) => {
+      listeners.set(eventName, handler)
+      return () => {
+        listeners.delete(eventName)
+      }
+    },
   }),
 }))
 
@@ -46,7 +46,7 @@ function emit<T>(eventName: string, payload: T) {
   if (!listener) {
     throw new Error(`No listener registered for ${eventName}`)
   }
-  listener({ payload })
+  listener(payload)
 }
 
 async function importHook() {

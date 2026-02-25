@@ -1,11 +1,13 @@
 import { describe, expect, it, vi, beforeEach } from "vitest"
 import { signMessage, signTypedData } from "./accountApi"
+import type { Runtime } from "@/lib/runtime"
 
 const mockFetch = vi.fn()
 
-vi.mock("@tauri-apps/plugin-http", () => ({
+const mockRuntime = {
+  mode: "tauri" as const,
   fetch: (...args: unknown[]) => mockFetch(...args),
-}))
+} as unknown as Runtime
 
 beforeEach(() => {
   mockFetch.mockReset()
@@ -18,7 +20,7 @@ describe("signMessage", () => {
       json: () => Promise.resolve({ signature: "0xsig123" }),
     })
 
-    const sig = await signMessage("0xmasterkey", "vana-master-key-v1")
+    const sig = await signMessage(mockRuntime, "0xmasterkey", "vana-master-key-v1")
 
     expect(mockFetch).toHaveBeenCalledWith(
       expect.stringContaining("/api/sign"),
@@ -41,7 +43,7 @@ describe("signMessage", () => {
       text: () => Promise.resolve("Unauthorized"),
     })
 
-    await expect(signMessage("0xbad", "msg")).rejects.toThrow(
+    await expect(signMessage(mockRuntime, "0xbad", "msg")).rejects.toThrow(
       "Sign failed (401): Unauthorized"
     )
   })
@@ -61,7 +63,7 @@ describe("signTypedData", () => {
       message: {},
     }
 
-    const sig = await signTypedData("0xmasterkey", typedData)
+    const sig = await signTypedData(mockRuntime, "0xmasterkey", typedData)
 
     expect(mockFetch).toHaveBeenCalledWith(
       expect.stringContaining("/api/sign"),
@@ -84,7 +86,7 @@ describe("signTypedData", () => {
       text: () => Promise.resolve("Internal error"),
     })
 
-    await expect(signTypedData("0xbad", {})).rejects.toThrow(
+    await expect(signTypedData(mockRuntime, "0xbad", {})).rejects.toThrow(
       "Sign failed (500): Internal error"
     )
   })

@@ -246,6 +246,24 @@ async function downloadChromium(sendStatus) {
   }
 }
 
+// Whether we're running in CDP mode (cloud container with external Chromium)
+const CDP_MODE = !!process.env.CDP_ENDPOINT;
+
+// Connect to an already-running Chromium instance via CDP.
+// Returns { browser, context, page }.
+async function connectOverCDP() {
+  const endpoint = process.env.CDP_ENDPOINT;
+  log(`Connecting to Chromium via CDP at: ${endpoint}`);
+  const browser = await chromium.connectOverCDP(endpoint);
+  const context = browser.contexts()[0];
+  if (!context) {
+    throw new Error('No browser context found on CDP connection');
+  }
+  const page = await context.newPage();
+  log('Connected to Chromium via CDP');
+  return { browser, context, page };
+}
+
 // Active browser contexts by runId
 const activeRuns = new Map();
 
@@ -468,7 +486,15 @@ function createPageApi(runState, runId) {
       runState.browserClosed = true;
       runState.browserClosedByConnector = true;
 
-      if (runState.context) {
+      if (runState.cdpMode) {
+        // CDP mode: close the page only, browser is externally managed
+        if (runState.page) {
+          try { await runState.page.close(); } catch (e) {
+            log('Error closing page:', e.message);
+          }
+        }
+        runState.page = null;
+      } else if (runState.context) {
         try {
           await runState.context.close();
         } catch (e) {
@@ -486,6 +512,19 @@ function createPageApi(runState, runId) {
     // Closes any existing browser first, then opens a new headed one.
     showBrowser: async (url) => {
       log('showBrowser requested');
+
+      if (CDP_MODE) {
+        log('CDP mode: browser is externally managed, navigating on existing page');
+        runState.browserClosed = false;
+        if (!runState.page && runState.context) {
+          runState.page = await runState.context.newPage();
+        }
+        if (url && runState.page) {
+          await runState.page.goto(url, { waitUntil: 'domcontentloaded' });
+        }
+        send({ type: 'log', runId, message: 'Browser ready for user interaction' });
+        return;
+      }
 
       // Close existing browser if open
       if (runState.context && !runState.browserClosed) {
@@ -541,6 +580,11 @@ function createPageApi(runState, runId) {
     // Use this after credentials are captured so the user doesn't see the browser
     // during data collection, while preserving the TLS fingerprint for Cloudflare.
     goHeadless: async () => {
+      if (CDP_MODE) {
+        log('CDP mode: browser is externally managed, skipping headless switch');
+        return;
+      }
+
       if (runState.headless && !runState.browserClosed) {
         log('Already in headless mode');
         return;
@@ -670,9 +714,11 @@ async function runConnector(runId, connectorPath, url, headless = true) {
   const runState = {
     context: null,
     page: null,
+    browser: null,
     browserClosed: false,
     browserClosedByConnector: false,
     connectorCompleted: false,
+    cdpMode: CDP_MODE,
     headless,
     userDataDir,
     browserPath: null,
@@ -682,41 +728,57 @@ async function runConnector(runId, connectorPath, url, headless = true) {
     // Read connector script
     const connectorCode = fs.readFileSync(connectorPath, 'utf-8');
 
-    // Resolve browser executable
-    runState.browserPath = resolveBrowserPath();
-    log(`Using browser: ${runState.browserPath}`);
+    let context, page;
 
-    // On first run, we need to:
-    //  1. Launch Chrome briefly so it creates its profile/Cookies db
-    //  2. Close it
-    //  3. INSERT cookies from the user's Chrome profile into the db
-    //  4. Relaunch — now Chrome loads the imported cookies from disk
-    const markerFile = path.join(userDataDir, '.cookies-imported');
-    if (isSystemChrome(runState.browserPath) && !fs.existsSync(markerFile)) {
-      log('First run: launching browser to initialize profile...');
-      const tempCtx = await launchPersistentContext(userDataDir, true, runState.browserPath);
-      await tempCtx.close();
-      log('Profile initialized, importing cookies...');
-      importChromecookies(userDataDir, runState.browserPath);
+    if (CDP_MODE) {
+      // Cloud mode: connect to externally-managed Chromium via CDP
+      const cdp = await connectOverCDP();
+      runState.browser = cdp.browser;
+      context = cdp.context;
+      page = cdp.page;
+      runState.browserPath = null;
+    } else {
+      // Desktop mode: launch browser locally
+      // Resolve browser executable
+      runState.browserPath = resolveBrowserPath();
+      log(`Using browser: ${runState.browserPath}`);
+
+      // On first run, we need to:
+      //  1. Launch Chrome briefly so it creates its profile/Cookies db
+      //  2. Close it
+      //  3. INSERT cookies from the user's Chrome profile into the db
+      //  4. Relaunch — now Chrome loads the imported cookies from disk
+      const markerFile = path.join(userDataDir, '.cookies-imported');
+      if (isSystemChrome(runState.browserPath) && !fs.existsSync(markerFile)) {
+        log('First run: launching browser to initialize profile...');
+        const tempCtx = await launchPersistentContext(userDataDir, true, runState.browserPath);
+        await tempCtx.close();
+        log('Profile initialized, importing cookies...');
+        importChromecookies(userDataDir, runState.browserPath);
+      }
+
+      // Launch browser with persistent context (cookies already in db on first run)
+      context = await launchPersistentContext(userDataDir, headless, runState.browserPath);
+      page = context.pages()[0] || await context.newPage();
     }
-
-    // Launch browser with persistent context (cookies already in db on first run)
-    const context = await launchPersistentContext(userDataDir, headless, runState.browserPath);
-    const page = context.pages()[0] || await context.newPage();
 
     runState.context = context;
     runState.page = page;
 
-    // Handle browser disconnect (user closed browser window)
+    // Handle browser disconnect
     context.browser().on('disconnected', () => {
       if (!runState.connectorCompleted && !runState.browserClosedByConnector && activeRuns.has(runId)) {
-        log(`Browser disconnected for run ${runId} (user closed window)`);
+        log(`Browser disconnected for run ${runId}`);
         runState.browserClosed = true;
         runState.context = null;
         runState.page = null;
         activeRuns.delete(runId);
         send({ type: 'status', runId, status: 'STOPPED' });
-        process.exit(0);
+        if (!CDP_MODE) {
+          // Desktop mode: user closed browser window, exit process
+          process.exit(0);
+        }
+        // CDP mode: browser is externally managed, don't exit
       }
     });
 
@@ -772,11 +834,16 @@ async function runConnector(runId, connectorPath, url, headless = true) {
     // Mark as completed to prevent disconnect handler from sending STOPPED
     runState.connectorCompleted = true;
 
-    // Close browser if still open
+    // Close browser/page if still open
     if (!runState.browserClosed && runState.context) {
       await new Promise(resolve => setTimeout(resolve, 2000));
       try {
-        await runState.context.close();
+        if (CDP_MODE) {
+          // CDP mode: only close the page, not the browser
+          if (runState.page) await runState.page.close().catch(() => {});
+        } else {
+          await runState.context.close();
+        }
       } catch (e) {
         // Browser may already be closed
       }
@@ -796,7 +863,11 @@ async function runConnector(runId, connectorPath, url, headless = true) {
     // Cleanup on error
     if (runState.context && !runState.browserClosed) {
       try {
-        await runState.context.close();
+        if (CDP_MODE) {
+          if (runState.page) await runState.page.close().catch(() => {});
+        } else {
+          await runState.context.close();
+        }
       } catch (e) {}
     }
     activeRuns.delete(runId);
@@ -812,8 +883,13 @@ async function stopRun(runId) {
   const run = activeRuns.get(runId);
   if (run) {
     log(`Stopping run ${runId}`);
-    if (run.runState && run.runState.context && !run.runState.browserClosed) {
-      await run.runState.context.close().catch(() => {});
+    if (run.runState && !run.runState.browserClosed) {
+      if (CDP_MODE) {
+        // CDP mode: close the page only, browser persists across runs
+        if (run.runState.page) await run.runState.page.close().catch(() => {});
+      } else if (run.runState.context) {
+        await run.runState.context.close().catch(() => {});
+      }
     }
     activeRuns.delete(runId);
     send({ type: 'status', runId, status: 'STOPPED' });
@@ -847,8 +923,13 @@ async function main() {
         case 'quit':
           log('Quitting...');
           for (const [runId, run] of activeRuns) {
-            if (run.runState && run.runState.context && !run.runState.browserClosed) {
-              await run.runState.context.close().catch(() => {});
+            if (run.runState && !run.runState.browserClosed) {
+              if (CDP_MODE) {
+                // CDP mode: close pages only, browser persists
+                if (run.runState.page) await run.runState.page.close().catch(() => {});
+              } else if (run.runState.context) {
+                await run.runState.context.close().catch(() => {});
+              }
             }
           }
           process.exit(0);

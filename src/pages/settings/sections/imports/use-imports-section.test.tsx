@@ -9,12 +9,13 @@ import { useImportsSection } from "./use-imports-section"
 
 const mockInvoke = vi.fn()
 
-vi.mock("@tauri-apps/api/event", () => ({
-  listen: vi.fn(() => Promise.resolve(() => {})),
-}))
-
-vi.mock("@tauri-apps/api/core", () => ({
-  invoke: (...args: unknown[]) => mockInvoke(...args),
+vi.mock("@/lib/runtime", () => ({
+  useRuntime: () => ({
+    mode: "tauri",
+    invoke: (...args: unknown[]) => mockInvoke(...args),
+    onEvent: () => () => {},
+    fetch: vi.fn(),
+  }),
 }))
 
 vi.mock("@/hooks/useConnector", () => ({

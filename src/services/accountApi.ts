@@ -1,13 +1,14 @@
-import { fetch as tauriFetch } from "@tauri-apps/plugin-http"
+import type { Runtime } from "@/lib/runtime"
 
 const ACCOUNT_URL =
   import.meta.env.VITE_ACCOUNT_URL || "https://account.vana.org"
 
 export async function signMessage(
+  runtime: Runtime,
   masterKeySignature: string,
   message: string
 ): Promise<string> {
-  const res = await tauriFetch(`${ACCOUNT_URL}/api/sign`, {
+  const res = await runtime.fetch(`${ACCOUNT_URL}/api/sign`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({
@@ -26,10 +27,11 @@ export async function signMessage(
 }
 
 export async function signTypedData(
+  runtime: Runtime,
   masterKeySignature: string,
   typedData: Record<string, unknown>
 ): Promise<string> {
-  const res = await tauriFetch(`${ACCOUNT_URL}/api/sign`, {
+  const res = await runtime.fetch(`${ACCOUNT_URL}/api/sign`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({

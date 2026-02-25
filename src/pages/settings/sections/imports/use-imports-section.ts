@@ -1,8 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react"
 import { useSearchParams } from "react-router-dom"
 import { useDispatch, useSelector } from "react-redux"
-import { invoke } from "@tauri-apps/api/core"
-import { listen } from "@tauri-apps/api/event"
+import { useRuntime } from "@/lib/runtime"
 import { useConnector } from "@/hooks/useConnector"
 import { useAuth } from "@/hooks/useAuth"
 import { usePersonalServer } from "@/hooks/usePersonalServer"
@@ -26,6 +25,7 @@ export interface ImportSourceFilterOption {
 
 export function useImportsSection() {
   const dispatch = useDispatch()
+  const runtime = useRuntime()
   const [searchParams, setSearchParams] = useSearchParams()
   const runs = useSelector((state: RootState) => state.app.runs)
   const platforms = useSelector((state: RootState) => state.app.platforms)
@@ -54,25 +54,25 @@ export function useImportsSection() {
   useEffect(() => {
     const unlisteners: (() => void)[] = []
 
-    listen<ServerRegisteredPayload>("server-registered", (event) => {
-      if (event.payload.serverId) {
-        setServerId(event.payload.serverId)
+    unlisteners.push(runtime.onEvent<ServerRegisteredPayload>("server-registered", (payload) => {
+      if (payload.serverId) {
+        setServerId(payload.serverId)
       }
-    }).then((fn) => unlisteners.push(fn))
+    }))
 
-    listen<{ port: number }>("personal-server-ready", () => {
+    unlisteners.push(runtime.onEvent<{ port: number }>("personal-server-ready", () => {
       setReadyTick((t) => t + 1)
-    }).then((fn) => unlisteners.push(fn))
+    }))
 
     return () => {
       unlisteners.forEach((fn) => fn())
     }
-  }, [])
+  }, [runtime])
 
   // Fetch serverId from health endpoint when server is running and ready
   useEffect(() => {
     if (personalServer.status === "running" && personalServer.port && !serverId) {
-      fetchServerIdentity(personalServer.port)
+      fetchServerIdentity(runtime, personalServer.port)
         .then(identity => {
           if (identity.serverId) setServerId(identity.serverId)
         })
@@ -154,7 +154,7 @@ export function useImportsSection() {
       if (!run) return
 
       if (run.exportPath) {
-        await deleteExportedRun(run.exportPath)
+        await deleteExportedRun(runtime, run.exportPath)
       }
 
       dispatch(deleteRun(runId))
@@ -163,13 +163,13 @@ export function useImportsSection() {
       if (activePlatforms.length === 0) return
 
       const platformIds = activePlatforms.map(platform => platform.id)
-      const connected = await invoke<Record<string, boolean>>(
+      const connected = await runtime.invoke<Record<string, boolean>>(
         "check_connected_platforms",
         { platformIds }
       )
       dispatch(setConnectedPlatforms(connected))
     },
-    [dispatch]
+    [dispatch, runtime]
   )
 
   return {

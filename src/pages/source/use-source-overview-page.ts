@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from "react"
 import { useSelector } from "react-redux"
+import { useRuntime } from "@/lib/runtime"
 import { copyTextToClipboard } from "@/lib/clipboard"
 import { openExportFolderPath } from "@/lib/open-resource"
 import { getPlatformRegistryEntryById } from "@/lib/platform/utils"
@@ -16,13 +17,10 @@ import { formatRelativeTimeLabel } from "./utils"
 
 const actionFeedbackMs = 1_200
 
-const isTauriRuntime = () =>
-  typeof window !== "undefined" &&
-  ("__TAURI__" in window || "__TAURI_INTERNALS__" in window)
-
 export function useSourceOverviewPage(
   platformId?: string
 ): SourceOverviewPageState {
+  const runtime = useRuntime()
   const runs = useSelector((state: RootState) => state.app.runs)
   const platforms = useSelector((state: RootState) => state.app.platforms)
 
@@ -60,7 +58,7 @@ export function useSourceOverviewPage(
 
   useEffect(() => {
     let cancelled = false
-    void getUserDataPath()
+    void getUserDataPath(runtime)
       .then(path => {
         if (!cancelled) {
           setAppDataPath(path)
@@ -89,6 +87,7 @@ export function useSourceOverviewPage(
     setPreviewError(null)
 
     void loadLatestSourceExportPreview(
+      runtime,
       sourcePlatform.company,
       sourcePlatform.name,
       sourceScope
@@ -102,11 +101,9 @@ export function useSourceOverviewPage(
         if (!cancelled) {
           setPreview(null)
           setPreviewError(
-            isTauriRuntime()
-              ? error instanceof Error
-                ? error.message
-                : "Failed to load preview"
-              : null
+            error instanceof Error
+              ? error.message
+              : "Failed to load preview"
           )
         }
       })
@@ -153,6 +150,7 @@ export function useSourceOverviewPage(
     if (sourcePlatform) {
       try {
         await openPlatformExportFolder(
+          runtime,
           sourcePlatform.company,
           sourcePlatform.name,
           sourceScope
@@ -165,7 +163,7 @@ export function useSourceOverviewPage(
     let fallbackPath = openSourcePath
     if (!fallbackPath) {
       try {
-        const userDataPath = await getUserDataPath()
+        const userDataPath = await getUserDataPath(runtime)
         fallbackPath = `${userDataPath}/exported_data`
       } catch {
         fallbackPath = null
@@ -183,6 +181,7 @@ export function useSourceOverviewPage(
       if (sourcePlatform) {
         try {
           const fullJson = await loadLatestSourceExportFull(
+            runtime,
             sourcePlatform.company,
             sourcePlatform.name,
             sourceScope
@@ -211,7 +210,7 @@ export function useSourceOverviewPage(
   const fallbackPreviewJson = `{
   "${sourceEntry?.id ?? "source"}Preview": {
     "status": "stub",
-    "note": "Local browser fallback preview. Full source preview requires Tauri runtime.",
+    "note": "Preview not available. Run a connector to generate data.",
     "latestRunPath": "${latestSourceRun?.exportPath ?? "pending"}"
   }
 }`

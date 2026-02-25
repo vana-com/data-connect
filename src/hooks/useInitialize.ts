@@ -1,6 +1,6 @@
 import { useEffect, useRef } from 'react';
-import { invoke } from '@tauri-apps/api/core';
 import { useDispatch, useSelector } from 'react-redux';
+import { useRuntime } from '@/lib/runtime';
 import { removeConnectorUpdate, setRuns } from '../state/store';
 import type { RootState } from '../state/store';
 import type { Run } from '../types';
@@ -23,6 +23,7 @@ interface SavedRun {
 
 export function useInitialize() {
   const dispatch = useDispatch();
+  const runtime = useRuntime();
   const currentRuns = useSelector((state: RootState) => state.app.runs);
   const runsInitialized = useRef(false);
   const connectorUpdatesInitialized = useRef(false);
@@ -35,7 +36,7 @@ export function useInitialize() {
     // Load saved runs from disk on startup
     const loadSavedRuns = async () => {
       try {
-        const savedRuns = await invoke<SavedRun[]>('load_runs');
+        const savedRuns = await runtime.invoke<SavedRun[]>('load_runs');
         console.log('[Initialize] Loaded runs from disk:', savedRuns.length);
 
         // Convert SavedRun to Run format
@@ -73,7 +74,7 @@ export function useInitialize() {
     };
 
     void loadSavedRuns();
-  }, [dispatch, currentRuns]);
+  }, [dispatch, currentRuns, runtime]);
 
   useEffect(() => {
     // Run connector update check once at app init (silent, non-blocking).
@@ -81,7 +82,7 @@ export function useInitialize() {
     connectorUpdatesInitialized.current = true;
 
     const runConnectorUpdateCheck = async () => {
-      const updates = await checkConnectorUpdates(dispatch, {
+      const updates = await checkConnectorUpdates(runtime, dispatch, {
         onError: error => {
           console.error('[Initialize] Failed to check connector updates:', error);
         },
@@ -96,7 +97,7 @@ export function useInitialize() {
       console.info(`[Initialize] Auto-updating ${updatable.length} connector(s)…`);
       for (const update of updatable) {
         try {
-          await invoke('download_connector', { id: update.id });
+          await runtime.invoke('download_connector', { id: update.id });
           dispatch(removeConnectorUpdate(update.id));
           console.info(`[Initialize] Updated ${update.name} to ${update.latestVersion}`);
         } catch (err) {
@@ -106,5 +107,5 @@ export function useInitialize() {
     };
 
     void runConnectorUpdateCheck();
-  }, [dispatch]);
+  }, [dispatch, runtime]);
 }

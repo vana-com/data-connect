@@ -1,0 +1,19 @@
+services:
+  data-connect-cloud:
+    build:
+      context: .
+      dockerfile: cloud-server/Dockerfile
+    ports:
+      - "3000:3000"
+      - "9222:9222" # CDP debugging
+    volumes:
+      - profile-data:/data
+      - ./cloud-server/src:/app/cloud-server/src
+      - ./connectors:/app/connectors
+    shm_size: "2gb"
+    environment:
+      - NODE_ENV=development
+      - AUTH_TOKEN=dev-token-12345
+
+volumes:
+  profile-data:

@@ -1,4 +1,4 @@
-import { fetch as tauriFetch } from '@tauri-apps/plugin-http';
+import type { Runtime } from '@/lib/runtime';
 import { signTypedData } from './accountApi';
 
 const GATEWAY_URL =
@@ -10,8 +10,8 @@ export interface ServerIdentity {
   serverId: string | null;
 }
 
-export async function fetchServerIdentity(port: number): Promise<ServerIdentity> {
-  const res = await tauriFetch(`http://localhost:${port}/health`);
+export async function fetchServerIdentity(runtime: Runtime, port: number): Promise<ServerIdentity> {
+  const res = await runtime.fetch(`http://localhost:${port}/health`);
   if (!res.ok) throw new Error(`Server health check failed: ${res.status}`);
   const data = await res.json();
   return {
@@ -54,11 +54,12 @@ export interface RegisterServerResult {
  * 3. POSTs the signed registration to the gateway
  */
 export async function registerServer(
+  runtime: Runtime,
   port: number,
   masterKeySignature: string,
   ownerAddress: string,
 ): Promise<RegisterServerResult> {
-  const identity = await fetchServerIdentity(port);
+  const identity = await fetchServerIdentity(runtime, port);
 
   if (!identity.address || !identity.publicKey) {
     throw new Error("Server identity incomplete — missing address or publicKey");
@@ -90,10 +91,10 @@ export async function registerServer(
   };
 
   // Get the owner's signature via account.vana.org/api/sign
-  const signature = await signTypedData(masterKeySignature, typedData);
+  const signature = await signTypedData(runtime, masterKeySignature, typedData);
 
   // POST to gateway
-  const res = await tauriFetch(`${GATEWAY_URL}/v1/servers`, {
+  const res = await runtime.fetch(`${GATEWAY_URL}/v1/servers`, {
     method: "POST",
     headers: {
       "Content-Type": "application/json",

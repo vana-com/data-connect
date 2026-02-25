@@ -1,12 +1,11 @@
 import { describe, expect, it, vi, beforeEach } from "vitest"
 import { checkConnectorUpdates } from "./check-connector-updates"
 import { setConnectorUpdates, setIsCheckingUpdates } from "../state/store"
+import type { Runtime } from "@/lib/runtime"
 
 const mockInvoke = vi.fn()
 
-vi.mock("@tauri-apps/api/core", () => ({
-  invoke: (...args: unknown[]) => mockInvoke(...args),
-}))
+const mockRuntime = { invoke: mockInvoke } as unknown as Runtime
 
 describe("checkConnectorUpdates", () => {
   beforeEach(() => {
@@ -29,7 +28,7 @@ describe("checkConnectorUpdates", () => {
     ]
     mockInvoke.mockResolvedValue(updates)
 
-    const result = await checkConnectorUpdates(dispatch, { force: true })
+    const result = await checkConnectorUpdates(mockRuntime, dispatch, { force: true })
 
     expect(result).toEqual(updates)
     expect(mockInvoke).toHaveBeenCalledWith("check_connector_updates", {
@@ -46,7 +45,7 @@ describe("checkConnectorUpdates", () => {
     const error = new Error("boom")
     mockInvoke.mockRejectedValue(error)
 
-    const result = await checkConnectorUpdates(dispatch, { onError })
+    const result = await checkConnectorUpdates(mockRuntime, dispatch, { onError })
 
     expect(result).toEqual([])
     expect(onError).toHaveBeenCalledWith(error)

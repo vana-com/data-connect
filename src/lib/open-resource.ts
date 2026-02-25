@@ -1,3 +1,5 @@
+import { isTauri } from "@/lib/runtime"
+
 type OpenResourceKind = "auto" | "external-url" | "local-path"
 
 interface OpenResourceOptions {
@@ -62,28 +64,31 @@ export async function openResource(
   const browserTarget =
     kind === "local-path" ? toFileUrl(trimmed) : trimmed
 
-  try {
-    const { open } = await import("@tauri-apps/plugin-shell")
-    await open(shellTarget)
-    return true
-  } catch {
-    if (kind === "local-path") {
-      try {
-        const { invoke } = await import("@tauri-apps/api/core")
-        await invoke("open_folder", { path: shellTarget })
-        return true
-      } catch {
-        // Fall through to browser fallback.
+  if (isTauri) {
+    try {
+      const { open } = await import("@tauri-apps/plugin-shell")
+      await open(shellTarget)
+      return true
+    } catch {
+      if (kind === "local-path") {
+        try {
+          const { invoke } = await import("@tauri-apps/api/core")
+          await invoke("open_folder", { path: shellTarget })
+          return true
+        } catch {
+          // Fall through to browser fallback.
+        }
       }
     }
-    if (typeof window === "undefined") return false
-    const popup = window.open(
-      browserTarget,
-      openInNewTab ? "_blank" : "_self",
-      "noopener,noreferrer"
-    )
-    return Boolean(popup || !openInNewTab)
   }
+
+  if (typeof window === "undefined") return false
+  const popup = window.open(
+    browserTarget,
+    openInNewTab ? "_blank" : "_self",
+    "noopener,noreferrer"
+  )
+  return Boolean(popup || !openInNewTab)
 }
 
 export const openLocalPath = (path: string) =>

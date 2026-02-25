@@ -1,0 +1,17 @@
+services:
+  data-connect-cloud:
+    build:
+      context: .
+      dockerfile: cloud-server/Dockerfile
+    ports:
+      - "3000:3000"
+    volumes:
+      - profile-data:/data
+    shm_size: "2gb"
+    environment:
+      - AUTH_TOKEN=${AUTH_TOKEN:-}
+      - NODE_ENV=production
+    restart: unless-stopped
+
+volumes:
+  profile-data:

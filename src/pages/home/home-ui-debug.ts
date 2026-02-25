@@ -15,12 +15,20 @@ import type { Platform, Run } from "@/types"
 //     - /?scenario=phase-label
 //     - If connector emits phase label, we show that as the primary status.
 //     - Simulates run with phase label; phase label should override status message text.
+//   - empty
+//     - /?scenario=empty
+//     - Simulates "all connected" by emitting a successful run for each platform.
+//     - Import sources section should render the empty state panel.
 // - Invalid/missing scenario:
 //   - /?scenario=anything-else
 //   - No override is applied; real runs are used.
 // - Production build ignores all debug query params.
 
-type HomeUiDebugScenario = "blocking-waiting" | "background" | "phase-label"
+type HomeUiDebugScenario =
+  | "blocking-waiting"
+  | "background"
+  | "phase-label"
+  | "empty"
 
 const HOME_UI_DEBUG_SCENARIOS: Record<HomeUiDebugScenario, Partial<Run>> = {
   "blocking-waiting": {
@@ -41,12 +49,19 @@ const HOME_UI_DEBUG_SCENARIOS: Record<HomeUiDebugScenario, Partial<Run>> = {
     statusMessage: "Collecting data...",
     phase: { step: 2, total: 4, label: "Extracting conversations..." },
   },
+  empty: {
+    isConnected: true,
+    status: "success",
+    statusMessage: "Completed",
+    phase: undefined,
+  },
 }
 
 export const HOME_UI_DEBUG_SCENARIO_VALUES: HomeUiDebugScenario[] = [
   "blocking-waiting",
   "background",
   "phase-label",
+  "empty",
 ]
 
 function isHomeUiDebugScenario(
@@ -93,6 +108,25 @@ export function resolveHomeUiDebugRuns({
   const targetPlatformId = platforms[0]?.id ?? "chatgpt"
 
   const debugStartDate = minutesAgo(3)
+
+  if (debug.scenario === "empty") {
+    return platforms.map(platform => ({
+      id: `home-debug-${debug.scenario}-${platform.id}`,
+      platformId: platform.id,
+      filename: platform.filename || platform.id,
+      isConnected: true,
+      startDate: debugStartDate,
+      endDate: debugStartDate,
+      status: "success",
+      statusMessage: "Completed",
+      url: "",
+      company: platform.company || "Debug",
+      name: platform.name || "Debug",
+      logs: "",
+      exportPath: `/tmp/debug/${platform.id}/export.json`,
+      phase: undefined,
+    }))
+  }
 
   const debugRun: Run = {
     id: `home-debug-${debug.scenario}`,

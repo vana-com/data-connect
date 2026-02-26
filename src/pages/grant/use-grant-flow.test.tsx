@@ -234,7 +234,6 @@ describe("useGrantFlow", () => {
       {
         granteeAddress: "0xbuilder",
         scopes: ["chatgpt.conversations"],
-        expiresAt: 1893456000,
       },
       "test-dev-token",
     )
@@ -330,7 +329,6 @@ describe("useGrantFlow", () => {
     expect(mockCreateGrant).toHaveBeenCalledWith(8080, {
       granteeAddress: "0xbuilder",
       scopes: ["chatgpt.conversations"],
-      expiresAt: 1893456000,
     }, "test-dev-token")
     expect(mockApproveSession).toHaveBeenCalledWith("real-session-2", {
       secret: "test-secret",

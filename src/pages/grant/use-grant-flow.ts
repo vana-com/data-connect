@@ -307,14 +307,12 @@ export function useGrantFlow(params: GrantFlowParams, prefetched?: PrefetchedGra
       // Step: Create grant via Personal Server
       setFlowState(prev => ({ ...prev, status: "creating-grant" }))
 
-      const expiresAtNum = flowState.session.expiresAt
-        ? Math.floor(new Date(flowState.session.expiresAt).getTime() / 1000)
-        : undefined
-
+      // Grant expiresAt is intentionally omitted (defaults to 0 = no expiration).
+      // The session's expiresAt is an approval-window timeout, not a grant lifetime.
+      // Grants live until explicitly revoked by the user.
       const { grantId } = await createGrant(personalServer.port, {
         granteeAddress: flowState.session.granteeAddress,
         scopes: flowState.session.scopes,
-        expiresAt: expiresAtNum,
       }, personalServer.devToken)
 
       setFlowState(prev => ({ ...prev, grantId }))

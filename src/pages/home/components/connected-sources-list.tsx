@@ -103,7 +103,7 @@ export function ConnectedSourcesList({
                 <Tooltip>
                   <TooltipTrigger asChild>
                     <SourceRowActionButton
-                      className={cn("px-4")}
+                      className={cn("pl-4 pr-3.5")}
                       onClick={
                         onSyncSource && !isSyncDisabled
                           ? () => onSyncSource(platform)

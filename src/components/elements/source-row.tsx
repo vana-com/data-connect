@@ -65,8 +65,16 @@ export const sourceRowActionStyle =
 export const sourceRowActionInteractiveClass = cn(
   "flex h-full items-center justify-center",
   "[&_svg:not([class*='size-']):not([data-slot=spinner])]:size-5!",
-  "[&_svg]:text-foreground-muted/70 group-hover:[&_svg]:text-foreground",
+  "[&_svg]:text-foreground-muted/70",
+  "hover:[&_svg]:text-foreground focus-visible:[&_svg]:text-foreground",
   stateFocus
+)
+
+export const sourceRowEndActionInteractiveClass = cn(
+  sourceRowActionInteractiveClass,
+  "group-hover:[&_svg]:text-foreground",
+  "group-has-[[data-slot=source-row-middle-slot]:hover]:[&_svg]:text-foreground-muted/70",
+  "group-has-[[data-slot=source-row-middle-slot]:focus-within]:[&_svg]:text-foreground-muted/70"
 )
 
 export function SourceRowActionButton({
@@ -187,11 +195,19 @@ export function SourceRowWithActions({
         />
       </button>
 
-      {middleSlot}
+      {middleSlot ? (
+        <div data-slot="source-row-middle-slot" className="h-full">
+          {middleSlot}
+        </div>
+      ) : null}
 
       <SourceRowActionButton
         data-slot="source-row-end-button"
-        className={cn("pl-0.5 pr-4", endSlotClassName)}
+        className={cn(
+          sourceRowEndActionInteractiveClass,
+          "pl-0.5 pr-4",
+          endSlotClassName
+        )}
         onClick={onRowClick}
         disabled={rowDisabled}
         aria-label={rowAriaLabel}

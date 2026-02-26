@@ -112,7 +112,6 @@ export function ConnectedAppsList({ apps }: ConnectedAppsListProps) {
         {CONNECTED_APPS_UI_DEBUG_SCENARIO_VALUES.map(scenario => (
           <Button
             key={scenario}
-            type="button"
             size="xs"
             variant={
               currentConnectedAppsUiDebugScenario === scenario
@@ -125,7 +124,6 @@ export function ConnectedAppsList({ apps }: ConnectedAppsListProps) {
           </Button>
         ))}
         <Button
-          type="button"
           size="xs"
           variant={connectedAppsUiDebugEnabled ? "outline" : "default"}
           onClick={() => setConnectedAppsUiDebugScenario(null)}
@@ -178,7 +176,7 @@ export function ConnectedAppsList({ apps }: ConnectedAppsListProps) {
                 <Tooltip>
                   <TooltipTrigger asChild>
                     <SourceRowActionButton
-                      className="px-4"
+                      className="pl-4 pr-3.5"
                       onClick={() =>
                         navigate(buildSettingsUrl({ section: "apps" }))
                       }

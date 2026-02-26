@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from "react"
-import { ArrowUpRight, PauseIcon } from "lucide-react"
+import { ArrowUpRight } from "lucide-react"
 import {
   ActionButton,
   ActionPanel,
@@ -141,7 +141,11 @@ export function AvailableSourcesList({
               isConnecting && connectingRun
                 ? getConnectingExpectationLine(connectingRun, nowMs)
                 : undefined
-            const isPausedByAnotherRun =
+            const isConnectingAndBlocking =
+              isConnecting && connectingRun
+                ? isBlockingRun(connectingRun)
+                : false
+            const isWaitingForBlockingRun =
               hasBlockingRun && isAvailable && !isConnecting
 
             const infoSlot = isConnecting ? (
@@ -159,6 +163,11 @@ export function AvailableSourcesList({
                 <Text as="p" intent="fine" muted truncate align="right">
                   {connectingStatusLine}
                 </Text>
+                {isConnectingAndBlocking ? (
+                  <Text as="p" intent="fine" muted truncate align="right">
+                    Finish sign-in to unlock other imports
+                  </Text>
+                ) : null}
                 {connectingRun ? (
                   <ConfirmAction
                     title="Cancel import?"
@@ -194,11 +203,14 @@ export function AvailableSourcesList({
                 trailingSlot={
                   isConnecting ? (
                     <Spinner className="size-4" aria-hidden="true" />
-                  ) : isPausedByAnotherRun ? (
-                    <PauseIcon
-                      className="size-4 text-foreground-muted/70"
-                      aria-hidden="true"
-                    />
+                  ) : isWaitingForBlockingRun ? (
+                    <EyebrowBadge
+                      variant="outline"
+                      className="text-foreground-muted"
+                      title="Another import is waiting for sign-in"
+                    >
+                      Waiting
+                    </EyebrowBadge>
                   ) : isAvailable ? null : (
                     <EyebrowBadge
                       variant="outline"

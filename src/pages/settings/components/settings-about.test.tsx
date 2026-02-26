@@ -134,7 +134,7 @@ describe("SettingsAbout", () => {
     expect(screen.queryByText(/Hostname:/)).toBeNull()
   })
 
-  it("routes both resource links to docs and exposes commit link", () => {
+  it("routes resource links to docs", () => {
     render(
       <TooltipProvider delayDuration={120}>
         <SettingsAbout
@@ -163,15 +163,10 @@ describe("SettingsAbout", () => {
     )
 
     const resourceLinks = screen.getAllByRole("link", { name: "Open" })
-    expect(resourceLinks).toHaveLength(2)
+    expect(resourceLinks).toHaveLength(1)
     for (const link of resourceLinks) {
       expect(link.getAttribute("href")).toBe(LINKS.docs)
     }
-
-    const commitLink = screen
-      .getAllByRole("link")
-      .find(link => link.getAttribute("href")?.includes("/commit/"))
-    expect(commitLink).toBeTruthy()
   })
 
   it("confirms deletion and triggers personal server data clear action", () => {
@@ -211,5 +206,41 @@ describe("SettingsAbout", () => {
     fireEvent.click(screen.getByRole("button", { name: "Delete" }))
 
     expect(onClearPersonalServerData).toHaveBeenCalledTimes(1)
+  })
+
+  it("triggers app update check from version row action", () => {
+    const onCheckAppUpdate = vi.fn()
+
+    render(
+      <TooltipProvider delayDuration={120}>
+        <SettingsAbout
+          appVersion="1.2.3"
+          logPath="/tmp/logs"
+          appUpdateCheckStatus="idle"
+          nodeTestStatus="idle"
+          nodeTestResult={null}
+          nodeTestError={null}
+          browserStatus={{ available: true, browser_type: "system" }}
+          pathsDebug={null}
+          personalServer={{ status: "stopped", port: null, error: null }}
+          simulateNoChrome={false}
+          onTestNodeJs={vi.fn()}
+          onCheckBrowserStatus={vi.fn()}
+          onDebugPaths={vi.fn()}
+          onClearDebugPaths={vi.fn()}
+          onRestartPersonalServer={vi.fn()}
+          onStopPersonalServer={vi.fn()}
+          onSimulateNoChromeChange={vi.fn()}
+          onOpenLogFolder={vi.fn()}
+          onCheckAppUpdate={onCheckAppUpdate}
+          clearPersonalServerDataStatus="idle"
+          clearPersonalServerDataError={null}
+          onClearPersonalServerData={vi.fn()}
+        />
+      </TooltipProvider>
+    )
+
+    fireEvent.click(screen.getByRole("button", { name: "Check for updates" }))
+    expect(onCheckAppUpdate).toHaveBeenCalledTimes(1)
   })
 })

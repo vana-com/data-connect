@@ -8,9 +8,11 @@ import { TopNav } from "./components/navigation/top-nav"
 import { useDeepLink } from "./hooks/use-deep-link"
 import { usePersonalServer } from "./hooks/usePersonalServer"
 import { usePendingApprovalRetry } from "./hooks/usePendingApproval"
+import { AppUpdateProvider } from "./hooks/use-app-update"
 import { ROUTES } from "@/config/routes"
 import { dotPatternStyle } from "@/components/elements/dot-pattern"
 import { LoadingState } from "@/components/elements/loading-state"
+import { Toaster } from "@/components/ui/sonner"
 
 // Dev loading debug:
 // - Open "/__loading" to render LoadingState directly.
@@ -43,28 +45,31 @@ function AppContent() {
   usePendingApprovalRetry()
 
   return (
-    <div className="flex h-screen">
-      {/* Tauri app shell layout: fixed header, scrollable main */}
-      <div className="flex flex-1 flex-col overflow-hidden">
-        <TopNav personalServerStatus={personalServer.status} />
-        <main className="flex-1 overflow-auto">
-          <Suspense fallback={<LoadingState />}>
-            {/* Routes config: keep @/config/routes.ts in sync when adding/removing routes */}
-            <Routes>
-              <Route path={ROUTES.debugLoading} element={<LoadingState />} />
-              <Route path={ROUTES.home} element={<Home />} />
-              <Route path={ROUTES.apps} element={<DataApps />} />
-              <Route path={ROUTES.mcp} element={<Mcp />} />
-              <Route path={ROUTES.docs} element={<Docs />} />
-              <Route path={ROUTES.source} element={<SourceOverview />} />
-              <Route path={ROUTES.settings} element={<Settings />} />
-              <Route path={ROUTES.connect} element={<Connect />} />
-              <Route path={ROUTES.grant} element={<Grant />} />
-            </Routes>
-          </Suspense>
-        </main>
+    <AppUpdateProvider>
+      <div className="flex h-screen">
+        {/* Tauri app shell layout: fixed header, scrollable main */}
+        <div className="flex flex-1 flex-col overflow-hidden">
+          <TopNav personalServerStatus={personalServer.status} />
+          <main className="flex-1 overflow-auto">
+            <Suspense fallback={<LoadingState />}>
+              {/* Routes config: keep @/config/routes.ts in sync when adding/removing routes */}
+              <Routes>
+                <Route path={ROUTES.debugLoading} element={<LoadingState />} />
+                <Route path={ROUTES.home} element={<Home />} />
+                <Route path={ROUTES.apps} element={<DataApps />} />
+                <Route path={ROUTES.mcp} element={<Mcp />} />
+                <Route path={ROUTES.docs} element={<Docs />} />
+                <Route path={ROUTES.source} element={<SourceOverview />} />
+                <Route path={ROUTES.settings} element={<Settings />} />
+                <Route path={ROUTES.connect} element={<Connect />} />
+                <Route path={ROUTES.grant} element={<Grant />} />
+              </Routes>
+            </Suspense>
+          </main>
+        </div>
       </div>
-    </div>
+      <Toaster position="bottom-right" richColors />
+    </AppUpdateProvider>
   )
 }
 

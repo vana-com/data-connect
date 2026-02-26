@@ -53,6 +53,7 @@ export function Settings() {
     personalServerDataPath,
     appVersion,
     logPath,
+    appUpdateCheckStatus,
     nodeTestStatus,
     nodeTestResult,
     nodeTestError,
@@ -68,6 +69,7 @@ export function Settings() {
     onOpenDataFolder,
     onOpenPersonalServerFolder,
     onOpenLogFolder,
+    onCheckAppUpdate,
     onTestNodeJs,
     onDebugPaths,
     onClearDebugPaths,
@@ -132,6 +134,7 @@ export function Settings() {
       <SettingsAbout
         appVersion={appVersion}
         logPath={logPath}
+        appUpdateCheckStatus={appUpdateCheckStatus}
         nodeTestStatus={nodeTestStatus}
         nodeTestResult={nodeTestResult}
         nodeTestError={nodeTestError}
@@ -151,6 +154,7 @@ export function Settings() {
         onStopPersonalServer={personalServer.stopServer}
         onSimulateNoChromeChange={onSimulateNoChromeChange}
         onOpenLogFolder={onOpenLogFolder}
+        onCheckAppUpdate={onCheckAppUpdate}
         clearPersonalServerDataStatus={clearPersonalServerDataStatus}
         clearPersonalServerDataError={clearPersonalServerDataError}
         onClearPersonalServerData={onClearPersonalServerData}

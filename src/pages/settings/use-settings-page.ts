@@ -3,6 +3,7 @@ import { invoke } from "@tauri-apps/api/core"
 import { useCallback, useEffect, useState } from "react"
 import { useNavigate, useSearchParams } from "react-router-dom"
 import { useAuth } from "@/hooks/useAuth"
+import { useAppUpdate } from "@/hooks/use-app-update"
 import { usePersonalServer } from "@/hooks/usePersonalServer"
 import { useConnectedApps } from "@/hooks/useConnectedApps"
 import { ROUTES } from "@/config/routes"
@@ -21,6 +22,7 @@ export function useSettingsPage() {
   const navigate = useNavigate()
   const [searchParams, setSearchParams] = useSearchParams()
   const { user, logout, isAuthenticated, walletAddress } = useAuth()
+  const { checkForUpdates, lastStatus: appUpdateCheckStatus } = useAppUpdate()
   const personalServer = usePersonalServer()
   const { connectedApps, fetchConnectedApps, removeApp } = useConnectedApps()
   const sectionParam = searchParams.get(SETTINGS_SECTION_PARAM)
@@ -243,6 +245,10 @@ export function useSettingsPage() {
     }
   }, [clearPersonalServerDataStatus, personalServer.stopServer])
 
+  const checkAppUpdate = useCallback(() => {
+    void checkForUpdates({ ignoreDismissedVersion: true })
+  }, [checkForUpdates])
+
   const setActiveSection = useCallback(
     (nextSection: SettingsSection) => {
       const nextSearchParams = new URLSearchParams(searchParams)
@@ -266,6 +272,7 @@ export function useSettingsPage() {
     personalServerDataPath,
     appVersion,
     logPath,
+    appUpdateCheckStatus,
     nodeTestStatus,
     nodeTestResult,
     nodeTestError,
@@ -281,6 +288,7 @@ export function useSettingsPage() {
     onOpenDataFolder: openDataFolder,
     onOpenPersonalServerFolder: openPersonalServerFolder,
     onOpenLogFolder: openLogFolder,
+    onCheckAppUpdate: checkAppUpdate,
     onTestNodeJs: testNodeJs,
     onDebugPaths: debugPaths,
     onClearDebugPaths: clearDebugPaths,

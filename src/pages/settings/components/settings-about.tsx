@@ -1,7 +1,6 @@
 import { useCallback, useEffect, useState } from "react"
 import {
   ArrowUpRightIcon,
-  BookOpenIcon,
   GithubIcon,
   InfoIcon,
   ScrollTextIcon,
@@ -35,6 +34,12 @@ import { SettingsRow } from "./settings-row"
 interface SettingsAboutProps {
   appVersion: string
   logPath: string
+  appUpdateCheckStatus?:
+    | "idle"
+    | "checking"
+    | "upToDate"
+    | "updateAvailable"
+    | "unknown"
   nodeTestStatus: "idle" | "testing" | "success" | "error"
   nodeTestResult: NodeJsTestResult | null
   nodeTestError: string | null
@@ -50,6 +55,7 @@ interface SettingsAboutProps {
   onStopPersonalServer: () => void
   onSimulateNoChromeChange: (value: boolean) => void
   onOpenLogFolder: () => void
+  onCheckAppUpdate?: () => void
   clearPersonalServerDataStatus: "idle" | "deleting" | "success" | "error"
   clearPersonalServerDataError: string | null
   onClearPersonalServerData: () => void
@@ -60,6 +66,7 @@ const BROWSER_REFRESH_FEEDBACK_MS = 700
 export function SettingsAbout({
   appVersion,
   logPath,
+  appUpdateCheckStatus = "idle",
   nodeTestStatus,
   nodeTestResult,
   nodeTestError,
@@ -75,15 +82,13 @@ export function SettingsAbout({
   onStopPersonalServer,
   onSimulateNoChromeChange,
   onOpenLogFolder,
+  onCheckAppUpdate,
   clearPersonalServerDataStatus,
   clearPersonalServerDataError,
   onClearPersonalServerData,
 }: SettingsAboutProps) {
   const [isBrowserRefreshLoading, setIsBrowserRefreshLoading] = useState(false)
   const [isNodeTestResultOpen, setIsNodeTestResultOpen] = useState(false)
-  const commitHash = __COMMIT_HASH__ || "unknown"
-  const commitUrl = `${LINKS.githubRepo}/commit/${commitHash}`
-  const shortCommitHash = commitHash.slice(0, 7)
 
   const handleCheckBrowserStatus = useCallback(() => {
     if (isBrowserRefreshLoading) {
@@ -138,6 +143,20 @@ export function SettingsAbout({
         : nodeTestStatus === "testing"
           ? { tone: "accent" as const, label: "Testing…" }
           : { tone: "muted" as const, label: "Test bundled Node.js runtime" }
+
+  const appUpdateStatusDescription =
+    appUpdateCheckStatus === "upToDate"
+      ? { tone: "success" as const, label: "Up to date" }
+      : appUpdateCheckStatus === "updateAvailable"
+        ? { tone: "warning" as const, label: "Update available" }
+        : appUpdateCheckStatus === "unknown"
+          ? { tone: "destructive" as const, label: "Check failed" }
+          : appUpdateCheckStatus === "checking"
+            ? { tone: "accent" as const, label: "Checking…" }
+            : {
+                tone: "muted" as const,
+                label: "Check if a newer app version exists",
+              }
 
   const personalServerStatusDescription =
     personalServer.status === "running"
@@ -198,18 +217,25 @@ export function SettingsAbout({
             <SettingsRow
               icon={<InfoIcon aria-hidden="true" />}
               title="Version"
-              description={appVersion || "…"}
-              right={
-                <SettingsRowAction asChild>
-                  <a
-                    href={commitUrl}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="gap-0.75!"
+              description={
+                <div className="flex items-center gap-2">
+                  <Text as="span" intent="fine" dim>
+                    {appVersion || "…"}
+                  </Text>
+                  <SettingsRowDescriptionStatus
+                    tone={appUpdateStatusDescription.tone}
                   >
-                    {shortCommitHash}
-                    <ArrowUpRightIcon aria-hidden="true" />
-                  </a>
+                    {appUpdateStatusDescription.label}
+                  </SettingsRowDescriptionStatus>
+                </div>
+              }
+              right={
+                <SettingsRowAction
+                  onClick={onCheckAppUpdate}
+                  isLoading={appUpdateCheckStatus === "checking"}
+                  loadingLabel="Checking…"
+                >
+                  Check for updates
                 </SettingsRowAction>
               }
             />
@@ -230,7 +256,7 @@ export function SettingsAbout({
                 </SettingsRowAction>
               }
             />
-            <SettingsRow
+            {/* <SettingsRow
               icon={<BookOpenIcon aria-hidden="true" />}
               title="Documentation"
               right={
@@ -246,7 +272,7 @@ export function SettingsAbout({
                   </a>
                 </SettingsRowAction>
               }
-            />
+            /> */}
           </SettingsCard>
         </SettingsCardStack>
       </SettingsSection>

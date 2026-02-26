@@ -37,6 +37,11 @@ import {
   isHomeImportSourcesDebugEnabled,
   resolveHomeImportSourcesUiDebugState,
 } from "./home-import-sources-ui-debug"
+import {
+  APP_UPDATE_UI_DEBUG_SCENARIO_VALUES,
+  getAppUpdateUiDebugScenario,
+  isAppUpdateUiDebugEnabled,
+} from "@/hooks/app-update/app-update-ui-debug"
 
 export function Home() {
   const homeDebugScenarioLabel: Record<string, string> = {
@@ -84,6 +89,14 @@ export function Home() {
   )
   const connectedAppsUiDebugEnabled = useMemo(
     () => isConnectedAppsUiDebugEnabled(location.search),
+    [location.search]
+  )
+  const appUpdateUiDebugEnabled = useMemo(
+    () => isAppUpdateUiDebugEnabled(location.search),
+    [location.search]
+  )
+  const currentAppUpdateUiDebugScenario = useMemo(
+    () => getAppUpdateUiDebugScenario(location.search),
     [location.search]
   )
   const currentConnectedAppsUiDebugScenario = useMemo(
@@ -198,6 +211,15 @@ export function Home() {
     },
     [location.search, navigate]
   )
+  const setAppUpdateUiDebugScenario = useCallback(
+    (scenario: string | null) => {
+      const nextParams = new URLSearchParams(location.search)
+      if (scenario) nextParams.set("appUpdateScenario", scenario)
+      else nextParams.delete("appUpdateScenario")
+      navigate({ search: `?${nextParams.toString()}` }, { replace: true })
+    },
+    [location.search, navigate]
+  )
 
   const connectedCanonicalIdsFromRuns = useMemo(
     () =>
@@ -226,11 +248,7 @@ export function Home() {
         ? connectedCanonicalIdsFromRuns.has(canonicalId)
         : false
     })
-  }, [
-    connectedCanonicalIdsFromRuns,
-    displayPlatforms,
-    isPlatformConnected,
-  ])
+  }, [connectedCanonicalIdsFromRuns, displayPlatforms, isPlatformConnected])
 
   const connectedPlatformIds = useMemo(
     () => connectedPlatformsList.map(platform => platform.id),
@@ -315,7 +333,7 @@ export function Home() {
 
       {/* DEV ONLY SHORTCUT: RickRoll /connect link */}
       {import.meta.env.DEV && (
-        <DebugTogglePanel title="Home debug" openClassName="w-[840px]">
+        <DebugTogglePanel title="Home debug" openClassName="w-[900px]">
           <div className="grid grid-cols-12 gap-3 divide-x">
             <div className="col-span-7 space-y-2">
               <div className="space-y-2 pt-1">
@@ -375,9 +393,10 @@ export function Home() {
                 </div>
                 {homeUiDebugEnabled ? (
                   <p className="text-[11px] text-foreground-muted">
-                    target: {homeImportSourcesDebug.targetPlatformId ?? "none"} ·
-                    running:{" "}
-                    {homeImportSourcesDebug.runningPlatformIds.join(", ") || "none"}
+                    target: {homeImportSourcesDebug.targetPlatformId ?? "none"}{" "}
+                    · running:{" "}
+                    {homeImportSourcesDebug.runningPlatformIds.join(", ") ||
+                      "none"}
                   </p>
                 ) : null}
               </div>
@@ -404,6 +423,32 @@ export function Home() {
                       connectedAppsUiDebugEnabled ? "outline" : "default"
                     }
                     onClick={() => setConnectedAppsUiDebugScenario(null)}
+                  >
+                    real
+                  </Button>
+                </div>
+              </div>
+              <div className="space-y-2 pt-1">
+                <p className="text-xs font-medium">App update toast</p>
+                <div className="flex flex-wrap gap-2">
+                  {APP_UPDATE_UI_DEBUG_SCENARIO_VALUES.map(scenario => (
+                    <Button
+                      key={scenario}
+                      size="xs"
+                      variant={
+                        currentAppUpdateUiDebugScenario === scenario
+                          ? "default"
+                          : "outline"
+                      }
+                      onClick={() => setAppUpdateUiDebugScenario(scenario)}
+                    >
+                      {scenario}
+                    </Button>
+                  ))}
+                  <Button
+                    size="xs"
+                    variant={appUpdateUiDebugEnabled ? "outline" : "default"}
+                    onClick={() => setAppUpdateUiDebugScenario(null)}
                   >
                     real
                   </Button>

@@ -31,14 +31,24 @@ import {
   CONNECTED_APPS_UI_DEBUG_SCENARIO_VALUES,
   isConnectedAppsUiDebugEnabled,
 } from "./connected-apps-ui-debug"
-import { testConnectedPlatforms, testPlatforms } from "./home-debug-fixtures"
 import {
-  HOME_UI_DEBUG_SCENARIO_VALUES,
-  isHomeUiDebugEnabled,
-  resolveHomeUiDebugRuns,
-} from "./home-ui-debug"
+  getHomeImportSourcesScenario,
+  HOME_IMPORT_SOURCES_SCENARIO_VALUES,
+  isHomeImportSourcesDebugEnabled,
+  resolveHomeImportSourcesUiDebugState,
+} from "./home-import-sources-ui-debug"
 
 export function Home() {
+  const homeDebugScenarioLabel: Record<string, string> = {
+    "blocking-waiting": "blocking-waiting",
+    background: "background",
+    "phase-label": "phase-label",
+    "eta-weak": "ETA weak",
+    "eta-size": "ETA size",
+    "eta-history": "ETA history",
+    empty: "empty",
+  }
+
   const location = useLocation()
   const navigate = useNavigate()
   const { platforms, isPlatformConnected, refreshConnectedStatus } =
@@ -57,11 +67,11 @@ export function Home() {
     { value: "apps", label: "Connected apps" },
   ]
   const homeUiDebugEnabled = useMemo(
-    () => isHomeUiDebugEnabled(location.search),
+    () => isHomeImportSourcesDebugEnabled(location.search),
     [location.search]
   )
   const currentHomeUiDebugScenario = useMemo(
-    () => new URLSearchParams(location.search).get("scenario"),
+    () => getHomeImportSourcesScenario(location.search),
     [location.search]
   )
   const connectedSourcesUiDebugEnabled = useMemo(
@@ -163,8 +173,9 @@ export function Home() {
   const setHomeUiDebugScenario = useCallback(
     (scenario: string | null) => {
       const nextParams = new URLSearchParams(location.search)
-      if (scenario) nextParams.set("scenario", scenario)
-      else nextParams.delete("scenario")
+      if (scenario) nextParams.set("homeImportSourcesScenario", scenario)
+      else nextParams.delete("homeImportSourcesScenario")
+      nextParams.delete("scenario")
       navigate({ search: `?${nextParams.toString()}` }, { replace: true })
     },
     [location.search, navigate]
@@ -188,27 +199,10 @@ export function Home() {
     [location.search, navigate]
   )
 
-  const availablePlatforms = useMemo(() => {
-    if (homeUiDebugEnabled && displayPlatforms.length === 0) {
-      return testPlatforms
-    }
-    return displayPlatforms
-  }, [displayPlatforms, homeUiDebugEnabled])
-
-  const displayRuns = useMemo(
-    () =>
-      resolveHomeUiDebugRuns({
-        runs,
-        platforms: availablePlatforms,
-        search: location.search,
-      }),
-    [availablePlatforms, location.search, runs]
-  )
-
   const connectedCanonicalIdsFromRuns = useMemo(
     () =>
       new Set(
-        displayRuns
+        runs
           .filter(run => run.status === "success" && Boolean(run.exportPath))
           .map(
             run =>
@@ -220,14 +214,11 @@ export function Home() {
           )
           .filter((id): id is string => Boolean(id))
       ),
-    [displayRuns]
+    [runs]
   )
 
   // Separate available platforms (memoized to avoid re-filtering on every render)
   const connectedPlatformsList = useMemo(() => {
-    if (homeUiDebugEnabled && displayPlatforms.length === 0) {
-      return testConnectedPlatforms
-    }
     return displayPlatforms.filter(platform => {
       if (isPlatformConnected(platform.id)) return true
       const canonicalId = getPlatformRegistryEntry(platform)?.id
@@ -238,13 +229,22 @@ export function Home() {
   }, [
     connectedCanonicalIdsFromRuns,
     displayPlatforms,
-    homeUiDebugEnabled,
     isPlatformConnected,
   ])
 
   const connectedPlatformIds = useMemo(
     () => connectedPlatformsList.map(platform => platform.id),
     [connectedPlatformsList]
+  )
+  const homeImportSourcesDebug = useMemo(
+    () =>
+      resolveHomeImportSourcesUiDebugState({
+        search: location.search,
+        realPlatforms: displayPlatforms,
+        realRuns: runs,
+        realConnectedPlatformIds: connectedPlatformIds,
+      }),
+    [connectedPlatformIds, displayPlatforms, location.search, runs]
   )
   const connectedSourcesPlatforms = useMemo(
     () =>
@@ -257,11 +257,11 @@ export function Home() {
   const connectedSourcesRuns = useMemo(
     () =>
       resolveConnectedSourcesUiDebugRuns({
-        runs: displayRuns,
+        runs,
         platforms: connectedSourcesPlatforms,
         search: location.search,
       }),
-    [connectedSourcesPlatforms, displayRuns, location.search]
+    [connectedSourcesPlatforms, location.search, runs]
   )
 
   const handleOpenRuns = useCallback(
@@ -299,11 +299,11 @@ export function Home() {
             onSyncSource={handleImportSource}
           />
           <AvailableSourcesList
-            platforms={availablePlatforms}
-            runs={displayRuns}
+            platforms={homeImportSourcesDebug.platforms}
+            runs={homeImportSourcesDebug.runs}
             onExport={handleImportSource}
             onStopRun={handleStopImport}
-            connectedPlatformIds={connectedPlatformIds}
+            connectedPlatformIds={homeImportSourcesDebug.connectedPlatformIds}
           />
         </TabsContent>
 
@@ -315,45 +315,15 @@ export function Home() {
 
       {/* DEV ONLY SHORTCUT: RickRoll /connect link */}
       {import.meta.env.DEV && (
-        <DebugTogglePanel
-          title="Home debug"
-          openClassName="w-[840px]"
-        >
+        <DebugTogglePanel title="Home debug" openClassName="w-[840px]">
           <div className="grid grid-cols-12 gap-3 divide-x">
             <div className="col-span-7 space-y-2">
-              <p className="text-xs font-medium">Import sources</p>
-              <div className="flex flex-wrap gap-2">
-                {HOME_UI_DEBUG_SCENARIO_VALUES.map(scenario => (
-                  <Button
-                    key={scenario}
-                    type="button"
-                    size="xs"
-                    variant={
-                      currentHomeUiDebugScenario === scenario
-                        ? "default"
-                        : "outline"
-                    }
-                    onClick={() => setHomeUiDebugScenario(scenario)}
-                  >
-                    {scenario}
-                  </Button>
-                ))}
-                <Button
-                  type="button"
-                  size="xs"
-                  variant={homeUiDebugEnabled ? "outline" : "default"}
-                  onClick={() => setHomeUiDebugScenario(null)}
-                >
-                  real
-                </Button>
-              </div>
               <div className="space-y-2 pt-1">
                 <p className="text-xs font-medium">Imported data</p>
                 <div className="flex flex-wrap gap-2">
                   {CONNECTED_SOURCES_UI_DEBUG_SCENARIO_VALUES.map(scenario => (
                     <Button
                       key={scenario}
-                      type="button"
                       size="xs"
                       variant={
                         currentConnectedSourcesUiDebugScenario === scenario
@@ -368,7 +338,6 @@ export function Home() {
                     </Button>
                   ))}
                   <Button
-                    type="button"
                     size="xs"
                     variant={
                       connectedSourcesUiDebugEnabled ? "outline" : "default"
@@ -380,12 +349,44 @@ export function Home() {
                 </div>
               </div>
               <div className="space-y-2 pt-1">
+                <p className="text-xs font-medium">Import sources</p>
+                <div className="flex flex-wrap gap-2">
+                  {HOME_IMPORT_SOURCES_SCENARIO_VALUES.map(scenario => (
+                    <Button
+                      key={scenario}
+                      size="xs"
+                      variant={
+                        currentHomeUiDebugScenario === scenario
+                          ? "default"
+                          : "outline"
+                      }
+                      onClick={() => setHomeUiDebugScenario(scenario)}
+                    >
+                      {homeDebugScenarioLabel[scenario] ?? scenario}
+                    </Button>
+                  ))}
+                  <Button
+                    size="xs"
+                    variant={homeUiDebugEnabled ? "outline" : "default"}
+                    onClick={() => setHomeUiDebugScenario(null)}
+                  >
+                    real
+                  </Button>
+                </div>
+                {homeUiDebugEnabled ? (
+                  <p className="text-[11px] text-foreground-muted">
+                    target: {homeImportSourcesDebug.targetPlatformId ?? "none"} ·
+                    running:{" "}
+                    {homeImportSourcesDebug.runningPlatformIds.join(", ") || "none"}
+                  </p>
+                ) : null}
+              </div>
+              <div className="space-y-2 pt-1">
                 <p className="text-xs font-medium">Connected apps</p>
                 <div className="flex flex-wrap gap-2">
                   {CONNECTED_APPS_UI_DEBUG_SCENARIO_VALUES.map(scenario => (
                     <Button
                       key={scenario}
-                      type="button"
                       size="xs"
                       variant={
                         currentConnectedAppsUiDebugScenario === scenario
@@ -398,7 +399,6 @@ export function Home() {
                     </Button>
                   ))}
                   <Button
-                    type="button"
                     size="xs"
                     variant={
                       connectedAppsUiDebugEnabled ? "outline" : "default"
@@ -413,7 +413,7 @@ export function Home() {
             <div className="col-span-5 space-y-2">
               <p className="text-xs font-medium">Grant flow</p>
               <div className="flex flex-wrap gap-2">
-                <Button type="button" size="xs" variant="outline" asChild>
+                <Button size="xs" variant="outline" asChild>
                   <a href="/connect?sessionId=grant-session-1770358735328&appId=rickroll&scopes=%5B%22read%3Achatgpt-conversations%22%5D">
                     Open Rickroll connect
                   </a>

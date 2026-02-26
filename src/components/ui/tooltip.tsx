@@ -38,9 +38,9 @@ function TooltipContent({
           // shape + spacing
           "rounded-none px-2 py-1.5",
           // typography + surface
-          "bg-popover text-popover-foreground text-xs",
+          "bg-foreground text-background text-xs",
           // border + depth
-          "ring-1 ring-foreground/10 shadow-md",
+          "ring-1 ring-background/20 shadow-md",
           // state transitions
           "data-closed:animate-out data-closed:fade-out-0 data-closed:zoom-out-95",
           "data-open:animate-in data-open:fade-in-0 data-open:zoom-in-95",

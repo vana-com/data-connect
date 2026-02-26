@@ -38,6 +38,34 @@ export function ActionButton({
   )
 }
 
+type ActionButtonGroupProps = ComponentProps<"div"> &
+  Pick<ActionButtonProps, "fullWidth" | "size" | "variant">
+
+// For when you want the action button style but not the button
+export function ActionButtonGroup({
+  className,
+  children,
+  variant = "outline",
+  size = "xl",
+  fullWidth = true,
+  ...props
+}: ActionButtonGroupProps) {
+  return (
+    <div
+      data-slot="action-button-group"
+      className={cn(
+        buttonVariants({ variant, size, fullWidth }),
+        actionButtonSurfaceClass,
+        "gap-0 items-stretch px-0",
+        className
+      )}
+      {...props}
+    >
+      {children}
+    </div>
+  )
+}
+
 type ActionPanelProps = ComponentProps<"div"> &
   Pick<ActionButtonProps, "fullWidth" | "size" | "variant">
 
@@ -51,6 +79,7 @@ export function ActionPanel({
 }: ActionPanelProps) {
   return (
     <div
+      data-slot="action-panel"
       className={cn(
         buttonVariants({ variant, size, fullWidth }),
         // Base panel surface

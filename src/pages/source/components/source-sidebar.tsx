@@ -60,16 +60,16 @@ export function SourceSidebar({
 
         {/* NAV */}
         <hr className={ruleStyle} />
+        <SourceLinkRow to={ROUTES.home} icon={<ArrowLeftIcon aria-hidden />}>
+          <span className="lg:hidden">Home</span>
+          <span className="hidden lg:inline">Back to Home</span>
+        </SourceLinkRow>
         <SourceLinkRow
           to={importsSettingsUrl}
           icon={<ArrowRightIcon aria-hidden />}
         >
           <span className="lg:hidden">Import history</span>
           <span className="hidden lg:inline">View import history</span>
-        </SourceLinkRow>
-        <SourceLinkRow to={ROUTES.home} icon={<ArrowLeftIcon aria-hidden />}>
-          <span className="lg:hidden">Home</span>
-          <span className="hidden lg:inline">Back to Home</span>
         </SourceLinkRow>
 
         {/* VANA */}

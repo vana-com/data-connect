@@ -64,9 +64,13 @@ function getConnectedAppUrl(app: ConnectedApp, search: string) {
 
 const Header = () => {
   return (
-    <Text as="p" intent="small" muted>
-      Connected apps use your imported data. Manage access{" "}
-      <Link to={buildSettingsUrl({ section: "apps" })} className="link">
+    <Text as="p" intent="small" muted balance>
+      Connected apps have your permission to access imported data on your
+      Personal Server. Manage access{" "}
+      <Link
+        to={buildSettingsUrl({ section: "apps" })}
+        className="link hover:text-foreground"
+      >
         here
       </Link>
       .

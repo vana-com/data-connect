@@ -18,7 +18,14 @@ export function DebugTogglePanel({
 
   return (
     <div data-slot="debug-toggle-panel" className="fixed bottom-4 right-4 z-50">
-      <div className="rounded-card bg-background">
+      <div
+        className={cn(
+          "rounded-card bg-background border ring-4",
+          open
+            ? "ring-ring/50 border-ring"
+            : "ring-transparent border-transparent"
+        )}
+      >
         <button
           type="button"
           onClick={() => setOpen(o => !o)}

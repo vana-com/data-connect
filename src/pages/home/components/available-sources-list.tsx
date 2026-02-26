@@ -8,7 +8,7 @@ import {
 import { EyebrowBadge } from "@/components/typography/eyebrow-badge"
 import { Text } from "@/components/typography/text"
 import { Spinner } from "@/components/elements/spinner"
-import { SourceStack } from "@/components/elements/source-row"
+import { SourceStack } from "@/components/elements/source-stack"
 import { cn } from "@/lib/classes"
 import type { Platform, Run } from "@/types"
 import { getConnectSourceEntries } from "@/lib/platform/utils"

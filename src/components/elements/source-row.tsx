@@ -1,143 +1,203 @@
-import type { ReactNode } from "react"
+import type { ComponentProps, ReactNode } from "react"
 import { ChevronRightIcon } from "lucide-react"
 import { PlatformIcon } from "@/components/icons/platform-icon"
+import { ActionButtonGroup } from "@/components/typography/button-action"
+import { stateFocus } from "@/components/typography/field"
 import { Text } from "@/components/typography/text"
 import { cn } from "@/lib/classes"
-import { fieldHeight } from "../typography/field"
 
 export interface SourceRowProps {
   iconName: string
   label: string
   meta?: string
   showArrow?: boolean
+  fallbackLabel?: string
   iconClassName?: string
-  labelColor?: "foreground" | "mutedForeground"
-  metaColor?: "foreground" | "mutedForeground"
   arrowClassName?: string
 }
 
-export const sourceRowActionStyle =
-  "text-foreground/30 group-hover:text-foreground"
+interface SourceRowContentProps {
+  iconName: string
+  fallbackLabel?: string
+  iconClassName?: string
+  label: string
+  meta?: string
+}
 
+function SourceRowContent({
+  iconName,
+  fallbackLabel,
+  iconClassName,
+  label,
+  meta,
+}: SourceRowContentProps) {
+  return (
+    <div
+      data-slot="source-row-content"
+      className="h-full min-w-0 flex-1 flex items-center gap-3"
+    >
+      <PlatformIcon
+        iconName={iconName}
+        className={cn(iconClassName)}
+        fallbackLabel={fallbackLabel}
+      />
+      <div className="flex items-baseline gap-2">
+        {label}
+
+        {meta ? (
+          <Text as="span" intent="small" color="mutedForeground">
+            {meta}
+          </Text>
+        ) : null}
+      </div>
+    </div>
+  )
+}
+
+interface SourceRowActionButtonProps extends Omit<
+  ComponentProps<"button">,
+  "type"
+> {}
+
+export const sourceRowActionStyle =
+  "text-foreground-muted/70 group-hover:text-foreground"
+
+export const sourceRowActionInteractiveClass = cn(
+  "flex h-full items-center justify-center",
+  "[&_svg:not([class*='size-']):not([data-slot=spinner])]:size-5!",
+  "[&_svg]:text-foreground-muted/70 group-hover:[&_svg]:text-foreground",
+  stateFocus
+)
+
+export function SourceRowActionButton({
+  className,
+  children,
+  ...props
+}: SourceRowActionButtonProps) {
+  return (
+    <button
+      data-slot="source-row-action-button"
+      type="button"
+      className={cn(
+        "cursor-pointer",
+        sourceRowActionInteractiveClass,
+        className
+      )}
+      {...props}
+    >
+      {children}
+    </button>
+  )
+}
+
+/* @deprecated Unused! Use SourceRowWithActions instead */
 export function SourceRow({
   iconName,
   label,
   meta,
   showArrow,
+  fallbackLabel,
   iconClassName,
-  metaColor = "mutedForeground",
   arrowClassName,
 }: SourceRowProps) {
   const shouldShowArrow = showArrow ?? Boolean(meta)
-  const shouldRenderMetaSection = shouldShowArrow || Boolean(meta)
 
   return (
     <>
-      <div className="h-full flex-1 flex items-center gap-3">
-        <PlatformIcon iconName={iconName} className={cn(iconClassName)} />
-        <div className="flex items-baseline gap-2">
-          {label}
-
-          {meta ? (
-            <Text as="span" intent="small" color={metaColor}>
-              {meta}
-            </Text>
-          ) : null}
-        </div>
-      </div>
+      <SourceRowContent
+        iconName={iconName}
+        fallbackLabel={fallbackLabel}
+        iconClassName={iconClassName}
+        label={label}
+        meta={meta}
+      />
 
       {/* RHS */}
-      {shouldRenderMetaSection ? (
+      {shouldShowArrow ? (
         <div className="h-full flex items-center gap-3">
-          {/* CTA icon */}
-          {shouldShowArrow ? (
-            <ChevronRightIcon
-              className={cn(sourceRowActionStyle, "size-7", arrowClassName)}
-              aria-hidden
-            />
-          ) : null}
+          <ChevronRightIcon
+            className={cn(sourceRowActionStyle, "size-7", arrowClassName)}
+            aria-hidden
+          />
         </div>
       ) : null}
     </>
   )
 }
 
-export interface SourceStackProps {
+export interface SourceRowWithActionsProps {
   iconName: string
   label: string
-  showArrow?: boolean
+  meta?: string
+  fallbackLabel?: string
   iconClassName?: string
-  labelColor?: "foreground" | "mutedForeground"
-  arrowClassName?: string
-  stackPrimaryColor?: string
-  trailingSlot?: ReactNode
-  infoSlot?: ReactNode
-  bottomClassName?: string
+  rowAction?: {
+    onClick?: () => void
+    disabled?: boolean
+    ariaLabel?: string
+    className?: string
+  }
+  middleSlot?: ReactNode
+  endSlot?: ReactNode
+  endSlotClassName?: string
+  className?: string
 }
 
-export function SourceStack({
+export function SourceRowWithActions({
   iconName,
   label,
-  showArrow,
+  meta,
+  fallbackLabel,
   iconClassName,
-  labelColor = "foreground",
-  arrowClassName,
-  stackPrimaryColor,
-  trailingSlot,
-  infoSlot,
-  bottomClassName,
-}: SourceStackProps) {
-  const shouldShowArrow = Boolean(showArrow)
-  void stackPrimaryColor
-  // const darkenedStackColor = stackPrimaryColor
-  //   ? `color-mix(in srgb, ${stackPrimaryColor} 30%, black)`
-  //   : undefined
-  // bgColor: `color-mix(in srgb, ${darkenedStackColor} 1%, transparent)`,
+  rowAction,
+  middleSlot,
+  endSlot,
+  endSlotClassName,
+  className,
+}: SourceRowWithActionsProps) {
+  const {
+    onClick: onRowClick,
+    disabled: rowDisabled = false,
+    ariaLabel: rowAriaLabel,
+    className: rowClassName,
+  } = rowAction ?? {}
 
   return (
-    <div className="w-full">
-      <div className="h-[96px] flex items-start border-b">
-        <div className="p-2">
-          <PlatformIcon
-            iconName={iconName}
-            size={24}
-            className={cn("p-3", iconClassName)}
-          />
-        </div>
-        <div className="min-w-0 flex-1 p-2.5">{infoSlot}</div>
-      </div>
-
-      {/* Bottom */}
-      <div
+    <ActionButtonGroup className={className}>
+      <button
+        data-slot="source-row-main-button"
+        type="button"
         className={cn(
-          "flex items-center justify-between",
-          fieldHeight.default,
-          "px-4",
-          bottomClassName
+          "cursor-pointer",
+          "h-full min-w-0 flex-1",
+          "px-4 text-left",
+          stateFocus,
+          rowClassName
         )}
+        onClick={onRowClick}
+        disabled={rowDisabled}
+        aria-label={rowAriaLabel}
       >
-        <Text
-          as="span"
-          intent="button"
-          weight="medium"
-          truncate
-          align="left"
-          color={labelColor}
-        >
-          {label}
-        </Text>
-        <div className="flex items-center gap-2 self-end h-full">
-          {trailingSlot}
+        <SourceRowContent
+          iconName={iconName}
+          fallbackLabel={fallbackLabel}
+          iconClassName={iconClassName}
+          label={label}
+          meta={meta}
+        />
+      </button>
 
-          {/* CTA icon */}
-          {shouldShowArrow ? (
-            <ChevronRightIcon
-              className={cn(sourceRowActionStyle, "size-5", arrowClassName)}
-              aria-hidden
-            />
-          ) : null}
-        </div>
-      </div>
-    </div>
+      {middleSlot}
+
+      <SourceRowActionButton
+        data-slot="source-row-end-button"
+        className={cn("pl-0.5 pr-4", endSlotClassName)}
+        onClick={onRowClick}
+        disabled={rowDisabled}
+        aria-label={rowAriaLabel}
+      >
+        {endSlot ?? <ChevronRightIcon aria-hidden />}
+      </SourceRowActionButton>
+    </ActionButtonGroup>
   )
 }

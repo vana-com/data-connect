@@ -9,7 +9,12 @@ import { useConnectedApps } from "@/hooks/useConnectedApps"
 import { ROUTES } from "@/config/routes"
 import { openLocalPath, openExternalUrl } from "@/lib/open-resource"
 import { getPersonalServerDataPath, getUserDataPath } from "@/lib/tauri-paths"
-import type { BrowserSession, BrowserStatus, NodeJsTestResult, SettingsSection } from "./types"
+import type {
+  BrowserSession,
+  BrowserStatus,
+  NodeJsTestResult,
+  SettingsSection,
+} from "./types"
 import {
   DEFAULT_SETTINGS_SECTION,
   SETTINGS_SECTION_PARAM,
@@ -30,34 +35,43 @@ export function useSettingsPage() {
     ? sectionParam
     : DEFAULT_SETTINGS_SECTION
   const [dataPath, setDataPath] = useState<string>("")
-  const [personalServerDataPath, setPersonalServerDataPath] = useState<string>("")
+  const [personalServerDataPath, setPersonalServerDataPath] =
+    useState<string>("")
   const [appVersion, setAppVersion] = useState<string>("")
   const [logPath, setLogPath] = useState<string>("")
   const [nodeTestStatus, setNodeTestStatus] = useState<
     "idle" | "testing" | "success" | "error"
   >("idle")
-  const [nodeTestResult, setNodeTestResult] = useState<NodeJsTestResult | null>(null)
+  const [nodeTestResult, setNodeTestResult] = useState<NodeJsTestResult | null>(
+    null
+  )
   const [nodeTestError, setNodeTestError] = useState<string | null>(null)
-  const [pathsDebug, setPathsDebug] = useState<Record<string, unknown> | null>(null)
+  const [pathsDebug, setPathsDebug] = useState<Record<string, unknown> | null>(
+    null
+  )
   const [browserStatus, setBrowserStatus] = useState<BrowserStatus | null>(null)
   const [browserSessions, setBrowserSessions] = useState<BrowserSession[]>([])
   const [simulateNoChrome, setSimulateNoChrome] = useState(false)
-  const [clearPersonalServerDataStatus, setClearPersonalServerDataStatus] = useState<
-    "idle" | "deleting" | "success" | "error"
-  >("idle")
-  const [clearPersonalServerDataError, setClearPersonalServerDataError] = useState<string | null>(null)
+  const [clearPersonalServerDataStatus, setClearPersonalServerDataStatus] =
+    useState<"idle" | "deleting" | "success" | "error">("idle")
+  const [clearPersonalServerDataError, setClearPersonalServerDataError] =
+    useState<string | null>(null)
 
   useEffect(() => {
     let cancelled = false
 
     const loadSettings = async () => {
-      const [dataPathResult, personalServerDataPathResult, versionResult, logPathResult] =
-        await Promise.allSettled([
-          getUserDataPath(),
-          getPersonalServerDataPath(),
-          getVersion(),
-          invoke<string>("get_log_path"),
-        ])
+      const [
+        dataPathResult,
+        personalServerDataPathResult,
+        versionResult,
+        logPathResult,
+      ] = await Promise.allSettled([
+        getUserDataPath(),
+        getPersonalServerDataPath(),
+        getVersion(),
+        invoke<string>("get_log_path"),
+      ])
 
       if (cancelled) return
 
@@ -127,7 +141,9 @@ export function useSettingsPage() {
 
   const debugPaths = useCallback(async () => {
     try {
-      const result = await invoke<Record<string, unknown>>("debug_connector_paths")
+      const result = await invoke<Record<string, unknown>>(
+        "debug_connector_paths"
+      )
       setPathsDebug(result)
     } catch (error) {
       console.error("Debug paths error:", error)
@@ -143,7 +159,12 @@ export function useSettingsPage() {
     if (personalServer.port && personalServer.status === "running") {
       fetchConnectedApps(personalServer.port, personalServer.devToken)
     }
-  }, [personalServer.port, personalServer.status, personalServer.devToken, fetchConnectedApps])
+  }, [
+    personalServer.port,
+    personalServer.status,
+    personalServer.devToken,
+    fetchConnectedApps,
+  ])
 
   // Persist simulateNoChrome to localStorage — only store when explicitly true.
   // Remove the key when false so a fresh profile starts with the correct default.
@@ -160,10 +181,9 @@ export function useSettingsPage() {
 
     const checkBrowser = async () => {
       try {
-        const result = await invoke<BrowserStatus & { needs_download: boolean }>(
-          "check_browser_available",
-          { simulateNoChrome }
-        )
+        const result = await invoke<
+          BrowserStatus & { needs_download: boolean }
+        >("check_browser_available", { simulateNoChrome })
         if (!cancelled) {
           setBrowserStatus(result)
         }
@@ -192,14 +212,17 @@ export function useSettingsPage() {
     loadBrowserSessions()
   }, [loadBrowserSessions])
 
-  const handleClearSession = useCallback(async (connectorId: string) => {
-    try {
-      await invoke("clear_browser_session", { connectorId })
-      await loadBrowserSessions()
-    } catch (error) {
-      console.error("Failed to clear browser session:", error)
-    }
-  }, [loadBrowserSessions])
+  const handleClearSession = useCallback(
+    async (connectorId: string) => {
+      try {
+        await invoke("clear_browser_session", { connectorId })
+        await loadBrowserSessions()
+      } catch (error) {
+        console.error("Failed to clear browser session:", error)
+      }
+    },
+    [loadBrowserSessions]
+  )
 
   const checkBrowserStatus = useCallback(async () => {
     try {
@@ -213,9 +236,12 @@ export function useSettingsPage() {
     }
   }, [simulateNoChrome])
 
-  const handleRevokeApp = useCallback((appId: string) => {
-    removeApp(appId, personalServer.port)
-  }, [removeApp, personalServer.port])
+  const handleRevokeApp = useCallback(
+    (appId: string) => {
+      removeApp(appId, personalServer.port)
+    },
+    [removeApp, personalServer.port]
+  )
 
   const handleLogout = useCallback(async () => {
     await logout()

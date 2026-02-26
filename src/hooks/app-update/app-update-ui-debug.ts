@@ -74,7 +74,9 @@ function isAppUpdateUiDebugScenario(
   return value !== null && value in APP_UPDATE_UI_DEBUG_SCENARIOS
 }
 
-function getScenarioFromSearch(search: string): AppUpdateUiDebugScenario | null {
+function getScenarioFromSearch(
+  search: string
+): AppUpdateUiDebugScenario | null {
   if (!import.meta.env.DEV) return null
   const params = new URLSearchParams(search)
   const scenario = params.get("appUpdateScenario")

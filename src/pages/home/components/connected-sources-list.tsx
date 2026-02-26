@@ -1,3 +1,4 @@
+import { useMemo } from "react"
 import {
   SourceRowActionButton,
   SourceRowWithActions,
@@ -16,6 +17,7 @@ import { buildSettingsUrl } from "@/pages/settings/url"
 import type { Platform, Run } from "@/types"
 import { ChevronRightIcon, RotateCcwIcon } from "lucide-react"
 import { Link } from "react-router-dom"
+import { isBlockingRun } from "./available-sources-list.policy"
 
 interface ConnectedSourcesListProps {
   platforms: Platform[]
@@ -43,6 +45,17 @@ export function ConnectedSourcesList({
   onSyncSource,
 }: ConnectedSourcesListProps) {
   const onboardingMessageState = getOnboardingMessageState(platforms.length)
+  const hasBlockingRun = useMemo(
+    () => runs.some(run => isBlockingRun(run)),
+    [runs]
+  )
+  const activePlatformIds = useMemo(
+    () =>
+      new Set(
+        runs.filter(run => run.status === "running").map(run => run.platformId)
+      ),
+    [runs]
+  )
 
   if (platforms.length === 0) {
     return (
@@ -73,6 +86,8 @@ export function ConnectedSourcesList({
       <div className="flex flex-col gap-3 action-outset">
         {platforms.map(platform => {
           const meta = getLastRunLabel(runs, platform.id)
+          const hasActiveRun = activePlatformIds.has(platform.id)
+          const isSyncDisabled = !onSyncSource || hasBlockingRun || hasActiveRun
           return (
             <SourceRowWithActions
               key={platform.id}
@@ -90,9 +105,12 @@ export function ConnectedSourcesList({
                     <SourceRowActionButton
                       className={cn("px-4")}
                       onClick={
-                        onSyncSource ? () => onSyncSource(platform) : undefined
+                        onSyncSource && !isSyncDisabled
+                          ? () => onSyncSource(platform)
+                          : undefined
                       }
-                      disabled={!onSyncSource}
+                      disabled={isSyncDisabled}
+                      aria-label={`Fetch latest data for ${platform.name}`}
                     >
                       <RotateCcwIcon aria-hidden />
                     </SourceRowActionButton>

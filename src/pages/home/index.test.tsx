@@ -296,6 +296,194 @@ describe("Home", () => {
     expect(screen.getAllByRole("button", { name: /open chatgpt/i }).length).toBeGreaterThan(0)
   })
 
+  it("syncs a connected source from the home list", () => {
+    const chatgpt = {
+      id: "chatgpt",
+      company: "OpenAI",
+      name: "ChatGPT",
+      filename: "chatgpt",
+      description: "ChatGPT export",
+      isUpdated: false,
+      logoURL: "",
+      needsConnection: true,
+      connectURL: null,
+      connectSelector: null,
+      exportFrequency: null,
+      vectorize_config: null,
+      runtime: "playwright",
+    }
+    mockConnectedPlatforms = { chatgpt: true }
+    mockUsePlatforms.mockReturnValue({
+      platforms: [chatgpt],
+      connectedPlatforms: mockConnectedPlatforms,
+      loadPlatforms: vi.fn(),
+      refreshConnectedStatus: vi.fn(),
+      getPlatformById: vi.fn(),
+      isPlatformConnected: vi.fn(id => Boolean(mockConnectedPlatforms[id])),
+    })
+    mockRuns = [
+      {
+        id: "run-chatgpt-1",
+        platformId: "chatgpt",
+        filename: "chatgpt",
+        isConnected: true,
+        startDate: new Date().toISOString(),
+        status: "success",
+        url: "",
+        company: "OpenAI",
+        name: "ChatGPT",
+        logs: "",
+        exportPath: "/tmp/dataconnect/exported_data/OpenAI/ChatGPT/run-chatgpt-1",
+      },
+    ]
+
+    renderHome()
+
+    fireEvent.click(
+      screen.getByRole("button", {
+        name: /fetch latest data for chatgpt/i,
+      })
+    )
+
+    expect(mockStartImport).toHaveBeenCalledWith(
+      expect.objectContaining({ id: "chatgpt" })
+    )
+  })
+
+  it("disables home sync while another run is waiting for sign-in", () => {
+    const chatgpt = {
+      id: "chatgpt",
+      company: "OpenAI",
+      name: "ChatGPT",
+      filename: "chatgpt",
+      description: "ChatGPT export",
+      isUpdated: false,
+      logoURL: "",
+      needsConnection: true,
+      connectURL: null,
+      connectSelector: null,
+      exportFrequency: null,
+      vectorize_config: null,
+      runtime: "playwright",
+    }
+    const spotify = {
+      id: "spotify",
+      company: "Spotify",
+      name: "Spotify",
+      filename: "spotify",
+      description: "Spotify export",
+      isUpdated: false,
+      logoURL: "",
+      needsConnection: true,
+      connectURL: null,
+      connectSelector: null,
+      exportFrequency: null,
+      vectorize_config: null,
+      runtime: "playwright",
+    }
+    mockConnectedPlatforms = { chatgpt: true }
+    mockUsePlatforms.mockReturnValue({
+      platforms: [chatgpt, spotify],
+      connectedPlatforms: mockConnectedPlatforms,
+      loadPlatforms: vi.fn(),
+      refreshConnectedStatus: vi.fn(),
+      getPlatformById: vi.fn(),
+      isPlatformConnected: vi.fn(id => Boolean(mockConnectedPlatforms[id])),
+    })
+    mockRuns = [
+      {
+        id: "run-spotify-1",
+        platformId: "spotify",
+        filename: "spotify",
+        isConnected: false,
+        startDate: new Date().toISOString(),
+        status: "running",
+        statusMessage: "Waiting for sign in...",
+        url: "",
+        company: "Spotify",
+        name: "Spotify",
+        logs: "",
+      },
+    ]
+
+    renderHome()
+
+    expect(
+      screen.getByRole("button", {
+        name: /fetch latest data for chatgpt/i,
+      }).hasAttribute("disabled")
+    ).toBe(true)
+  })
+
+  it("keeps home sync enabled during non-blocking background collection", () => {
+    const chatgpt = {
+      id: "chatgpt",
+      company: "OpenAI",
+      name: "ChatGPT",
+      filename: "chatgpt",
+      description: "ChatGPT export",
+      isUpdated: false,
+      logoURL: "",
+      needsConnection: true,
+      connectURL: null,
+      connectSelector: null,
+      exportFrequency: null,
+      vectorize_config: null,
+      runtime: "playwright",
+    }
+    const spotify = {
+      id: "spotify",
+      company: "Spotify",
+      name: "Spotify",
+      filename: "spotify",
+      description: "Spotify export",
+      isUpdated: false,
+      logoURL: "",
+      needsConnection: true,
+      connectURL: null,
+      connectSelector: null,
+      exportFrequency: null,
+      vectorize_config: null,
+      runtime: "playwright",
+    }
+    mockConnectedPlatforms = { chatgpt: true }
+    mockUsePlatforms.mockReturnValue({
+      platforms: [chatgpt, spotify],
+      connectedPlatforms: mockConnectedPlatforms,
+      loadPlatforms: vi.fn(),
+      refreshConnectedStatus: vi.fn(),
+      getPlatformById: vi.fn(),
+      isPlatformConnected: vi.fn(id => Boolean(mockConnectedPlatforms[id])),
+    })
+    mockRuns = [
+      {
+        id: "run-spotify-1",
+        platformId: "spotify",
+        filename: "spotify",
+        isConnected: true,
+        startDate: new Date().toISOString(),
+        status: "running",
+        statusMessage: "Collecting data...",
+        url: "",
+        company: "Spotify",
+        name: "Spotify",
+        logs: "",
+      },
+    ]
+
+    renderHome()
+
+    const syncButton = screen.getByRole("button", {
+      name: /fetch latest data for chatgpt/i,
+    })
+    expect(syncButton.hasAttribute("disabled")).toBe(false)
+
+    fireEvent.click(syncButton)
+    expect(mockStartImport).toHaveBeenCalledWith(
+      expect.objectContaining({ id: "chatgpt" })
+    )
+  })
+
   it("blocks other source starts while a run is waiting for user action", () => {
     const chatgpt = {
       id: "chatgpt",

@@ -125,13 +125,6 @@ export function Home() {
 
   const handleImportSource = useCallback(
     async (platform: Platform) => {
-      console.log(
-        "Starting import for platform:",
-        platform.id,
-        platform.name,
-        "runtime:",
-        platform.runtime
-      )
       try {
         await startImport(platform)
       } catch (error) {

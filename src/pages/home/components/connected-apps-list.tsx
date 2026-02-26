@@ -167,6 +167,7 @@ export function ConnectedAppsList({ apps }: ConnectedAppsListProps) {
               meta={formatConnectedAt(app.connectedAt)}
               rowAction={{
                 onClick: handleOpenApp,
+                disabled: !handleOpenApp,
                 ariaLabel: `Open ${app.name}`,
               }}
               middleSlot={

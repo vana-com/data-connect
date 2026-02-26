@@ -14,6 +14,7 @@ interface SettingsDetailRowProps {
   value: ReactNode
   isLast?: boolean
   labelInfo?: ReactNode
+  className?: string
 }
 
 /**
@@ -24,6 +25,7 @@ export function SettingsDetailRow({
   value,
   isLast = false,
   labelInfo,
+  className,
 }: SettingsDetailRowProps) {
   const labelContent =
     typeof label === "string" ? (
@@ -39,7 +41,8 @@ export function SettingsDetailRow({
       data-slot="settings-detail-row"
       className={cn(
         "flex items-center justify-between gap-4 py-4 h-tab",
-        !isLast && "border-b border-border"
+        !isLast && "border-b border-border",
+        className
       )}
     >
       <div className="flex items-center gap-1.5">

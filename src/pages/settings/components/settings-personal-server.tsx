@@ -128,6 +128,7 @@ export function SettingsPersonalServer({
             <SettingsDetailRow
               label="Server status"
               labelInfo="Runtime health of your local Personal Server process (running, starting, stopped, or error)."
+              className="pr-2.5"
               value={
                 <SettingsRowDescriptionStatus
                   tone={serverStatusDescription.tone}
@@ -140,6 +141,7 @@ export function SettingsPersonalServer({
             <SettingsDetailRow
               label="Public endpoint"
               labelInfo="Public URL that routes requests to your Personal Server."
+              className="pr-2.5"
               value={
                 <SettingsRowDescriptionCopy
                   value={endpoint}

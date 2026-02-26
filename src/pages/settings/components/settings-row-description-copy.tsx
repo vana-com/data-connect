@@ -58,7 +58,10 @@ export function SettingsRowDescriptionCopy({
   }
 
   return (
-    <div className={cn("relative min-w-0", className)}>
+    <div
+      data-slot="settings-row-description-copy"
+      className={cn("relative min-w-0", className)}
+    >
       {copied ? (
         <div
           role="status"

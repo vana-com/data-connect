@@ -16,6 +16,7 @@ import { OpenExternalLink } from "@/components/typography/link-open-external"
 import { buildAvailableCards } from "./available-sources-list.lib"
 import { ConfirmAction } from "@/components/elements/confirm-action"
 import { buttonVariants } from "@/components/ui/button"
+import { buildRunningImportExpectationLine } from "./available-sources-estimator"
 import {
   getConnectingAccountLine,
   getConnectingStatusLine,
@@ -139,7 +140,11 @@ export function AvailableSourcesList({
               : undefined
             const connectingExpectationLine =
               isConnecting && connectingRun
-                ? getConnectingExpectationLine(connectingRun, nowMs)
+                ? buildRunningImportExpectationLine({
+                    run: connectingRun,
+                    runs,
+                    nowMs,
+                  })
                 : undefined
             const isConnectingAndBlocking =
               isConnecting && connectingRun
@@ -262,25 +267,6 @@ export function AvailableSourcesList({
       </div>
     </section>
   )
-}
-
-function getConnectingExpectationLine(run: Run, nowMs: number): string {
-  if (import.meta.env.DEV && run.id.startsWith("home-debug-")) {
-    return "1438 items · 2m run · ETA 7m"
-  }
-
-  const elapsedMs = nowMs - new Date(run.startDate).getTime()
-  const safeElapsedMs = Number.isFinite(elapsedMs) ? Math.max(0, elapsedMs) : 0
-  const elapsedMinutes = Math.floor(safeElapsedMs / 60000)
-  const elapsedLabel =
-    elapsedMinutes < 1 ? "<1m elapsed" : `${elapsedMinutes}m elapsed`
-
-  const itemCount = run.itemCount
-  if (typeof itemCount === "number" && itemCount >= 0) {
-    return `${new Intl.NumberFormat().format(itemCount)} items found · ${elapsedLabel} · Can take a while`
-  }
-
-  return `Import in progress · ${elapsedLabel} · Can take a while`
 }
 
 const Header = () => {

@@ -62,6 +62,38 @@ describe("home-import-sources-ui-debug", () => {
     expect(state.platforms.map(platform => platform.id)).toContain(runningPlatformId)
   })
 
+  it("eta-history scenario injects running and completed history runs", () => {
+    vi.stubEnv("DEV", true)
+    const platforms = [makePlatform("linkedin-playwright"), makePlatform("spotify")]
+    const connectedIds = ["linkedin-playwright"]
+
+    const state = resolveHomeImportSourcesUiDebugState({
+      search: "?homeImportSourcesScenario=eta-history",
+      realPlatforms: platforms,
+      realRuns: [],
+      realConnectedPlatformIds: connectedIds,
+    })
+
+    expect(state.enabled).toBe(true)
+    expect(state.scenario).toBe("eta-history")
+
+    const runningRuns = state.runs.filter(run => run.status === "running")
+    const successfulRuns = state.runs.filter(run => run.status === "success")
+
+    expect(runningRuns).toHaveLength(1)
+    expect(successfulRuns).toHaveLength(2)
+
+    const runningPlatformId = runningRuns[0]?.platformId
+    expect(runningPlatformId).toBeTruthy()
+    expect(state.connectedPlatformIds).not.toContain(runningPlatformId)
+
+    for (const run of successfulRuns) {
+      expect(run.platformId).toBe(runningPlatformId)
+      expect(typeof run.itemsExported).toBe("number")
+      expect(run.endDate).toBeTruthy()
+    }
+  })
+
   it("non-debug mode passes through real inputs unchanged", () => {
     vi.stubEnv("DEV", false)
     const platforms = [makePlatform("linkedin-playwright")]

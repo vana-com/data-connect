@@ -1,16 +1,29 @@
-import { Link } from "react-router-dom"
-import { sourceRowActionStyle } from "@/components/elements/source-row"
-import { PlatformIcon } from "@/components/icons/platform-icon"
+import { useCallback, useMemo } from "react"
+import { Link, useLocation, useNavigate } from "react-router-dom"
+import {
+  SourceRowActionButton,
+  SourceRowWithActions,
+} from "@/components/elements/source-row"
 import { ActionPanel } from "@/components/typography/button-action"
-import { stateFocus } from "@/components/typography/field"
+import { DebugTogglePanel } from "@/components/elements/debug-toggle-panel"
 import { Text } from "@/components/typography/text"
-import { buttonVariants } from "@/components/ui/button"
-import { cn } from "@/lib/classes"
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipTrigger,
+} from "@/components/ui/tooltip"
 import { openExternalUrl } from "@/lib/open-resource"
 import { buildSettingsUrl } from "@/pages/settings/url"
 import { getAppRegistryEntry } from "@/apps/registry"
 import type { ConnectedApp } from "@/types"
-import { ArrowUpRight, Settings } from "lucide-react"
+import { Button } from "@/components/ui/button"
+import { ArrowUpRightIcon, SettingsIcon } from "lucide-react"
+import {
+  CONNECTED_APPS_UI_DEBUG_SCENARIO_VALUES,
+  isConnectedAppsUiDebugEnabled,
+  resolveConnectedAppsUiDebugExternalUrl,
+  resolveConnectedAppsUiDebugApps,
+} from "@/pages/home/connected-apps-ui-debug"
 
 // Home surface for Connected apps.
 // This is a quick-launch/activity surface: it shows recency and open/manage shortcuts.
@@ -36,7 +49,13 @@ async function openExternalApp(url: string) {
   return openExternalUrl(url)
 }
 
-function getConnectedAppUrl(app: ConnectedApp) {
+function getConnectedAppUrl(app: ConnectedApp, search: string) {
+  const debugUrl = resolveConnectedAppsUiDebugExternalUrl({
+    appId: app.id,
+    search,
+  })
+  if (debugUrl) return new URL(debugUrl, window.location.origin)
+
   const entry = getAppRegistryEntry(app.id)
   return entry?.status === "live"
     ? new URL(entry.externalUrl, window.location.origin)
@@ -45,14 +64,75 @@ function getConnectedAppUrl(app: ConnectedApp) {
 
 const Header = () => {
   return (
-    <Text as="h2" weight="medium">
-      Connected apps
+    <Text as="p" intent="small" muted>
+      Connected apps use your imported data. Manage access{" "}
+      <Link to={buildSettingsUrl({ section: "apps" })} className="link">
+        here
+      </Link>
+      .
     </Text>
   )
 }
 
 export function ConnectedAppsList({ apps }: ConnectedAppsListProps) {
-  if (apps.length === 0) {
+  const location = useLocation()
+  const navigate = useNavigate()
+  const currentConnectedAppsUiDebugScenario = useMemo(
+    () => new URLSearchParams(location.search).get("connectedAppsScenario"),
+    [location.search]
+  )
+  const connectedAppsUiDebugEnabled = useMemo(
+    () => isConnectedAppsUiDebugEnabled(location.search),
+    [location.search]
+  )
+  const effectiveApps = useMemo(
+    () =>
+      resolveConnectedAppsUiDebugApps({
+        apps,
+        search: location.search,
+      }),
+    [apps, location.search]
+  )
+  const setConnectedAppsUiDebugScenario = useCallback(
+    (scenario: string | null) => {
+      const nextParams = new URLSearchParams(location.search)
+      if (scenario) nextParams.set("connectedAppsScenario", scenario)
+      else nextParams.delete("connectedAppsScenario")
+      navigate({ search: `?${nextParams.toString()}` }, { replace: true })
+    },
+    [location.search, navigate]
+  )
+  const debugPanel = import.meta.env.DEV ? (
+    <DebugTogglePanel title="Connected apps debug">
+      <div className="flex flex-wrap gap-2">
+        {CONNECTED_APPS_UI_DEBUG_SCENARIO_VALUES.map(scenario => (
+          <Button
+            key={scenario}
+            type="button"
+            size="xs"
+            variant={
+              currentConnectedAppsUiDebugScenario === scenario
+                ? "default"
+                : "outline"
+            }
+            onClick={() => setConnectedAppsUiDebugScenario(scenario)}
+          >
+            {scenario}
+          </Button>
+        ))}
+        <Button
+          type="button"
+          size="xs"
+          variant={connectedAppsUiDebugEnabled ? "outline" : "default"}
+          onClick={() => setConnectedAppsUiDebugScenario(null)}
+        >
+          real
+        </Button>
+      </div>
+    </DebugTogglePanel>
+  ) : null
+
+  if (effectiveApps.length === 0) {
     return (
       <section data-component="connected-apps-list" className="space-y-gap">
         <Header />
@@ -61,6 +141,7 @@ export function ConnectedAppsList({ apps }: ConnectedAppsListProps) {
             <Text weight="medium">No connected apps yet</Text>
           </ActionPanel>
         </div>
+        {debugPanel}
       </section>
     )
   }
@@ -69,8 +150,8 @@ export function ConnectedAppsList({ apps }: ConnectedAppsListProps) {
     <section data-component="connected-apps-list" className="space-y-gap">
       <Header />
       <div className="flex flex-col gap-3 action-outset">
-        {apps.map(app => {
-          const appUrl = getConnectedAppUrl(app)
+        {effectiveApps.map(app => {
+          const appUrl = getConnectedAppUrl(app, location.search)
           const handleOpenApp = appUrl
             ? () => {
                 void openExternalApp(appUrl.toString())
@@ -78,74 +159,50 @@ export function ConnectedAppsList({ apps }: ConnectedAppsListProps) {
             : undefined
 
           return (
-            <div
+            <SourceRowWithActions
               key={app.id}
-              className={cn(
-                // replication of ActionnButton with split click targets
-                buttonVariants({
-                  variant: "outline",
-                  size: "xl",
-                  fullWidth: true,
-                }),
-                "gap-0 items-stretch px-0"
-              )}
-            >
-              <button
-                type="button"
-                className={cn(
-                  "cursor-pointer",
-                  "flex h-full min-w-0 flex-1 items-center gap-3",
-                  "px-4 text-left",
-                  stateFocus
-                )}
-                onClick={handleOpenApp}
-              >
-                {/* Duplicated SourceRow LHS; RHS is different! */}
-                <PlatformIcon
-                  iconName={app.icon?.trim() || app.name}
-                  fallbackLabel={app.name.charAt(0).toUpperCase()}
-                />
-                <div className="flex items-baseline gap-2">
-                  {app.name}
-
-                  <Text as="span" intent="small" muted>
-                    {formatConnectedAt(app.connectedAt)}
-                  </Text>
-                </div>
-              </button>
-
-              <Link
-                to={buildSettingsUrl({ section: "apps" })}
-                className={cn(
-                  "flex h-full items-center justify-center px-3",
-                  stateFocus,
-                  "text-foreground/30 hover:text-foreground"
-                )}
-                aria-label="Connected apps settings"
-              >
-                <Settings className="size-4.5" aria-hidden />
-              </Link>
-
-              <button
-                type="button"
-                className={cn(
-                  "cursor-pointer",
-                  "flex h-full items-center justify-center pl-0.5 pr-4",
-                  // "border-l border-ring/20 group-hover:border-ring",
-                  stateFocus
-                )}
-                onClick={handleOpenApp}
-                aria-label={`Open ${app.name}`}
-              >
-                <ArrowUpRight
-                  className={cn(sourceRowActionStyle, "size-7")}
-                  aria-hidden
-                />
-              </button>
-            </div>
+              iconName={app.icon?.trim() || app.name}
+              fallbackLabel={app.name.charAt(0).toUpperCase()}
+              label={app.name}
+              meta={formatConnectedAt(app.connectedAt)}
+              rowAction={{
+                onClick: handleOpenApp,
+                ariaLabel: `Open ${app.name}`,
+              }}
+              middleSlot={
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <SourceRowActionButton
+                      className="px-4"
+                      onClick={() =>
+                        navigate(buildSettingsUrl({ section: "apps" }))
+                      }
+                      aria-label="Connected apps settings"
+                    >
+                      <SettingsIcon aria-hidden />
+                    </SourceRowActionButton>
+                  </TooltipTrigger>
+                  <TooltipContent side="top">
+                    View connected app settings
+                  </TooltipContent>
+                </Tooltip>
+              }
+              endSlotClassName="[&_svg:not([class*='size-']):not([data-slot=spinner])]:size-6!"
+              endSlot={
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <span className="inline-flex h-full w-full items-center justify-center">
+                      <ArrowUpRightIcon aria-hidden />
+                    </span>
+                  </TooltipTrigger>
+                  <TooltipContent side="top">Open app</TooltipContent>
+                </Tooltip>
+              }
+            />
           )
         })}
       </div>
+      {debugPanel}
     </section>
   )
 }

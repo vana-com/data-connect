@@ -27,6 +27,10 @@ import {
   resolveConnectedSourcesUiDebugPlatforms,
   resolveConnectedSourcesUiDebugRuns,
 } from "./connected-sources-ui-debug"
+import {
+  CONNECTED_APPS_UI_DEBUG_SCENARIO_VALUES,
+  isConnectedAppsUiDebugEnabled,
+} from "./connected-apps-ui-debug"
 import { testConnectedPlatforms, testPlatforms } from "./home-debug-fixtures"
 import {
   HOME_UI_DEBUG_SCENARIO_VALUES,
@@ -66,6 +70,14 @@ export function Home() {
   )
   const currentConnectedSourcesUiDebugScenario = useMemo(
     () => new URLSearchParams(location.search).get("connectedSourcesScenario"),
+    [location.search]
+  )
+  const connectedAppsUiDebugEnabled = useMemo(
+    () => isConnectedAppsUiDebugEnabled(location.search),
+    [location.search]
+  )
+  const currentConnectedAppsUiDebugScenario = useMemo(
+    () => new URLSearchParams(location.search).get("connectedAppsScenario"),
     [location.search]
   )
 
@@ -169,6 +181,15 @@ export function Home() {
       const nextParams = new URLSearchParams(location.search)
       if (scenario) nextParams.set("connectedSourcesScenario", scenario)
       else nextParams.delete("connectedSourcesScenario")
+      navigate({ search: `?${nextParams.toString()}` }, { replace: true })
+    },
+    [location.search, navigate]
+  )
+  const setConnectedAppsUiDebugScenario = useCallback(
+    (scenario: string | null) => {
+      const nextParams = new URLSearchParams(location.search)
+      if (scenario) nextParams.set("connectedAppsScenario", scenario)
+      else nextParams.delete("connectedAppsScenario")
       navigate({ search: `?${nextParams.toString()}` }, { replace: true })
     },
     [location.search, navigate]
@@ -282,6 +303,7 @@ export function Home() {
             runs={connectedSourcesRuns}
             headline="Your imported data"
             onOpenRuns={handleOpenRuns}
+            onSyncSource={handleImportSource}
           />
           <AvailableSourcesList
             platforms={availablePlatforms}
@@ -300,9 +322,12 @@ export function Home() {
 
       {/* DEV ONLY SHORTCUT: RickRoll /connect link */}
       {import.meta.env.DEV && (
-        <DebugTogglePanel title="Home debug">
-          <div className="grid grid-cols-12 divide-x">
-            <div className="col-span-7 space-y-2 pr-4">
+        <DebugTogglePanel
+          title="Home debug"
+          openClassName="w-[840px]"
+        >
+          <div className="grid grid-cols-12 gap-3 divide-x">
+            <div className="col-span-7 space-y-2">
               <p className="text-xs font-medium">Import sources</p>
               <div className="flex flex-wrap gap-2">
                 {HOME_UI_DEBUG_SCENARIO_VALUES.map(scenario => (
@@ -361,8 +386,38 @@ export function Home() {
                   </Button>
                 </div>
               </div>
+              <div className="space-y-2 pt-1">
+                <p className="text-xs font-medium">Connected apps</p>
+                <div className="flex flex-wrap gap-2">
+                  {CONNECTED_APPS_UI_DEBUG_SCENARIO_VALUES.map(scenario => (
+                    <Button
+                      key={scenario}
+                      type="button"
+                      size="xs"
+                      variant={
+                        currentConnectedAppsUiDebugScenario === scenario
+                          ? "default"
+                          : "outline"
+                      }
+                      onClick={() => setConnectedAppsUiDebugScenario(scenario)}
+                    >
+                      {scenario}
+                    </Button>
+                  ))}
+                  <Button
+                    type="button"
+                    size="xs"
+                    variant={
+                      connectedAppsUiDebugEnabled ? "outline" : "default"
+                    }
+                    onClick={() => setConnectedAppsUiDebugScenario(null)}
+                  >
+                    real
+                  </Button>
+                </div>
+              </div>
             </div>
-            <div className="col-span-5 space-y-3 pl-4">
+            <div className="col-span-5 space-y-2">
               <p className="text-xs font-medium">Grant flow</p>
               <div className="flex flex-wrap gap-2">
                 <Button type="button" size="xs" variant="outline" asChild>

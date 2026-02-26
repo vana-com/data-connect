@@ -57,11 +57,12 @@ const ImportHistoryRowActionsInner = ({
   const actionSvgClass =
     "gap-1 [--lucide-stroke-width:2.5] [&_svg:not([data-slot=spinner])]:size-[1.25em]"
   const leftIconPaddingClass = "pl-1!"
-  const rightIconPaddingClass = "pr-1!"
+  const rightIconPaddingClass = "pr-1.5!"
   const hasMenuActions =
     run.status === "success" ||
     run.status === "error" ||
     run.status === "stopped"
+  const canSync = canRunAgain && Boolean(rerunPlatform)
 
   if (isRemoving) {
     return (
@@ -123,12 +124,23 @@ const ImportHistoryRowActionsInner = ({
   return (
     <div className={cn("flex items-center gap-0", hasMenuActions && "-mr-1.5")}>
       {run.status === "success" ? (
-        <SettingsRowAction
-          asChild
-          className={cn(actionSvgClass, leftIconPaddingClass)}
-        >
-          <Link to={sourceOverviewRoute}>Open</Link>
-        </SettingsRowAction>
+        <>
+          <SettingsRowAction
+            asChild
+            className={cn(actionSvgClass, leftIconPaddingClass)}
+          >
+            <Link to={sourceOverviewRoute}>Open</Link>
+          </SettingsRowAction>
+          {canSync && rerunPlatform ? (
+            <SettingsRowAction
+              type="button"
+              className={cn(actionSvgClass, rightIconPaddingClass)}
+              onClick={() => onRunAgain(rerunPlatform)}
+            >
+              Sync
+            </SettingsRowAction>
+          ) : null}
+        </>
       ) : null}
       {run.status === "error" ? (
         <SettingsRowAction
@@ -170,12 +182,12 @@ const ImportHistoryRowActionsInner = ({
               "data-open:animate-none data-closed:animate-none duration-0"
             )}
           >
-            {canRunAgain && rerunPlatform ? (
+            {run.status !== "success" && canSync && rerunPlatform ? (
               <DropdownMenuItem
                 className={itemStyle}
                 onSelect={() => onRunAgain(rerunPlatform)}
               >
-                Run again
+                Sync
               </DropdownMenuItem>
             ) : null}
             <DropdownMenuItem

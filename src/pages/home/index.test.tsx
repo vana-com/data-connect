@@ -2,6 +2,7 @@ import { describe, expect, it, vi, beforeEach, afterEach } from "vitest"
 import { render, waitFor, cleanup, fireEvent, screen } from "@testing-library/react"
 import { createMemoryRouter, RouterProvider } from "react-router-dom"
 import { ROUTES } from "@/config/routes"
+import { TooltipProvider } from "@/components/ui/tooltip"
 import { Home } from "./index"
 
 const mockUsePlatforms = vi.fn()
@@ -86,7 +87,14 @@ function renderHome() {
     }
   )
 
-  return { ...render(<RouterProvider router={router} />), router }
+  return {
+    ...render(
+      <TooltipProvider delayDuration={120}>
+        <RouterProvider router={router} />
+      </TooltipProvider>
+    ),
+    router,
+  }
 }
 
 describe("Home", () => {
@@ -221,7 +229,11 @@ describe("Home", () => {
       },
     ]
 
-    rerender(<RouterProvider router={router} />)
+    rerender(
+      <TooltipProvider delayDuration={120}>
+        <RouterProvider router={router} />
+      </TooltipProvider>
+    )
     await waitFor(() => {
       expect(mockRefreshConnectedStatus).toHaveBeenCalledTimes(1)
     })
@@ -232,7 +244,7 @@ describe("Home", () => {
     expect(
       screen.queryByRole("button", { name: /connect chatgpt/i })
     ).toBeNull()
-    expect(screen.getByRole("button", { name: /chatgpt/i })).toBeTruthy()
+    expect(screen.getAllByRole("button", { name: /open chatgpt/i }).length).toBeGreaterThan(0)
   })
 
   it("shows connected source from persisted run even when connected status map is stale", async () => {
@@ -281,7 +293,7 @@ describe("Home", () => {
     expect(
       screen.queryByRole("button", { name: /connect chatgpt/i })
     ).toBeNull()
-    expect(screen.getByRole("button", { name: /chatgpt/i })).toBeTruthy()
+    expect(screen.getAllByRole("button", { name: /open chatgpt/i }).length).toBeGreaterThan(0)
   })
 
   it("blocks other source starts while a run is waiting for user action", () => {

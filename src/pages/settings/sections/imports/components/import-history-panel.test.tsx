@@ -147,24 +147,22 @@ describe("ImportHistoryPanel", () => {
     expect(screen.getByText("Authentication expired")).not.toBeNull()
   })
 
-  it("hides run again when the same platform already has an active run", () => {
+  it("hides sync when the same platform already has an active run", () => {
     renderPanel({
       activeImports: [buildRun("run-running", "github", "running")],
       finishedImports: [buildRun("run-finished", "github", "success")],
     })
 
-    fireEvent.click(screen.getByRole("button", { name: "More actions" }))
-    expect(screen.queryByText("Run again")).toBeNull()
+    expect(screen.queryByRole("button", { name: "Sync" })).toBeNull()
   })
 
-  it("shows run again and starts import for inactive finished platform", () => {
+  it("shows sync and starts import for inactive finished platform", () => {
     const githubPlatform = platforms[0]
     const { startImport } = renderPanel({
       finishedImports: [buildRun("run-finished", "github", "success")],
     })
 
-    fireEvent.pointerDown(screen.getByRole("button", { name: "More actions" }))
-    fireEvent.click(screen.getByText("Run again"))
+    fireEvent.click(screen.getByRole("button", { name: "Sync" }))
 
     expect(startImport).toHaveBeenCalledTimes(1)
     expect(startImport).toHaveBeenCalledWith(githubPlatform)

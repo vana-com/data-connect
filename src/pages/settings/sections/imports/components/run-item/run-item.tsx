@@ -64,7 +64,6 @@ export function RunItem({ run, onStop, serverPort, serverReady }: RunItemProps) 
         <div className="flex items-center gap-2">
           {run.status === "running" && (
             <Button
-              type="button"
               variant="ghost"
               size="sm"
               className="text-destructive"
@@ -75,7 +74,6 @@ export function RunItem({ run, onStop, serverPort, serverReady }: RunItemProps) 
           )}
           {run.exportPath && (
             <Button
-              type="button"
               variant="ghost"
               size="icon"
               onClick={openFolder}
@@ -87,7 +85,6 @@ export function RunItem({ run, onStop, serverPort, serverReady }: RunItemProps) 
           )}
           {run.exportPath && canIngest && (
             <Button
-              type="button"
               variant="outline"
               size="sm"
               onClick={handleIngest}
@@ -114,7 +111,6 @@ export function RunItem({ run, onStop, serverPort, serverReady }: RunItemProps) 
           )}
           {showExpandToggle && (
             <Button
-              type="button"
               variant="ghost"
               size="icon"
               onClick={handleToggleExpanded}

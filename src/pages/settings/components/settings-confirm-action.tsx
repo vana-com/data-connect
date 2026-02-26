@@ -36,7 +36,7 @@ export function SettingsConfirmAction({
     <AlertDialog>
       <AlertDialogTrigger asChild>
         {trigger ?? (
-          <Button type="button" variant="ghost" size="sm">
+          <Button variant="ghost" size="sm">
             {triggerLabel ?? actionLabel}
           </Button>
         )}

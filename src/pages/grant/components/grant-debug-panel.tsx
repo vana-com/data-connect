@@ -39,7 +39,6 @@ export function GrantDebugPanel({
           {debugBuilderName} · {session.scopes.join(", ")}
         </Text>
         <Button
-          type="button"
           size="xs"
           variant="outline"
           selected={activeStatus === null}
@@ -52,7 +51,6 @@ export function GrantDebugPanel({
         {DEBUG_STATUSES.map(status => (
           <Button
             key={status}
-            type="button"
             size="xs"
             variant="outline"
             selected={activeStatus === status}
@@ -64,7 +62,6 @@ export function GrantDebugPanel({
       </div>
       <div className="mt-3 flex items-center gap-2">
         <Button
-          type="button"
           size="xs"
           variant="outline"
           onClick={onToggleWallet}

@@ -105,7 +105,6 @@ export function AppCard({ app }: { app: AppRegistryEntry }) {
 
       {app.status === "coming-soon" ? (
         <Button
-          type="button"
           variant="outline"
           fullWidth
           className="mt-4"
@@ -115,7 +114,6 @@ export function AppCard({ app }: { app: AppRegistryEntry }) {
         </Button>
       ) : (
         <Button
-          type="button"
           variant="default"
           fullWidth
           className="mt-4"

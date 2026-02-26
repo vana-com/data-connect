@@ -85,7 +85,6 @@ export function SettingsAccount({
                 right={
                   effectiveIsAuthenticated ? (
                     <Button
-                      type="button"
                       variant="ghost"
                       size="sm"
                       onClick={TEST_LOGGED_IN ? undefined : onLogout}
@@ -94,7 +93,6 @@ export function SettingsAccount({
                     </Button>
                   ) : (
                     <Button
-                      type="button"
                       variant="ghost"
                       size="sm"
                       onClick={
@@ -115,7 +113,7 @@ export function SettingsAccount({
                   <Text as="div" intent="body" weight="normal">
                     1 other session
                   </Text>
-                  <Button type="button" variant="ghost" size="sm">
+                  <Button variant="ghost" size="sm">
                     Revoke All
                   </Button>
                 </div>
@@ -162,7 +160,6 @@ export function SettingsAccount({
               right={
                 effectiveIsAuthenticated ? (
                   <Button
-                    type="button"
                     variant="ghost"
                     size="sm"
                     onClick={TEST_LOGGED_IN ? undefined : onLogout}
@@ -171,7 +168,6 @@ export function SettingsAccount({
                   </Button>
                 ) : (
                   <Button
-                    type="button"
                     variant="ghost"
                     size="sm"
                     onClick={TEST_LOGGED_IN ? undefined : handlePassportSignIn}

@@ -232,7 +232,6 @@ export function ImportHistoryPanel() {
             {IMPORT_HISTORY_UI_DEBUG_SCENARIO_VALUES.map(scenario => (
               <Button
                 key={scenario}
-                type="button"
                 size="xs"
                 variant={
                   new URLSearchParams(location.search).get("importsScenario") ===
@@ -246,7 +245,6 @@ export function ImportHistoryPanel() {
               </Button>
             ))}
             <Button
-              type="button"
               size="xs"
               variant={isImportHistoryUiDebugEnabled(location.search) ? "outline" : "default"}
               onClick={() => setImportsDebugScenario(null)}

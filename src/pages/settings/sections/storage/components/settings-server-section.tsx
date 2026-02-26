@@ -260,7 +260,6 @@ export function SettingsServerSection({
                   {shouldShowRestartControl ? (
                     <div className="flex flex-wrap gap-2 pt-gap">
                       <Button
-                        type="button"
                         size="sm"
                         variant="accent"
                         fullWidth
@@ -286,7 +285,6 @@ export function SettingsServerSection({
       {canShowSaveServer ? (
         <div className="flex justify-end gap-2">
           <Button
-            type="button"
             variant="ghost"
             size="sm"
             className="px-w6 font-normal border border-transparent hover:border-ring/20 hover:bg-background"

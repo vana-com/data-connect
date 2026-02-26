@@ -148,7 +148,6 @@ export function SettingsStorage({
         {showSaveStorage ? (
           <div className="flex justify-end gap-2">
             <Button
-              type="button"
               variant="ghost"
               size="sm"
               className="px-w6 font-normal border border-transparent hover:border-ring/20 hover:bg-background"

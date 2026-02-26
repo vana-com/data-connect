@@ -123,7 +123,6 @@ export function GrantConsentState({
 
         <div className="flex items-center justify-end gap-2.5">
           <Button
-            type="button"
             variant="ghost"
             disabled={isApproving}
             onClick={handleCancel}

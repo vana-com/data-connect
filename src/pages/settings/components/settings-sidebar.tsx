@@ -36,7 +36,6 @@ export function SettingsLayoutSidebar({
           <Tooltip key={section.key}>
             <TooltipTrigger asChild>
               <Button
-                type="button"
                 variant="ghost"
                 onClick={() => onSectionChange(section.key)}
                 aria-current={

@@ -118,7 +118,6 @@ export function SettingsApps({
             {SETTINGS_APPS_UI_DEBUG_SCENARIO_VALUES.map(scenario => (
               <Button
                 key={scenario}
-                type="button"
                 size="xs"
                 variant={
                   new URLSearchParams(location.search).get(
@@ -133,7 +132,6 @@ export function SettingsApps({
               </Button>
             ))}
             <Button
-              type="button"
               size="xs"
               variant={isSettingsAppsUiDebugEnabled(location.search) ? "outline" : "default"}
               onClick={() => setSettingsAppsDebugScenario(null)}

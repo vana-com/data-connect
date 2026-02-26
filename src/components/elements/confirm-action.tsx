@@ -46,7 +46,6 @@ export function ConfirmAction({
         <AlertDialogTrigger asChild>
           {trigger ?? (
             <Button
-              type="button"
               variant="ghost"
               size="sm"
               {...triggerButtonProps}

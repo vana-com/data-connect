@@ -1,13 +1,21 @@
-import { cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react"
+import {
+  cleanup,
+  fireEvent,
+  render,
+  screen,
+  waitFor,
+} from "@testing-library/react"
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest"
 import { MemoryRouter } from "react-router-dom"
 import { AppUpdateProvider, useAppUpdate } from "./use-app-update"
 
-const { mockCheckAppUpdate, mockOpenExternalUrl, mockToast } = vi.hoisted(() => ({
-  mockCheckAppUpdate: vi.fn(),
-  mockOpenExternalUrl: vi.fn(),
-  mockToast: Object.assign(vi.fn(), { dismiss: vi.fn() }),
-}))
+const { mockCheckAppUpdate, mockOpenExternalUrl, mockToast } = vi.hoisted(
+  () => ({
+    mockCheckAppUpdate: vi.fn(),
+    mockOpenExternalUrl: vi.fn(),
+    mockToast: Object.assign(vi.fn(), { dismiss: vi.fn() }),
+  })
+)
 
 vi.mock("@/hooks/app-update/check-app-update", () => ({
   checkAppUpdate: (...args: unknown[]) => mockCheckAppUpdate(...args),
@@ -41,9 +49,9 @@ function AppUpdateTestHarness() {
   )
 }
 
-function renderWithAppUpdateProvider() {
+function renderWithAppUpdateProvider(initialEntries?: string[]) {
   return render(
-    <MemoryRouter>
+    <MemoryRouter initialEntries={initialEntries}>
       <AppUpdateProvider>
         <AppUpdateTestHarness />
       </AppUpdateProvider>
@@ -81,6 +89,15 @@ describe("AppUpdateProvider", () => {
     })
   })
 
+  it("shows only one debug toast on initial debug mount", async () => {
+    renderWithAppUpdateProvider(["/?appUpdateScenario=update-available"])
+
+    await waitFor(() => {
+      expect(mockToast).toHaveBeenCalledTimes(1)
+    })
+    expect(mockCheckAppUpdate).toHaveBeenCalledTimes(1)
+  })
+
   it("dismisses update and suppresses same version", async () => {
     mockCheckAppUpdate.mockResolvedValue({
       status: "updateAvailable",
@@ -101,9 +118,9 @@ describe("AppUpdateProvider", () => {
     }
     options.cancel.onClick()
 
-    expect(localStorage.getItem("dataconnect_app_update_dismissed_version")).toBe(
-      "1.2.4"
-    )
+    expect(
+      localStorage.getItem("dataconnect_app_update_dismissed_version")
+    ).toBe("1.2.4")
     expect(mockToast.dismiss).toHaveBeenCalledWith("app-update-toast")
 
     fireEvent.click(screen.getByRole("button", { name: "Trigger check" }))
@@ -178,7 +195,9 @@ describe("AppUpdateProvider", () => {
       expect(mockCheckAppUpdate).toHaveBeenCalledTimes(2)
     })
 
-    fireEvent.click(screen.getByRole("button", { name: "Trigger manual check" }))
+    fireEvent.click(
+      screen.getByRole("button", { name: "Trigger manual check" })
+    )
     await waitFor(() => {
       expect(mockToast).toHaveBeenCalledTimes(2)
     })

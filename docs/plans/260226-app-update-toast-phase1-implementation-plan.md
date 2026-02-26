@@ -30,6 +30,10 @@ Current snapshot:
 - Phase C implemented and validated (dismissed-version persistence + recheck cadence + single-flight guard).
 - Phase D in progress (manual runtime smoke evidence capture pending final record).
 
+Solution record:
+
+- See `docs/solutions/260226-app-update-toast-phase1-implementation.md` for implementation decisions, root cause notes, and reusable rules from this ship.
+
 Implemented notes:
 
 - Toast implementation moved to Sonner (`src/components/ui/sonner.tsx`) instead of a custom toast component.
@@ -39,6 +43,12 @@ Focused test evidence (latest run):
 
 - `npm run test -- src/hooks/use-app-update.test.tsx src/hooks/app-update/app-update-ui-debug.test.ts src/hooks/app-update/check-app-update.test.ts src/pages/settings/components/settings-about.test.tsx src/pages/settings/index.test.tsx`
 - Result: 5 files passed, 26 tests passed.
+
+Post-review patch evidence:
+
+- `npm run test -- src/hooks/use-app-update.test.tsx`
+- Result: 1 file passed, 6 tests passed.
+- Scope: fixed duplicate debug-trigger checks on initial debug mount and added regression coverage.
 
 Known environment note:
 

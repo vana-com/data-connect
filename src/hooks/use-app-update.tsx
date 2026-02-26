@@ -72,6 +72,7 @@ export function AppUpdateProvider({ children }: { children: ReactNode }) {
   const [isChecking, setIsChecking] = useState(false)
   const [lastStatus, setLastStatus] = useState<AppUpdateStatus>("idle")
   const inFlightRef = useRef(false)
+  const hasSeenInitialSearchEffectRef = useRef(false)
   const dismissedVersionRef = useRef<string | null>(readDismissedVersion())
 
   const dismissUpdate = useCallback((remoteVersion: string) => {
@@ -174,6 +175,10 @@ export function AppUpdateProvider({ children }: { children: ReactNode }) {
   }, [checkForUpdates])
 
   useEffect(() => {
+    if (!hasSeenInitialSearchEffectRef.current) {
+      hasSeenInitialSearchEffectRef.current = true
+      return
+    }
     if (!isAppUpdateUiDebugEnabled(location.search)) return
     void checkForUpdates()
   }, [checkForUpdates, location.search])

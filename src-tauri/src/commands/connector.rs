@@ -27,6 +27,8 @@ pub struct ConnectorMetadata {
     pub vectorize_config: Option<serde_json::Value>,
     /// Runtime type: "vanilla" (default) or "network-capture" (uses network interception)
     pub runtime: Option<String>,
+    /// Semantic version string (e.g. "1.0.0")
+    pub version: Option<String>,
     /// Relative path to an SVG icon (e.g. "icons/chatgpt.svg")
     #[serde(rename = "iconURL")]
     pub icon_url: Option<String>,
@@ -176,6 +178,53 @@ pub async fn debug_connector_paths(app: AppHandle) -> Result<serde_json::Value, 
             "contents": contents
         }));
     }
+
+    // Show the effective connectors the app actually uses (same logic as get_platforms:
+    // bundled first, user dir overrides by id).
+    let mut connectors_map: std::collections::HashMap<String, serde_json::Value> =
+        std::collections::HashMap::new();
+    let active_dirs: Vec<(&str, &PathBuf)> = [
+        Some(("bundled", &connectors_dir)),
+        user_dir.as_ref().map(|d| ("user", d)),
+    ]
+    .into_iter()
+    .flatten()
+    .collect();
+    for (source, dir) in &active_dirs {
+        if !dir.exists() {
+            continue;
+        }
+        for entry in walkdir::WalkDir::new(dir).min_depth(2).max_depth(2) {
+            let entry = match entry {
+                Ok(e) => e,
+                Err(_) => continue,
+            };
+            let path = entry.path();
+            if path.extension().map_or(true, |ext| ext != "json") {
+                continue;
+            }
+            let fname = path.file_stem().unwrap_or_default().to_string_lossy();
+            if fname == "connector" {
+                continue;
+            }
+            if let Ok(content) = fs::read_to_string(path) {
+                if let Ok(meta) = serde_json::from_str::<ConnectorMetadata>(&content) {
+                    let id = meta.id.unwrap_or_else(|| format!("{}-001", fname));
+                    connectors_map.insert(id.clone(), serde_json::json!({
+                        "id": id,
+                        "name": meta.name,
+                        "version": meta.version.unwrap_or_else(|| "unknown".to_string()),
+                        "source": source,
+                    }));
+                }
+            }
+        }
+    }
+    let mut connectors_info: Vec<_> = connectors_map.into_values().collect();
+    connectors_info.sort_by(|a, b| {
+        a.get("name").and_then(|v| v.as_str()).cmp(&b.get("name").and_then(|v| v.as_str()))
+    });
+    results.insert("connectors".to_string(), serde_json::json!(connectors_info));
 
     Ok(serde_json::Value::Object(results))
 }

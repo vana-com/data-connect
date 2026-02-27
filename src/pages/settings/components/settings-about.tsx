@@ -416,8 +416,8 @@ export function SettingsAbout({
 
             <SettingsRow
               icon={<ChevronsLeftRightEllipsisIcon aria-hidden="true" />}
-              title="Connector Paths"
-              description="Debug where app looks for connectors"
+              title="Debug Connectors"
+              description="Installed connectors, versions, and paths"
               right={
                 <SettingsRowAction
                   onClick={pathsDebug ? onClearDebugPaths : onDebugPaths}

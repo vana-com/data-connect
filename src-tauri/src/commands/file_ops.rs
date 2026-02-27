@@ -881,7 +881,7 @@ pub async fn set_app_config(config: AppConfig) -> Result<(), String> {
     Ok(())
 }
 
-/// Returns the path to the app log directory so the user can locate and share log files.
+/// Returns the path to the app log file so the user can locate and share it.
 #[tauri::command]
 pub async fn get_log_path(app: AppHandle) -> Result<String, String> {
     let log_dir = app
@@ -895,7 +895,8 @@ pub async fn get_log_path(app: AppHandle) -> Result<String, String> {
             .map_err(|e| format!("Failed to create log directory: {}", e))?;
     }
 
-    Ok(log_dir.to_string_lossy().to_string())
+    let log_file = log_dir.join("DataConnect.log");
+    Ok(log_file.to_string_lossy().to_string())
 }
 
 #[cfg(test)]

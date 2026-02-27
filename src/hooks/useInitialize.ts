@@ -1,7 +1,7 @@
 import { useEffect, useRef } from 'react';
 import { invoke } from '@tauri-apps/api/core';
 import { useDispatch, useSelector } from 'react-redux';
-import { setRuns } from '../state/store';
+import { removeConnectorUpdate, setRuns } from '../state/store';
 import type { RootState } from '../state/store';
 import type { Run } from '../types';
 import { checkConnectorUpdates } from './check-connector-updates';
@@ -86,7 +86,23 @@ export function useInitialize() {
           console.error('[Initialize] Failed to check connector updates:', error);
         },
       });
-      console.info(`[Initialize] Connector update check complete: ${updates.length} update(s) available`);
+
+      const updatable = updates.filter(u => u.hasUpdate);
+      if (updatable.length === 0) {
+        console.info('[Initialize] All connectors up to date');
+        return;
+      }
+
+      console.info(`[Initialize] Auto-updating ${updatable.length} connector(s)…`);
+      for (const update of updatable) {
+        try {
+          await invoke('download_connector', { id: update.id });
+          dispatch(removeConnectorUpdate(update.id));
+          console.info(`[Initialize] Updated ${update.name} to ${update.latestVersion}`);
+        } catch (err) {
+          console.error(`[Initialize] Failed to update ${update.name}:`, err);
+        }
+      }
     };
 
     void runConnectorUpdateCheck();

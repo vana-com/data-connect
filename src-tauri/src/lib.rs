@@ -51,6 +51,9 @@ pub fn run() {
                     .build(),
             )?;
 
+            let version = app.config().version.clone().unwrap_or_default();
+            log::info!("DataConnect v{} starting", version);
+
             // Listen for close window events from connectors
             let app_handle = app.handle().clone();
             app.listen("connector-close-window", move |event| {

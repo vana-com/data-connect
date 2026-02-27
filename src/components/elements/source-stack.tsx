@@ -8,6 +8,7 @@ import { sourceRowActionStyle } from "./source-row"
 
 export interface SourceStackProps {
   iconName: string
+  iconImageSrc?: string
   label: string
   showArrow?: boolean
   iconClassName?: string
@@ -21,6 +22,7 @@ export interface SourceStackProps {
 
 export function SourceStack({
   iconName,
+  iconImageSrc,
   label,
   showArrow,
   iconClassName,
@@ -44,6 +46,7 @@ export function SourceStack({
         <div className="p-2">
           <PlatformIcon
             iconName={iconName}
+            imageSrc={iconImageSrc}
             size={24}
             className={cn("p-3", iconClassName)}
           />

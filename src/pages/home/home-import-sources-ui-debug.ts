@@ -1,8 +1,4 @@
 import type { Platform, Run } from "@/types"
-import {
-  getConnectSourceEntries,
-  resolvePlatformForEntry,
-} from "@/lib/platform/utils"
 import { testPlatforms } from "./home-debug-fixtures"
 
 /**
@@ -124,25 +120,14 @@ function buildSyntheticPlatform(entryId: string): Platform {
   }
 }
 
-function ensureConnectEntryPlatforms(realPlatforms: Platform[]): Platform[] {
-  const byId = platformById(realPlatforms)
-  const fixtureById = platformById(testPlatforms)
-  const resolved: Platform[] = []
+function ensureDebugPlatforms(realPlatforms: Platform[]): Platform[] {
+  if (realPlatforms.length > 0) return realPlatforms
 
-  for (const entry of getConnectSourceEntries()) {
-    const fromReal = resolvePlatformForEntry(realPlatforms, entry)
-    if (fromReal) {
-      resolved.push(fromReal)
-      continue
-    }
+  // No real platforms available (e.g. backend not running) — use test fixtures.
+  if (testPlatforms.length > 0) return testPlatforms
 
-    const fallbackId = entry.platformIds?.[0] ?? entry.id
-    const fromFixture = byId.get(fallbackId) ?? fixtureById.get(fallbackId)
-    resolved.push(fromFixture ?? buildSyntheticPlatform(fallbackId))
-  }
-
-  const deduped = new Map(resolved.map(platform => [platform.id, platform]))
-  return Array.from(deduped.values())
+  // Last resort: synthesise a single platform so debug scenarios can run.
+  return [buildSyntheticPlatform("chatgpt-playwright")]
 }
 
 function pickTargetPlatformId({
@@ -153,11 +138,8 @@ function pickTargetPlatformId({
   connectedPlatformIds: string[]
 }): string | null {
   const connectedSet = new Set(connectedPlatformIds)
-  for (const entry of getConnectSourceEntries()) {
-    const platform = resolvePlatformForEntry(platforms, entry)
-    if (!platform) continue
-    if (connectedSet.has(platform.id)) continue
-    return platform.id
+  for (const platform of platforms) {
+    if (!connectedSet.has(platform.id)) return platform.id
   }
   return null
 }
@@ -222,7 +204,7 @@ export function resolveHomeImportSourcesUiDebugState({
     }
   }
 
-  const debugPlatforms = ensureConnectEntryPlatforms(realPlatforms)
+  const debugPlatforms = ensureDebugPlatforms(realPlatforms)
   const targetPlatformId = pickTargetPlatformId({
     platforms: debugPlatforms,
     connectedPlatformIds: realConnectedPlatformIds,

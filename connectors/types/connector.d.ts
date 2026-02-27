@@ -43,6 +43,8 @@ export interface ConnectorMetadata {
     documents?: string;
     [key: string]: unknown;
   };
+  /** Relative path to an SVG icon file (e.g. "icons/chatgpt.svg") */
+  iconURL?: string;
 }
 
 /** API interface injected into connectors */

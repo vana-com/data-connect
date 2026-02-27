@@ -1,14 +1,11 @@
 import { getPlatformPrimaryColor } from "@/lib/platform/ui"
-import {
-  getConnectSourceEntries,
-  getConnectSourceState,
-  resolvePlatformForEntry,
-} from "@/lib/platform/utils"
+import { getPlatformRegistryEntry } from "@/lib/platform/utils"
 import type { Platform, Run } from "@/types"
 
 export interface AvailableSourceCard {
   cardId: string
   iconName: string
+  iconImageSrc?: string
   label: string
   stackPrimaryColor: string
   isAvailable: boolean
@@ -21,7 +18,6 @@ export interface AvailableSourceCard {
 }
 
 interface BuildAvailableCardsInput {
-  connectEntries: ReturnType<typeof getConnectSourceEntries>
   platforms: Platform[]
   connectedPlatformIdSet: Set<string>
   connectingPlatforms: Map<string, Run>
@@ -29,7 +25,6 @@ interface BuildAvailableCardsInput {
 }
 
 export function buildAvailableCards({
-  connectEntries,
   platforms,
   connectedPlatformIdSet,
   connectingPlatforms,
@@ -37,28 +32,30 @@ export function buildAvailableCards({
 }: BuildAvailableCardsInput): AvailableSourceCard[] {
   const cards: AvailableSourceCard[] = []
 
-  connectEntries.forEach((entry, index) => {
-    const platform = resolvePlatformForEntry(platforms, entry)
-    if (platform && connectedPlatformIdSet.has(platform.id)) return
+  platforms.forEach((platform, index) => {
+    if (connectedPlatformIdSet.has(platform.id)) return
 
-    const state = getConnectSourceState(entry, platform)
-    const baseConnectingRun = platform
-      ? connectingPlatforms.get(platform.id)
+    const entry = getPlatformRegistryEntry(platform)
+    const displayName = entry?.displayName ?? platform.name
+    const baseConnectingRun = connectingPlatforms.get(platform.id)
+    const isConnecting = connectingPlatforms.has(platform.id)
+
+    const iconImageSrc = platform.logoURL?.startsWith("data:")
+      ? platform.logoURL
       : undefined
-    const isConnecting = Boolean(platform && connectingPlatforms.has(platform.id))
 
     cards.push({
-      cardId: platform?.id ?? entry.id,
-      iconName: entry.displayName,
-      label: `Connect ${entry.displayName}`,
+      cardId: platform.id,
+      iconName: displayName,
+      iconImageSrc,
+      label: `Connect ${displayName}`,
       stackPrimaryColor: getPlatformPrimaryColor(entry),
-      isAvailable: state === "available",
+      isAvailable: true,
       isConnecting,
       connectingStatusMessage: baseConnectingRun?.statusMessage,
       connectingRun: baseConnectingRun,
-      onClick:
-        state === "available" && platform ? () => onExport(platform) : undefined,
-      priority: state === "available" ? 0 : 1,
+      onClick: () => onExport(platform),
+      priority: isConnecting ? 0 : 1,
       index,
     })
   })

@@ -11,7 +11,6 @@ import { Spinner } from "@/components/elements/spinner"
 import { SourceStack } from "@/components/elements/source-stack"
 import { cn } from "@/lib/classes"
 import type { Platform, Run } from "@/types"
-import { getConnectSourceEntries } from "@/lib/platform/utils"
 import { OpenExternalLink } from "@/components/typography/link-open-external"
 import { buildAvailableCards } from "./available-sources-list.lib"
 import { ConfirmAction } from "@/components/elements/confirm-action"
@@ -40,7 +39,6 @@ export function AvailableSourcesList({
 }: AvailableSourcesListProps) {
   const [stoppingRunId, setStoppingRunId] = useState<string | null>(null)
   const [nowMs, setNowMs] = useState(() => Date.now())
-  const connectEntries = useMemo(() => getConnectSourceEntries(), [])
   const connectedPlatformIdSet = useMemo(
     () => new Set(connectedPlatformIds),
     [connectedPlatformIds]
@@ -76,19 +74,12 @@ export function AvailableSourcesList({
   const availableCards = useMemo(
     () =>
       buildAvailableCards({
-        connectEntries,
         platforms,
         connectedPlatformIdSet,
         connectingPlatforms,
         onExport,
       }),
-    [
-      connectEntries,
-      platforms,
-      connectedPlatformIdSet,
-      connectingPlatforms,
-      onExport,
-    ]
+    [platforms, connectedPlatformIdSet, connectingPlatforms, onExport]
   )
 
   const stopRun = async (runId: string) => {
@@ -121,6 +112,7 @@ export function AvailableSourcesList({
           ({
             cardId,
             iconName,
+            iconImageSrc,
             label,
             stackPrimaryColor,
             isAvailable,
@@ -201,6 +193,7 @@ export function AvailableSourcesList({
             const cardContent = (
               <SourceStack
                 iconName={iconName}
+                iconImageSrc={iconImageSrc}
                 label={label}
                 stackPrimaryColor={stackPrimaryColor}
                 infoSlot={infoSlot}

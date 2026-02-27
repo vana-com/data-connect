@@ -27,6 +27,9 @@ pub struct ConnectorMetadata {
     pub vectorize_config: Option<serde_json::Value>,
     /// Runtime type: "vanilla" (default) or "network-capture" (uses network interception)
     pub runtime: Option<String>,
+    /// Relative path to an SVG icon (e.g. "icons/chatgpt.svg")
+    #[serde(rename = "iconURL")]
+    pub icon_url: Option<String>,
 }
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
@@ -228,6 +231,20 @@ fn load_platforms_from_dir(dir: &PathBuf) -> Vec<Platform> {
                                 .map(|n| n.to_string_lossy().to_string())
                                 .unwrap_or_else(|| "Unknown".to_string());
 
+                            // Resolve icon: read SVG from disk and convert to data URI
+                            let logo_url = metadata
+                                .icon_url
+                                .as_ref()
+                                .and_then(|icon_path| {
+                                    let svg_path = dir.join(icon_path);
+                                    fs::read_to_string(&svg_path).ok().map(|svg| {
+                                        use base64::{Engine as _, engine::general_purpose::STANDARD};
+                                        let encoded = STANDARD.encode(svg.as_bytes());
+                                        format!("data:image/svg+xml;base64,{}", encoded)
+                                    })
+                                })
+                                .unwrap_or_else(|| filename.to_string());
+
                             platforms.push(Platform {
                                 id: metadata
                                     .id
@@ -237,7 +254,7 @@ fn load_platforms_from_dir(dir: &PathBuf) -> Vec<Platform> {
                                 filename: filename.to_string(),
                                 description: metadata.description,
                                 is_updated: false,
-                                logo_url: filename.to_string(),
+                                logo_url,
                                 needs_connection: true,
                                 connect_url: Some(metadata.connect_url),
                                 connect_selector: Some(metadata.connect_selector),

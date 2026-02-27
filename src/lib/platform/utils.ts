@@ -43,9 +43,6 @@ export const getPlatformRegistryEntry = (platform: {
 export const getPlatformIngestScope = (platformId: string) =>
   getPlatformRegistryEntryById(platformId)?.ingestScope ?? null
 
-export const getConnectSourceEntries = () =>
-  PLATFORM_REGISTRY.filter(entry => entry.showInConnectList)
-
 export const resolvePlatformForEntry = (
   platforms: Platform[],
   entry: PlatformRegistryEntry
@@ -66,13 +63,4 @@ export const resolvePlatformForEntry = (
     ) ??
     null
   )
-}
-
-export const getConnectSourceState = (
-  entry: PlatformRegistryEntry,
-  platform: Platform | null
-) => {
-  if (entry.availability === "available") return "available"
-  if (entry.availability === "comingSoon") return "comingSoon"
-  return platform ? "available" : "comingSoon"
 }

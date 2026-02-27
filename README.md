@@ -1,6 +1,7 @@
 # DataConnect
 
 Desktop app for exporting your data from various platforms.
+<img width="2466" height="1372" alt="Screenshot 2026-02-24 at 8 10 08 PM" src="https://github.com/user-attachments/assets/c3d72ca7-866d-4629-8f24-51b782a820e8" />
 
 ## Installation
 
@@ -35,10 +36,9 @@ The downloaded browser is stored in `~/.dataconnect/browsers/` and persists acro
 
 ## Supported Platforms
 
-| Platform | Status | Description |
-|----------|--------|-------------|
-| ChatGPT | ✅ | Export your conversation history |
-| Instagram | ✅ | Export profile and posts (Playwright) |
+DataConnect currently supports exporting data from ChatGPT, GitHub, Instagram, LinkedIn, Spotify,YouTube, and Shop (Shopify) — covering your conversations, social profiles, listening history, watch history, order history, and more.
+
+For the latest available connectors, visit the [Data Connectors repository](https://github.com/vana-com/data-connectors).
 
 ## Development
 
@@ -171,34 +171,7 @@ npm run release:github -- --version X.Y.Z
 
 ## Connectors
 
-Connectors are JavaScript files that automate data export. Located in `connectors/`:
-
-```
-connectors/
-├── openai/
-│   ├── chatgpt.js       # ChatGPT connector
-│   └── chatgpt.json     # Metadata
-└── meta/
-    ├── instagram-playwright.js
-    └── instagram-playwright.json
-```
-
-### Creating a Connector
-
-1. Create a folder under `connectors/{company}/`
-2. Add a `.json` metadata file:
-   ```json
-   {
-     "id": "my-connector",
-     "name": "My Platform",
-     "company": "Company",
-     "description": "Exports your data",
-     "connectURL": "https://example.com/login",
-     "connectSelector": "selector-for-logged-in-state",
-     "runtime": "playwright"
-   }
-   ```
-3. Add a `.js` connector file using the page API
+Connectors are JavaScript files that automate data export. Located in the [Data Connectors repository](https://github.com/vana-com/data-connectors).
 
 ### Connector API (Playwright runtime)
 

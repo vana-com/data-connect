@@ -27,6 +27,14 @@ let _lastStartedWallet: string | null = null;
 let _lastMasterKeySignature: string | null = null;
 const FALLBACK_START_ERROR = 'Failed to start Personal Server';
 
+// Cross-instance notification: when any hook instance updates the module-level
+// shared state, it calls _notifyAll() so every mounted instance syncs its
+// React state from the shared variables.
+const _subscribers = new Set<() => void>();
+function _notifyAll() {
+  _subscribers.forEach((fn) => fn());
+}
+
 function getSafeErrorMessage(error: unknown): string {
   if (error instanceof Error && error.message) {
     if (error.message.includes('cyclic structures')) {
@@ -70,6 +78,24 @@ export function usePersonalServer() {
   const restartingRef = useRef(false);
   const startServerRef = useRef<(wallet?: string | null) => Promise<void>>(null!);
 
+  // Subscribe to cross-instance state changes so this hook instance
+  // picks up updates made by other instances (e.g. App.tsx calling startServer
+  // while the Settings page is mounted).
+  useEffect(() => {
+    const sync = () => {
+      setStatus(_sharedStatus);
+      setPort(_sharedPort);
+      setTunnelUrl(_sharedTunnelUrl);
+      setTunnelFailed(_sharedTunnelFailed);
+      setDevToken(_sharedDevToken);
+      setError(_sharedError);
+    };
+    _subscribers.add(sync);
+    // Sync immediately in case shared state already changed before mount
+    sync();
+    return () => { _subscribers.delete(sync); };
+  }, []);
+
   const startServer = useCallback(async (wallet?: string | null) => {
     if (!isTauriRuntime()) return;
     if (running.current) return;
@@ -78,6 +104,7 @@ export function usePersonalServer() {
     _sharedError = null;
     setStatus('starting');
     setError(null);
+    _notifyAll();
 
     try {
       const owner = wallet ?? walletAddress ?? null;
@@ -103,6 +130,7 @@ export function usePersonalServer() {
       _sharedError = getSafeErrorMessage(err);
       setStatus('error');
       setError(_sharedError);
+      _notifyAll();
     }
   }, [walletAddress, masterKeySignature]);
 
@@ -123,6 +151,7 @@ export function usePersonalServer() {
       setTunnelUrl(null);
       setTunnelFailed(false);
       setDevToken(null);
+      _notifyAll();
     } catch (err) {
       console.error('[PersonalServer] Failed to stop:', err);
     }
@@ -152,6 +181,7 @@ export function usePersonalServer() {
       setPort(event.payload.port);
 
       restartingRef.current = false;
+      _notifyAll();
     }).then((fn) => unlisteners.push(fn));
 
     listen<{ message: string }>('personal-server-error', (event) => {
@@ -161,6 +191,7 @@ export function usePersonalServer() {
       _sharedError = getSafeErrorMessage(event.payload.message);
       setStatus('error');
       setError(_sharedError);
+      _notifyAll();
     }).then((fn) => unlisteners.push(fn));
 
     listen<{ exitCode: number | null; crashed: boolean }>('personal-server-exited', (event) => {
@@ -183,6 +214,7 @@ export function usePersonalServer() {
           console.log(`[PersonalServer] Auto-restart attempt ${_restartCount}/${MAX_RESTART_ATTEMPTS} in ${delay}ms`);
           _sharedStatus = 'starting';
           setStatus('starting');
+          _notifyAll();
           setTimeout(() => startServerRef.current(), delay);
         } else {
           console.error('[PersonalServer] Max restart attempts reached, giving up');
@@ -190,9 +222,12 @@ export function usePersonalServer() {
           _sharedError = 'Personal Server crashed repeatedly and could not be restarted';
           setStatus('error');
           setError(_sharedError);
+          _notifyAll();
         }
       } else {
+        _sharedStatus = 'stopped';
         setStatus('stopped');
+        _notifyAll();
       }
     }).then((fn) => unlisteners.push(fn));
 
@@ -202,12 +237,14 @@ export function usePersonalServer() {
       _sharedTunnelFailed = false;
       setTunnelUrl(event.payload.url);
       setTunnelFailed(false);
+      _notifyAll();
     }).then((fn) => unlisteners.push(fn));
 
     listen<{ message: string }>('personal-server-tunnel-failed', (event) => {
       console.warn('[PersonalServer] Tunnel failed:', event.payload.message);
       _sharedTunnelFailed = true;
       setTunnelFailed(true);
+      _notifyAll();
     }).then((fn) => unlisteners.push(fn));
 
     // The wrapper now self-registers and connects the tunnel in a single
@@ -224,6 +261,7 @@ export function usePersonalServer() {
       console.log('[PersonalServer] Dev token received');
       _sharedDevToken = event.payload.token;
       setDevToken(event.payload.token);
+      _notifyAll();
     }).then((fn) => unlisteners.push(fn));
 
     return () => {

@@ -254,6 +254,23 @@ export function useSettingsPage() {
     openExternalUrl(accountUrl)
   }, [])
 
+  const handleSignInToStart = useCallback(async () => {
+    const accountUrl =
+      import.meta.env.VITE_ACCOUNT_URL || "https://account.vana.org"
+    const params = new URLSearchParams({
+      sessionId: "local-server-auth",
+      appName: "DataConnect",
+    })
+    const url = `${accountUrl}/connect?${params.toString()}`
+    console.log("[Settings] Opening sign-in URL:", url)
+    try {
+      await openExternalUrl(url)
+    } catch (err) {
+      console.error("[Settings] Failed to open URL:", err)
+      window.open(url, "_blank")
+    }
+  }, [])
+
   const clearPersonalServerData = useCallback(async () => {
     if (clearPersonalServerDataStatus === "deleting") {
       return
@@ -327,5 +344,6 @@ export function useSettingsPage() {
     onRevokeApp: handleRevokeApp,
     onLogout: handleLogout,
     onSignIn: handleSignIn,
+    onSignInToStart: handleSignInToStart,
   }
 }

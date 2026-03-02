@@ -1,6 +1,6 @@
 import type { usePersonalServer } from "@/hooks/usePersonalServer"
 import { DEV_FLAGS } from "@/config/dev-flags"
-import { PlayIcon, SquareIcon } from "lucide-react"
+import { LogInIcon, PlayIcon, SquareIcon } from "lucide-react"
 import { SettingsRowDescriptionCopy } from "@/pages/settings/components/settings-row-description-copy"
 import { SettingsDetailRow } from "@/pages/settings/components/settings-detail-row"
 import { SettingsRowDescriptionStatus } from "@/pages/settings/components/settings-row-description-status"
@@ -67,6 +67,8 @@ interface SettingsPersonalServerSectionProps {
   personalServer: ReturnType<typeof usePersonalServer>
   onRestartPersonalServer: () => void
   onStopPersonalServer: () => void
+  onSignInToStart: () => void
+  isAuthenticated: boolean
   personalServerDataPath: string
   onOpenPersonalServerFolder: () => void
 }
@@ -75,6 +77,8 @@ export function SettingsPersonalServer({
   personalServer,
   onRestartPersonalServer,
   onStopPersonalServer,
+  onSignInToStart,
+  isAuthenticated,
   personalServerDataPath,
   onOpenPersonalServerFolder,
 }: SettingsPersonalServerSectionProps) {
@@ -113,6 +117,11 @@ export function SettingsPersonalServer({
                     <SquareIcon aria-hidden />
                     Stop
                   </SettingsRowAction>
+                ) : !isAuthenticated ? (
+                  <SettingsRowAction onClick={() => onSignInToStart()}>
+                    <LogInIcon aria-hidden />
+                    Sign in to start
+                  </SettingsRowAction>
                 ) : (
                   <SettingsRowAction
                     onClick={() => onRestartPersonalServer()}
@@ -133,6 +142,7 @@ export function SettingsPersonalServer({
                 <SettingsRowDescriptionStatus
                   tone={serverStatusDescription.tone}
                   intent="small"
+                  pulse={previewStatus === "starting"}
                 >
                   {serverStatusDescription.label}
                 </SettingsRowDescriptionStatus>

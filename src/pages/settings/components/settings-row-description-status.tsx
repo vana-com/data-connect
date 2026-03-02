@@ -13,6 +13,7 @@ interface SettingsRowDescriptionStatusProps {
   intent?: TextProps<"div">["intent"]
   dotPosition?: DotPosition
   className?: string
+  pulse?: boolean
 }
 
 const toneStyles: Record<
@@ -47,9 +48,11 @@ export function SettingsRowDescriptionStatus({
   intent = "fine",
   dotPosition = "left",
   className,
+  pulse,
 }: SettingsRowDescriptionStatusProps) {
   const toneStyle = toneStyles[tone]
   const gapClassName = intent === "fine" ? "gap-[5px]" : "gap-1.5"
+  const dotClassName = cn(toneStyle.dotClassName, pulse && "animate-pulse")
 
   return (
     <Text
@@ -59,11 +62,11 @@ export function SettingsRowDescriptionStatus({
       className={cn(gapClassName, toneStyle.textClassName, className)}
     >
       {dotPosition === "left" ? (
-        <SettingsRowDescriptionDot className={toneStyle.dotClassName} />
+        <SettingsRowDescriptionDot className={dotClassName} />
       ) : null}
       {children}
       {dotPosition === "right" ? (
-        <SettingsRowDescriptionDot className={toneStyle.dotClassName} />
+        <SettingsRowDescriptionDot className={dotClassName} />
       ) : null}
     </Text>
   )

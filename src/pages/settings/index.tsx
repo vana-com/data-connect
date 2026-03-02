@@ -82,6 +82,7 @@ export function Settings() {
     onRevokeApp,
     onLogout,
     onSignIn,
+    onSignInToStart,
   } = useSettingsPage()
 
   const sectionMeta = SETTINGS_SECTION_META[activeSection]
@@ -113,6 +114,8 @@ export function Settings() {
         personalServer={personalServer}
         onRestartPersonalServer={personalServer.startServer}
         onStopPersonalServer={personalServer.stopServer}
+        onSignInToStart={onSignInToStart}
+        isAuthenticated={isAuthenticated}
         personalServerDataPath={personalServerDataPath}
         onOpenPersonalServerFolder={onOpenPersonalServerFolder}
       />

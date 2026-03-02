@@ -232,6 +232,7 @@ export function useConnectPage(): UseConnectPageResult {
   const handleConnect = async () => {
     if (!connectPlatform || isBusy) return
     const runId = await startImport(connectPlatform)
+    if (!runId) return
     setConnectRunId(runId)
   }
 

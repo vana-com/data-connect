@@ -45,6 +45,7 @@ export function ConnectedSourcesList({
   onOpenRuns,
   onSyncSource,
 }: ConnectedSourcesListProps) {
+  const inFlightSyncPlatformIdsRef = useRef<Set<string>>(new Set())
   const syncFeedbackTimeoutsRef = useRef<
     Record<string, ReturnType<typeof setTimeout>[]>
   >({})
@@ -56,11 +57,31 @@ export function ConnectedSourcesList({
     existingTimers.forEach(timer => clearTimeout(timer))
     delete syncFeedbackTimeoutsRef.current[platformId]
   }, [])
+  const clearSyncFeedbackForPlatform = useCallback(
+    (platformId: string) => {
+      inFlightSyncPlatformIdsRef.current.delete(platformId)
+      clearSyncFeedbackTimers(platformId)
+      setSyncFeedbackByPlatformId(prev => {
+        if (!(platformId in prev)) return prev
+        const { [platformId]: _ignored, ...rest } = prev
+        return rest
+      })
+    },
+    [clearSyncFeedbackTimers]
+  )
   const triggerSyncFeedback = useCallback(
     (platform: Platform) => {
       if (!onSyncSource) return
+      if (inFlightSyncPlatformIdsRef.current.has(platform.id)) return
 
-      onSyncSource(platform)
+      inFlightSyncPlatformIdsRef.current.add(platform.id)
+      try {
+        onSyncSource(platform)
+      } catch (error) {
+        console.error("Sync source failed before starting:", error)
+        clearSyncFeedbackForPlatform(platform.id)
+        return
+      }
       clearSyncFeedbackTimers(platform.id)
       setSyncFeedbackByPlatformId(prev => ({
         ...prev,
@@ -75,11 +96,7 @@ export function ConnectedSourcesList({
       }, 3_000)
 
       const clearFeedbackTimer = setTimeout(() => {
-        setSyncFeedbackByPlatformId(prev => {
-          const { [platform.id]: _ignored, ...rest } = prev
-          return rest
-        })
-        clearSyncFeedbackTimers(platform.id)
+        clearSyncFeedbackForPlatform(platform.id)
       }, 5_000)
 
       syncFeedbackTimeoutsRef.current[platform.id] = [
@@ -87,7 +104,7 @@ export function ConnectedSourcesList({
         clearFeedbackTimer,
       ]
     },
-    [clearSyncFeedbackTimers, onSyncSource]
+    [clearSyncFeedbackForPlatform, clearSyncFeedbackTimers, onSyncSource]
   )
   useEffect(() => {
     return () => {
@@ -95,6 +112,7 @@ export function ConnectedSourcesList({
         timers.forEach(timer => clearTimeout(timer))
       })
       syncFeedbackTimeoutsRef.current = {}
+      inFlightSyncPlatformIdsRef.current.clear()
     }
   }, [])
 
@@ -148,6 +166,12 @@ export function ConnectedSourcesList({
             hasBlockingRun ||
             hasActiveRun ||
             isShowingSyncFeedback
+          const syncTooltipCopy =
+            hasActiveRun || syncFeedbackState === "backgrounding"
+              ? "Fetching in background"
+              : syncFeedbackState === "running"
+                ? "Fetching latest data"
+                : "Fetch your latest data"
           return (
             <SourceRowWithActions
               key={platform.id}
@@ -193,9 +217,7 @@ export function ConnectedSourcesList({
                       />
                     </SourceRowActionButton>
                   </TooltipTrigger>
-                  <TooltipContent side="top">
-                    Fetch your latest data
-                  </TooltipContent>
+                  <TooltipContent side="top">{syncTooltipCopy}</TooltipContent>
                 </Tooltip>
               }
               endSlotClassName="[&_svg:not([class*='size-']):not([data-slot=spinner])]:size-7!"

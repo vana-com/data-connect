@@ -1,9 +1,21 @@
 import { useCallback } from 'react';
 import { invoke } from '@tauri-apps/api/core';
 import { useDispatch, useSelector } from 'react-redux';
-import { startRun, updateRunStatus, stopRun } from '../state/store';
+import { deleteRun, startRun, updateRunStatus, stopRun } from '../state/store';
 import type { RootState } from '../state/store';
 import type { Platform, Run } from '../types';
+
+const DUPLICATE_ACTIVE_RUN_ERROR_CODE = 'DUPLICATE_ACTIVE_RUN';
+
+function isDuplicateStartError(error: unknown): boolean {
+  const message =
+    typeof error === 'string'
+      ? error
+      : error instanceof Error
+        ? error.message
+        : String(error);
+  return message.includes(DUPLICATE_ACTIVE_RUN_ERROR_CODE);
+}
 
 export function useConnector() {
   const dispatch = useDispatch();
@@ -43,6 +55,11 @@ export function useConnector() {
           simulateNoChrome,
         });
       } catch (error) {
+        if (isDuplicateStartError(error)) {
+          dispatch(deleteRun(runId));
+          return null;
+        }
+
         console.error('Failed to start connector run:', error);
         dispatch(
           updateRunStatus({

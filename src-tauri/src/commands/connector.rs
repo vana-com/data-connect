@@ -364,6 +364,61 @@ static CONNECTOR_WINDOWS: std::sync::LazyLock<
     std::sync::Mutex<HashMap<String, String>>,
 > = std::sync::LazyLock::new(|| std::sync::Mutex::new(HashMap::new()));
 
+#[derive(Default)]
+struct ActiveRunIndex {
+    by_platform: HashMap<String, String>,
+    by_run: HashMap<String, String>,
+}
+
+/// Active connector runs indexed both ways for backend dedupe.
+static ACTIVE_RUN_INDEX: std::sync::LazyLock<std::sync::Mutex<ActiveRunIndex>> =
+    std::sync::LazyLock::new(|| std::sync::Mutex::new(ActiveRunIndex::default()));
+
+const DUPLICATE_ACTIVE_RUN_ERROR_CODE: &str = "DUPLICATE_ACTIVE_RUN";
+
+fn register_active_run(run_id: &str, platform_id: &str) -> Result<(), String> {
+    let mut index = ACTIVE_RUN_INDEX
+        .lock()
+        .map_err(|_| "Failed to lock active run index".to_string())?;
+
+    if let Some(existing_run_id) = index.by_platform.get(platform_id) {
+        log::warn!(
+            "Duplicate connector start blocked for platform {} (existing run {})",
+            platform_id, existing_run_id
+        );
+        return Err(DUPLICATE_ACTIVE_RUN_ERROR_CODE.to_string());
+    }
+
+    index
+        .by_platform
+        .insert(platform_id.to_string(), run_id.to_string());
+    index
+        .by_run
+        .insert(run_id.to_string(), platform_id.to_string());
+    Ok(())
+}
+
+fn unregister_active_run(run_id: &str) {
+    let Ok(mut index) = ACTIVE_RUN_INDEX.lock() else {
+        log::warn!(
+            "Failed to lock active run index while unregistering run {}",
+            run_id
+        );
+        return;
+    };
+
+    if let Some(platform_id) = index.by_run.remove(run_id) {
+        let should_remove_platform = index
+            .by_platform
+            .get(&platform_id)
+            .map(|registered_run_id| registered_run_id == run_id)
+            .unwrap_or(false);
+        if should_remove_platform {
+            index.by_platform.remove(&platform_id);
+        }
+    }
+}
+
 /// Load connector metadata from the connectors directory (user dir first, then bundled).
 fn load_connector_metadata(app: &AppHandle, company: &str, filename: &str) -> Option<ConnectorMetadata> {
     let company_lower = company.to_lowercase();
@@ -476,6 +531,7 @@ pub fn cleanup_playwright_processes() {
         }
         log::info!("Cleaning up {} Playwright process(es) on app exit...", guard.len());
         for (run_id, mut child) in guard.drain() {
+            unregister_active_run(&run_id);
             #[cfg(unix)]
             {
                 use crate::commands::server::kill_process_group;
@@ -918,6 +974,7 @@ async fn start_playwright_run(
 
         // Process ended, cleanup and notify UI
         PLAYWRIGHT_PROCESSES.lock().unwrap().remove(&run_id_for_stdout);
+        unregister_active_run(&run_id_for_stdout);
         log::info!("Playwright runner ended for {}", run_id_for_stdout);
 
         // Emit stopped status so UI updates (in case process exited without COMPLETE/ERROR)
@@ -944,50 +1001,59 @@ pub async fn start_connector_run(
     runtime: Option<String>,
     simulate_no_chrome: Option<bool>,
 ) -> Result<(), String> {
+    register_active_run(&run_id, &platform_id)?;
+
     // Check if this is a Playwright runtime connector
     if runtime.as_deref() == Some("playwright") {
-        return start_playwright_run(
+        let run_id_for_cleanup = run_id.clone();
+        let start_result = start_playwright_run(
             app, run_id, platform_id, filename, company, name, connect_url, simulate_no_chrome
-        ).await;
+        )
+        .await;
+        if start_result.is_err() {
+            unregister_active_run(&run_id_for_cleanup);
+        }
+        return start_result;
     }
 
-    let connector_version = load_connector_metadata(&app, &company, &filename)
-        .and_then(|m| m.version)
-        .unwrap_or_else(|| "unknown".to_string());
-    log::info!("Starting connector run for {} (platform: {}, company: {}, filename: {}, connector v{})",
-        run_id, platform_id, company, filename, connector_version);
+    let start_result = (|| -> Result<(), String> {
+        let connector_version = load_connector_metadata(&app, &company, &filename)
+            .and_then(|m| m.version)
+            .unwrap_or_else(|| "unknown".to_string());
+        log::info!("Starting connector run for {} (platform: {}, company: {}, filename: {}, connector v{})",
+            run_id, platform_id, company, filename, connector_version);
 
-    let window_label = format!("connector-{}", run_id);
-    let use_network_capture = runtime.as_deref() == Some("network-capture");
+        let window_label = format!("connector-{}", run_id);
+        let use_network_capture = runtime.as_deref() == Some("network-capture");
 
-    // Load the connector script
-    let connector_script = load_connector_script(&app, &company, &filename)
-        .unwrap_or_else(|| {
-            log::warn!("No connector script found, using empty script");
+        // Load the connector script
+        let connector_script = load_connector_script(&app, &company, &filename)
+            .unwrap_or_else(|| {
+                log::warn!("No connector script found, using empty script");
+                String::new()
+            });
+
+        // Load optional library scripts for network-capture runtime
+        // These provide network interception capabilities
+        let network_capture_script = if use_network_capture {
+            load_library_script(&app, "network-capture.js").unwrap_or_default()
+        } else {
             String::new()
-        });
+        };
 
-    // Load optional library scripts for network-capture runtime
-    // These provide network interception capabilities
-    let network_capture_script = if use_network_capture {
-        load_library_script(&app, "network-capture.js").unwrap_or_default()
-    } else {
-        String::new()
-    };
+        let page_api_script = if use_network_capture {
+            load_library_script(&app, "page-api.js").unwrap_or_default()
+        } else {
+            String::new()
+        };
 
-    let page_api_script = if use_network_capture {
-        load_library_script(&app, "page-api.js").unwrap_or_default()
-    } else {
-        String::new()
-    };
+        if use_network_capture {
+            log::info!("Using network-capture runtime for run {}", run_id);
+        }
 
-    if use_network_capture {
-        log::info!("Using network-capture runtime for run {}", run_id);
-    }
-
-    // Build the connector API injection script
-    let api_script = format!(
-        r#"
+        // Build the connector API injection script
+        let api_script = format!(
+            r#"
         // DataConnect Connector API
         const __RUN_ID__ = "{}";
         const __PLATFORM_ID__ = "{}";
@@ -1073,13 +1139,13 @@ pub async fn start_connector_run(
         console.log('[DataConnect] API initialized for run:', __RUN_ID__);
         "#,
         run_id, platform_id, filename, company, name
-    );
+        );
 
-    // Combine the API script with the connector script
-    // The connector script runs after page loads and stores results in window.__DATACONNECT_RESULT__
-    // For playwright runtime, we also inject network capture and page API scripts
-    let full_script = format!(
-        r#"
+        // Combine the API script with the connector script
+        // The connector script runs after page loads and stores results in window.__DATACONNECT_RESULT__
+        // For playwright runtime, we also inject network capture and page API scripts
+        let full_script = format!(
+            r#"
         {}
 
         // Network capture library (network-capture runtime only)
@@ -1114,50 +1180,57 @@ pub async fn start_connector_run(
         }}
         "#,
         api_script, network_capture_script, page_api_script, connector_script, connector_script
-    );
+        );
 
-    // Create the webview window
-    let webview = WebviewWindowBuilder::new(&app, &window_label, WebviewUrl::External(connect_url.parse().map_err(|e| format!("Invalid URL: {}", e))?))
-        .title(format!("DataConnect - {}", name))
-        .inner_size(1024.0, 768.0)
-        .initialization_script(&full_script)
-        .build()
-        .map_err(|e| format!("Failed to create window: {}", e))?;
+        // Create the webview window
+        let webview = WebviewWindowBuilder::new(&app, &window_label, WebviewUrl::External(connect_url.parse().map_err(|e| format!("Invalid URL: {}", e))?))
+            .title(format!("DataConnect - {}", name))
+            .inner_size(1024.0, 768.0)
+            .initialization_script(&full_script)
+            .build()
+            .map_err(|e| format!("Failed to create window: {}", e))?;
 
-    // Store the window reference
-    CONNECTOR_WINDOWS
-        .lock()
-        .unwrap()
-        .insert(run_id.clone(), window_label.clone());
+        // Store the window reference
+        CONNECTOR_WINDOWS
+            .lock()
+            .unwrap()
+            .insert(run_id.clone(), window_label.clone());
 
-    // Emit that the run has started
-    app.emit("run-started", serde_json::json!({
-        "runId": run_id,
-        "platformId": platform_id,
-        "company": company,
-        "name": name
-    }))
-    .map_err(|e| format!("Failed to emit event: {}", e))?;
+        // Emit that the run has started
+        app.emit("run-started", serde_json::json!({
+            "runId": run_id,
+            "platformId": platform_id,
+            "company": company,
+            "name": name
+        }))
+        .map_err(|e| format!("Failed to emit event: {}", e))?;
 
-    // Start polling for results in a background task
-    let app_clone = app.clone();
-    let run_id_clone = run_id.clone();
-    let platform_id_clone = platform_id.clone();
-    let company_clone = company.clone();
-    let name_clone = name.clone();
+        // Start polling for results in a background task
+        let app_clone = app.clone();
+        let run_id_clone = run_id.clone();
+        let platform_id_clone = platform_id.clone();
+        let company_clone = company.clone();
+        let name_clone = name.clone();
 
-    tokio::spawn(async move {
-        poll_connector_result(
-            app_clone,
-            webview,
-            run_id_clone,
-            platform_id_clone,
-            company_clone,
-            name_clone,
-        ).await;
-    });
+        tokio::spawn(async move {
+            poll_connector_result(
+                app_clone,
+                webview,
+                run_id_clone,
+                platform_id_clone,
+                company_clone,
+                name_clone,
+            ).await;
+        });
 
-    Ok(())
+        Ok(())
+    })();
+
+    if start_result.is_err() {
+        unregister_active_run(&run_id);
+    }
+
+    start_result
 }
 
 /// Poll the webview for connector results using URL hash as communication channel
@@ -1318,6 +1391,7 @@ async fn poll_connector_result(
 
     // Remove from active windows
     CONNECTOR_WINDOWS.lock().unwrap().remove(&run_id);
+    unregister_active_run(&run_id);
     log::info!("Polling ended for run {}", run_id);
 }
 
@@ -1347,6 +1421,7 @@ pub async fn stop_connector_run(app: AppHandle, run_id: String) -> Result<(), St
             // Brief wait for graceful shutdown, then force kill
             for _ in 0..20 {
                 if let Ok(Some(_)) = process.try_wait() {
+                    unregister_active_run(&run_id);
                     return Ok(());
                 }
                 std::thread::sleep(std::time::Duration::from_millis(100));
@@ -1358,6 +1433,7 @@ pub async fn stop_connector_run(app: AppHandle, run_id: String) -> Result<(), St
             let _ = process.kill();
         }
         let _ = process.wait();
+        unregister_active_run(&run_id);
         return Ok(());
     }
 
@@ -1373,6 +1449,10 @@ pub async fn stop_connector_run(app: AppHandle, run_id: String) -> Result<(), St
             let _ = window.close(); // Ignore close errors
         }
     }
+
+    // Mirror Playwright stop behavior: release active-run dedupe immediately
+    // after issuing stop for webview-based connectors.
+    unregister_active_run(&run_id);
 
     // Always return Ok - the run state is handled in the frontend
     Ok(())

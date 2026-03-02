@@ -46,6 +46,8 @@ describe("SettingsPersonalServer", () => {
           personalServer={makePersonalServer()}
           onRestartPersonalServer={vi.fn()}
           onStopPersonalServer={vi.fn()}
+          onSignInToStart={vi.fn()}
+          isAuthenticated={true}
           personalServerDataPath="/Users/test/data-connect/personal-server"
           onOpenPersonalServerFolder={onOpenPersonalServerFolder}
         />
@@ -63,6 +65,8 @@ describe("SettingsPersonalServer", () => {
           personalServer={makePersonalServer()}
           onRestartPersonalServer={vi.fn()}
           onStopPersonalServer={vi.fn()}
+          onSignInToStart={vi.fn()}
+          isAuthenticated={true}
           personalServerDataPath=""
           onOpenPersonalServerFolder={vi.fn()}
         />

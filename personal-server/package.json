@@ -27,9 +27,12 @@
   },
   "dependencies": {
     "@hono/node-server": "^1.13.7",
-    "@opendatalabs/personal-server-ts-core": "0.0.1-canary.93673d7",
-    "@opendatalabs/personal-server-ts-server": "0.0.1-canary.93673d7",
-    "better-sqlite3": "^12.6.2"
+    "@modelcontextprotocol/sdk": "^1.27.0",
+    "@opendatalabs/personal-server-ts-core": "0.0.1-canary.92ee4d6",
+    "@opendatalabs/personal-server-ts-mcp": "0.0.1-canary.92ee4d6",
+    "@opendatalabs/personal-server-ts-server": "0.0.1-canary.92ee4d6",
+    "better-sqlite3": "^12.6.2",
+    "hono": "^4.7.0"
   },
   "devDependencies": {
     "@yao-pkg/pkg": "^5.12.0",

@@ -80,8 +80,11 @@ export const PLATFORM_REGISTRY: PlatformRegistryEntry[] = [
     iconKey: "x",
     iconEmoji: "𝕏",
     primaryColor: "#111111",
-    platformIds: ["x"],
-    aliases: ["x (twitter)"],
+    platformIds: ["x-playwright", "x"],
+    aliases: ["x (twitter)", "twitter"],
+    availability: "requiresConnector",
+    showInConnectList: true,
+    ingestScope: "x.posts",
   },
   {
     id: "twitter",

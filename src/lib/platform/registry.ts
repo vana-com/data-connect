@@ -126,6 +126,17 @@ export const PLATFORM_REGISTRY: PlatformRegistryEntry[] = [
     platformIds: ["youtube"],
   },
   {
+    id: "oura",
+    displayName: "Oura Ring",
+    iconEmoji: "💍",
+    primaryColor: "#23282D",
+    platformIds: ["oura-playwright", "oura"],
+    aliases: ["ouraring"],
+    availability: "requiresConnector",
+    showInConnectList: true,
+    ingestScope: "oura.readiness",
+  },
+  {
     id: "shop",
     displayName: "Shop",
     iconKey: "shop",

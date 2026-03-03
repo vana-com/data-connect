@@ -1,0 +1,63 @@
+name: Notify vana-connect of release
+
+on:
+  release:
+    types: [published]
+  workflow_dispatch:
+    inputs:
+      version:
+        description: "Version to dispatch (e.g. 0.7.30 or v0.7.30)"
+        required: true
+        type: string
+
+jobs:
+  dispatch:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Resolve version
+        id: v
+        shell: bash
+        run: |
+          if [[ "${{ github.event_name }}" == "workflow_dispatch" ]]; then
+            RAW="${{ inputs.version }}"
+          else
+            RAW="${{ github.event.release.tag_name }}"
+          fi
+
+          # Skip drafts/prereleases from release event
+          if [[ "${{ github.event_name }}" == "release" ]]; then
+            if [[ "${{ github.event.release.draft }}" == "true" || "${{ github.event.release.prerelease }}" == "true" ]]; then
+              echo "skip=true" >> "$GITHUB_OUTPUT"
+              exit 0
+            fi
+          fi
+
+          VERSION="${RAW#v}"
+          if [[ ! "$VERSION" =~ ^[0-9]+\.[0-9]+\.[0-9]+([-.][0-9A-Za-z.]+)?$ ]]; then
+            echo "Invalid version: $VERSION"
+            exit 1
+          fi
+
+          echo "skip=false" >> "$GITHUB_OUTPUT"
+          echo "version=$VERSION" >> "$GITHUB_OUTPUT"
+          echo "tag=v$VERSION" >> "$GITHUB_OUTPUT"
+
+      - name: Dispatch event to vana-connect
+        if: steps.v.outputs.skip == 'false'
+        env:
+          GH_TOKEN: ${{ secrets.VANA_CONNECT_DISPATCH_TOKEN }}
+          VERSION: ${{ steps.v.outputs.version }}
+          TAG: ${{ steps.v.outputs.tag }}
+        run: |
+          curl -sS -X POST \
+            -H "Accept: application/vnd.github+json" \
+            -H "Authorization: Bearer $GH_TOKEN" \
+            https://api.github.com/repos/vana-com/vana-connect/dispatches \
+            -d "$(jq -n \
+              --arg event_type "data_connect_released" \
+              --arg version "$VERSION" \
+              --arg tag "$TAG" \
+              --arg source_repo "${{ github.repository }}" \
+              --arg release_url "${{ github.server_url }}/${{ github.repository }}/releases/tag/$TAG" \
+              '{event_type:$event_type, client_payload:{version:$version, tag:$tag, source_repo:$source_repo, release_url:$release_url}}'
+            )"

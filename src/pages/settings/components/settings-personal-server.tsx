@@ -149,7 +149,11 @@ export function SettingsPersonalServer({
               }
             />
             <SettingsDetailRow
-              label="Public endpoint"
+              label={
+                <span className="line-clamp-2 max-w-[9ch] leading-tight">
+                  Public endpoint
+                </span>
+              }
               labelInfo="Public URL that routes requests to your Personal Server."
               className="pr-2.5"
               value={
@@ -158,6 +162,7 @@ export function SettingsPersonalServer({
                   intent="small"
                   emptyLabel="Not available yet"
                   copyLabel="Copy URL"
+                  textClassName="max-w-[300px] sm:max-w-[420px]"
                   // Callum says I know but don't touch please! :)
                   buttonClassName="max-h-[21.17px]"
                 />

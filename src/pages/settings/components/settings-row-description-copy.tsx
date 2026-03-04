@@ -20,6 +20,7 @@ interface SettingsRowDescriptionCopyProps {
   title?: string
   className?: string
   buttonClassName?: string
+  textClassName?: string
 }
 
 export function SettingsRowDescriptionCopy({
@@ -32,6 +33,7 @@ export function SettingsRowDescriptionCopy({
   title,
   className,
   buttonClassName,
+  textClassName,
 }: SettingsRowDescriptionCopyProps) {
   const [copied, setCopied] = useState(false)
   const gapClassName = intent === "fine" ? "gap-[5px]" : "gap-1.5"
@@ -104,7 +106,10 @@ export function SettingsRowDescriptionCopy({
           intent={intent}
           dim
           truncate
-          className="w-auto max-w-[240px] sm:max-w-[320px] group-hover:text-foreground"
+          className={cn(
+            "w-auto max-w-[240px] sm:max-w-[320px] group-hover:text-foreground",
+            textClassName
+          )}
           title={title ?? value}
         >
           {value}

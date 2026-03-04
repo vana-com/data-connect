@@ -148,4 +148,16 @@ export const PLATFORM_REGISTRY: PlatformRegistryEntry[] = [
     showInConnectList: true,
     ingestScope: "shop.orders",
   },
+  {
+    id: "heb",
+    displayName: "H-E-B",
+    iconKey: "heb",
+    iconEmoji: "🛒",
+    primaryColor: "#E31837",
+    platformIds: ["heb-playwright"],
+    aliases: ["heb"],
+    availability: "requiresConnector",
+    showInConnectList: true,
+    ingestScope: "heb.orders",
+  },
 ]

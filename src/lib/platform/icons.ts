@@ -2,6 +2,7 @@ import type { ElementType } from "react"
 import { IconX } from "@/components/icons/icon-x"
 import { PlatformChatGPTIcon } from "@/components/icons/platform-chatgpt"
 import { PlatformGithubIcon } from "@/components/icons/platform-github"
+import { PlatformHebIcon } from "@/components/icons/platform-heb"
 import { PlatformInstagramGlyphIcon } from "@/components/icons/platform-instagram-glyph"
 import { PlatformLinkedinIcon } from "@/components/icons/platform-linkedin"
 import { PlatformShopIcon } from "@/components/icons/platform-shop"
@@ -18,6 +19,7 @@ export type PlatformIconComponent = ElementType<{ className?: string }>
 const PLATFORM_ICON_COMPONENTS: Record<string, PlatformIconComponent> = {
   chatgpt: PlatformChatGPTIcon,
   github: PlatformGithubIcon,
+  heb: PlatformHebIcon,
   instagram: PlatformInstagramGlyphIcon,
   linkedin: PlatformLinkedinIcon,
   shop: PlatformShopIcon,

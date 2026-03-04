@@ -1,4 +1,4 @@
-import { cleanup, render, screen } from "@testing-library/react"
+import { cleanup, fireEvent, render, screen } from "@testing-library/react"
 import { afterEach, describe, expect, it, vi } from "vitest"
 import { LINKS } from "@/config/links"
 import type { BuilderManifest, GrantSession } from "../../types"
@@ -20,12 +20,12 @@ function createSession(scopes: string[]): GrantSession {
 
 function renderConsent(
   scopes: string[],
-  options: { builderManifest?: BuilderManifest } = {}
+  options: { builderManifest?: BuilderManifest; builderName?: string } = {}
 ) {
   return render(
     <GrantConsentState
       session={createSession(scopes)}
-      builderName="Demo App"
+      builderName={options.builderName ?? "Demo App"}
       builderManifest={options.builderManifest}
       isApproving={false}
       onApprove={vi.fn()}
@@ -94,5 +94,24 @@ describe("GrantConsentState scope action label", () => {
         })
         .getAttribute("href")
     ).toBe(LINKS.legalDataExtractionRiskResponsibilityDisclosure)
+  })
+
+  it("falls back when builder icon image fails to load", () => {
+    const { container } = renderConsent(["chatgpt.conversations"], {
+      builderName: "Qapp",
+      builderManifest: {
+        name: "Qapp",
+        appUrl: "https://qapp.example.com",
+        icons: [{ src: "https://qapp.example.com/broken-icon.png", sizes: "64x64" }],
+      },
+    })
+
+    const image = container.querySelector("img")
+    expect(image).toBeTruthy()
+
+    fireEvent.error(image as HTMLImageElement)
+
+    expect(container.querySelector("img")).toBeNull()
+    expect(screen.getByText("Q")).toBeTruthy()
   })
 })

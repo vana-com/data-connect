@@ -1,4 +1,4 @@
-import type { ComponentProps } from "react"
+import { useEffect, useState, type ComponentProps } from "react"
 import { getPlatformIconComponentForName } from "@/lib/platform/icons"
 import { cn } from "@/lib/utils"
 
@@ -39,8 +39,13 @@ export function PlatformIcon({
 }: PlatformIconProps) {
   const Icon = getPlatformIconComponentForName(iconName)
   const resolvedAriaHidden = ariaHidden ?? ariaHiddenProp ?? true
+  const [imageFailed, setImageFailed] = useState(false)
 
-  if (imageSrc) {
+  useEffect(() => {
+    setImageFailed(false)
+  }, [imageSrc])
+
+  if (imageSrc && !imageFailed) {
     return (
       <div
         className={cn(iconWrapper, className)}
@@ -51,6 +56,7 @@ export function PlatformIcon({
           src={imageSrc}
           alt={imageAlt}
           className="object-cover"
+          onError={() => setImageFailed(true)}
           style={{ width: `${size}px`, height: `${size}px` }}
         />
       </div>

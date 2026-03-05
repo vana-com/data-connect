@@ -6,6 +6,8 @@ export const LINKS = {
   githubRepo: "https://github.com/vana-com/data-connect",
   vanaDocs: "https://docs.vana.org",
   vanaDocsProtocol: "https://docs.vana.org/data-portability-protocol",
+  vanaDocsPersonalServers:
+    "https://docs.vana.org/protocol-reference/personal-servers",
   vana: "https://www.vana.org/",
   openDataLabs: "https://opendatalabs.xyz/",
   legalDataExtractionRiskResponsibilityDisclosure:

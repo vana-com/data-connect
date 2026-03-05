@@ -232,10 +232,15 @@
   --color-success: var(--success);
   --color-success-foreground: var(--success-foreground);
   --color-success-reversed: var(--success-reversed);
+  --color-warning: var(--warning);
+  --color-warning-foreground: var(--warning-foreground);
+  --color-warning-reversed: var(--warning-reversed);
 
   --color-iris: var(--vana-blue);
   --color-irisLight: var(--vana-blueLight);
   --color-stonebeige: var(--stonebeige);
+  --color-dc: var(--dc-accent);
+  --color-dc-foreground: color-mix(in oklab, var(--dc-accent) 85%, black 15%);
 
   --color-accent-canvas: var(--accent-1);
   --color-accent-subtle: var(--accent-2);

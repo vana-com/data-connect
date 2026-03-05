@@ -27,12 +27,16 @@ function log(msg) {
   console.log(`[sync-connectors-dev] ${msg}`);
 }
 
-// Only sync company/connector dirs (skip schemas/, types/, lib/, registry.json, etc.)
+// Only sync directories that contain a connector metadata file (*-playwright.json).
+// Skips non-connector dirs (clearcut, proxy-test, docs, etc.) that happen to
+// live in the data-connectors repo.
 function isConnectorDir(name) {
-  const skipDirs = ['schemas', 'types', 'lib', 'node_modules', 'icons', 'scripts', 'docs', 'projects', 'brainstorm'];
-  if (skipDirs.includes(name) || name.startsWith('.')) return false;
+  if (name.startsWith('.')) return false;
   const fullPath = join(SOURCE_CONNECTORS, name);
-  return existsSync(fullPath) && statSync(fullPath).isDirectory();
+  if (!existsSync(fullPath) || !statSync(fullPath).isDirectory()) return false;
+  // A real connector dir contains a *-playwright.json metadata file
+  const files = readdirSync(fullPath);
+  return files.some(f => f.endsWith('-playwright.json'));
 }
 
 function main() {
@@ -58,7 +62,10 @@ function main() {
   for (const dir of dirs) {
     const src = join(SOURCE_CONNECTORS, dir);
     const dest = join(USER_CONNECTORS, dir);
-    cpSync(src, dest, { recursive: true });
+    cpSync(src, dest, {
+      recursive: true,
+      filter: (s) => !s.includes('/.git/') && !s.endsWith('/.git'),
+    });
     copied++;
   }
 

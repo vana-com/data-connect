@@ -112,10 +112,11 @@ beforeEach(() => {
 })
 
 describe("Settings", () => {
-  it("shows the personal server section by default", () => {
-    const { getAllByRole } = renderSettings()
+  it("shows the connected apps section by default", () => {
+    const { getByRole, getByText } = renderSettings()
 
-    expect(getAllByRole("heading", { name: "Personal Server" }).length).toBeGreaterThan(0)
+    expect(getByRole("heading", { name: "Connected apps" })).toBeTruthy()
+    expect(getByText("No connected apps")).toBeTruthy()
   })
 
   it("switches to the apps section from the nav", () => {
@@ -125,7 +126,7 @@ describe("Settings", () => {
     fireEvent.click(appsButton)
 
     expect(getByText("No connected apps")).toBeTruthy()
-    expect(getByTestId("search").textContent).toBe("?section=apps")
+    expect(getByTestId("search").textContent).toBe("")
   })
 
   it("shows sign out when authenticated", () => {
@@ -147,9 +148,9 @@ describe("Settings", () => {
     expect(getByRole("heading", { name: "Storage & Server" })).toBeTruthy()
   })
 
-  it("falls back to personal server for invalid section values", () => {
-    const { getAllByRole } = renderSettings(`${ROUTES.settings}?section=invalid`)
-    expect(getAllByRole("heading", { name: "Personal Server" }).length).toBeGreaterThan(0)
+  it("falls back to connected apps for invalid section values", () => {
+    const { getByRole } = renderSettings(`${ROUTES.settings}?section=invalid`)
+    expect(getByRole("heading", { name: "Connected apps" })).toBeTruthy()
   })
 
   it("clears source param when switching between non-import sections", () => {
@@ -157,11 +158,11 @@ describe("Settings", () => {
       `${ROUTES.settings}?section=apps&source=github`
     )
 
-    const [personalServerButton] = getAllByRole("button", {
-      name: "Personal Server",
+    const [credentialsButton] = getAllByRole("button", {
+      name: "Credentials",
     })
-    fireEvent.click(personalServerButton)
+    fireEvent.click(credentialsButton)
 
-    expect(getByTestId("search").textContent).toBe("")
+    expect(getByTestId("search").textContent).toBe("?section=credentials")
   })
 })

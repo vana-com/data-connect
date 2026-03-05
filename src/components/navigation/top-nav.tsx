@@ -9,7 +9,6 @@ import {
 } from "@/components/ui/tooltip"
 import { ROUTES } from "@/config/routes"
 import { cn } from "@/lib/classes"
-import { buildSettingsUrl } from "@/pages/settings/url"
 import type { LucideIcon } from "lucide-react"
 import { HomeIcon, ServerIcon, UserRoundCogIcon, BoxIcon } from "lucide-react"
 import type { CSSProperties } from "react"
@@ -40,7 +39,7 @@ const navItems: NavItem[] = [
   // { to: "/activity", label: "Activity", Icon: ActivityIcon },
   {
     id: "server",
-    to: buildSettingsUrl({ section: "personalServer" }),
+    to: ROUTES.personalServer,
     label: "Server",
     Icon: ServerIcon,
   },
@@ -54,8 +53,9 @@ const navItems: NavItem[] = [
 
 function getStatusDotClassName(status: PersonalServerStatus) {
   if (status === "running") return "bg-success-foreground"
-  if (status === "starting") return "bg-amber-500 animate-pulse"
-  return "bg-destructive-foreground"
+  if (status === "starting") return "bg-success-foreground animate-pulse"
+  if (status === "error") return "bg-destructive-foreground"
+  return "bg-warning"
 }
 
 function getPersonalServerStatusLabel(status: PersonalServerStatus) {

@@ -13,7 +13,6 @@ import {
 import { ROUTES } from "@/config/routes"
 import { cn } from "@/lib/classes"
 import { getLastRunLabel } from "@/lib/platform/ui"
-import { buildSettingsUrl } from "@/pages/settings/url"
 import type { Platform, Run } from "@/types"
 import { ChevronRightIcon, RotateCcwIcon } from "lucide-react"
 import { Link } from "react-router-dom"
@@ -287,7 +286,7 @@ function PersonalServerOnboardingCopy({
     <Text as="p" intent="small" muted>
       {copy.beforeServerLink}
       <Link
-        to={buildSettingsUrl({ section: "personalServer" })}
+        to={ROUTES.personalServer}
         className="link hover:text-foreground"
       >
         {copy.serverLinkText}

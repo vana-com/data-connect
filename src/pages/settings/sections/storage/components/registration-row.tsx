@@ -55,8 +55,8 @@ function getRegistrationPresentation(
       }
     case "pending":
       return {
-        dotClassName: "bg-amber-600",
-        textClassName: "text-amber-600",
+        dotClassName: "bg-warning",
+        textClassName: "text-warning",
         label: "Not registered",
       }
     default: {

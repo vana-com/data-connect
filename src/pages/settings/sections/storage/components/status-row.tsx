@@ -37,7 +37,7 @@ function getServerStatusPresentation(
       }
     case "starting":
       return {
-        dotClassName: "bg-amber-600",
+        dotClassName: "bg-success-foreground",
         label: "Starting",
       }
     case "error":
@@ -48,8 +48,8 @@ function getServerStatusPresentation(
       }
     case "stopped":
       return {
-        dotClassName: "bg-destructive-foreground",
-        textClassName: "text-destructive-foreground",
+        dotClassName: "bg-warning",
+        textClassName: "text-warning",
         label: "Stopped",
       }
     default: {

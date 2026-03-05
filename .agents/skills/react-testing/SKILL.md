@@ -39,6 +39,9 @@ Validate new behavior without overengineering; run the smallest test set that pr
 - Assert on user-visible output and accessible roles/labels.
 - Prefer `getByRole`/`getByText`; use `*AllBy*` only when multiples are expected.
 - Avoid snapshots and brittle DOM structure checks.
+- Avoid exact-copy assertions for non-contract UI text. Copy changes frequently and should not break tests.
+- Prefer behavior/structure assertions (actions available, state transitions, section visibility, URL state).
+- Allow exact-copy assertions only for contractual strings (legal/compliance copy, API/error contracts, critical security warnings).
 - For expected error-path tests, spy on `console.error` and assert calls to keep test output clean while preserving coverage.
 
 ## URL state coverage gate

@@ -7,26 +7,27 @@ One place for platform metadata and the helpers that render it.
 - `registry.ts`: canonical platform metadata (data only, includes `iconKey`)
 - `utils.ts`: lookup + resolve helpers (no UI)
 - `icons.ts`: icon component lookup (registry id → component)
-- `ui.ts`: UI helpers (display names, icon classes, run labels)
+- `ui.ts`: UI helpers (run labels, icon fallback component)
 
 ## Data flow (mental model)
 
 1. **Connectors** define runtime platforms in `connectors/*.json` (loaded by Tauri).
 2. **Registry** maps those platform ids/names/aliases to canonical metadata.
-3. **UI helpers** convert metadata into display props (icon, className, labels).
+3. **UI helpers** convert metadata into runtime display behavior (icons, labels).
 
 ## When to use what
 
 - Need to resolve a platform by id/name/company → `utils.ts`
-- Need connect list entries or availability state → `utils.ts`
+- Need ingest scope by platform id → `utils.ts`
 - Need an icon component → `icons.ts`
-- Need UI display props (`icon`, `iconClassName`, `displayName`) → `ui.ts`
+- Need run label / icon component fallback → `ui.ts`
 
 ## Add a new platform (fast path)
 
 1. Add connector metadata JSON under `connectors/<company>/<id>.json`.
 2. Add a registry entry in `registry.ts`:
-   - `id`, `displayName`, `iconEmoji`
+   - `id`, `displayName`
+   - `brandDomain` (for remote logo providers)
    - `platformIds` (connector ids)
    - `availability`, `showInConnectList`, `ingestScope` (if needed)
 3. Add an icon component and wire it into the entry (optional).

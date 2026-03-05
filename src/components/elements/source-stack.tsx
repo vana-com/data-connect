@@ -14,7 +14,6 @@ export interface SourceStackProps {
   iconClassName?: string
   labelColor?: "foreground" | "mutedForeground"
   arrowClassName?: string
-  stackPrimaryColor?: string
   trailingSlot?: ReactNode
   infoSlot?: ReactNode
   bottomClassName?: string
@@ -28,26 +27,21 @@ export function SourceStack({
   iconClassName,
   labelColor = "foreground",
   arrowClassName,
-  stackPrimaryColor,
   trailingSlot,
   infoSlot,
   bottomClassName,
 }: SourceStackProps) {
   const shouldShowArrow = Boolean(showArrow)
-  void stackPrimaryColor
-  // const darkenedStackColor = stackPrimaryColor
-  //   ? `color-mix(in srgb, ${stackPrimaryColor} 30%, black)`
-  //   : undefined
-  // bgColor: `color-mix(in srgb, ${darkenedStackColor} 1%, transparent)`,
 
   return (
-    <div className="w-full">
+    <div data-slot="source-stack" className="w-full">
       <div className="h-[96px] flex items-start border-b">
         <div className="p-2">
           <PlatformIcon
             iconName={iconName}
             imageSrc={iconImageSrc}
             size={24}
+            imageScale={iconImageSrc ? 1.18 : 1}
             className={cn("p-3", iconClassName)}
           />
         </div>

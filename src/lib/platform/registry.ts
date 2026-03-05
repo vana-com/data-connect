@@ -6,12 +6,13 @@ export type PlatformRegistryAvailability =
 export interface PlatformRegistryEntry {
   id: string
   displayName: string
+  brandDomain?: string
   iconKey?: string
-  iconEmoji: string
-  primaryColor: string
   platformIds?: string[]
   aliases?: string[]
+  // Currently unused by runtime rendering/selection flows; retained for team metadata workflows.
   availability?: PlatformRegistryAvailability
+  // Currently unused by runtime rendering/selection flows; retained for team metadata workflows.
   showInConnectList?: boolean
   ingestScope?: string
 }
@@ -20,9 +21,8 @@ export const PLATFORM_REGISTRY: PlatformRegistryEntry[] = [
   {
     id: "chatgpt",
     displayName: "ChatGPT",
+    brandDomain: "chatgpt.com",
     iconKey: "chatgpt",
-    iconEmoji: "🤖",
-    primaryColor: "#0d45d3",
     platformIds: ["chatgpt-playwright", "chatgpt"],
     aliases: ["openai"],
     availability: "requiresConnector",
@@ -32,9 +32,8 @@ export const PLATFORM_REGISTRY: PlatformRegistryEntry[] = [
   {
     id: "instagram",
     displayName: "Instagram",
+    brandDomain: "instagram.com",
     iconKey: "instagram",
-    iconEmoji: "📸",
-    primaryColor: "#E4405F",
     platformIds: ["instagram-playwright", "instagram"],
     aliases: ["meta"],
     availability: "requiresConnector",
@@ -44,9 +43,8 @@ export const PLATFORM_REGISTRY: PlatformRegistryEntry[] = [
   {
     id: "github",
     displayName: "GitHub",
+    brandDomain: "github.com",
     iconKey: "github",
-    iconEmoji: "🐙",
-    primaryColor: "#24292F",
     platformIds: ["github-playwright", "github"],
     availability: "requiresConnector",
     showInConnectList: true,
@@ -55,9 +53,8 @@ export const PLATFORM_REGISTRY: PlatformRegistryEntry[] = [
   {
     id: "linkedin",
     displayName: "LinkedIn",
+    brandDomain: "linkedin.com",
     iconKey: "linkedin",
-    iconEmoji: "💼",
-    primaryColor: "#0A66C2",
     platformIds: ["linkedin-playwright", "linkedin"],
     availability: "requiresConnector",
     showInConnectList: true,
@@ -66,9 +63,8 @@ export const PLATFORM_REGISTRY: PlatformRegistryEntry[] = [
   {
     id: "spotify",
     displayName: "Spotify",
+    brandDomain: "spotify.com",
     iconKey: "spotify",
-    iconEmoji: "🎵",
-    primaryColor: "#1DB954",
     platformIds: ["spotify-playwright", "spotify"],
     availability: "requiresConnector",
     showInConnectList: true,
@@ -77,59 +73,51 @@ export const PLATFORM_REGISTRY: PlatformRegistryEntry[] = [
   {
     id: "x",
     displayName: "X (Twitter)",
+    brandDomain: "x.com",
     iconKey: "x",
-    iconEmoji: "𝕏",
-    primaryColor: "#111111",
     platformIds: ["x"],
     aliases: ["x (twitter)"],
   },
   {
     id: "twitter",
     displayName: "Twitter",
-    iconEmoji: "🐦",
-    primaryColor: "#1D9BF0",
+    brandDomain: "twitter.com",
     platformIds: ["twitter"],
   },
   {
     id: "reddit",
     displayName: "Reddit",
-    iconEmoji: "🔴",
-    primaryColor: "#FF4500",
+    brandDomain: "reddit.com",
     platformIds: ["reddit"],
   },
   {
     id: "facebook",
     displayName: "Facebook",
-    iconEmoji: "👤",
-    primaryColor: "#1877F2",
+    brandDomain: "facebook.com",
     platformIds: ["facebook"],
   },
   {
     id: "google",
     displayName: "Google",
-    iconEmoji: "🔵",
-    primaryColor: "#4285F4",
+    brandDomain: "google.com",
     platformIds: ["google"],
   },
   {
     id: "tiktok",
     displayName: "TikTok",
-    iconEmoji: "🎵",
-    primaryColor: "#EE1D52",
+    brandDomain: "tiktok.com",
     platformIds: ["tiktok"],
   },
   {
     id: "youtube",
     displayName: "YouTube",
-    iconEmoji: "▶️",
-    primaryColor: "#FF0000",
+    brandDomain: "youtube.com",
     platformIds: ["youtube"],
   },
   {
     id: "oura",
     displayName: "Oura Ring",
-    iconEmoji: "💍",
-    primaryColor: "#23282D",
+    brandDomain: "ouraring.com",
     platformIds: ["oura-playwright", "oura"],
     aliases: ["ouraring"],
     availability: "requiresConnector",
@@ -139,9 +127,8 @@ export const PLATFORM_REGISTRY: PlatformRegistryEntry[] = [
   {
     id: "shop",
     displayName: "Shop",
+    brandDomain: "shop.app",
     iconKey: "shop",
-    iconEmoji: "🛒",
-    primaryColor: "#5433EB",
     platformIds: ["shop-playwright", "shop"],
     aliases: ["shopify"],
     availability: "requiresConnector",

@@ -1,5 +1,5 @@
-import { getPlatformPrimaryColor } from "@/lib/platform/ui"
 import { getPlatformRegistryEntry } from "@/lib/platform/utils"
+import { resolvePlatformLogo } from "@/lib/platform/resolve-platform-logo"
 import type { Platform, Run } from "@/types"
 
 export interface AvailableSourceCard {
@@ -7,7 +7,6 @@ export interface AvailableSourceCard {
   iconName: string
   iconImageSrc?: string
   label: string
-  stackPrimaryColor: string
   isAvailable: boolean
   isConnecting: boolean
   connectingStatusMessage?: string
@@ -39,16 +38,13 @@ export function buildAvailableCards({
     const baseConnectingRun = connectingPlatforms.get(platform.id)
     const isConnecting = connectingPlatforms.has(platform.id)
 
-    const iconImageSrc = platform.logoURL?.startsWith("data:")
-      ? platform.logoURL
-      : undefined
+    const iconImageSrc = resolvePlatformLogo(platform, entry)
 
     cards.push({
       cardId: platform.id,
       iconName: displayName,
       iconImageSrc,
       label: `Connect ${displayName}`,
-      stackPrimaryColor: getPlatformPrimaryColor(entry),
       isAvailable: true,
       isConnecting,
       connectingStatusMessage: baseConnectingRun?.statusMessage,

@@ -12,6 +12,7 @@ interface PlatformIconProps extends Omit<ComponentProps<"div">, "children"> {
   imageSrc?: string
   imageAlt?: string
   size?: number
+  imageScale?: number
   fallbackLabel?: string
   fallbackScale?: number
   ariaHidden?: boolean
@@ -30,6 +31,7 @@ export function PlatformIcon({
   imageSrc,
   imageAlt = "",
   size = 32,
+  imageScale = 1,
   className,
   fallbackLabel,
   fallbackScale = 0.75,
@@ -40,6 +42,7 @@ export function PlatformIcon({
   const Icon = getPlatformIconComponentForName(iconName)
   const resolvedAriaHidden = ariaHidden ?? ariaHiddenProp ?? true
   const [imageFailed, setImageFailed] = useState(false)
+  const scaledImageSize = Math.round(size * imageScale)
 
   useEffect(() => {
     setImageFailed(false)
@@ -55,9 +58,9 @@ export function PlatformIcon({
         <img
           src={imageSrc}
           alt={imageAlt}
-          className="object-cover"
+          className="object-contain"
           onError={() => setImageFailed(true)}
-          style={{ width: `${size}px`, height: `${size}px` }}
+          style={{ width: `${scaledImageSize}px`, height: `${scaledImageSize}px` }}
         />
       </div>
     )

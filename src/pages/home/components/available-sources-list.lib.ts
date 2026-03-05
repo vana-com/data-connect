@@ -13,7 +13,6 @@ export interface AvailableSourceCard {
   connectingStatusMessage?: string
   connectingRun?: Run
   onClick?: () => void
-  priority: number
   index: number
 }
 
@@ -55,11 +54,10 @@ export function buildAvailableCards({
       connectingStatusMessage: baseConnectingRun?.statusMessage,
       connectingRun: baseConnectingRun,
       onClick: () => onExport(platform),
-      priority: isConnecting ? 0 : 1,
       index,
     })
   })
 
-  cards.sort((a, b) => a.priority - b.priority || a.index - b.index)
+  cards.sort((a, b) => a.index - b.index)
   return cards
 }

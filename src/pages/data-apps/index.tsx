@@ -26,12 +26,19 @@ export function DataApps() {
           Data Apps
         </Text>
         <Text as="p" intent="small" dim>
-          Create apps with the Vana Data Protocol.&nbsp;
+          Create apps with the&nbsp;
           <LearnMoreLink
             href={LINKS.vanaDocsProtocol}
             className="inline-flex items-center gap-px!"
           >
-            Learn more
+            Vana Data Protocol
+          </LearnMoreLink>
+          . Already have an app?&nbsp;
+          <LearnMoreLink
+            href={LINKS.appSubmissionEmail}
+            className="inline-flex items-center gap-px!"
+          >
+            Show it here
             <ArrowUpRightIcon aria-hidden="true" className="size-em" />
           </LearnMoreLink>
         </Text>

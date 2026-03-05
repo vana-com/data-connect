@@ -123,4 +123,83 @@ describe("SettingsPersonalServer", () => {
 
     expect(onSignInToStart).toHaveBeenCalledTimes(1)
   })
+
+  it("shows recovery action when authenticated but server is stopped", () => {
+    render(
+      <TooltipProvider delayDuration={120}>
+        <SettingsPersonalServer
+          personalServer={makePersonalServer({ status: "stopped" })}
+          onRestartPersonalServer={vi.fn()}
+          onStopPersonalServer={vi.fn()}
+          onSignInToStart={vi.fn()}
+          isAuthenticated={true}
+          personalServerDataPath="/Users/test/data-connect/personal-server"
+          onOpenPersonalServerFolder={vi.fn()}
+        />
+      </TooltipProvider>
+    )
+
+    expect(screen.queryByRole("button", { name: "Start" })).toBeNull()
+    expect(screen.getByRole("button", { name: "Retry start" })).toBeTruthy()
+  })
+
+  it("shows endpoint message for stopped state", () => {
+    render(
+      <TooltipProvider delayDuration={120}>
+        <SettingsPersonalServer
+          personalServer={makePersonalServer({ status: "stopped" })}
+          onRestartPersonalServer={vi.fn()}
+          onStopPersonalServer={vi.fn()}
+          onSignInToStart={vi.fn()}
+          isAuthenticated={true}
+          personalServerDataPath="/Users/test/data-connect/personal-server"
+          onOpenPersonalServerFolder={vi.fn()}
+        />
+      </TooltipProvider>
+    )
+
+    expect(screen.getByText("Server is stopped. Endpoint unavailable.")).toBeTruthy()
+  })
+
+  it("shows endpoint message for error state", () => {
+    render(
+      <TooltipProvider delayDuration={120}>
+        <SettingsPersonalServer
+          personalServer={makePersonalServer({
+            status: "error",
+            error: "Failed to bind server port",
+          })}
+          onRestartPersonalServer={vi.fn()}
+          onStopPersonalServer={vi.fn()}
+          onSignInToStart={vi.fn()}
+          isAuthenticated={true}
+          personalServerDataPath="/Users/test/data-connect/personal-server"
+          onOpenPersonalServerFolder={vi.fn()}
+        />
+      </TooltipProvider>
+    )
+
+    expect(
+      screen.getByText("Server failed to start. Retry to regenerate endpoint.")
+    ).toBeTruthy()
+  })
+
+  it("shows no action control while server is starting", () => {
+    render(
+      <TooltipProvider delayDuration={120}>
+        <SettingsPersonalServer
+          personalServer={makePersonalServer({ status: "starting" })}
+          onRestartPersonalServer={vi.fn()}
+          onStopPersonalServer={vi.fn()}
+          onSignInToStart={vi.fn()}
+          isAuthenticated={true}
+          personalServerDataPath="/Users/test/data-connect/personal-server"
+          onOpenPersonalServerFolder={vi.fn()}
+        />
+      </TooltipProvider>
+    )
+
+    expect(screen.queryByRole("button", { name: "Starting…" })).toBeNull()
+    expect(screen.queryByRole("button", { name: "Retry start" })).toBeNull()
+  })
 })

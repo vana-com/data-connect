@@ -148,4 +148,16 @@ export const PLATFORM_REGISTRY: PlatformRegistryEntry[] = [
     showInConnectList: true,
     ingestScope: "shop.orders",
   },
+  {
+    id: "wholefoods",
+    displayName: "Whole Foods Market",
+    iconKey: "wholefoods",
+    iconEmoji: "🥑",
+    primaryColor: "#00674b",
+    platformIds: ["wholefoods-playwright"],
+    aliases: ["wholefoods", "whole foods"],
+    availability: "requiresConnector",
+    showInConnectList: true,
+    ingestScope: "wholefoods.orders",
+  },
 ]

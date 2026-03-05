@@ -6,6 +6,7 @@ import { PlatformInstagramGlyphIcon } from "@/components/icons/platform-instagra
 import { PlatformLinkedinIcon } from "@/components/icons/platform-linkedin"
 import { PlatformShopIcon } from "@/components/icons/platform-shop"
 import { PlatformSpotifyIcon } from "@/components/icons/platform-spotify"
+import { PlatformWholeFoodsIcon } from "@/components/icons/platform-wholefoods"
 import type { PlatformRegistryEntry } from "./registry"
 import {
   getPlatformRegistryEntry,
@@ -22,6 +23,7 @@ const PLATFORM_ICON_COMPONENTS: Record<string, PlatformIconComponent> = {
   linkedin: PlatformLinkedinIcon,
   shop: PlatformShopIcon,
   spotify: PlatformSpotifyIcon,
+  wholefoods: PlatformWholeFoodsIcon,
   x: IconX,
 }
 

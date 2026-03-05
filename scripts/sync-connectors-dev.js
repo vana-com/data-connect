@@ -11,7 +11,7 @@
  *   CONNECTORS_PATH=../data-connectors npm run tauri:dev
  */
 
-import { cpSync, existsSync, mkdirSync, readdirSync, statSync } from 'fs';
+import { cpSync, existsSync, mkdirSync, readFileSync } from 'fs';
 import { join, dirname, resolve } from 'path';
 import { fileURLToPath } from 'url';
 import { homedir } from 'os';
@@ -27,16 +27,21 @@ function log(msg) {
   console.log(`[sync-connectors-dev] ${msg}`);
 }
 
-// Only sync directories that contain a connector metadata file (*-playwright.json).
-// Skips non-connector dirs (clearcut, proxy-test, docs, etc.) that happen to
-// live in the data-connectors repo.
-function isConnectorDir(name) {
-  if (name.startsWith('.')) return false;
-  const fullPath = join(SOURCE_CONNECTORS, name);
-  if (!existsSync(fullPath) || !statSync(fullPath).isDirectory()) return false;
-  // A real connector dir contains a *-playwright.json metadata file
-  const files = readdirSync(fullPath);
-  return files.some(f => f.endsWith('-playwright.json'));
+// Derive connector directories from registry.json file paths.
+function getConnectorDirs() {
+  const registryPath = join(SOURCE_CONNECTORS, 'registry.json');
+  if (!existsSync(registryPath)) {
+    log(`No registry.json found at ${registryPath}`);
+    return [];
+  }
+  const registry = JSON.parse(readFileSync(registryPath, 'utf-8'));
+  const dirs = new Set();
+  for (const connector of registry.connectors ?? []) {
+    for (const filePath of Object.values(connector.files ?? {})) {
+      dirs.add(filePath.split('/')[0]);
+    }
+  }
+  return [...dirs];
 }
 
 function main() {
@@ -49,7 +54,7 @@ function main() {
     log(`Using CONNECTORS_PATH: ${SOURCE_CONNECTORS}`);
   }
 
-  const dirs = readdirSync(SOURCE_CONNECTORS).filter(isConnectorDir);
+  const dirs = getConnectorDirs();
 
   if (dirs.length === 0) {
     log('No connector directories found, skipping');
@@ -61,11 +66,12 @@ function main() {
   let copied = 0;
   for (const dir of dirs) {
     const src = join(SOURCE_CONNECTORS, dir);
+    if (!existsSync(src)) {
+      log(`Skipping ${dir}/ (not found in ${SOURCE_CONNECTORS})`);
+      continue;
+    }
     const dest = join(USER_CONNECTORS, dir);
-    cpSync(src, dest, {
-      recursive: true,
-      filter: (s) => !s.includes('/.git/') && !s.endsWith('/.git'),
-    });
+    cpSync(src, dest, { recursive: true });
     copied++;
   }
 

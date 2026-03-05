@@ -1,18 +1,17 @@
-import type { usePersonalServer } from "@/hooks/usePersonalServer"
-import { LogInIcon, PlayIcon, SquareIcon } from "lucide-react"
-import { useRef, useState } from "react"
 import { Text } from "@/components/typography/text"
-import { SettingsRowDescriptionCopy } from "@/pages/settings/components/settings-row-description-copy"
+import type { usePersonalServer } from "@/hooks/usePersonalServer"
 import { SettingsDetailRow } from "@/pages/settings/components/settings-detail-row"
-import { SettingsRowDescriptionStatus } from "@/pages/settings/components/settings-row-description-status"
 import { SettingsRow } from "@/pages/settings/components/settings-row"
+import { SettingsRowDescriptionCopy } from "@/pages/settings/components/settings-row-description-copy"
+import { SettingsRowDescriptionStatus } from "@/pages/settings/components/settings-row-description-status"
 import {
   SettingsCard,
   SettingsCardStack,
   SettingsRowAction,
   SettingsSection,
 } from "@/pages/settings/components/settings-shared"
-import { cn } from "@/lib/classes"
+import { LogInIcon, PlayIcon, SquareIcon } from "lucide-react"
+import { useRef, useState } from "react"
 
 type ServerRuntimeStatus = ReturnType<typeof usePersonalServer>["status"]
 
@@ -118,14 +117,20 @@ export function SettingsPersonalServer({
         Retry start
       </SettingsRowAction>
     ) : null
-  const controlDescription = (
-    <SettingsRowDescriptionStatus
-      tone={serverStatusDescription.tone}
-      intent="fine"
-      pulse={previewStatus === "starting"}
-    >
-      {previewStatus === "running" ? "Running" : serverStatusDescription.label}
-    </SettingsRowDescriptionStatus>
+  const controlStatusLabel =
+    previewStatus === "running" ? "Running" : serverStatusDescription.label
+  const controlTitle = (
+    <>
+      <span className="font-semibold">Status</span>
+      <SettingsRowDescriptionStatus
+        tone={serverStatusDescription.tone}
+        intent="body"
+        pulse={previewStatus === "starting"}
+        className="translate-y-[-0.1em]"
+      >
+        {controlStatusLabel}
+      </SettingsRowDescriptionStatus>
+    </>
   )
   const isLaunchingSignInRef = useRef(false)
   const [isLaunchingSignIn, setIsLaunchingSignIn] = useState(false)
@@ -152,11 +157,6 @@ export function SettingsPersonalServer({
               wrapIcon={false}
               icon={null}
               title="Sign in"
-              // description={
-              //   <SettingsRowDescriptionStatus tone="warning" intent="small">
-              //     Not signed in
-              //   </SettingsRowDescriptionStatus>
-              // }
               right={
                 <SettingsRowAction
                   variant="dc"
@@ -184,10 +184,10 @@ export function SettingsPersonalServer({
               <SettingsRow
                 wrapIcon={false}
                 icon={null}
-                title="Personal Server"
-                description={controlDescription}
+                title={controlTitle}
+                contentClassName="flex items-baseline gap-1.75"
                 right={controlAction}
-                className="py-4"
+                className="h-tab"
               />
               <SettingsDetailRow
                 isLast

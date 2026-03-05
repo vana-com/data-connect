@@ -129,7 +129,31 @@ describe("PersonalServer page", () => {
       [{ path: ROUTES.personalServer, element: <PersonalServer /> }],
       {
         initialEntries: [
-          `${ROUTES.personalServer}?personalServerScenario=force-authenticated`,
+          `${ROUTES.personalServer}?personalServerScenario=ui-auth-stopped`,
+        ],
+      }
+    )
+
+    render(
+      <TooltipProvider delayDuration={120}>
+        <Provider store={store}>
+          <RouterProvider router={router} />
+        </Provider>
+      </TooltipProvider>
+    )
+
+    await waitFor(() => {
+      expect(screen.getByText("Endpoint")).toBeTruthy()
+    })
+    expect(screen.queryByRole("button", { name: "Sign in to start" })).toBeNull()
+  })
+
+  it("renders auth-running debug scenario", async () => {
+    const router = createMemoryRouter(
+      [{ path: ROUTES.personalServer, element: <PersonalServer /> }],
+      {
+        initialEntries: [
+          `${ROUTES.personalServer}?personalServerScenario=ui-auth-running`,
         ],
       }
     )
@@ -145,7 +169,31 @@ describe("PersonalServer page", () => {
     await waitFor(() => {
       expect(screen.getByText("Public endpoint")).toBeTruthy()
     })
-    expect(screen.queryByRole("button", { name: "Sign in to start" })).toBeNull()
+    expect(screen.getByRole("button", { name: "Stop" })).toBeTruthy()
+    expect(screen.getByText("Running")).toBeTruthy()
+    expect(screen.getAllByText("https://abc123.server.vana.org").length).toBeGreaterThan(0)
+  })
+
+  it("renders auth-error debug scenario", async () => {
+    const router = createMemoryRouter(
+      [{ path: ROUTES.personalServer, element: <PersonalServer /> }],
+      {
+        initialEntries: [`${ROUTES.personalServer}?personalServerScenario=ui-auth-error`],
+      }
+    )
+
+    render(
+      <TooltipProvider delayDuration={120}>
+        <Provider store={store}>
+          <RouterProvider router={router} />
+        </Provider>
+      </TooltipProvider>
+    )
+
+    await waitFor(() => {
+      expect(screen.getByText("Failed to bind server port")).toBeTruthy()
+    })
+    expect(screen.getByRole("button", { name: "Retry start" })).toBeTruthy()
   })
 
   it("falls back to real auth state for invalid debug scenario", () => {
@@ -170,6 +218,28 @@ describe("PersonalServer page", () => {
     expect(screen.queryByText("Public endpoint")).toBeNull()
   })
 
+  it("renders signed-out UI when debug scenario forces signed out", () => {
+    const router = createMemoryRouter(
+      [{ path: ROUTES.personalServer, element: <PersonalServer /> }],
+      {
+        initialEntries: [
+          `${ROUTES.personalServer}?personalServerScenario=ui-signed-out`,
+        ],
+      }
+    )
+
+    render(
+      <TooltipProvider delayDuration={120}>
+        <Provider store={store}>
+          <RouterProvider router={router} />
+        </Provider>
+      </TooltipProvider>
+    )
+
+    expect(screen.getByRole("button", { name: "Sign in to start" })).toBeTruthy()
+    expect(screen.queryByText("Endpoint")).toBeNull()
+  })
+
   it("writes and removes debug scenario via panel controls", async () => {
     const router = createMemoryRouter(
       [{ path: ROUTES.personalServer, element: <PersonalServer /> }],
@@ -185,11 +255,11 @@ describe("PersonalServer page", () => {
     )
 
     fireEvent.click(screen.getByRole("button", { name: "Personal Server debug" }))
-    fireEvent.click(screen.getByRole("button", { name: "force-authenticated" }))
+    fireEvent.click(screen.getByRole("button", { name: "ui-auth-running" }))
 
     await waitFor(() => {
       expect(router.state.location.search).toBe(
-        "?personalServerScenario=force-authenticated"
+        "?personalServerScenario=ui-auth-running"
       )
     })
     expect(screen.queryByRole("button", { name: "Sign in to start" })).toBeNull()

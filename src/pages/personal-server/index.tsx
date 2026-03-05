@@ -9,9 +9,11 @@ import { LINKS } from "@/config/links"
 import { SettingsPersonalServer } from "@/pages/settings/components/settings-personal-server"
 import { useSettingsPage } from "@/pages/settings/use-settings-page"
 import {
+  getPersonalServerUiDebugStateOverride,
   getPersonalServerUiDebugParamName,
   isPersonalServerUiDebugEnabled,
   isPersonalServerUiForcedAuthenticated,
+  isPersonalServerUiForcedSignedOut,
   PERSONAL_SERVER_UI_DEBUG_SCENARIO_VALUES,
 } from "./personal-server-ui-debug"
 
@@ -33,10 +35,32 @@ export function PersonalServer() {
     () => isPersonalServerUiForcedAuthenticated(location.search),
     [location.search]
   )
-  const effectiveIsAuthenticated = isAuthenticated || isForcedAuthenticatedUi
+  const isForcedSignedOutUi = useMemo(
+    () => isPersonalServerUiForcedSignedOut(location.search),
+    [location.search]
+  )
+  const personalServerUiOverride = useMemo(
+    () => getPersonalServerUiDebugStateOverride(location.search),
+    [location.search]
+  )
+  const effectivePersonalServer = useMemo(
+    () =>
+      personalServerUiOverride
+        ? {
+            ...personalServer,
+            ...personalServerUiOverride,
+          }
+        : personalServer,
+    [personalServer, personalServerUiOverride]
+  )
+  const effectiveIsAuthenticated = isForcedSignedOutUi
+    ? false
+    : isAuthenticated || isForcedAuthenticatedUi
   const currentScenario = useMemo(
     () =>
-      new URLSearchParams(location.search).get(getPersonalServerUiDebugParamName()),
+      new URLSearchParams(location.search).get(
+        getPersonalServerUiDebugParamName()
+      ),
     [location.search]
   )
   const setPersonalServerUiDebugScenario = useCallback(
@@ -56,7 +80,7 @@ export function PersonalServer() {
         <Text as="h1" intent="subtitle" weight="medium">
           Personal Server
         </Text>
-        <div className="space-y-1 xl:w-9/12">
+        <div className="space-y-1 lg:w-9/12">
           <Text as="p" intent="small" dim>
             The Personal Server is your protocol participant: it serves
             authorized requests for data kept on your device.
@@ -74,7 +98,7 @@ export function PersonalServer() {
         </div>
       </header>
       <SettingsPersonalServer
-        personalServer={personalServer}
+        personalServer={effectivePersonalServer}
         onRestartPersonalServer={personalServer.startServer}
         onStopPersonalServer={personalServer.stopServer}
         onSignInToStart={onSignInToStart}

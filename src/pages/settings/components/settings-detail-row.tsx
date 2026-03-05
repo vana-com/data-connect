@@ -15,6 +15,7 @@ interface SettingsDetailRowProps {
   isLast?: boolean
   labelInfo?: ReactNode
   className?: string
+  ruleClassName?: string
 }
 
 /**
@@ -26,6 +27,7 @@ export function SettingsDetailRow({
   isLast = false,
   labelInfo,
   className,
+  ruleClassName,
 }: SettingsDetailRowProps) {
   const labelContent =
     typeof label === "string" ? (
@@ -41,10 +43,15 @@ export function SettingsDetailRow({
       data-slot="settings-detail-row"
       className={cn(
         "flex items-center justify-between gap-4 py-4 h-tab",
-        !isLast && "border-b border-border",
+        "relative",
         className
       )}
     >
+      {isLast ? (
+        <div className={cn("absolute top-0 inset-x-0", ruleClassName)}>
+          <hr />
+        </div>
+      ) : null}
       <div className="flex items-center gap-1.5">
         {labelContent}
         {labelInfo ? (

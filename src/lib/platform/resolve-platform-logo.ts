@@ -13,13 +13,14 @@ export const resolvePlatformLogo = (
   platform: Platform,
   entry: PlatformRegistryEntry | null
 ) => {
+  // Prefer provider-backed logos for consistent visual output across sources.
+  if (entry?.brandDomain) {
+    return getPlatformLogoUrlForDomain(entry.brandDomain)
+  }
+
   const platformLogoUrl = platform.logoURL?.trim()
   if (platformLogoUrl && isAllowedLogoUrl(platformLogoUrl)) {
     return platformLogoUrl
-  }
-
-  if (entry?.brandDomain) {
-    return getPlatformLogoUrlForDomain(entry.brandDomain)
   }
 
   return undefined

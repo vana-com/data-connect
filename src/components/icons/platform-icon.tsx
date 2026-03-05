@@ -1,5 +1,10 @@
 import { useEffect, useState, type ComponentProps } from "react"
 import { getPlatformIconComponentForName } from "@/lib/platform/icons"
+import { getPlatformLogoUrlForDomain } from "@/lib/platform/logo-provider"
+import {
+  getPlatformRegistryEntryById,
+  getPlatformRegistryEntryByName,
+} from "@/lib/platform/utils"
 import { cn } from "@/lib/utils"
 
 /**
@@ -40,15 +45,25 @@ export function PlatformIcon({
   ...props
 }: PlatformIconProps) {
   const Icon = getPlatformIconComponentForName(iconName)
+  const registryEntry =
+    getPlatformRegistryEntryById(iconName) ??
+    getPlatformRegistryEntryByName(iconName)
+  const resolvedImageSrc =
+    imageSrc ??
+    (registryEntry?.brandDomain
+      ? getPlatformLogoUrlForDomain(registryEntry.brandDomain)
+      : undefined)
   const resolvedAriaHidden = ariaHidden ?? ariaHiddenProp ?? true
   const [imageFailed, setImageFailed] = useState(false)
   const scaledImageSize = Math.round(size * imageScale)
+  // 12% of the image size is the border radius
+  const imageBorderRadiusPx = Math.max(3, Math.round(scaledImageSize * 0.12))
 
   useEffect(() => {
     setImageFailed(false)
-  }, [imageSrc])
+  }, [resolvedImageSrc])
 
-  if (imageSrc && !imageFailed) {
+  if (resolvedImageSrc && !imageFailed) {
     return (
       <div
         className={cn(iconWrapper, className)}
@@ -56,11 +71,15 @@ export function PlatformIcon({
         {...props}
       >
         <img
-          src={imageSrc}
+          src={resolvedImageSrc}
           alt={imageAlt}
           className="object-contain"
           onError={() => setImageFailed(true)}
-          style={{ width: `${scaledImageSize}px`, height: `${scaledImageSize}px` }}
+          style={{
+            width: `${scaledImageSize}px`,
+            height: `${scaledImageSize}px`,
+            borderRadius: `${imageBorderRadiusPx}px`,
+          }}
         />
       </div>
     )

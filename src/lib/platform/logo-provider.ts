@@ -1,7 +1,8 @@
+import { BRAND_DEV_PUBLIC_CLIENT_ID } from "@/config/logo-provider"
+
 type PlatformLogoProvider = "logoDev" | "brandDev"
 
-const BRAND_DEV_PUBLIC_CLIENT_ID =
-  import.meta.env.VITE_BRAND_DEV_PUBLIC_CLIENT_ID?.trim() ?? ""
+const configuredBrandDevPublicClientId = BRAND_DEV_PUBLIC_CLIENT_ID.trim()
 
 const resolveProvider = (): PlatformLogoProvider => {
   const configured = import.meta.env.VITE_PLATFORM_LOGO_PROVIDER
@@ -16,14 +17,14 @@ const buildLogoDevUrl = (domain: string, size: number) =>
   `https://img.logo.dev/${domain}?size=${size}&format=webp&retina=true&fallback=monogram`
 
 const buildBrandDevUrl = (domain: string) =>
-  `https://logos.brand.dev/?publicClientId=${encodeURIComponent(BRAND_DEV_PUBLIC_CLIENT_ID)}&domain=${encodeURIComponent(domain)}`
+  `https://logos.brand.dev/?publicClientId=${encodeURIComponent(configuredBrandDevPublicClientId)}&domain=${encodeURIComponent(domain)}`
 
 export const getPlatformLogoUrlForDomain = (
   domain: string,
   options?: { size?: number }
 ) => {
   const size = options?.size ?? 64
-  if (provider === "brandDev" && BRAND_DEV_PUBLIC_CLIENT_ID) {
+  if (provider === "brandDev" && configuredBrandDevPublicClientId) {
     return buildBrandDevUrl(domain)
   }
 

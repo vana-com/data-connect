@@ -35,6 +35,9 @@ const buttonVariants = cva(
           "bg-primary text-primary-foreground hover:bg-primary/90 data-[state=open]:bg-primary/90",
         accent:
           "bg-accent text-background hover:bg-accent-foreground data-[state=open]:bg-accent-surface",
+        dc: [
+          "bg-dc text-background hover:bg-dc-foreground data-[state=open]:bg-accent-surface",
+        ],
         default: "bg-foreground text-background hover:bg-foreground",
         iris: "bg-irisLight text-background hover:bg-irisLight/90 data-[state=open]:bg-irisLight/90",
         outline: [

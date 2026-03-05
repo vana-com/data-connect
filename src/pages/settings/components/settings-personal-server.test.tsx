@@ -75,4 +75,52 @@ describe("SettingsPersonalServer", () => {
 
     expect((getLocationRowOpenButton() as HTMLButtonElement).disabled).toBe(true)
   })
+
+  it("shows only sign-in action while signed out", () => {
+    render(
+      <TooltipProvider delayDuration={120}>
+        <SettingsPersonalServer
+          personalServer={makePersonalServer()}
+          onRestartPersonalServer={vi.fn()}
+          onStopPersonalServer={vi.fn()}
+          onSignInToStart={vi.fn()}
+          isAuthenticated={false}
+          personalServerDataPath="/Users/test/data-connect/personal-server"
+          onOpenPersonalServerFolder={vi.fn()}
+        />
+      </TooltipProvider>
+    )
+
+    expect(screen.getByRole("button", { name: "Sign in to start" })).toBeTruthy()
+    expect(screen.queryByRole("button", { name: "Open" })).toBeNull()
+  })
+
+  it("prevents duplicate sign-in launches on rapid repeat clicks", () => {
+    const onSignInToStart = vi.fn(
+      () =>
+        new Promise<void>(resolve => {
+          setTimeout(resolve, 20)
+        })
+    )
+
+    render(
+      <TooltipProvider delayDuration={120}>
+        <SettingsPersonalServer
+          personalServer={makePersonalServer()}
+          onRestartPersonalServer={vi.fn()}
+          onStopPersonalServer={vi.fn()}
+          onSignInToStart={onSignInToStart}
+          isAuthenticated={false}
+          personalServerDataPath="/Users/test/data-connect/personal-server"
+          onOpenPersonalServerFolder={vi.fn()}
+        />
+      </TooltipProvider>
+    )
+
+    const signInButton = screen.getByRole("button", { name: "Sign in to start" })
+    fireEvent.click(signInButton)
+    fireEvent.click(signInButton)
+
+    expect(onSignInToStart).toHaveBeenCalledTimes(1)
+  })
 })

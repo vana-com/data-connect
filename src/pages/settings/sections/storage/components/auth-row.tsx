@@ -1,5 +1,4 @@
 import { Text } from "@/components/typography/text"
-import { DEV_FLAGS } from "@/config/dev-flags"
 import { Row, RowDot } from "./row"
 
 /*
@@ -11,10 +10,6 @@ import { Row, RowDot } from "./row"
   - "Authorisation" is direct enough in this context.
 */
 type AuthIdentityState = "email" | "wallet" | "signed-in"
-
-const TEST_AUTH_IDENTITY: AuthIdentityState | null = null
-const TEST_ACCOUNT_EMAIL = "you@vana.example"
-const TEST_WALLET_ADDRESS = "0x1234567890abcdef1234567890abcdef12345678"
 
 interface AuthRowProps {
   accountEmail?: string | null
@@ -42,14 +37,7 @@ export function AuthRow({
   walletAddress,
   isLast = false,
 }: AuthRowProps) {
-  const previewIdentityState = DEV_FLAGS.useSettingsUiMocks
-    ? TEST_AUTH_IDENTITY
-    : null
-  const mockedEmail =
-    previewIdentityState === "email" ? TEST_ACCOUNT_EMAIL : accountEmail
-  const mockedWallet =
-    previewIdentityState === "wallet" ? TEST_WALLET_ADDRESS : walletAddress
-  const previewIdentity = getAuthIdentity(mockedEmail, mockedWallet)
+  const previewIdentity = getAuthIdentity(accountEmail, walletAddress)
   const label =
     previewIdentity.state === "signed-in"
       ? previewIdentity.value

@@ -1,7 +1,6 @@
 import { useEffect, useState } from "react"
 import { CopyIcon } from "lucide-react"
 import { Text } from "@/components/typography/text"
-import { DEV_FLAGS } from "@/config/dev-flags"
 import { Row, tooltipStyle } from "./row"
 import { cn } from "@/lib/classes"
 
@@ -14,9 +13,6 @@ import { cn } from "@/lib/classes"
   - "Public endpoint" can be unclear; this explains what the URL is for.
 */
 type PublicEndpointState = "available" | "unavailable"
-const TEST_PUBLIC_ENDPOINT_STATE: PublicEndpointState | null = null
-const TEST_PUBLIC_ENDPOINT_URL = "https://abc123.server.vana.org"
-const TEST_PUBLIC_ENDPOINT_COPIED = false
 
 interface PublicEndpointRowProps {
   tunnelUrl: string | null
@@ -28,32 +24,13 @@ function getPublicEndpointState(tunnelUrl: string | null): PublicEndpointState {
   return tunnelUrl ? "available" : "unavailable"
 }
 
-function getPreviewPublicEndpointInputs(
-  tunnelUrl: string | null,
-  copied: boolean
-) {
-  if (!DEV_FLAGS.useSettingsUiMocks || !TEST_PUBLIC_ENDPOINT_STATE) {
-    return { tunnelUrl, copied }
-  }
-
-  if (TEST_PUBLIC_ENDPOINT_STATE === "available") {
-    return {
-      tunnelUrl: TEST_PUBLIC_ENDPOINT_URL,
-      copied: TEST_PUBLIC_ENDPOINT_COPIED,
-    }
-  }
-
-  return { tunnelUrl: null, copied: false }
-}
-
 export function PublicEndpointRow({
   tunnelUrl,
   copied,
   onCopy,
 }: PublicEndpointRowProps) {
   const [localCopied, setLocalCopied] = useState(false)
-  const previewInputs = getPreviewPublicEndpointInputs(tunnelUrl, copied)
-  const state = getPublicEndpointState(previewInputs.tunnelUrl)
+  const state = getPublicEndpointState(tunnelUrl)
   const showCopiedFeedback = copied || localCopied
 
   useEffect(() => {
@@ -63,8 +40,8 @@ export function PublicEndpointRow({
   }, [localCopied])
 
   const handleCopyClick = async () => {
-    if (!previewInputs.tunnelUrl) return
-    const didCopy = await onCopy(previewInputs.tunnelUrl)
+    if (!tunnelUrl) return
+    const didCopy = await onCopy(tunnelUrl)
     if (!didCopy) return
     setLocalCopied(true)
   }
@@ -127,9 +104,9 @@ export function PublicEndpointRow({
               intent="small"
               dim
               className="max-w-[240px] truncate sm:max-w-[320px] group-hover:text-foreground"
-              title={previewInputs.tunnelUrl ?? undefined}
+              title={tunnelUrl ?? undefined}
             >
-              {previewInputs.tunnelUrl}
+              {tunnelUrl}
             </Text>
           </button>
         </div>

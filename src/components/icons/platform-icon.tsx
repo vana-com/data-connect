@@ -1,4 +1,4 @@
-import { useEffect, useState, type ComponentProps } from "react"
+import { useEffect, useRef, useState, type ComponentProps } from "react"
 import { getPlatformIconComponentForName } from "@/lib/platform/icons"
 import { getPlatformLogoUrlForDomain } from "@/lib/platform/logo-provider"
 import {
@@ -26,6 +26,7 @@ interface PlatformIconProps extends Omit<ComponentProps<"div">, "children"> {
 // Default 2px padding to ensure the icon is centered within the wrapper
 const iconWrapper =
   "flex items-center justify-center rounded-button overflow-hidden p-1"
+
 /**
  * Platform icon component
  * Displays a platform logo or first-letter fallback
@@ -53,14 +54,30 @@ export function PlatformIcon({
       ? getPlatformLogoUrlForDomain(registryEntry.brandDomain)
       : undefined)
   const resolvedAriaHidden = ariaHidden ?? ariaHiddenProp ?? true
-  const [imageFailed, setImageFailed] = useState(false)
+  const imageRef = useRef<HTMLImageElement | null>(null)
+  const [loadedImageSrc, setLoadedImageSrc] = useState<string | null>(null)
+  const [failedImageSrc, setFailedImageSrc] = useState<string | null>(null)
+  const imageLoaded =
+    resolvedImageSrc != null && loadedImageSrc === resolvedImageSrc
+  const imageFailed =
+    resolvedImageSrc != null && failedImageSrc === resolvedImageSrc
   const scaledImageSize = Math.round(size * imageScale)
   // 12% of the image size is the border radius
   const imageBorderRadiusPx = Math.max(3, Math.round(scaledImageSize * 0.12))
   const innerBorderRadiusPx = Math.max(3, Math.round(size * 0.12))
 
   useEffect(() => {
-    setImageFailed(false)
+    const image = imageRef.current
+    if (!resolvedImageSrc || !image || !image.complete) {
+      return
+    }
+
+    if (image.naturalWidth > 0) {
+      setLoadedImageSrc(resolvedImageSrc)
+      return
+    }
+
+    setFailedImageSrc(resolvedImageSrc)
   }, [resolvedImageSrc])
 
   if (resolvedImageSrc && !imageFailed) {
@@ -71,7 +88,10 @@ export function PlatformIcon({
         {...props}
       >
         <span
-          className="flex items-center justify-center overflow-hidden bg-muted"
+          className={cn(
+            "flex items-center justify-center overflow-hidden",
+            !imageLoaded && "bg-muted"
+          )}
           style={{
             width: `${scaledImageSize}px`,
             height: `${scaledImageSize}px`,
@@ -79,10 +99,14 @@ export function PlatformIcon({
           }}
         >
           <img
+            ref={imageRef}
             src={resolvedImageSrc}
             alt={imageAlt}
             className="h-full w-full object-contain"
-            onError={() => setImageFailed(true)}
+            onLoad={() => setLoadedImageSrc(resolvedImageSrc)}
+            onError={() => {
+              setFailedImageSrc(resolvedImageSrc)
+            }}
           />
         </span>
       </div>
@@ -102,7 +126,9 @@ export function PlatformIcon({
   }
 
   // Fallback: show first letter. Background only on inner span so it doesn't bleed into padding.
-  const label = (fallbackLabel?.trim() || iconName.trim().charAt(0)).toUpperCase()
+  const label = (
+    fallbackLabel?.trim() || iconName.trim().charAt(0)
+  ).toUpperCase()
   const fontSize = Math.round(size * fallbackScale)
   return (
     <div

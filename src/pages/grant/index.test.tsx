@@ -127,6 +127,7 @@ describe("Grant debug status switching", () => {
       </MemoryRouter>
     )
 
+    expect(screen.getByText("Allow access to your data")).toBeTruthy()
     expect(screen.getByText("See your LinkedIn Experience")).toBeTruthy()
     expect(screen.getByText("See your Spotify History")).toBeTruthy()
     expect(

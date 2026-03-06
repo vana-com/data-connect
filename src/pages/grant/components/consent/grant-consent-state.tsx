@@ -96,6 +96,19 @@ function buildConsentRows(scopes: string[]) {
   return rows
 }
 
+function getConsentHeadingDataLabel(scopes: string[]) {
+  const platformKeys = new Set(
+    scopes
+      .map(scope => getPrimaryScopeToken([scope]))
+      .filter((scope): scope is string => scope != null)
+  )
+
+  if (platformKeys.size !== 1) return "data"
+
+  const dataSourceLabel = getPrimaryDataSourceLabel(scopes)
+  return dataSourceLabel ? `${dataSourceLabel} data` : "data"
+}
+
 export function GrantConsentState({
   scopes,
   builderManifest,
@@ -104,8 +117,7 @@ export function GrantConsentState({
   onApprove,
   onDeny,
 }: GrantConsentStateProps) {
-  const dataSourceLabel = getPrimaryDataSourceLabel(scopes)
-  const dataLabel = dataSourceLabel ? `${dataSourceLabel} data` : "data"
+  const dataLabel = getConsentHeadingDataLabel(scopes)
   const rows = buildConsentRows(scopes)
   const resolvedAppName = appName ?? builderManifest?.name ?? "this app"
   const builderIconSrc = pickBuilderIcon(builderManifest)

@@ -35,9 +35,14 @@ describe("PlatformIcon", () => {
     )
 
     const image = container.querySelector("img")
-    const imageFrame = image.parentElement
 
     expect(image).toBeTruthy()
+    if (!image) {
+      throw new Error("Expected image to be rendered")
+    }
+
+    const imageFrame = image.parentElement
+
     expect(imageFrame).toBeTruthy()
     expect(imageFrame?.className).toContain("bg-muted")
 
@@ -67,9 +72,14 @@ describe("PlatformIcon", () => {
     )
 
     const image = document.querySelector("img")
-    const imageFrame = image.parentElement
 
     expect(image).toBeTruthy()
+    if (!image) {
+      throw new Error("Expected image to be rendered")
+    }
+
+    const imageFrame = image.parentElement
+
     expect(imageFrame).toBeTruthy()
     expect(imageFrame?.className).not.toContain("bg-muted")
   })

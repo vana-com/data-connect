@@ -1,11 +1,12 @@
-import { useEffect, useRef, useState, type ComponentProps } from "react"
+import { type ComponentProps } from "react"
+import { AdaptiveIcon } from "@/components/icons/adaptive-icon"
+import type { AdaptiveIconVariant } from "@/components/icons/adaptive-icon"
 import { getPlatformIconComponentForName } from "@/lib/platform/icons"
 import { getPlatformLogoUrlForDomain } from "@/lib/platform/logo-provider"
 import {
   getPlatformRegistryEntryById,
   getPlatformRegistryEntryByName,
 } from "@/lib/platform/utils"
-import { cn } from "@/lib/utils"
 
 /**
  * Shared platform icon utilities for displaying connector icons.
@@ -20,12 +21,9 @@ interface PlatformIconProps extends Omit<ComponentProps<"div">, "children"> {
   imageScale?: number
   fallbackLabel?: string
   fallbackScale?: number
+  variant?: AdaptiveIconVariant
   ariaHidden?: boolean
 }
-
-// Default 2px padding to ensure the icon is centered within the wrapper
-const iconWrapper =
-  "flex items-center justify-center rounded-button overflow-hidden p-1"
 
 /**
  * Platform icon component
@@ -40,6 +38,7 @@ export function PlatformIcon({
   className,
   fallbackLabel,
   fallbackScale = 0.75,
+  variant = "padded",
   ariaHidden,
   "aria-hidden": ariaHiddenProp,
   ...props
@@ -54,102 +53,21 @@ export function PlatformIcon({
       ? getPlatformLogoUrlForDomain(registryEntry.brandDomain)
       : undefined)
   const resolvedAriaHidden = ariaHidden ?? ariaHiddenProp ?? true
-  const imageRef = useRef<HTMLImageElement | null>(null)
-  const [loadedImageSrc, setLoadedImageSrc] = useState<string | null>(null)
-  const [failedImageSrc, setFailedImageSrc] = useState<string | null>(null)
-  const imageLoaded =
-    resolvedImageSrc != null && loadedImageSrc === resolvedImageSrc
-  const imageFailed =
-    resolvedImageSrc != null && failedImageSrc === resolvedImageSrc
-  const scaledImageSize = Math.round(size * imageScale)
-  // 12% of the image size is the border radius
-  const imageBorderRadiusPx = Math.max(3, Math.round(scaledImageSize * 0.12))
-  const innerBorderRadiusPx = Math.max(3, Math.round(size * 0.12))
+  const label = (fallbackLabel?.trim() || iconName.trim().charAt(0)).toUpperCase()
 
-  useEffect(() => {
-    const image = imageRef.current
-    if (!resolvedImageSrc || !image || !image.complete) {
-      return
-    }
-
-    if (image.naturalWidth > 0) {
-      setLoadedImageSrc(resolvedImageSrc)
-      return
-    }
-
-    setFailedImageSrc(resolvedImageSrc)
-  }, [resolvedImageSrc])
-
-  if (resolvedImageSrc && !imageFailed) {
-    return (
-      <div
-        className={cn(iconWrapper, className)}
-        aria-hidden={resolvedAriaHidden}
-        {...props}
-      >
-        <span
-          className={cn(
-            "flex items-center justify-center overflow-hidden",
-            !imageLoaded && "bg-muted"
-          )}
-          style={{
-            width: `${scaledImageSize}px`,
-            height: `${scaledImageSize}px`,
-            borderRadius: `${imageBorderRadiusPx}px`,
-          }}
-        >
-          <img
-            ref={imageRef}
-            src={resolvedImageSrc}
-            alt={imageAlt}
-            className="h-full w-full object-contain"
-            onLoad={() => setLoadedImageSrc(resolvedImageSrc)}
-            onError={() => {
-              setFailedImageSrc(resolvedImageSrc)
-            }}
-          />
-        </span>
-      </div>
-    )
-  }
-
-  if (Icon) {
-    return (
-      <div
-        className={cn(iconWrapper, className)}
-        aria-hidden={resolvedAriaHidden}
-        {...props}
-      >
-        <Icon style={{ width: `${size}px`, height: `${size}px` }} aria-hidden />
-      </div>
-    )
-  }
-
-  // Fallback: show first letter. Background only on inner span so it doesn't bleed into padding.
-  const label = (
-    fallbackLabel?.trim() || iconName.trim().charAt(0)
-  ).toUpperCase()
-  const fontSize = Math.round(size * fallbackScale)
   return (
-    <div
-      className={cn(iconWrapper, className)}
+    <AdaptiveIcon
+      variant={variant}
+      className={className}
+      imageSources={resolvedImageSrc ? [resolvedImageSrc] : undefined}
+      imageAlt={imageAlt}
+      size={size}
+      imageScale={imageScale}
+      icon={Icon ?? undefined}
+      fallbackLabel={label}
+      fallbackScale={fallbackScale}
       aria-hidden={resolvedAriaHidden}
       {...props}
-    >
-      <span
-        className={cn(
-          "flex items-center justify-center overflow-hidden",
-          "text-background bg-foreground font-semi"
-        )}
-        style={{
-          fontSize: `${fontSize}px`,
-          width: `${size}px`,
-          height: `${size}px`,
-          borderRadius: `${innerBorderRadiusPx}px`,
-        }}
-      >
-        {label}
-      </span>
-    </div>
+    />
   )
 }

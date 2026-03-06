@@ -93,7 +93,7 @@ export function SettingsCardStack({
   return (
     <div
       data-component="settings-card-stack"
-      className={cn("form-outset space-y-3", className)}
+      className={cn("action-outset space-y-3", className)}
     >
       {children}
     </div>

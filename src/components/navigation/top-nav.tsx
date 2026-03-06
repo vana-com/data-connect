@@ -12,7 +12,7 @@ import { cn } from "@/lib/classes"
 import type { LucideIcon } from "lucide-react"
 import { HomeIcon, ServerIcon, UserRoundCogIcon, BoxIcon } from "lucide-react"
 import type { CSSProperties } from "react"
-import { Link, NavLink } from "react-router-dom"
+import { NavLink } from "react-router-dom"
 
 type NavItem = {
   id: "home" | "apps" | "docs" | "server" | "settings"
@@ -104,7 +104,6 @@ export function TopNav({ personalServerStatus }: TopNavProps) {
         <nav className="flex items-center gap-[3px]">
           {navItems.map(({ id, to, label, Icon, external }) => {
             const shouldShowServerStatus = id === "server"
-            const isStatusPointerItem = id === "server"
             const iconWithStatusDot = (
               <span className="relative inline-flex">
                 {Icon === IconMcp ? (
@@ -114,6 +113,7 @@ export function TopNav({ personalServerStatus }: TopNavProps) {
                 )}
                 {shouldShowServerStatus ? (
                   <span
+                    data-slot="server-status-dot"
                     className={cn(
                       "absolute -right-0.5 -top-0.5 size-1.75 rounded-full",
                       "ring-2 ring-muted",
@@ -149,25 +149,20 @@ export function TopNav({ personalServerStatus }: TopNavProps) {
             return (
               <Tooltip key={id}>
                 <TooltipTrigger asChild>
-                  {isStatusPointerItem ? (
-                    <Link
-                      to={to}
-                      aria-label={label}
-                      className={topNavItemClassName}
-                    >
-                      {iconWithStatusDot}
-                      <span className="sr-only">{label}</span>
-                    </Link>
-                  ) : (
-                    <NavLink
-                      to={to}
-                      aria-label={label}
-                      className={topNavItemClassName}
-                    >
-                      {iconWithStatusDot}
-                      <span className="sr-only">{label}</span>
-                    </NavLink>
-                  )}
+                  <NavLink
+                    to={to}
+                    aria-label={label}
+                    className={cn(
+                      topNavItemClassName,
+                      // Manual visual match: when the Server nav item is active,
+                      // keep the status dot ring aligned with the active tile fill.
+                      shouldShowServerStatus &&
+                        "aria-[current=page]:**:data-[slot=server-status-dot]:ring-[#e5e5e5]"
+                    )}
+                  >
+                    {iconWithStatusDot}
+                    <span className="sr-only">{label}</span>
+                  </NavLink>
                 </TooltipTrigger>
                 <TooltipContent side="bottom" className={navTooltipClassName}>
                   {shouldShowServerStatus

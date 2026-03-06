@@ -27,7 +27,6 @@ type PersonalServerStatus = "stopped" | "starting" | "running" | "error"
 
 const navItems: NavItem[] = [
   { id: "home", to: ROUTES.home, label: "Home", Icon: HomeIcon },
-  { id: "apps", to: ROUTES.apps, label: "Apps", Icon: BoxIcon },
   // { to: ROUTES.mcp, label: "MCP", Icon: IconMcp },
   // {
   //   id: "docs",
@@ -43,6 +42,7 @@ const navItems: NavItem[] = [
     label: "Server",
     Icon: ServerIcon,
   },
+  { id: "apps", to: ROUTES.apps, label: "Apps", Icon: BoxIcon },
   {
     id: "settings",
     to: ROUTES.settings,

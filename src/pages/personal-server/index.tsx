@@ -1,5 +1,6 @@
 import { useCallback, useMemo } from "react"
 import { useLocation, useNavigate } from "react-router-dom"
+import { ArrowUpRightIcon } from "lucide-react"
 import { DebugTogglePanel } from "@/components/elements/debug-toggle-panel"
 import { PageContainer } from "@/components/elements/page-container"
 import { LearnMoreLink } from "@/components/typography/link-learn-more"
@@ -80,20 +81,18 @@ export function PersonalServer() {
         <Text as="h1" intent="subtitle" weight="medium">
           Personal Server
         </Text>
-        <div className="space-y-1 lg:w-9/12">
+        <div className="space-y-1 ">
           <Text as="p" intent="small" dim>
-            The Personal Server is your protocol participant: it serves
-            authorized requests for data kept on your device.
-          </Text>
-          <Text as="p" intent="small" dim>
-            Sign in with Vana to register and operate it through the Gateway.{" "}
+            Your Personal Server lets connected apps request data from this
+            device after you approve access.{" "}
             <LearnMoreLink
               href={LINKS.vanaDocsPersonalServers}
-              className="inline-flex items-center gap-px!"
+              withIcon
+              className="gap-px!"
             >
-              Learn why this matters
+              Learn how Personal Servers work
+              <ArrowUpRightIcon aria-hidden="true" />
             </LearnMoreLink>
-            .
           </Text>
         </div>
       </header>

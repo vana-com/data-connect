@@ -156,7 +156,10 @@ export function SettingsPersonalServer({
             <SettingsRow
               wrapIcon={false}
               icon={null}
-              title="Sign in"
+              title="Sign in with Vana"
+              // Needed before apps can request approved data.
+              description="Lets connected apps request approved data"
+              wrapDescriptionBelowSm
               right={
                 <SettingsRowAction
                   variant="dc"

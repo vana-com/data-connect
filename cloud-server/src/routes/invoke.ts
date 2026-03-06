@@ -1,11 +1,13 @@
 import { Router, type Request, type Response } from "express";
 import fs from "node:fs";
 import path from "node:path";
-import { spawn, type ChildProcess } from "node:child_process";
+import { spawn, execSync, type ChildProcess } from "node:child_process";
 import readline from "node:readline";
 import { broadcastEvent } from "../events.js";
 
 const router = Router();
+
+const NEKO_ORIGIN = process.env.NEKO_ORIGIN || "http://localhost:8080";
 
 interface ConnectorProcess {
   child: ChildProcess;
@@ -239,7 +241,31 @@ function startConnector(body: Record<string, unknown>): void {
       status: { type: "STOPPED", message: "Process ended" },
       timestamp: timestamp(),
     });
+    // Auto-reset after every run so next user gets a clean slate
+    if (connectorProcesses.size === 0) {
+      resetSession();
+    }
   });
+}
+
+function resetSession(): void {
+  // Clear exported data
+  const exportDir = path.join(DATA_DIR, "exported_data");
+  if (fs.existsSync(exportDir)) {
+    fs.rmSync(exportDir, { recursive: true, force: true });
+  }
+  const exportsDir = path.join(DATA_DIR, "exports");
+  if (fs.existsSync(exportsDir)) {
+    fs.rmSync(exportsDir, { recursive: true, force: true });
+  }
+  // Clear Chromium profile and restart via supervisord
+  const profileDir = "/home/neko/.config/chromium";
+  if (fs.existsSync(profileDir)) {
+    fs.rmSync(profileDir, { recursive: true, force: true });
+  }
+  try {
+    execSync("supervisorctl restart chromium", { timeout: 10000 });
+  } catch { /* may not have perms, chromium will auto-restart */ }
 }
 
 function stopConnector(body: Record<string, unknown>): void {
@@ -500,6 +526,61 @@ const COMMAND_MAP: Record<
     data_dir: DATA_DIR,
     playwright_runner: PLAYWRIGHT_RUNNER,
   }),
+  set_screen_resolution: async (b) => {
+    const { width, height } = b as { width: number; height: number };
+
+    // Login to n.eko to get a session token
+    const loginRes = await fetch(`${NEKO_ORIGIN}/api/login`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ username: "user", password: "x" }),
+    });
+    if (!loginRes.ok) throw new Error("Failed to login to n.eko");
+    const { token: nekoToken } = (await loginRes.json()) as { token: string };
+    const authHeaders = {
+      "Content-Type": "application/json",
+      Authorization: `Bearer ${nekoToken}`,
+    };
+
+    // Get available configurations and find the closest match
+    const cfgRes = await fetch(
+      `${NEKO_ORIGIN}/api/room/screen/configurations`,
+      { headers: authHeaders },
+    );
+    if (!cfgRes.ok) throw new Error("Failed to get screen configurations");
+    const configs = (await cfgRes.json()) as {
+      width: number;
+      height: number;
+      rate: number;
+    }[];
+
+    // Score each config: prefer matching aspect ratio and closest area
+    const targetArea = width * height;
+    const targetRatio = width / height;
+    let best = configs[0];
+    let bestScore = Infinity;
+    for (const cfg of configs) {
+      const ratioErr = Math.abs(cfg.width / cfg.height - targetRatio);
+      const areaErr =
+        Math.abs(cfg.width * cfg.height - targetArea) / targetArea;
+      const score = ratioErr * 2 + areaErr;
+      if (score < bestScore) {
+        bestScore = score;
+        best = cfg;
+      }
+    }
+
+    const res = await fetch(`${NEKO_ORIGIN}/api/room/screen`, {
+      method: "POST",
+      headers: authHeaders,
+      body: JSON.stringify(best),
+    });
+    if (!res.ok) {
+      const text = await res.text().catch(() => "");
+      throw new Error(`Failed to set resolution (${res.status}): ${text}`);
+    }
+    return res.json();
+  },
   list_browser_sessions: () => [],
   clear_browser_session: () => ({ ok: true }),
   check_connector_updates: () => [],
@@ -512,6 +593,15 @@ const COMMAND_MAP: Record<
   stop_connector_run: (b) => {
     stopConnector(b);
     return { ok: true };
+  },
+  reset_session: () => {
+    // Kill any active connector processes
+    for (const [runId, proc] of connectorProcesses) {
+      try { proc.child.kill("SIGKILL"); } catch { /* already dead */ }
+      connectorProcesses.delete(runId);
+    }
+    resetSession();
+    return { ok: true, message: "Session reset" };
   },
 };
 

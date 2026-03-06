@@ -62,6 +62,36 @@
         "script": "sha256:665a010ce5cc1d44a5278f010a56dafa94ff00e4dcd6458fb22afe3d01a505a4",
         "metadata": "sha256:b556e27341f88d841cf09cf68e0f9b9fa262f64465b2aa2cf9b64c831fe0a6eb"
       }
+    },
+    {
+      "id": "heb-playwright",
+      "company": "heb",
+      "version": "1.0.0",
+      "name": "H-E-B",
+      "description": "Exports your H-E-B account profile, order history, and product nutrition data using Playwright browser automation.",
+      "files": {
+        "script": "heb/heb-playwright.js",
+        "metadata": "heb/heb-playwright.json"
+      },
+      "checksums": {
+        "script": "sha256:10fb9715d30d4484371c1f82b35521842e608ebf54e045c6fcc0d80444e13e2a",
+        "metadata": "sha256:b449085b127d03739a91880250f699dd0b1118f5469474733e647514757e4ae3"
+      }
+    },
+    {
+      "id": "wholefoods-playwright",
+      "company": "wholefoods",
+      "version": "1.0.0",
+      "name": "Whole Foods Market",
+      "description": "Exports your Whole Foods Market order history (via Amazon) and product nutrition data using Playwright browser automation.",
+      "files": {
+        "script": "wholefoods/wholefoods-playwright.js",
+        "metadata": "wholefoods/wholefoods-playwright.json"
+      },
+      "checksums": {
+        "script": "sha256:e5793d78cdbf7a7ca035a2d71a9ebe1af764542a09fd40d06aa632bf1ef0fad5",
+        "metadata": "sha256:dde3a72e809762799120b08b70a6f17ed9fba320aa2bf1ee790b013626fee2c1"
+      }
     }
   ]
 }

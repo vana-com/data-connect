@@ -10,6 +10,8 @@ const DATA_SOURCE_LABELS: Record<string, string> = {
   youtube: "YouTube",
   facebook: "Facebook",
   google: "Google",
+  heb: "H-E-B",
+  wholefoods: "Whole Foods",
 }
 
 export function getPrimaryScopeToken(scopes?: string[]) {

@@ -10,9 +10,16 @@ import {
 import { ROUTES } from "@/config/routes"
 import { cn } from "@/lib/classes"
 import type { LucideIcon } from "lucide-react"
-import { HomeIcon, ServerIcon, UserRoundCogIcon, BoxIcon } from "lucide-react"
-import type { CSSProperties } from "react"
-import { NavLink } from "react-router-dom"
+import {
+  HomeIcon,
+  ServerIcon,
+  UserRoundCogIcon,
+  BoxIcon,
+  RotateCcwIcon,
+} from "lucide-react"
+import { type CSSProperties, useCallback, useState } from "react"
+import { NavLink, useNavigate } from "react-router-dom"
+import { useRuntime } from "@/lib/runtime"
 
 type NavItem = {
   id: "home" | "apps" | "docs" | "server" | "settings"
@@ -70,6 +77,24 @@ interface TopNavProps {
 }
 
 export function TopNav({ personalServerStatus }: TopNavProps) {
+  const runtime = useRuntime()
+  const navigate = useNavigate()
+  const [resetting, setResetting] = useState(false)
+
+  const handleReset = useCallback(async () => {
+    if (resetting) return
+    setResetting(true)
+    try {
+      await runtime.invoke("reset_session")
+      // Navigate home to refresh state
+      navigate(ROUTES.home)
+      window.location.reload()
+    } catch (err) {
+      console.error("Failed to reset session:", err)
+      setResetting(false)
+    }
+  }, [runtime, navigate, resetting])
+
   return (
     <div data-component="top-nav" className="relative z-20 w-full">
       {/* spacer covering the dot pattern, sets the nav under the macOS traffic lights bar */}
@@ -102,6 +127,21 @@ export function TopNav({ personalServerStatus }: TopNavProps) {
 
         {/* Navigation Icons */}
         <nav className="flex items-center gap-[3px]">
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <button
+                onClick={handleReset}
+                disabled={resetting}
+                aria-label="Reset session"
+                className={cn(topNavItemClassName, resetting && "animate-spin")}
+              >
+                <RotateCcwIcon className={navIconClasses} aria-hidden />
+              </button>
+            </TooltipTrigger>
+            <TooltipContent side="bottom" className={navTooltipClassName}>
+              Reset session
+            </TooltipContent>
+          </Tooltip>
           {navItems.map(({ id, to, label, Icon, external }) => {
             const shouldShowServerStatus = id === "server"
             const iconWithStatusDot = (

@@ -28,6 +28,25 @@ export function useInitialize() {
   const runsInitialized = useRef(false);
   const connectorUpdatesInitialized = useRef(false);
 
+  // Handle ?reset=true query param — reset the cloud session before loading
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    if (params.get("reset") !== "true") return;
+
+    // Remove ?reset from URL so refresh doesn't re-trigger
+    params.delete("reset");
+    const clean = params.toString();
+    const newUrl = window.location.pathname + (clean ? `?${clean}` : "");
+    window.history.replaceState({}, "", newUrl);
+
+    runtime.invoke("reset_session").then(() => {
+      dispatch(setRuns([]));
+      console.log("[Initialize] Session reset via ?reset=true");
+    }).catch((err: unknown) => {
+      console.error("[Initialize] Failed to reset session:", err);
+    });
+  }, [runtime, dispatch]);
+
   useEffect(() => {
     // Hydrate persisted runs once on first mount.
     if (runsInitialized.current) return;

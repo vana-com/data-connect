@@ -9,6 +9,7 @@ import {
 } from "../lib/grant-params"
 import { setAuthenticated } from "../state/store"
 import { ROUTES } from "@/config/routes"
+import { isTauri } from "@/lib/runtime"
 
 /**
  * Parse a vana:// deep link URL into GrantParams.
@@ -33,6 +34,7 @@ function parseDeepLinkUrl(url: string): GrantParams | null {
  * Returns null in non-Tauri environments (tests, browser dev).
  */
 async function getTauriDeepLink() {
+  if (!isTauri) return null
   try {
     return await import("@tauri-apps/plugin-deep-link")
   } catch {

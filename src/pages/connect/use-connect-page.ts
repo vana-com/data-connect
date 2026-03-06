@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from "react"
 import { useNavigate, useSearchParams } from "react-router-dom"
 import { useSelector } from "react-redux"
-import { DEFAULT_APP_ID, getAppRegistryEntry } from "@/apps/registry"
+import { getAppRegistryEntry } from "@/apps/registry"
 import {
   buildGrantSearchParams,
   getGrantParamsFromSearchParams,
@@ -49,9 +49,8 @@ export function useConnectPage(): UseConnectPageResult {
   const params = getGrantParamsFromSearchParams(searchParams)
   const hasGrantSession = Boolean(params.sessionId)
   const [generatedSessionId] = useState(() => `grant-session-${Date.now()}`)
-  const resolvedAppId = params.appId ?? DEFAULT_APP_ID
-  const appEntry =
-    getAppRegistryEntry(resolvedAppId) ?? getAppRegistryEntry(DEFAULT_APP_ID)
+  const resolvedAppId = params.appId
+  const appEntry = getAppRegistryEntry(resolvedAppId)
   const sessionId = params.sessionId ?? generatedSessionId
 
   const prefetchedSessionRef = useRef<string | null>(null)
@@ -172,13 +171,17 @@ export function useConnectPage(): UseConnectPageResult {
   const isConnecting = Boolean(connectRunId)
   const scopeSummary =
     grantScopes && grantScopes.length > 0 ? grantScopes.join(", ") : null
+  const isMissingAppSelection =
+    platformsLoaded && !resolvedAppId && (!grantScopes || grantScopes.length === 0)
   const isMissingRegistryEntry = platformsLoaded && !registryEntry
   const isMissingConnector =
     platformsLoaded && Boolean(registryEntry) && !connectPlatform
 
   const connectorErrorMessage = platformLoadError
     ? `Could not load connectors.${scopeSummary ? ` Scope: ${scopeSummary}.` : ""}`
-    : isMissingRegistryEntry
+    : isMissingAppSelection
+      ? "Missing app or scopes. Open Connect from a data app, or include scopes in the URL."
+      : isMissingRegistryEntry
       ? `No data source matches the requested scope${
           scopeSummary ? `: ${scopeSummary}.` : "."
         }`

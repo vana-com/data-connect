@@ -137,11 +137,14 @@ describe("Connect", () => {
       expect(await screen.findByText("Connect your data")).toBeTruthy()
     })
 
-    it("does not fall back to app scopes when appId is known but grant scopes are missing", async () => {
-      mockClaimSession.mockRejectedValueOnce(new Error("prefetch failed"))
+    it("shows a missing app/scopes message when connect is opened without context", () => {
       mockUsePlatforms.mockReturnValue(defaultPlatforms())
-      renderConnect("?sessionId=sess-123&secret=my-secret&appId=rickroll")
-      expect(await screen.findByText("Connect your data")).toBeTruthy()
+      renderConnect()
+
+      expect(screen.getByText("Connect your data")).toBeTruthy()
+      expect(
+        screen.getByText(/missing app or scopes\. open connect from a data app/i)
+      ).toBeTruthy()
     })
 
     it("auto-navigates to grant when platform is already connected", async () => {
@@ -177,7 +180,7 @@ describe("Connect", () => {
   describe("platform resolution", () => {
     it("shows a missing connector message when no platform matches", () => {
       mockUsePlatforms.mockReturnValue(defaultPlatforms())
-      renderConnect()
+      renderConnect("?scopes=%5B%22chatgpt.conversations%22%5D")
 
       expect(
         screen.getByText(/no connector installed for chatgpt/i)
@@ -201,7 +204,7 @@ describe("Connect", () => {
       mockUsePlatforms.mockReturnValue(
         defaultPlatforms({ platformLoadError: "IPC error" })
       )
-      renderConnect()
+      renderConnect("?scopes=%5B%22chatgpt.conversations%22%5D")
       expect(screen.getByText(/could not load connectors/i)).toBeTruthy()
     })
 

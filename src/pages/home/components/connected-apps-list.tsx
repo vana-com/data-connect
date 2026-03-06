@@ -1,6 +1,10 @@
 import { useCallback, useMemo } from "react"
 import { Link, useLocation, useNavigate } from "react-router-dom"
 import {
+  openSubmittedAppExternalUrl,
+  parseSubmittedAppExternalUrl,
+} from "@/apps/external-url"
+import {
   SourceRowActionButton,
   SourceRowWithActions,
 } from "@/components/elements/source-row"
@@ -12,7 +16,6 @@ import {
   TooltipContent,
   TooltipTrigger,
 } from "@/components/ui/tooltip"
-import { openExternalUrl } from "@/lib/open-resource"
 import { buildSettingsUrl } from "@/pages/settings/url"
 import { getAppRegistryEntry } from "@/apps/registry"
 import type { ConnectedApp } from "@/types"
@@ -45,10 +48,6 @@ function formatConnectedAt(value: string) {
   })
 }
 
-async function openExternalApp(url: string) {
-  return openExternalUrl(url)
-}
-
 function getConnectedAppUrl(app: ConnectedApp, search: string) {
   const debugUrl = resolveConnectedAppsUiDebugExternalUrl({
     appId: app.id,
@@ -58,7 +57,7 @@ function getConnectedAppUrl(app: ConnectedApp, search: string) {
 
   const entry = getAppRegistryEntry(app.id)
   return entry?.status === "live"
-    ? new URL(entry.externalUrl, window.location.origin)
+    ? parseSubmittedAppExternalUrl(entry.externalUrl)
     : null
 }
 
@@ -156,7 +155,7 @@ export function ConnectedAppsList({ apps }: ConnectedAppsListProps) {
           const appUrl = getConnectedAppUrl(app, location.search)
           const handleOpenApp = appUrl
             ? () => {
-                void openExternalApp(appUrl.toString())
+                void openSubmittedAppExternalUrl(appUrl)
               }
             : undefined
 

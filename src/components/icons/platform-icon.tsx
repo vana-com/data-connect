@@ -26,7 +26,6 @@ interface PlatformIconProps extends Omit<ComponentProps<"div">, "children"> {
 // Default 2px padding to ensure the icon is centered within the wrapper
 const iconWrapper =
   "flex items-center justify-center rounded-button overflow-hidden p-1"
-
 /**
  * Platform icon component
  * Displays a platform logo or first-letter fallback
@@ -58,6 +57,7 @@ export function PlatformIcon({
   const scaledImageSize = Math.round(size * imageScale)
   // 12% of the image size is the border radius
   const imageBorderRadiusPx = Math.max(3, Math.round(scaledImageSize * 0.12))
+  const innerBorderRadiusPx = Math.max(3, Math.round(size * 0.12))
 
   useEffect(() => {
     setImageFailed(false)
@@ -70,17 +70,21 @@ export function PlatformIcon({
         aria-hidden={resolvedAriaHidden}
         {...props}
       >
-        <img
-          src={resolvedImageSrc}
-          alt={imageAlt}
-          className="object-contain"
-          onError={() => setImageFailed(true)}
+        <span
+          className="flex items-center justify-center overflow-hidden bg-muted"
           style={{
             width: `${scaledImageSize}px`,
             height: `${scaledImageSize}px`,
             borderRadius: `${imageBorderRadiusPx}px`,
           }}
-        />
+        >
+          <img
+            src={resolvedImageSrc}
+            alt={imageAlt}
+            className="h-full w-full object-contain"
+            onError={() => setImageFailed(true)}
+          />
+        </span>
       </div>
     )
   }
@@ -100,7 +104,6 @@ export function PlatformIcon({
   // Fallback: show first letter. Background only on inner span so it doesn't bleed into padding.
   const label = (fallbackLabel?.trim() || iconName.trim().charAt(0)).toUpperCase()
   const fontSize = Math.round(size * fallbackScale)
-  const innerBorderRadiusPx = Math.max(3, Math.round(size * 0.12))
   return (
     <div
       className={cn(iconWrapper, className)}
@@ -109,7 +112,7 @@ export function PlatformIcon({
     >
       <span
         className={cn(
-          "flex items-center justify-center",
+          "flex items-center justify-center overflow-hidden",
           "text-background bg-foreground font-semi"
         )}
         style={{

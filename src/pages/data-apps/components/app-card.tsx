@@ -1,14 +1,11 @@
-import type { ReactNode } from "react"
-import { ChevronRightIcon } from "lucide-react"
 import { actionButtonSurfaceClass } from "@/components/typography/button-action"
-import { fieldHeight } from "@/components/typography/field"
-import { Text } from "@/components/typography/text"
 import { buttonVariants } from "@/components/ui/button"
 import { cn } from "@/lib/classes"
+import { ArrowUpRightIcon } from "lucide-react"
+import type { ReactNode } from "react"
 
 type AppCardProps = {
   children: ReactNode
-  footerLabel: string
   ariaLabel?: string
   onClick?: () => void
   interactive?: boolean
@@ -17,7 +14,6 @@ type AppCardProps = {
 
 export function AppCard({
   children,
-  footerLabel,
   ariaLabel,
   onClick,
   interactive = true,
@@ -29,7 +25,7 @@ export function AppCard({
       size: "xl",
       fullWidth: true,
     }),
-    "min-h-[220px] min-w-0 whitespace-normal p-0! items-start!",
+    "group min-h-[220px] min-w-0 whitespace-normal p-0! items-start!",
     interactive
       ? actionButtonSurfaceClass
       : "bg-background/30! hover:border-ring/20 cursor-default p-0 transition-none",
@@ -42,26 +38,27 @@ export function AppCard({
       <div className="mt-auto">
         <div
           className={cn(
-            "flex w-full items-center justify-between border-t text-left",
-            fieldHeight.default,
-            "px-4"
+            // border-t
+            "flex w-full items-center justify-end text-left",
+            // fieldHeight.default,
+            "px-3 py-2.5"
           )}
         >
-          <Text
-            as="span"
-            intent="button"
-            weight="medium"
-            truncate
-            align="left"
-          >
-            {footerLabel}
-          </Text>
-          <div className="flex items-center gap-2 self-end h-full">
-            <ChevronRightIcon
-              className="size-5 text-foreground-muted"
-              aria-hidden
-            />
-          </div>
+          {interactive ? (
+            <div
+              className={cn(
+                // size-5 + p-1 = 28px
+                "p-1 bg-foreground rounded-full opacity-0 translate-y-0.5",
+                "transition-[opacity,transform]",
+                "group-hover:opacity-100 group-hover:translate-y-0 group-focus-visible:opacity-100 group-focus-visible:translate-y-0"
+              )}
+            >
+              <ArrowUpRightIcon
+                className="size-5 text-background"
+                aria-hidden
+              />
+            </div>
+          ) : null}
         </div>
       </div>
     </div>
@@ -70,6 +67,7 @@ export function AppCard({
   if (onClick) {
     return (
       <button
+        data-slot="app-card"
         type="button"
         onClick={onClick}
         aria-label={ariaLabel}

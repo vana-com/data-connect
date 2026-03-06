@@ -6,7 +6,7 @@ externalUrl: https://linkedin-to-readcv.vercel.app/
 icon: L
 iconUrl: https://linkedin-to-readcv.vercel.app/icon.svg?icon.57c7b5ca.svg
 description: Format your LinkedIn into a ReadCV-style one-page site you own.
-category: Portfolio
+category: Resume
 scopes:
   - linkedin.profile
 ---

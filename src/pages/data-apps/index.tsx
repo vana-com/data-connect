@@ -4,8 +4,8 @@ import { LearnMoreLink } from "@/components/typography/link-learn-more"
 import { Text } from "@/components/typography/text"
 import { LINKS } from "@/config/links"
 import { ArrowUpRightIcon } from "lucide-react"
-import { ExampleAppCard } from "./components/example-app-card"
 import { RegistryAppCard } from "./components/registry-app-card"
+import { cn } from "@/lib/utils"
 
 export function DataApps() {
   const apps = getAppRegistryEntries()
@@ -45,9 +45,15 @@ export function DataApps() {
         </Text>
       </div>
 
-      <section className="lg:-mx-w48">
-        <div className="grid gap-w4 md:grid-cols-2 2xl:grid-cols-3">
-          <ExampleAppCard />
+      <section className="md:-mx-w24 lg:-mx-w48 xl:-mx-w64">
+        <div
+          className={cn(
+            "grid gap-3",
+            "md:grid-cols-2",
+            "xl:grid-cols-3"
+            // 2xl:grid-cols-4"
+          )}
+        >
           {apps.map(app => (
             <RegistryAppCard key={app.id} app={app} />
           ))}

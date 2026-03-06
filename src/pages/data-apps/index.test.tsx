@@ -41,9 +41,8 @@ describe("DataApps", () => {
     expect(
       screen.getByRole("heading", { level: 1, name: "Data Apps" })
     ).toBeTruthy()
-    expect(
-      screen.getByText(/Create apps with the Vana Data Protocol/i)
-    ).toBeTruthy()
+    expect(screen.getByRole("link", { name: "Vana Data Protocol" })).toBeTruthy()
+    expect(screen.getByText(/Already have an app\?/i)).toBeTruthy()
   })
 
   it("renders app builder placeholder CTA", () => {
@@ -52,26 +51,52 @@ describe("DataApps", () => {
     expect(screen.getAllByText("Add your app here").length).toBeGreaterThanOrEqual(1)
     expect(screen.getAllByText("View Next.js example app").length).toBeGreaterThanOrEqual(1)
     expect(
-      screen.getAllByRole("button", { name: "Open app builder registration" }).length
+      screen.getAllByRole("button", { name: "Open Next.js example app" }).length
     ).toBeGreaterThanOrEqual(1)
   })
 
-  it("renders the learn more documentation link", () => {
+  it("renders registry-backed app cards", () => {
     renderDataApps()
 
-    const learnMoreLinks = screen.getAllByRole("link", { name: /Learn more/i })
-    expect(learnMoreLinks.length).toBeGreaterThan(0)
-    learnMoreLinks.forEach(link => {
+    expect(screen.getAllByText("Peak Think").length).toBeGreaterThan(0)
+    expect(screen.getAllByText("LinkedIn to ReadCV").length).toBeGreaterThan(0)
+    expect(screen.queryByText("Vana Trainer")).toBeNull()
+    expect(
+      screen.getAllByRole("button", { name: "Open Peak Think" }).length
+    ).toBeGreaterThan(0)
+    expect(
+      screen.getAllByRole("button", { name: "Open LinkedIn to ReadCV" }).length
+    ).toBeGreaterThan(0)
+  })
+
+  it("renders the protocol documentation link", () => {
+    renderDataApps()
+
+    const protocolLinks = screen.getAllByRole("link", {
+      name: "Vana Data Protocol",
+    })
+    expect(protocolLinks.length).toBeGreaterThan(0)
+    protocolLinks.forEach(link => {
       expect(link.getAttribute("href")).toBe(LINKS.vanaDocsProtocol)
+    })
+  })
+
+  it("links app submissions to the GitHub guide", () => {
+    renderDataApps()
+
+    const submitLinks = screen.getAllByRole("link", {
+      name: /submit via github/i,
+    })
+    expect(submitLinks.length).toBeGreaterThan(0)
+    submitLinks.forEach(link => {
+      expect(link.getAttribute("href")).toBe(LINKS.appSubmissionGuide)
     })
   })
 
   it("opens app builder docs when CTA is clicked", async () => {
     renderDataApps()
 
-    fireEvent.click(
-      screen.getAllByRole("button", { name: "Open app builder registration" })[0]
-    )
+    fireEvent.click(screen.getAllByRole("button", { name: "Open Next.js example app" })[0])
 
     const mockOpen = vi.mocked(open)
     await waitFor(() => {

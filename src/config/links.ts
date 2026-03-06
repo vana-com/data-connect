@@ -3,6 +3,8 @@ export const LINKS = {
   appBuilderDocs: "https://github.com/vana-com/data-connect",
   appBuilderExample: "https://github.com/vana-com/vana-connect-starter",
   appBuilderRegistration: "https://connect.vana.org/admin",
+  appSubmissionGuide:
+    "https://github.com/vana-com/data-connect/blob/main/ecosystem/submit-data-app.md",
   githubRepo: "https://github.com/vana-com/data-connect",
   vanaDocs: "https://docs.vana.org",
   vanaDocsProtocol: "https://docs.vana.org/data-portability-protocol",

@@ -1,7 +1,23 @@
 // @vitest-environment jsdom
 import { describe, expect, it, vi, afterEach, beforeEach } from "vitest"
-import { render, screen, fireEvent, cleanup, waitFor } from "@testing-library/react"
+import { render, screen, fireEvent, cleanup } from "@testing-library/react"
 import { ScreencastModal } from "./screencast-modal"
+
+vi.mock("@/lib/runtime", () => ({
+  useRuntime: () => ({
+    mode: "tauri",
+    invoke: vi.fn(),
+    fetch: vi.fn(),
+    onEvent: vi.fn(),
+    getAppVersion: vi.fn(),
+  }),
+}))
+
+vi.mock("./neko-client", () => ({
+  NekoClient: vi.fn(({ server, className }) => (
+    <div data-testid="neko-client" data-server={server} className={className} />
+  )),
+}))
 
 const WS_CONNECTING = 0
 const WS_OPEN = 1
@@ -34,98 +50,28 @@ class MockWebSocket {
 }
 
 describe("ScreencastModal", () => {
-  beforeEach(() => {
-    // jsdom doesn't have navigator.permissions — mock it
-    Object.defineProperty(navigator, "permissions", {
-      value: {
-        query: vi.fn().mockResolvedValue({
-          state: "granted",
-          addEventListener: vi.fn(),
-        }),
-      },
-      writable: true,
-      configurable: true,
-    })
-  })
-
   afterEach(() => {
     cleanup()
     vi.restoreAllMocks()
   })
 
-  it("renders iframe immediately when clipboard permission is granted", async () => {
-    render(<ScreencastModal nekoUrl="http://localhost:8080" />)
-    const iframe = await waitFor(() => screen.getByTitle("Remote browser view"))
-    expect(iframe.getAttribute("src")).toBe(
-      "http://localhost:8080/?embed=1&usr=user&pwd=x"
+  it("renders NekoClient with the server URL", () => {
+    render(<ScreencastModal nekoUrl="http://localhost:3000/neko" />)
+    const nekoClient = screen.getByTestId("neko-client")
+    expect(nekoClient.getAttribute("data-server")).toBe(
+      "http://localhost:3000/neko",
     )
   })
 
-  it("shows clipboard button when permission is not granted", async () => {
-    ;(navigator.permissions.query as ReturnType<typeof vi.fn>).mockResolvedValue({
-      state: "prompt",
-      addEventListener: vi.fn(),
-    })
-    render(<ScreencastModal nekoUrl="http://localhost:8080" />)
-    const button = await waitFor(() =>
-      screen.getByText("Enable clipboard sharing")
-    )
-    expect(button).toBeTruthy()
-    expect(screen.queryByTitle("Remote browser view")).toBeNull()
-  })
-
-  it("loads iframe after clipboard button is clicked", async () => {
-    ;(navigator.permissions.query as ReturnType<typeof vi.fn>).mockResolvedValue({
-      state: "prompt",
-      addEventListener: vi.fn(),
-    })
-    Object.assign(navigator, {
-      clipboard: { readText: vi.fn().mockResolvedValue("") },
-    })
-    render(<ScreencastModal nekoUrl="http://localhost:8080" />)
-    const button = await waitFor(() =>
-      screen.getByText("Enable clipboard sharing")
-    )
-    fireEvent.click(button)
-    const iframe = await waitFor(() => screen.getByTitle("Remote browser view"))
-    expect(iframe).toBeTruthy()
-  })
-
-  it("loads iframe when Permissions API is not supported", async () => {
-    ;(navigator.permissions.query as ReturnType<typeof vi.fn>).mockRejectedValue(
-      new Error("not supported")
-    )
-    render(<ScreencastModal nekoUrl="http://localhost:8080" />)
-    const iframe = await waitFor(() => screen.getByTitle("Remote browser view"))
-    expect(iframe).toBeTruthy()
-  })
-
-  it("sets clipboard permissions on the iframe", async () => {
-    render(<ScreencastModal nekoUrl="http://localhost:8080" />)
-    const iframe = await waitFor(() => screen.getByTitle("Remote browser view"))
-    expect(iframe.getAttribute("allow")).toBe("clipboard-read; clipboard-write")
-  })
-
-  it("shows connecting state before iframe loads", () => {
-    render(<ScreencastModal nekoUrl="http://localhost:8080" />)
+  it("shows connecting state initially", () => {
+    render(<ScreencastModal nekoUrl="http://localhost:3000/neko" />)
     expect(screen.getByText("Connecting to browser...")).toBeTruthy()
-  })
-
-  it("shows connected state after iframe loads", async () => {
-    render(<ScreencastModal nekoUrl="http://localhost:8080" />)
-    const iframe = await waitFor(() => screen.getByTitle("Remote browser view"))
-    fireEvent.load(iframe)
-    expect(
-      screen.getByText(
-        "Sign in below — your input is forwarded to the remote browser"
-      )
-    ).toBeTruthy()
   })
 
   it("calls onClose when the close button is clicked", () => {
     const onClose = vi.fn()
     render(
-      <ScreencastModal nekoUrl="http://localhost:8080" onClose={onClose} />
+      <ScreencastModal nekoUrl="http://localhost:3000/neko" onClose={onClose} />,
     )
     const button = screen.getByLabelText("Close browser view")
     fireEvent.click(button)
@@ -133,7 +79,7 @@ describe("ScreencastModal", () => {
   })
 
   it("does not render close button when onClose is not provided", () => {
-    render(<ScreencastModal nekoUrl="http://localhost:8080" />)
+    render(<ScreencastModal nekoUrl="http://localhost:3000/neko" />)
     expect(screen.queryByLabelText("Close browser view")).toBeNull()
   })
 
@@ -151,27 +97,16 @@ describe("ScreencastModal", () => {
       globalThis.WebSocket = originalWebSocket
     })
 
-    it("renders canvas viewer instead of iframe in CDP mode", () => {
+    it("renders canvas viewer instead of NekoClient in CDP mode", () => {
       render(
         <ScreencastModal
-          nekoUrl="http://localhost:8080"
+          nekoUrl="http://localhost:3000/neko"
           viewMode="cdp"
           screencastWsUrl="ws://localhost:3000/ws/screencast?token=test"
-        />
+        />,
       )
-      expect(screen.queryByTitle("Remote browser view")).toBeNull()
+      expect(screen.queryByTestId("neko-client")).toBeNull()
       expect(document.querySelector("canvas")).toBeTruthy()
-    })
-
-    it("skips clipboard permission check in CDP mode", () => {
-      render(
-        <ScreencastModal
-          nekoUrl="http://localhost:8080"
-          viewMode="cdp"
-          screencastWsUrl="ws://localhost:3000/ws/screencast?token=test"
-        />
-      )
-      expect(navigator.permissions.query).not.toHaveBeenCalled()
     })
   })
 })

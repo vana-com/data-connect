@@ -5,15 +5,37 @@ services:
       dockerfile: cloud-server/Dockerfile
     ports:
       - "3000:3000"
+      - "8090:8080" # n.eko direct (debug keyboard)
       - "9222:9222" # CDP debugging
+      - "59000:59000/udp"
+      - "59000:59000/tcp"
     volumes:
       - profile-data:/data
-      - ./cloud-server/src:/app/cloud-server/src
-      - ./connectors:/app/connectors
     shm_size: "2gb"
+    develop:
+      watch:
+        - action: rebuild
+          path: ./cloud-server/src
+        - action: sync
+          path: ./connectors
+          target: /app/connectors
+        - action: sync
+          path: ./dist
+          target: /app/dist
     environment:
       - NODE_ENV=development
       - AUTH_TOKEN=dev-token-12345
+      - NEKO_SERVER_BIND=0.0.0.0:8080
+      - NEKO_LEGACY=false
+      - NEKO_WEBRTC_UDPMUX=59000
+      - NEKO_WEBRTC_TCPMUX=59000
+      - NEKO_WEBRTC_ICELITE=1
+      - NEKO_WEBRTC_NAT1TO1=${PUBLIC_IP:-127.0.0.1}
+      - NEKO_MEMBER_PROVIDER=noauth
+      - NEKO_SESSION_IMPLICIT_HOSTING=true
+      - NEKO_IMPLICITCONTROL=true
+      - NEKO_DESKTOP_SCREEN=${NEKO_DESKTOP_SCREEN:-390x844@30}
+      - CHROMIUM_MOBILE_FLAGS=${CHROMIUM_MOBILE_FLAGS:---user-agent=Mozilla/5.0 (iPhone; CPU iPhone OS 17_0 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/17.0 Mobile/15E148 Safari/604.1}
 
 volumes:
   profile-data:

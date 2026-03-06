@@ -1,11 +1,12 @@
-import { AlertTriangleIcon, ArrowRightIcon } from "lucide-react"
+import { AlertTriangleIcon } from "lucide-react"
+import { IconFlow } from "@/components/elements/icon-flow"
 import { PageContainer } from "@/components/elements/page-container"
 import { Button } from "@/components/ui/button"
-import { PlatformIcon } from "@/components/icons/platform-icon"
 import { Text } from "@/components/typography/text"
 import { PageHeading } from "@/components/typography/page-heading"
 import { LoadingButton } from "@/components/elements/button-loading"
 import { OpenExternalLink } from "@/components/typography/link-open-external"
+import { PlatformIcon } from "@/components/icons/platform-icon"
 import { cn } from "@/lib/classes"
 import { LINKS } from "@/config/links"
 import {
@@ -335,20 +336,24 @@ function GrantConsentRowFrame({
       )}
     >
       {/* Usually 36px high within 64px ActionPanel, so we add pt to keep this illusion */}
-      <div className="flex shrink-0 items-center gap-px py-[13.5px]">
-        <PlatformIcon
-          iconName={sourceLabel ?? "Data"}
-          size={28}
-          aria-hidden="true"
-        />
-        <ArrowRightIcon aria-hidden="true" className="size-[1.125em]" />
-        <PlatformIcon
-          iconName={appName}
-          imageSrc={builderIconSrc}
-          size={28}
-          aria-hidden="true"
-        />
-      </div>
+      <IconFlow
+        className="py-[13.5px]"
+        from={
+          <PlatformIcon
+            iconName={sourceLabel ?? "Data"}
+            size={28}
+            aria-hidden="true"
+          />
+        }
+        to={
+          <PlatformIcon
+            iconName={appName}
+            imageSrc={builderIconSrc}
+            size={28}
+            aria-hidden="true"
+          />
+        }
+      />
       <Text as="p" intent="button" weight="medium" className={cn("py-[20px]")}>
         {children}
       </Text>

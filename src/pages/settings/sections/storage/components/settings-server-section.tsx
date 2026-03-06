@@ -15,10 +15,7 @@ import {
   SettingsRowAction,
   SettingsSingleSelectRowGroup,
 } from "@/pages/settings/components/public"
-import {
-  SettingsBadgeActive,
-  SettingsBadgeNone,
-} from "./settings-status-badge"
+import { SettingsBadgeActive, SettingsBadgeNone } from "./settings-status-badge"
 import { SettingsConfirmAction } from "@/pages/settings/components/settings-confirm-action"
 import { AuthRow } from "./auth-row"
 import { PublicEndpointRow } from "./public-endpoint-row"
@@ -235,7 +232,7 @@ export function SettingsServerSection({
                     <div className="flex flex-wrap gap-2 pt-gap">
                       <Button
                         size="sm"
-                        variant="accent"
+                        variant="dc"
                         fullWidth
                         disabled={isRestarting}
                         onClick={() => void handleRestart()}

@@ -38,7 +38,7 @@ scopes:
       iconUrl: undefined,
       description: "Example app description.",
       category: "Assistant",
-      dataRequired: ["ChatGPT Conversations"],
+      dataRequired: ["ChatGPT"],
       scopes: ["chatgpt.conversations"],
     })
   })
@@ -101,7 +101,27 @@ scopes:
 ---`
     )
 
-    expect(entry?.dataRequired).toEqual(["ChatGPT Conversations"])
+    expect(entry?.dataRequired).toEqual(["ChatGPT"])
+  })
+
+  it("dedupes multiple scopes from the same platform into one label", () => {
+    const entry = parseAppSubmissionMarkdown(
+      "/virtual/ecosystem/app-submissions/example.md",
+      `---
+id: example
+name: Example App
+status: live
+externalUrl: https://example.com
+icon: E
+description: Example app description.
+category: Assistant
+scopes:
+  - linkedin.profile
+  - linkedin.connections
+---`
+    )
+
+    expect(entry?.dataRequired).toEqual(["LinkedIn"])
   })
 
   it("ignores the template file", () => {

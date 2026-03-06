@@ -1,13 +1,16 @@
 import { z } from "zod"
 import { isAllowedSubmittedAppExternalUrl } from "./external-url"
-import { formatScopeLabel } from "@/lib/scope-labels"
+import { getPrimaryDataSourceLabel } from "@/lib/scope-labels"
 import type { AppRegistryEntry } from "./registry-types"
 
-const rawSubmissionFiles = import.meta.glob("../../ecosystem/app-submissions/*.md", {
-  eager: true,
-  import: "default",
-  query: "?raw",
-})
+const rawSubmissionFiles = import.meta.glob(
+  "../../ecosystem/app-submissions/*.md",
+  {
+    eager: true,
+    import: "default",
+    query: "?raw",
+  }
+)
 
 const appSubmissionBaseSchema = z.object({
   id: z.string().min(1),
@@ -26,12 +29,9 @@ const appSubmissionBaseSchema = z.object({
 
 const liveAppSubmissionSchema = appSubmissionBaseSchema.extend({
   status: z.literal("live"),
-  externalUrl: z
-    .string()
-    .url()
-    .refine(isAllowedSubmittedAppExternalUrl, {
-      message: "externalUrl must use https://.",
-    }),
+  externalUrl: z.string().url().refine(isAllowedSubmittedAppExternalUrl, {
+    message: "externalUrl must use https://.",
+  }),
   scopes: z.array(z.string().min(1)).min(1),
 })
 
@@ -66,8 +66,8 @@ export function parseAppSubmissionMarkdown(
 export function parseSubmittedAppRegistryEntries(
   rawFiles: Record<string, string>
 ): AppRegistryEntry[] {
-  return Object.entries(rawFiles)
-    .toSorted(([leftPath], [rightPath]) => leftPath.localeCompare(rightPath))
+  return [...Object.entries(rawFiles)]
+    .sort(([leftPath], [rightPath]) => leftPath.localeCompare(rightPath))
     .flatMap(([filePath, rawMarkdown]) => {
       const entry = parseAppSubmissionMarkdown(filePath, rawMarkdown)
       return entry ? [entry] : []
@@ -75,7 +75,9 @@ export function parseSubmittedAppRegistryEntries(
 }
 
 export function getSubmittedAppRegistryEntries(): AppRegistryEntry[] {
-  return parseSubmittedAppRegistryEntries(rawSubmissionFiles as Record<string, string>)
+  return parseSubmittedAppRegistryEntries(
+    rawSubmissionFiles as Record<string, string>
+  )
 }
 
 function getDataRequiredFromScopes(scopes?: string[]) {
@@ -83,7 +85,13 @@ function getDataRequiredFromScopes(scopes?: string[]) {
     return []
   }
 
-  return Array.from(new Set(scopes.map(formatScopeLabel)))
+  return Array.from(
+    new Set(
+      scopes
+        .map(scope => getPrimaryDataSourceLabel([scope]))
+        .filter((label): label is string => Boolean(label))
+    )
+  )
 }
 
 function parseFrontmatter(rawMarkdown: string): Record<string, unknown> {
@@ -135,5 +143,7 @@ function parseFrontmatter(rawMarkdown: string): Record<string, unknown> {
     currentListKey = key
   }
 
-  throw new Error("Submission markdown frontmatter is missing a closing delimiter")
+  throw new Error(
+    "Submission markdown frontmatter is missing a closing delimiter"
+  )
 }

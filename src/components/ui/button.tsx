@@ -86,7 +86,7 @@ const buttonVariants = cva(
         ],
         xl: [
           fieldHeight.xl,
-          "rounded-button px-6 has-[>svg]:px-4 gap-1.75",
+          "rounded-card px-6 has-[>svg]:px-4 gap-1.75",
           "[&_svg:not([class*='size-'])]:size-[0.9lh]", // test lh :)
           // "[&_svg:not([class*='size-'])]:size-[1.25em]",
           "text-button",

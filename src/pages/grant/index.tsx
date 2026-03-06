@@ -1,38 +1,23 @@
-import { useSearchParams, useLocation } from "react-router-dom"
+import { useSearchParams, useLocation, useNavigate } from "react-router-dom"
 import { useState } from "react"
 import { getGrantParamsFromSearchParams } from "@/lib/grant-params"
 import { PageContainer } from "@/components/elements/page-container"
 import { LoadingState } from "@/components/elements/loading-state"
 import { useBrowserStatus } from "./use-browser-status"
+import { useGrantDebugState } from "./use-grant-debug-state"
 import { useGrantFlow } from "./use-grant-flow"
 import { BrowserSetupSection } from "./components/browser-setup-section"
 import { GrantErrorState } from "./components/grant-error-state"
 import { GrantSuccessState } from "./components/grant-success-state"
 import { GrantConsentState } from "./components/consent/grant-consent-state"
 import { GrantDebugPanel } from "./components/grant-debug-panel.tsx"
-import type {
-  BuilderManifest,
-  GrantFlowState,
-  GrantSession,
-  PrefetchedGrantData,
-} from "./types"
-
-const DEBUG_SESSION_ID = "grant-session-debug"
-function getDebugSession(): GrantSession {
-  return {
-    id: DEBUG_SESSION_ID,
-    granteeAddress: "0x0000000000000000000000000000000000000000",
-    scopes: ["chatgpt.conversations"],
-    expiresAt: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString(),
-    appName: "Debug App",
-    appIcon: "🔗",
-  }
-}
+import type { PrefetchedGrantData } from "./types"
 
 export function Grant() {
   const browserStatus = useBrowserStatus()
   const [searchParams] = useSearchParams()
   const location = useLocation()
+  const navigate = useNavigate()
   const params = getGrantParamsFromSearchParams(searchParams)
   // Pre-fetched session + builder data passed from the connect page via navigation state.
   // When available, the grant flow skips claim + verify steps (already done in background).
@@ -48,9 +33,6 @@ export function Grant() {
       ? Object.keys(location.state as object)
       : null,
   })
-  const [debugStatus, setDebugStatus] = useState<
-    GrantFlowState["status"] | null
-  >(null)
   const [debugWalletConnected, setDebugWalletConnected] = useState(true)
 
   const {
@@ -63,37 +45,30 @@ export function Grant() {
     authLoading,
     builderName,
   } = useGrantFlow(params ?? {}, prefetched)
+  const {
+    debugSession,
+    debugStatus,
+    consentDebugScenario,
+    isDebugging,
+    resolvedFlowState,
+    resolvedAuthLoading,
+    resolvedIsApproving,
+    resolvedAppName,
+    resolvedBuilderManifest,
+    resolvedConsentScopes,
+    setDebugStatus,
+    setConsentDebugScenario,
+  } = useGrantDebugState({
+    search: location.search,
+    navigate,
+    params,
+    flowState,
+    authLoading,
+    isApproving,
+    builderName,
+  })
 
   const isDev = import.meta.env.DEV
-  const activeDebugStatus = debugStatus ?? "loading"
-  const debugSession = getDebugSession()
-  const isDebugging = isDev && debugStatus !== null
-  const resolvedFlowState = isDebugging
-    ? {
-        sessionId: debugSession.id,
-        status: activeDebugStatus,
-        session: debugSession,
-        ...(activeDebugStatus === "error" && {
-          error: "Mock grant error. This is a dev-only state.",
-        }),
-      }
-    : flowState
-  const resolvedAuthLoading = isDebugging ? false : authLoading
-  const resolvedIsApproving = isDebugging
-    ? activeDebugStatus === "creating-grant" ||
-      activeDebugStatus === "approving"
-    : isApproving
-  const resolvedBuilderName = isDebugging ? debugSession.appName : builderName
-  const debugBuilderManifest: BuilderManifest = flowState.builderManifest ?? {
-    name: debugSession.appName ?? "Debug App",
-    appUrl: "https://example.com",
-    privacyPolicyUrl: "https://example.com/privacy",
-    termsUrl: "https://example.com/terms",
-    supportUrl: "https://example.com/support",
-  }
-  const resolvedBuilderManifest: BuilderManifest | undefined = isDebugging
-    ? debugBuilderManifest
-    : flowState.builderManifest
 
   // States that show loading spinner
   const isLoadingState =
@@ -128,7 +103,7 @@ export function Grant() {
   } else if (resolvedFlowState.status === "success") {
     content = (
       <GrantSuccessState
-        appName={resolvedBuilderName}
+        appName={resolvedAppName}
         scopes={resolvedFlowState.session?.scopes}
       />
     )
@@ -136,9 +111,9 @@ export function Grant() {
     // consent, creating-grant, approving all show consent UI
     content = (
       <GrantConsentState
-        session={resolvedFlowState.session}
+        scopes={resolvedConsentScopes}
         builderManifest={resolvedBuilderManifest}
-        builderName={resolvedBuilderName}
+        appName={resolvedAppName}
         isApproving={resolvedIsApproving}
         onApprove={handleApprove}
         onDeny={handleDeny}
@@ -155,6 +130,8 @@ export function Grant() {
           debugBuilderName={debugSession.appName ?? "Debug App"}
           session={debugSession}
           walletConnected={debugWalletConnected}
+          consentDebugScenario={consentDebugScenario}
+          onConsentDebugScenarioChange={setConsentDebugScenario}
           onChangeStatus={setDebugStatus}
           onToggleWallet={() => setDebugWalletConnected(prev => !prev)}
         />

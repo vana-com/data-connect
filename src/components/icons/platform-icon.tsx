@@ -97,28 +97,29 @@ export function PlatformIcon({
     )
   }
 
-  // Fallback: show first letter
-  const label = fallbackLabel?.trim() || iconName.charAt(0)
+  // Fallback: show first letter. Background only on inner span so it doesn't bleed into padding.
+  const label = (fallbackLabel?.trim() || iconName.trim().charAt(0)).toUpperCase()
   const fontSize = Math.round(size * fallbackScale)
+  const innerBorderRadiusPx = Math.max(3, Math.round(size * 0.12))
   return (
     <div
-      className={cn(
-        iconWrapper,
-        "text-background bg-foreground font-semi",
-        className
-      )}
+      className={cn(iconWrapper, className)}
       aria-hidden={resolvedAriaHidden}
       {...props}
     >
       <span
-        className={cn("flex items-center justify-center")}
+        className={cn(
+          "flex items-center justify-center",
+          "text-background bg-foreground font-semi"
+        )}
         style={{
           fontSize: `${fontSize}px`,
           width: `${size}px`,
           height: `${size}px`,
+          borderRadius: `${innerBorderRadiusPx}px`,
         }}
       >
-        <span>{label}</span>
+        {label}
       </span>
     </div>
   )

@@ -75,3 +75,22 @@ export function formatScopeLabel(scope: string): string {
 
   return `${platformLabel} ${dataTypeLabel}`
 }
+
+/** Extract the data-type part from a full scope label (e.g. "LinkedIn Experience" → "Experience"). */
+export function getDataTypeFromScopeLabel(
+  fullLabel: string,
+  platformLabel: string
+): string {
+  const prefix = new RegExp(`^${platformLabel.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}\\s+`, "i")
+  return fullLabel.replace(prefix, "").trim()
+}
+
+/** Format items as "a, b, c, and d". */
+export function formatListAsSentence(items: string[]): string {
+  if (items.length === 0) return ""
+  if (items.length === 1) return items[0].toLowerCase()
+  if (items.length === 2) return `${items[0].toLowerCase()} and ${items[1].toLowerCase()}`
+  const last = items[items.length - 1]
+  const rest = items.slice(0, -1).map(i => i.toLowerCase())
+  return `${rest.join(", ")}, and ${last.toLowerCase()}`
+}

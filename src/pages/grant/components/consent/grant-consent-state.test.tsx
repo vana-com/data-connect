@@ -1,31 +1,21 @@
-import { cleanup, fireEvent, render, screen } from "@testing-library/react"
+import { cleanup, render, screen } from "@testing-library/react"
 import { afterEach, describe, expect, it, vi } from "vitest"
 import { LINKS } from "@/config/links"
-import type { BuilderManifest, GrantSession } from "../../types"
+import type { BuilderManifest } from "../../types"
 import { GrantConsentState } from "./grant-consent-state"
 
 afterEach(() => {
   cleanup()
 })
 
-function createSession(scopes: string[]): GrantSession {
-  return {
-    id: "session-1",
-    granteeAddress: "0xgrantee",
-    scopes,
-    expiresAt: "2030-01-01T00:00:00.000Z",
-  }
-}
-
-
 function renderConsent(
   scopes: string[],
-  options: { builderManifest?: BuilderManifest; builderName?: string } = {}
+  options: { builderManifest?: BuilderManifest; appName?: string } = {}
 ) {
   return render(
     <GrantConsentState
-      session={createSession(scopes)}
-      builderName={options.builderName ?? "Demo App"}
+      scopes={scopes}
+      appName={options.appName ?? "Demo App"}
       builderManifest={options.builderManifest}
       isApproving={false}
       onApprove={vi.fn()}
@@ -35,10 +25,37 @@ function renderConsent(
 }
 
 describe("GrantConsentState scope action label", () => {
-  it("renders a one-scope action label", () => {
+  it("renders a one-scope action label as compiled sentence", () => {
     renderConsent(["chatgpt.conversations"])
 
-    expect(screen.getAllByText("See your ChatGPT Conversations").length).toBeGreaterThan(0)
+    expect(screen.getByText("See your ChatGPT Conversations")).toBeTruthy()
+  })
+
+  it("compiles multiple same-platform scopes into one sentence", () => {
+    renderConsent([
+      "linkedin.experience",
+      "linkedin.education",
+      "linkedin.skills",
+      "linkedin.languages",
+      "linkedin.profile",
+    ])
+
+    expect(
+      screen.getByText(
+        "See your LinkedIn experience, education, skills, languages, and profile"
+      )
+    ).toBeTruthy()
+  })
+
+  it("compiles multiple ChatGPT scopes into one sentence", () => {
+    renderConsent([
+      "chatgpt.conversations",
+      "chatgpt.memories",
+    ])
+
+    expect(
+      screen.getByText("See your ChatGPT conversations and memories")
+    ).toBeTruthy()
   })
 
   it("renders two independent scope action labels", () => {
@@ -58,6 +75,23 @@ describe("GrantConsentState scope action label", () => {
     expect(screen.getByText("See your ChatGPT Conversations")).toBeTruthy()
     expect(screen.getByText("See your Spotify Playlists")).toBeTruthy()
     expect(screen.getByText("See your Instagram Posts")).toBeTruthy()
+  })
+
+  it("collapses repeated platform scopes into one sentence within mixed rows", () => {
+    renderConsent([
+      "linkedin.experience",
+      "spotify.history",
+      "chatgpt.conversations",
+      "chatgpt.memories",
+    ])
+
+    expect(screen.getByText("See your LinkedIn Experience")).toBeTruthy()
+    expect(screen.getByText("See your Spotify History")).toBeTruthy()
+    expect(
+      screen.getByText("See your ChatGPT conversations and memories")
+    ).toBeTruthy()
+    expect(screen.queryByText("See your ChatGPT Conversations")).toBeNull()
+    expect(screen.queryByText("See your ChatGPT Memories")).toBeNull()
   })
 
   it("falls back to generic copy when scopes are empty", () => {
@@ -96,9 +130,9 @@ describe("GrantConsentState scope action label", () => {
     ).toBe(LINKS.legalDataExtractionRiskResponsibilityDisclosure)
   })
 
-  it("falls back when builder icon image fails to load", () => {
+  it("renders the builder icon image when provided", () => {
     const { container } = renderConsent(["chatgpt.conversations"], {
-      builderName: "Qapp",
+      appName: "Qapp",
       builderManifest: {
         name: "Qapp",
         appUrl: "https://qapp.example.com",
@@ -108,10 +142,8 @@ describe("GrantConsentState scope action label", () => {
 
     const image = container.querySelector("img")
     expect(image).toBeTruthy()
-
-    fireEvent.error(image as HTMLImageElement)
-
-    expect(container.querySelector("img")).toBeNull()
-    expect(screen.getByText("Q")).toBeTruthy()
+    expect(
+      container.querySelector('img[src="https://qapp.example.com/broken-icon.png"]')
+    ).toBeTruthy()
   })
 })

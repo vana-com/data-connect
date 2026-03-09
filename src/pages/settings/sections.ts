@@ -22,10 +22,10 @@ export const SETTINGS_SECTION_META: Record<
     title: "Account",
   },
   apps: {
-    navLabel: "Connected apps",
-    title: "Connected apps",
+    navLabel: "App access",
+    title: "App access",
     // description: "Review and manage applications with access to your data.",
-    description: "OAuth apps that you have approved to use your data.",
+    description: "Applications you have approved to use your data.",
   },
   credentials: {
     navLabel: "Credentials",

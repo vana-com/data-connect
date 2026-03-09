@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from "react"
 import { useLocation, useNavigate } from "react-router-dom"
 import { useDispatch } from "react-redux"
 import { hashMessage, recoverAddress } from "viem"
+import { getAuthRedirectRoute } from "@/config/account-auth"
 import {
   buildGrantSearchParams,
   getGrantParamsFromSearchParams,
@@ -76,11 +77,9 @@ export function useDeepLink() {
         })
     }
 
-    // "local-server-auth" is a special sessionId used by the Settings page
-    // to start the personal server. Navigate back to Settings instead of
-    // entering the grant/connect flow.
-    if (params.sessionId === "local-server-auth") {
-      navigateRef.current(ROUTES.settings, { replace: true })
+    const authRedirectRoute = getAuthRedirectRoute(params.sessionId)
+    if (authRedirectRoute) {
+      navigateRef.current(authRedirectRoute, { replace: true })
       return
     }
 
@@ -162,10 +161,10 @@ export function useDeepLink() {
           })
       }
 
-      // "local-server-auth" — redirect to Settings, not the grant/connect flow
-      if (params.sessionId === "local-server-auth") {
-        if (location.pathname !== ROUTES.settings) {
-          navigate(ROUTES.settings, { replace: true })
+      const authRedirectRoute = getAuthRedirectRoute(params.sessionId)
+      if (authRedirectRoute) {
+        if (location.pathname !== authRedirectRoute) {
+          navigate(authRedirectRoute, { replace: true })
         }
         return
       }

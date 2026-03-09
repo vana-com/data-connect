@@ -6,6 +6,7 @@ import {
   RouterProvider,
   useLocation,
 } from "react-router-dom"
+import { PERSONAL_SERVER_AUTH_SESSION_ID } from "@/config/account-auth"
 import { ROUTES } from "@/config/routes"
 import { useDeepLink } from "./use-deep-link"
 
@@ -317,6 +318,72 @@ describe("useDeepLink", () => {
           }),
         })
       )
+    })
+  })
+
+  it("routes personal-server auth callbacks to /personal-server", async () => {
+    const deepLink = await import("@tauri-apps/plugin-deep-link")
+    ;(deepLink.getCurrent as Mock).mockResolvedValue([
+      `vana://connect?sessionId=${PERSONAL_SERVER_AUTH_SESSION_ID}&masterKeySig=0xdeadbeef`,
+    ])
+    ;(deepLink.onOpenUrl as Mock).mockResolvedValue(() => {})
+
+    let latestPathname = ""
+
+    const router = createMemoryRouter(
+      [
+        {
+          path: "*",
+          element: (
+            <DeepLinkHarness
+              onChange={(pathname) => {
+                latestPathname = pathname
+              }}
+            />
+          ),
+        },
+      ],
+      { initialEntries: [ROUTES.home] }
+    )
+
+    render(<RouterProvider router={router} />)
+
+    await waitFor(() => {
+      expect(latestPathname).toBe(ROUTES.personalServer)
+    })
+  })
+
+  it("keeps personal-server auth callbacks on /personal-server when already there", async () => {
+    const deepLink = await import("@tauri-apps/plugin-deep-link")
+    ;(deepLink.getCurrent as Mock).mockResolvedValue(null)
+    ;(deepLink.onOpenUrl as Mock).mockResolvedValue(() => {})
+
+    let latestPathname = ""
+
+    const router = createMemoryRouter(
+      [
+        {
+          path: "*",
+          element: (
+            <DeepLinkHarness
+              onChange={(pathname) => {
+                latestPathname = pathname
+              }}
+            />
+          ),
+        },
+      ],
+      {
+        initialEntries: [
+          `${ROUTES.personalServer}?sessionId=${PERSONAL_SERVER_AUTH_SESSION_ID}&masterKeySig=0xfallbacksig`,
+        ],
+      }
+    )
+
+    render(<RouterProvider router={router} />)
+
+    await waitFor(() => {
+      expect(latestPathname).toBe(ROUTES.personalServer)
     })
   })
 

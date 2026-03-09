@@ -2,6 +2,7 @@ import { getVersion } from "@tauri-apps/api/app"
 import { invoke } from "@tauri-apps/api/core"
 import { useCallback, useEffect, useState } from "react"
 import { useNavigate, useSearchParams } from "react-router-dom"
+import { PERSONAL_SERVER_AUTH_SESSION_ID } from "@/config/account-auth"
 import { useAuth } from "@/hooks/useAuth"
 import { useAppUpdate } from "@/hooks/use-app-update"
 import { useLoadConnectedAppsWhenReady } from "@/hooks/use-load-connected-apps-when-ready"
@@ -254,7 +255,7 @@ export function useSettingsPage() {
     const accountUrl =
       import.meta.env.VITE_ACCOUNT_URL || "https://account.vana.org"
     const params = new URLSearchParams({
-      sessionId: "local-server-auth",
+      sessionId: PERSONAL_SERVER_AUTH_SESSION_ID,
       appName: "DataConnect",
     })
     const url = `${accountUrl}/connect?${params.toString()}`

@@ -2,8 +2,10 @@ import { getVersion } from "@tauri-apps/api/app"
 import { invoke } from "@tauri-apps/api/core"
 import { useCallback, useEffect, useState } from "react"
 import { useNavigate, useSearchParams } from "react-router-dom"
+import { PERSONAL_SERVER_AUTH_SESSION_ID } from "@/config/account-auth"
 import { useAuth } from "@/hooks/useAuth"
 import { useAppUpdate } from "@/hooks/use-app-update"
+import { useLoadConnectedAppsWhenReady } from "@/hooks/use-load-connected-apps-when-ready"
 import { usePersonalServer } from "@/hooks/usePersonalServer"
 import { useConnectedApps } from "@/hooks/useConnectedApps"
 import { ROUTES } from "@/config/routes"
@@ -154,17 +156,12 @@ export function useSettingsPage() {
     setPathsDebug(null)
   }, [])
 
-  // Fetch connected apps from Personal Server when available
-  useEffect(() => {
-    if (personalServer.port && personalServer.status === "running") {
-      fetchConnectedApps(personalServer.port, personalServer.devToken)
-    }
-  }, [
-    personalServer.port,
-    personalServer.status,
-    personalServer.devToken,
+  useLoadConnectedAppsWhenReady({
+    port: personalServer.port,
+    status: personalServer.status,
+    devToken: personalServer.devToken,
     fetchConnectedApps,
-  ])
+  })
 
   // Persist simulateNoChrome to localStorage — only store when explicitly true.
   // Remove the key when false so a fresh profile starts with the correct default.
@@ -258,7 +255,7 @@ export function useSettingsPage() {
     const accountUrl =
       import.meta.env.VITE_ACCOUNT_URL || "https://account.vana.org"
     const params = new URLSearchParams({
-      sessionId: "local-server-auth",
+      sessionId: PERSONAL_SERVER_AUTH_SESSION_ID,
       appName: "DataConnect",
     })
     const url = `${accountUrl}/connect?${params.toString()}`

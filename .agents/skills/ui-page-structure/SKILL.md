@@ -77,6 +77,19 @@ src/pages/runs/
 - Avoid snapshots; assert behavior and side effects.
 - Follow `react-testing` for test scope, commands, and reporting.
 
+## Ownership moves
+
+- If a route becomes the canonical owner of a feature surface, move both the page-owned UI surface and the page-level data-loading/readiness trigger in the same diff.
+- Do not leave fetch ownership behind on a previously related route after UI ownership moves.
+- When deciding whether two surfaces should share an implementation, compare user-facing actions first. Different actions mean different surfaces even if the rows or layout look similar.
+
+## URL-backed page state
+
+- When adding URL-backed page state (for example tabs, filters, or modes), add non-mocked page tests for:
+  - param-to-state derivation on first render
+  - invalid-value fallback/canonicalization
+  - write/remove behavior that preserves unrelated search params
+
 ## Notes
 
 - Keep imports direct (avoid barrel files).

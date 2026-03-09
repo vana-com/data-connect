@@ -18,6 +18,7 @@ let mockState = {
 
 const mockListGrants = vi.fn()
 const mockRevokeGrant = vi.fn()
+const mockFetchBuilderAppUrl = vi.fn()
 
 vi.mock("react-redux", () => ({
   useDispatch: () => mockDispatch,
@@ -30,8 +31,13 @@ vi.mock("../services/personalServer", () => ({
   revokeGrant: (...args: unknown[]) => mockRevokeGrant(...args),
 }))
 
+vi.mock("../services/builder", () => ({
+  fetchBuilderAppUrl: (...args: unknown[]) => mockFetchBuilderAppUrl(...args),
+}))
+
 beforeEach(() => {
   vi.clearAllMocks()
+  mockFetchBuilderAppUrl.mockResolvedValue("https://example.com")
   mockState = {
     app: {
       connectedApps: [],
@@ -67,6 +73,7 @@ describe("useConnectedApps", () => {
             name: "ChatGPT access",
             permissions: ["chatgpt.conversations"],
             connectedAt: "2025-01-01T00:00:00.000Z",
+            externalUrl: "https://example.com",
           },
         ],
       })
@@ -123,6 +130,35 @@ describe("useConnectedApps", () => {
         type: "app/setConnectedApps",
         payload: [
           expect.objectContaining({ name: "Spotify access" }),
+        ],
+      })
+    })
+
+    it("stores the builder app url when Gateway lookup succeeds", async () => {
+      mockListGrants.mockResolvedValue([
+        {
+          grantId: "grant-builder",
+          granteeAddress: "0xfeedface00000000",
+          scopes: ["chatgpt.conversations"],
+          createdAt: "2025-04-01T00:00:00.000Z",
+        },
+      ])
+      mockFetchBuilderAppUrl.mockResolvedValue("https://builder.example.com")
+
+      const { result } = renderHook(() => useConnectedApps())
+
+      await act(async () => {
+        await result.current.fetchConnectedApps(8080)
+      })
+
+      expect(mockFetchBuilderAppUrl).toHaveBeenCalledWith("0xfeedface00000000")
+      expect(mockDispatch).toHaveBeenCalledWith({
+        type: "app/setConnectedApps",
+        payload: [
+          expect.objectContaining({
+            id: "grant-builder",
+            externalUrl: "https://builder.example.com",
+          }),
         ],
       })
     })

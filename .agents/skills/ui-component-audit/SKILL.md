@@ -107,3 +107,9 @@ src/components/example.tsx:21 - raw text; use Text
 
 - Do not overwrite comments.
 - Do not change styles/classes unless user asks for refactor.
+
+## Structural refactor guardrails
+
+- If the intended change is structural or ownership-only, treat existing spacing, headings, wrapper structure, and class rhythm as part of the contract.
+- Do not "clean up" layout wrappers or heading structure unless the visual change is intentional and reviewed.
+- In tabbed UIs, do not repeat the active tab label as a second visible heading below the tabs. Keep the visible title in the tab label; use an sr-only route heading if semantic structure still requires an `h1`.

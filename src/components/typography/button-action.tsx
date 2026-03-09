@@ -39,7 +39,9 @@ export function ActionButton({
 }
 
 type ActionButtonGroupProps = ComponentProps<"div"> &
-  Pick<ActionButtonProps, "fullWidth" | "size" | "variant">
+  Pick<ActionButtonProps, "fullWidth" | "size" | "variant"> & {
+    surface?: "standalone" | "flat"
+  }
 
 // For when you want the action button style but not the button
 export function ActionButtonGroup({
@@ -48,15 +50,20 @@ export function ActionButtonGroup({
   variant = "outline",
   size = "xl",
   fullWidth = true,
+  surface = "standalone",
   ...props
 }: ActionButtonGroupProps) {
   return (
     <div
       data-slot="action-button-group"
       className={cn(
-        buttonVariants({ variant, size, fullWidth }),
-        actionButtonSurfaceClass,
-        "gap-0 items-stretch px-0",
+        surface === "standalone"
+          ? [
+              buttonVariants({ variant, size, fullWidth }),
+              actionButtonSurfaceClass,
+              "gap-0 items-stretch px-0",
+            ]
+          : "group flex h-row w-full items-stretch gap-0 rounded-none bg-background px-0",
         className
       )}
       {...props}

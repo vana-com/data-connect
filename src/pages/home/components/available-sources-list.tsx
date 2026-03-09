@@ -114,7 +114,6 @@ export function AvailableSourcesList({
             iconName,
             iconImageSrc,
             label,
-            stackPrimaryColor,
             isAvailable,
             isConnecting,
             connectingStatusMessage,
@@ -195,7 +194,6 @@ export function AvailableSourcesList({
                 iconName={iconName}
                 iconImageSrc={iconImageSrc}
                 label={label}
-                stackPrimaryColor={stackPrimaryColor}
                 infoSlot={infoSlot}
                 showArrow={isAvailable && !isConnecting && !hasBlockingRun}
                 trailingSlot={

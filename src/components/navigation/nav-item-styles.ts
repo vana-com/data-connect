@@ -5,9 +5,14 @@ const navItemInteractiveStateClasses = cn(
   // Inactive: transparent + dim text/icon
   "bg-transparent text-foreground-muted",
   // Hover: subtle emphasis while inactive
-  "hover:bg-foreground/[0.03] hover:text-foreground",
+  "hover:bg-foreground/[0.03]",
+  "hover:text-foreground",
+)
+
+const navItemSharedActiveStateClasses = cn(
   // Active: stronger filled state
-  "aria-[current=page]:bg-foreground/[0.07] aria-[current=page]:text-foreground",
+  "aria-[current=page]:text-foreground",
+  "aria-[current=page]:bg-foreground/[0.07]",
   "aria-[current=page]:hover:bg-foreground/[0.07]"
 )
 
@@ -17,7 +22,10 @@ export const topNavItemClassName = cn(
   "rounded-button px-4.5",
   // transitions
   "transition-all duration-150 ease-in-out",
-  navItemInteractiveStateClasses
+  navItemInteractiveStateClasses,
+  // Top-nav active fill is manually tuned to match the server status dot ring.
+  "aria-[current=page]:bg-[#e5e5e5] aria-[current=page]:hover:bg-[#e5e5e5]",
+  "aria-[current=page]:text-foreground"
 )
 
 export const settingsSidebarItemClassName = cn(
@@ -28,5 +36,6 @@ export const settingsSidebarItemClassName = cn(
   // icon sizing
   "[&_svg]:text-current",
   "[&_svg:not([class*='size-'])]:size-[1.2em]",
-  navItemInteractiveStateClasses
+  navItemInteractiveStateClasses,
+  navItemSharedActiveStateClasses
 )

@@ -1,5 +1,6 @@
 import { describe, expect, it, vi } from "vitest"
 import { render, screen } from "@testing-library/react"
+import { MemoryRouter } from "react-router-dom"
 import { Connect } from "./index"
 
 vi.mock("./use-connect-page", () => ({
@@ -17,14 +18,21 @@ vi.mock("./use-connect-page", () => ({
     showDebugBypass: false,
     handleConnect: vi.fn(),
     handleDebugGrant: vi.fn(),
+    debugState: null,
+    debugScopes: ["chatgpt.conversations"],
+    setDebugState: vi.fn(),
   }),
 }))
 
 describe("Connect loading state", () => {
   it("renders loading state while auto-redirecting", () => {
-    render(<Connect />)
+    render(
+      <MemoryRouter>
+        <Connect />
+      </MemoryRouter>
+    )
 
     expect(screen.getByText("Loading…")).toBeTruthy()
-    expect(screen.queryByRole("button", { name: /connect/i })).toBeNull()
+    expect(screen.queryByRole("button", { name: /connect chatgpt/i })).toBeNull()
   })
 })

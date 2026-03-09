@@ -1,5 +1,5 @@
-import { getPlatformPrimaryColor } from "@/lib/platform/ui"
 import { getPlatformRegistryEntry } from "@/lib/platform/utils"
+import { resolvePlatformLogo } from "@/lib/platform/resolve-platform-logo"
 import type { Platform, Run } from "@/types"
 
 export interface AvailableSourceCard {
@@ -7,13 +7,11 @@ export interface AvailableSourceCard {
   iconName: string
   iconImageSrc?: string
   label: string
-  stackPrimaryColor: string
   isAvailable: boolean
   isConnecting: boolean
   connectingStatusMessage?: string
   connectingRun?: Run
   onClick?: () => void
-  priority: number
   index: number
 }
 
@@ -40,26 +38,22 @@ export function buildAvailableCards({
     const baseConnectingRun = connectingPlatforms.get(platform.id)
     const isConnecting = connectingPlatforms.has(platform.id)
 
-    const iconImageSrc = platform.logoURL?.startsWith("data:")
-      ? platform.logoURL
-      : undefined
+    const iconImageSrc = resolvePlatformLogo(platform, entry)
 
     cards.push({
       cardId: platform.id,
       iconName: displayName,
       iconImageSrc,
       label: `Connect ${displayName}`,
-      stackPrimaryColor: getPlatformPrimaryColor(entry),
       isAvailable: true,
       isConnecting,
       connectingStatusMessage: baseConnectingRun?.statusMessage,
       connectingRun: baseConnectingRun,
       onClick: () => onExport(platform),
-      priority: isConnecting ? 0 : 1,
       index,
     })
   })
 
-  cards.sort((a, b) => a.priority - b.priority || a.index - b.index)
+  cards.sort((a, b) => a.index - b.index)
   return cards
 }

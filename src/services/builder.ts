@@ -37,6 +37,7 @@ const REQUIRED_VANA_FIELDS: (keyof VanaManifestBlock)[] = [
   "appUrl",
   "signature",
 ];
+const BUILDER_APP_URL_CACHE = new Map<string, string | null>()
 
 interface W3CManifest {
   name?: string;
@@ -95,6 +96,24 @@ async function fetchGatewayBuilder(
   const builder = envelope.data;
   console.warn("[builder-verify] Gateway builder:", JSON.stringify(builder));
   return builder;
+}
+
+export async function fetchBuilderAppUrl(
+  granteeAddress: string
+): Promise<string | null> {
+  if (BUILDER_APP_URL_CACHE.has(granteeAddress)) {
+    return BUILDER_APP_URL_CACHE.get(granteeAddress) ?? null
+  }
+
+  try {
+    const builder = await fetchGatewayBuilder(granteeAddress)
+    const appUrl = builder.appUrl || null
+    BUILDER_APP_URL_CACHE.set(granteeAddress, appUrl)
+    return appUrl
+  } catch {
+    BUILDER_APP_URL_CACHE.set(granteeAddress, null)
+    return null
+  }
 }
 
 function extractManifestUrl(html: string, baseUrl: string): string | null {

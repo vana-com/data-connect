@@ -1,7 +1,6 @@
 import { Text } from "@/components/typography/text"
 import { KeyRoundIcon } from "lucide-react"
 import { PlatformIcon } from "@/components/icons/platform-icon"
-import { DEV_FLAGS } from "@/config/dev-flags"
 import type { BrowserSession } from "../types"
 import { SettingsConfirmAction } from "./settings-confirm-action"
 import { SettingsCard, SettingsCardStack } from "./settings-shared"
@@ -11,23 +10,6 @@ interface SettingsCredentialsProps {
   sessions: BrowserSession[]
   onClearSession: (connectorId: string) => void
 }
-
-const TEST_CREDENTIALS_UI_STATE: "real" | "populated" =
-  DEV_FLAGS.useSettingsUiMocks ? "populated" : "real"
-const TEST_BROWSER_SESSIONS: BrowserSession[] = [
-  {
-    connectorId: "chatgpt-playwright",
-    path: "/tmp/chatgpt/session.json",
-    sizeBytes: 186_212,
-    lastModified: new Date(Date.now() - 2 * 60 * 60 * 1000).toISOString(),
-  },
-  {
-    connectorId: "spotify-playwright",
-    path: "/tmp/spotify/session.json",
-    sizeBytes: 92_408,
-    lastModified: new Date(Date.now() - 26 * 60 * 60 * 1000).toISOString(),
-  },
-]
 
 const CONNECTOR_DISPLAY_NAMES: Record<string, string> = {
   "chatgpt-playwright": "ChatGPT",
@@ -70,12 +52,9 @@ export function SettingsCredentials({
   sessions,
   onClearSession,
 }: SettingsCredentialsProps) {
-  const effectiveSessions =
-    TEST_CREDENTIALS_UI_STATE === "populated" ? TEST_BROWSER_SESSIONS : sessions
-
   return (
     <div className="space-y-8">
-      {effectiveSessions.length === 0 ? (
+      {sessions.length === 0 ? (
         <>
           <SettingsCardStack>
             <SettingsCard>
@@ -93,7 +72,7 @@ export function SettingsCredentials({
       ) : (
         <SettingsCardStack>
           <SettingsCard divided>
-            {effectiveSessions.map(session => (
+            {sessions.map(session => (
               <SettingsRow
                 key={session.connectorId}
                 icon={

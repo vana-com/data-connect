@@ -9,11 +9,10 @@ import {
 } from "@/components/ui/tooltip"
 import { ROUTES } from "@/config/routes"
 import { cn } from "@/lib/classes"
-import { buildSettingsUrl } from "@/pages/settings/url"
 import type { LucideIcon } from "lucide-react"
 import { HomeIcon, ServerIcon, UserRoundCogIcon, BoxIcon } from "lucide-react"
 import type { CSSProperties } from "react"
-import { Link, NavLink } from "react-router-dom"
+import { NavLink } from "react-router-dom"
 
 type NavItem = {
   id: "home" | "apps" | "docs" | "server" | "settings"
@@ -28,7 +27,6 @@ type PersonalServerStatus = "stopped" | "starting" | "running" | "error"
 
 const navItems: NavItem[] = [
   { id: "home", to: ROUTES.home, label: "Home", Icon: HomeIcon },
-  { id: "apps", to: ROUTES.apps, label: "Apps", Icon: BoxIcon },
   // { to: ROUTES.mcp, label: "MCP", Icon: IconMcp },
   // {
   //   id: "docs",
@@ -40,10 +38,11 @@ const navItems: NavItem[] = [
   // { to: "/activity", label: "Activity", Icon: ActivityIcon },
   {
     id: "server",
-    to: buildSettingsUrl({ section: "personalServer" }),
+    to: ROUTES.personalServer,
     label: "Server",
     Icon: ServerIcon,
   },
+  { id: "apps", to: ROUTES.apps, label: "Apps", Icon: BoxIcon },
   {
     id: "settings",
     to: ROUTES.settings,
@@ -54,8 +53,9 @@ const navItems: NavItem[] = [
 
 function getStatusDotClassName(status: PersonalServerStatus) {
   if (status === "running") return "bg-success-foreground"
-  if (status === "starting") return "bg-amber-500 animate-pulse"
-  return "bg-destructive-foreground"
+  if (status === "starting") return "bg-success-foreground animate-pulse"
+  if (status === "error") return "bg-destructive-foreground"
+  return "bg-warning"
 }
 
 function getPersonalServerStatusLabel(status: PersonalServerStatus) {
@@ -104,7 +104,6 @@ export function TopNav({ personalServerStatus }: TopNavProps) {
         <nav className="flex items-center gap-[3px]">
           {navItems.map(({ id, to, label, Icon, external }) => {
             const shouldShowServerStatus = id === "server"
-            const isStatusPointerItem = id === "server"
             const iconWithStatusDot = (
               <span className="relative inline-flex">
                 {Icon === IconMcp ? (
@@ -114,6 +113,7 @@ export function TopNav({ personalServerStatus }: TopNavProps) {
                 )}
                 {shouldShowServerStatus ? (
                   <span
+                    data-slot="server-status-dot"
                     className={cn(
                       "absolute -right-0.5 -top-0.5 size-1.75 rounded-full",
                       "ring-2 ring-muted",
@@ -149,25 +149,20 @@ export function TopNav({ personalServerStatus }: TopNavProps) {
             return (
               <Tooltip key={id}>
                 <TooltipTrigger asChild>
-                  {isStatusPointerItem ? (
-                    <Link
-                      to={to}
-                      aria-label={label}
-                      className={topNavItemClassName}
-                    >
-                      {iconWithStatusDot}
-                      <span className="sr-only">{label}</span>
-                    </Link>
-                  ) : (
-                    <NavLink
-                      to={to}
-                      aria-label={label}
-                      className={topNavItemClassName}
-                    >
-                      {iconWithStatusDot}
-                      <span className="sr-only">{label}</span>
-                    </NavLink>
-                  )}
+                  <NavLink
+                    to={to}
+                    aria-label={label}
+                    className={cn(
+                      topNavItemClassName,
+                      // Manual visual match: when the Server nav item is active,
+                      // keep the status dot ring aligned with the active tile fill.
+                      shouldShowServerStatus &&
+                        "aria-[current=page]:**:data-[slot=server-status-dot]:ring-[#e5e5e5]"
+                    )}
+                  >
+                    {iconWithStatusDot}
+                    <span className="sr-only">{label}</span>
+                  </NavLink>
                 </TooltipTrigger>
                 <TooltipContent side="bottom" className={navTooltipClassName}>
                   {shouldShowServerStatus

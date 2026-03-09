@@ -8,6 +8,7 @@ interface SettingsRowProps {
   iconContainerClassName?: string
   title: ReactNode
   description?: ReactNode
+  wrapDescriptionBelowSm?: boolean
   descriptionTruncate?: boolean
   descriptionTitle?: string
   right?: ReactNode
@@ -22,6 +23,7 @@ export function SettingsRow({
   iconContainerClassName,
   title,
   description,
+  wrapDescriptionBelowSm = false,
   descriptionTruncate = false,
   descriptionTitle,
   right,
@@ -68,20 +70,24 @@ export function SettingsRow({
     icon
   )
 
+  const shouldWrapDescriptionBelowSm =
+    wrapDescriptionBelowSm && descriptionContent != null
+
   return (
     <div data-component="settings-row">
       <div
         className={cn(
-          "flex gap-3 px-4 py-3 h-row",
-          // descriptionContent ? "items-start" : "items-center",
-          "items-center",
+          "flex gap-3 px-4 py-3",
+          shouldWrapDescriptionBelowSm
+            ? "min-h-row items-start sm:h-row sm:items-center"
+            : "h-row items-center",
           className
         )}
       >
         {iconContent}
         <div
           className={cn(
-            "flex-1",
+            "min-w-0 flex-1",
             descriptionContent && "space-y-px",
             contentClassName
           )}
@@ -89,7 +95,15 @@ export function SettingsRow({
           {titleContent}
           {descriptionContent}
         </div>
-        {right}
+        {right ? (
+          <div
+            className={cn(
+              shouldWrapDescriptionBelowSm && "shrink-0 self-center"
+            )}
+          >
+            {right}
+          </div>
+        ) : null}
       </div>
       {below}
     </div>

@@ -1,7 +1,6 @@
 import { useState } from "react"
 import { ChevronDownIcon, RefreshCwIcon } from "lucide-react"
 import type { usePersonalServer } from "@/hooks/usePersonalServer"
-import { DEV_FLAGS } from "@/config/dev-flags"
 import { LINKS } from "@/config/links"
 import { ButtonSignInVana } from "@/components/elements/button-sign-in-vana"
 import { LoadingButton } from "@/components/elements/button-loading"
@@ -16,10 +15,7 @@ import {
   SettingsRowAction,
   SettingsSingleSelectRowGroup,
 } from "@/pages/settings/components/public"
-import {
-  SettingsBadgeActive,
-  SettingsBadgeNone,
-} from "./settings-status-badge"
+import { SettingsBadgeActive, SettingsBadgeNone } from "./settings-status-badge"
 import { SettingsConfirmAction } from "@/pages/settings/components/settings-confirm-action"
 import { AuthRow } from "./auth-row"
 import { PublicEndpointRow } from "./public-endpoint-row"
@@ -50,28 +46,7 @@ const serverOptions = [
 ] as const
 
 type ServerOptionId = (typeof serverOptions)[number]["id"]
-type ServerRuntimeStatus = ReturnType<typeof usePersonalServer>["status"]
 const ACTIVE_SERVER_OPTION_KEY = "settings.active-server-option"
-
-/*
-  ============================================
-  UI PREVIEW TEST CONTROLS (MANUAL)
-  ============================================
-  Edit these while designing this panel.
-
-  TEST_AUTHENTICATED:
-  - true  => always show authenticated server rows
-  - false => show sign-in gate
-
-  TEST_SERVER_STATUS_OVERRIDE:
-  - "error"   => shows restart button
-  - "stopped" => shows restart button
-  - "running" => hides restart button
-  - "starting" => hides restart button
-  - null      => use real runtime status from usePersonalServer
-*/
-const TEST_AUTHENTICATED = false
-const TEST_SERVER_STATUS_OVERRIDE: ServerRuntimeStatus | null = null
 
 interface SettingsServerSectionProps {
   isAuthenticated: boolean
@@ -88,8 +63,7 @@ export function SettingsServerSection({
   onSignIn,
   personalServer,
 }: SettingsServerSectionProps) {
-  const isAuthenticatedForUi =
-    (DEV_FLAGS.useSettingsUiMocks && TEST_AUTHENTICATED) || isAuthenticated
+  const isAuthenticatedForUi = isAuthenticated
   const [draftServerOption, setDraftServerOption] =
     useState<ServerOptionId | null>(null)
   const [activeServerOption, setActiveServerOption] =
@@ -104,10 +78,7 @@ export function SettingsServerSection({
     showSaveServer &&
     (draftServerOption !== "personal-server" || isAuthenticatedForUi)
   const isExpanded = selectedServerOption === "personal-server"
-  const previewServerStatus =
-    DEV_FLAGS.useSettingsUiMocks && TEST_SERVER_STATUS_OVERRIDE
-      ? TEST_SERVER_STATUS_OVERRIDE
-      : personalServer.status
+  const previewServerStatus = personalServer.status
   const shouldShowRestartControl =
     previewServerStatus === "error" || previewServerStatus === "stopped"
 
@@ -261,7 +232,7 @@ export function SettingsServerSection({
                     <div className="flex flex-wrap gap-2 pt-gap">
                       <Button
                         size="sm"
-                        variant="accent"
+                        variant="dc"
                         fullWidth
                         disabled={isRestarting}
                         onClick={() => void handleRestart()}

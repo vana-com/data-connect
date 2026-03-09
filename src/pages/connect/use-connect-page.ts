@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from "react"
 import { useNavigate, useSearchParams } from "react-router-dom"
 import { useSelector } from "react-redux"
-import { DEFAULT_APP_ID, getAppRegistryEntry } from "@/apps/registry"
+import { getAppRegistryEntry } from "@/apps/registry"
 import {
   buildGrantSearchParams,
   getGrantParamsFromSearchParams,
@@ -19,7 +19,8 @@ import { verifyBuilder } from "@/services/builder"
 import type { RootState } from "@/types"
 import type { PrefetchedGrantData, GrantSession } from "@/pages/grant/types"
 import { getConnectBusyCta } from "./connect-run-status"
-import { getConnectCta, getConnectTitle, getDataLabel } from "./connect-copy"
+import { useConnectDebugState } from "./use-connect-debug-state"
+import type { ConnectDebugState } from "./connect-ui-debug"
 
 /*
   NB! If you’re running the web build (not Tauri), invoke fails → no platforms.
@@ -41,17 +42,20 @@ interface UseConnectPageResult {
   showDebugBypass: boolean
   handleConnect: () => Promise<void>
   handleDebugGrant: () => void
+  debugState: ConnectDebugState
+  debugScopes: string[]
+  setDebugState: (state: ConnectDebugState) => void
 }
 
 export function useConnectPage(): UseConnectPageResult {
   const navigate = useNavigate()
   const [searchParams] = useSearchParams()
+  const currentSearch = searchParams.toString()
   const params = getGrantParamsFromSearchParams(searchParams)
   const hasGrantSession = Boolean(params.sessionId)
   const [generatedSessionId] = useState(() => `grant-session-${Date.now()}`)
-  const resolvedAppId = params.appId ?? DEFAULT_APP_ID
-  const appEntry =
-    getAppRegistryEntry(resolvedAppId) ?? getAppRegistryEntry(DEFAULT_APP_ID)
+  const resolvedAppId = params.appId
+  const appEntry = getAppRegistryEntry(resolvedAppId)
   const sessionId = params.sessionId ?? generatedSessionId
 
   const prefetchedSessionRef = useRef<string | null>(null)
@@ -153,9 +157,6 @@ export function useConnectPage(): UseConnectPageResult {
     : false
 
   const dataSourceLabel = getPrimaryDataSourceLabel(grantScopes)
-  const connectTitle = getConnectTitle(dataSourceLabel, isAlreadyConnected)
-  const dataLabel = getDataLabel(dataSourceLabel)
-  const connectCta = getConnectCta(dataSourceLabel)
 
   // Keep dependencies primitive and deterministic for query serialization.
   const grantSearch = useMemo(
@@ -172,13 +173,17 @@ export function useConnectPage(): UseConnectPageResult {
   const isConnecting = Boolean(connectRunId)
   const scopeSummary =
     grantScopes && grantScopes.length > 0 ? grantScopes.join(", ") : null
+  const isMissingAppSelection =
+    platformsLoaded && !resolvedAppId && (!grantScopes || grantScopes.length === 0)
   const isMissingRegistryEntry = platformsLoaded && !registryEntry
   const isMissingConnector =
     platformsLoaded && Boolean(registryEntry) && !connectPlatform
 
   const connectorErrorMessage = platformLoadError
     ? `Could not load connectors.${scopeSummary ? ` Scope: ${scopeSummary}.` : ""}`
-    : isMissingRegistryEntry
+    : isMissingAppSelection
+      ? "Missing app or scopes. Open Connect from a data app, or include scopes in the URL."
+      : isMissingRegistryEntry
       ? `No data source matches the requested scope${
           scopeSummary ? `: ${scopeSummary}.` : "."
         }`
@@ -197,8 +202,38 @@ export function useConnectPage(): UseConnectPageResult {
   const busyCta = isCheckingPlatforms
     ? "Checking connectors..."
     : getConnectBusyCta(activeRun)
+  const showDebugBypass = import.meta.env.DEV && Boolean(connectorErrorMessage)
+  const {
+    debugState,
+    isDebugging,
+    resolvedDataSourceLabel,
+    resolvedScopes,
+    resolvedIsAlreadyConnected,
+    resolvedHasConnector,
+    resolvedIsBusy,
+    resolvedIsAutoRedirecting,
+    resolvedBusyCta,
+    resolvedConnectorErrorMessage,
+    resolvedShowDebugBypass,
+    resolvedConnectTitle,
+    resolvedConnectCta,
+    resolvedDataLabel,
+    setDebugState,
+  } = useConnectDebugState({
+    search: currentSearch,
+    navigate,
+    dataSourceLabel,
+    isAlreadyConnected,
+    hasConnector: Boolean(connectPlatform),
+    isBusy,
+    isAutoRedirecting,
+    busyCta,
+    connectorErrorMessage,
+    showDebugBypass,
+  })
 
   useEffect(() => {
+    if (isDebugging) return
     if (!hasGrantSession || !platformsLoaded || !isAlreadyConnected) return
 
     const grantHref = grantSearch ? `${ROUTES.grant}?${grantSearch}` : ROUTES.grant
@@ -208,9 +243,17 @@ export function useConnectPage(): UseConnectPageResult {
         ? { prefetched: prefetchedDataRef.current }
         : undefined,
     })
-  }, [grantSearch, hasGrantSession, isAlreadyConnected, navigate, platformsLoaded])
+  }, [
+    grantSearch,
+    hasGrantSession,
+    isAlreadyConnected,
+    isDebugging,
+    navigate,
+    platformsLoaded,
+  ])
 
   useEffect(() => {
+    if (isDebugging) return
     if (!activeRun) return
 
     if (activeRun.status === "success") {
@@ -227,10 +270,10 @@ export function useConnectPage(): UseConnectPageResult {
     if (activeRun.status === "error" || activeRun.status === "stopped") {
       setConnectRunId(null)
     }
-  }, [activeRun, grantSearch, navigate])
+  }, [activeRun, grantSearch, isDebugging, navigate])
 
   const handleConnect = async () => {
-    if (!connectPlatform || isBusy) return
+    if (isDebugging || !connectPlatform || isBusy) return
     const runId = await startImport(connectPlatform)
     if (!runId) return
     setConnectRunId(runId)
@@ -244,18 +287,21 @@ export function useConnectPage(): UseConnectPageResult {
   }
 
   return {
-    connectTitle,
-    connectCta,
-    busyCta,
-    dataSourceLabel,
-    dataLabel,
-    isAlreadyConnected,
-    hasConnector: Boolean(connectPlatform),
-    isBusy,
-    isAutoRedirecting,
-    connectorErrorMessage,
-    showDebugBypass: import.meta.env.DEV && Boolean(connectorErrorMessage),
+    connectTitle: resolvedConnectTitle,
+    connectCta: resolvedConnectCta,
+    busyCta: resolvedBusyCta,
+    dataSourceLabel: resolvedDataSourceLabel,
+    dataLabel: resolvedDataLabel,
+    isAlreadyConnected: resolvedIsAlreadyConnected,
+    hasConnector: resolvedHasConnector,
+    isBusy: resolvedIsBusy,
+    isAutoRedirecting: resolvedIsAutoRedirecting,
+    connectorErrorMessage: resolvedConnectorErrorMessage,
+    showDebugBypass: resolvedShowDebugBypass,
     handleConnect,
     handleDebugGrant,
+    debugState,
+    debugScopes: resolvedScopes,
+    setDebugState,
   }
 }

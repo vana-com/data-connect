@@ -1,24 +1,31 @@
-import { AlertTriangleIcon, ArrowRightIcon } from "lucide-react"
+import { AlertTriangleIcon } from "lucide-react"
+import { IconFlow } from "@/components/elements/icon-flow"
 import { PageContainer } from "@/components/elements/page-container"
 import { Button } from "@/components/ui/button"
-import { PlatformIcon } from "@/components/icons/platform-icon"
 import { Text } from "@/components/typography/text"
 import { PageHeading } from "@/components/typography/page-heading"
 import { LoadingButton } from "@/components/elements/button-loading"
 import { OpenExternalLink } from "@/components/typography/link-open-external"
+import { PlatformIcon } from "@/components/icons/platform-icon"
 import { cn } from "@/lib/classes"
 import { LINKS } from "@/config/links"
-import { formatScopeLabel, getPrimaryDataSourceLabel } from "@/lib/scope-labels"
-import type { BuilderManifest, GrantSession } from "../../types"
+import {
+  formatScopeLabel,
+  formatListAsSentence,
+  getDataTypeFromScopeLabel,
+  getPrimaryDataSourceLabel,
+  getPrimaryScopeToken,
+} from "@/lib/scope-labels"
+import type { BuilderManifest } from "../../types"
 import { ActionPanel } from "@/components/typography/button-action"
 import { fieldHeight } from "@/components/typography/field"
 
 // Note: `isApproving` maps to the "creating-grant" / "approving" states.
 // The consent screen stays visible while the Allow button shows a loading spinner.
 interface GrantConsentStateProps {
-  session?: GrantSession
+  scopes: string[]
   builderManifest?: BuilderManifest
-  builderName?: string
+  appName?: string
   isApproving: boolean
   onApprove: () => void
   onDeny?: () => void
@@ -35,19 +42,85 @@ function pickBuilderIcon(manifest?: BuilderManifest): string | undefined {
   return (sized ?? manifest.icons[0]).src
 }
 
+function buildConsentRows(scopes: string[]) {
+  const rows: ConsentRow[] = []
+  const groups = new Map<
+    string,
+    {
+      sourceLabel: string | null
+      scopes: string[]
+    }
+  >()
+
+  for (const scope of scopes) {
+    const platformKey = getPrimaryScopeToken([scope]) ?? scope
+    const group = groups.get(platformKey)
+
+    if (group) {
+      group.scopes.push(scope)
+      continue
+    }
+
+    groups.set(platformKey, {
+      sourceLabel: getPrimaryDataSourceLabel([scope]),
+      scopes: [scope],
+    })
+  }
+
+  for (const [platformKey, group] of groups) {
+    const scopeLabels = group.scopes.map(formatScopeLabel)
+
+    if (group.sourceLabel && group.scopes.length > 1) {
+      rows.push({
+        kind: "grouped",
+        key: platformKey,
+        sourceLabel: group.sourceLabel,
+        sentence: `See your ${group.sourceLabel} ${formatListAsSentence(
+          scopeLabels.map(label =>
+            getDataTypeFromScopeLabel(label, group.sourceLabel!)
+          )
+        )}`,
+      })
+      continue
+    }
+
+    rows.push(
+      ...scopeLabels.map((label, index) => ({
+        kind: "single" as const,
+        key: `${platformKey}-${group.scopes[index] ?? index}`,
+        sourceLabel: group.sourceLabel,
+        label: `See your ${label}`,
+      }))
+    )
+  }
+
+  return rows
+}
+
+function getConsentHeadingDataLabel(scopes: string[]) {
+  const platformKeys = new Set(
+    scopes
+      .map(scope => getPrimaryScopeToken([scope]))
+      .filter((scope): scope is string => scope != null)
+  )
+
+  if (platformKeys.size !== 1) return "data"
+
+  const dataSourceLabel = getPrimaryDataSourceLabel(scopes)
+  return dataSourceLabel ? `${dataSourceLabel} data` : "data"
+}
+
 export function GrantConsentState({
-  session,
+  scopes,
   builderManifest,
-  builderName,
+  appName,
   isApproving,
   onApprove,
   onDeny,
 }: GrantConsentStateProps) {
-  const dataSourceLabel = getPrimaryDataSourceLabel(session?.scopes)
-  const dataLabel = dataSourceLabel ? `${dataSourceLabel} data` : "data"
-  const scopeLabels = session?.scopes?.map(formatScopeLabel) ?? []
-  const appName =
-    builderName ?? builderManifest?.name ?? session?.appName ?? "this app"
+  const dataLabel = getConsentHeadingDataLabel(scopes)
+  const rows = buildConsentRows(scopes)
+  const resolvedAppName = appName ?? builderManifest?.name ?? "this app"
   const builderIconSrc = pickBuilderIcon(builderManifest)
   const handleCancel = () => {
     if (isApproving) return
@@ -61,7 +134,7 @@ export function GrantConsentState({
       <div className="space-y-w6">
         <PageHeading>Allow access to your {dataLabel}</PageHeading>
         <Text as="p">
-          This will allow <strong>{appName}</strong> to:
+          This will allow <strong>{resolvedAppName}</strong> to:
         </Text>
 
         {/* TODO: style this as design system */}
@@ -77,35 +150,11 @@ export function GrantConsentState({
           </div>
         )}
 
-        <div className="action-outset space-y-px">
-          {scopeLabels.map((label, i) => (
-            <ActionPanel
-              key={label}
-              className={cn(
-                "justify-start gap-w4",
-                scopeLabels.length > 1 && i === 0 && "rounded-b-none",
-                scopeLabels.length > 1 && i > 0 && i < scopeLabels.length - 1 && "rounded-none",
-                scopeLabels.length > 1 && i === scopeLabels.length - 1 && "rounded-t-none"
-              )}
-            >
-              <div className="h-full flex items-center gap-1">
-                <PlatformIcon
-                  iconName={dataSourceLabel ?? "Data"}
-                  aria-hidden="true"
-                />
-                <ArrowRightIcon aria-hidden="true" className="size-[1.5em]" />
-                <PlatformIcon
-                  iconName={appName}
-                  imageSrc={builderIconSrc}
-                  aria-hidden="true"
-                />
-              </div>
-              <Text as="p" intent="button" weight="medium">
-                See your {label}
-              </Text>
-            </ActionPanel>
-          ))}
-        </div>
+        <GrantConsentActionRows
+          rows={rows}
+          appName={resolvedAppName}
+          builderIconSrc={builderIconSrc}
+        />
 
         <Text as="p" intent="fine" dim align="left" balance>
           By clicking <strong>Agree and Allow</strong>, you acknowledge that you
@@ -140,36 +189,174 @@ export function GrantConsentState({
             disabled={isApproving}
             isLoading={isApproving}
             loadingLabel="Allowing…"
-            variant="accent"
+            variant="dc"
             className={cn(fieldHeight.base, "w-[156px] disabled:opacity-100")}
           >
             Agree and Allow
           </LoadingButton>
         </div>
-
-        {/* <hr /> */}
-        {/* <div className="flex flex-col items-end gap-2">
-          {builderLinks.length > 0 && (
-            <Text as="p" intent="body" dim align="right">
-              Read {appName}'s{" "}
-              {builderLinks.map((link, index) => (
-                <span key={link.label}>
-                  <OpenExternalLink href={link.href}>
-                    {link.label}
-                  </OpenExternalLink>
-                  {index < builderLinks.length - 2
-                    ? ", "
-                    : index === builderLinks.length - 2
-                      ? " and "
-                      : ""}
-                </span>
-              ))}
-              .
-            </Text>
-          )}
-          <GrantWarning align="right" />
-        </div> */}
       </div>
     </PageContainer>
+  )
+}
+
+type ConsentRow =
+  | {
+      kind: "grouped"
+      key: string
+      sourceLabel: string | null
+      sentence: string
+    }
+  | {
+      kind: "single"
+      key: string
+      sourceLabel: string | null
+      label: string
+    }
+
+interface GrantConsentActionRowsProps {
+  rows: ConsentRow[]
+  appName: string
+  builderIconSrc?: string
+}
+
+function GrantConsentActionRows({
+  rows,
+  appName,
+  builderIconSrc,
+}: GrantConsentActionRowsProps) {
+  return (
+    <div className="action-outset">
+      {rows.map((row, index) =>
+        row.kind === "grouped" ? (
+          <GrantConsentGroupedScopeRow
+            key={row.key}
+            row={row}
+            index={index}
+            rowCount={rows.length}
+            appName={appName}
+            builderIconSrc={builderIconSrc}
+          />
+        ) : (
+          <GrantConsentSingleScopeRow
+            key={row.key}
+            row={row}
+            index={index}
+            rowCount={rows.length}
+            appName={appName}
+            builderIconSrc={builderIconSrc}
+          />
+        )
+      )}
+    </div>
+  )
+}
+
+interface GrantConsentScopeRowProps {
+  row: Extract<ConsentRow, { kind: "grouped" | "single" }>
+  index: number
+  rowCount: number
+  appName: string
+  builderIconSrc?: string
+}
+
+function GrantConsentGroupedScopeRow({
+  row,
+  index,
+  rowCount,
+  appName,
+  builderIconSrc,
+}: GrantConsentScopeRowProps) {
+  if (row.kind !== "grouped") return null
+
+  return (
+    <GrantConsentRowFrame
+      sourceLabel={row.sourceLabel}
+      index={index}
+      rowCount={rowCount}
+      appName={appName}
+      builderIconSrc={builderIconSrc}
+    >
+      {row.sentence}
+    </GrantConsentRowFrame>
+  )
+}
+
+function GrantConsentSingleScopeRow({
+  row,
+  index,
+  rowCount,
+  appName,
+  builderIconSrc,
+}: GrantConsentScopeRowProps) {
+  if (row.kind !== "single") return null
+
+  return (
+    <GrantConsentRowFrame
+      sourceLabel={row.sourceLabel}
+      index={index}
+      rowCount={rowCount}
+      appName={appName}
+      builderIconSrc={builderIconSrc}
+    >
+      {row.label}
+    </GrantConsentRowFrame>
+  )
+}
+
+interface GrantConsentRowFrameProps {
+  sourceLabel: string | null
+  index: number
+  rowCount: number
+  appName: string
+  builderIconSrc?: string
+  children: string
+}
+
+function GrantConsentRowFrame({
+  sourceLabel,
+  index,
+  rowCount,
+  appName,
+  builderIconSrc,
+  children,
+}: GrantConsentRowFrameProps) {
+  return (
+    <ActionPanel
+      className={cn(
+        "justify-start gap-w4",
+        rowCount > 1 && index === 0 && "rounded-b-none",
+        rowCount > 1 &&
+          index > 0 &&
+          index < rowCount - 1 &&
+          "rounded-none border-t-0",
+        rowCount > 1 && index === rowCount - 1 && "rounded-t-none border-t-0",
+        // Allow the text to wrap naturally
+        "h-auto items-start whitespace-normal"
+      )}
+    >
+      {/* Usually 36px high within 64px ActionPanel, so we add pt to keep this illusion */}
+      <IconFlow
+        className="py-[13.5px]"
+        from={
+          <PlatformIcon
+            iconName={sourceLabel ?? "Data"}
+            size={28}
+            aria-hidden="true"
+          />
+        }
+        to={
+          <PlatformIcon
+            iconName={appName}
+            imageSrc={builderIconSrc}
+            size={28}
+            aria-hidden="true"
+          />
+        }
+      />
+      <Text as="p" intent="button" weight="medium" className={cn("py-[20px]")}>
+        {children}
+      </Text>
+    </ActionPanel>
   )
 }

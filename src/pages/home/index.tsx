@@ -1,17 +1,12 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react"
-import { MotionConfig } from "motion/react"
 import { useLocation, useNavigate } from "react-router-dom"
 import { useSelector } from "react-redux"
 import { usePlatforms } from "@/hooks/usePlatforms"
 import { useConnector } from "@/hooks/useConnector"
-import { useConnectedApps } from "@/hooks/useConnectedApps"
-import { usePersonalServer } from "@/hooks/usePersonalServer"
 import type { Platform, RootState } from "@/types"
 import { PageContainer } from "@/components/elements/page-container"
 import { DebugTogglePanel } from "@/components/elements/debug-toggle-panel"
-import { SlidingTabs } from "@/components/elements/sliding-tabs"
-import { Tabs, TabsContent } from "@/components/ui/tabs"
-import { ConnectedAppsList } from "@/pages/home/components/connected-apps-list"
+import { Text } from "@/components/typography/text"
 import { ConnectedSourcesList } from "@/pages/home/components/connected-sources-list"
 import { AvailableSourcesList } from "@/pages/home/components/available-sources-list"
 import { Button } from "@/components/ui/button"
@@ -27,10 +22,6 @@ import {
   resolveConnectedSourcesUiDebugPlatforms,
   resolveConnectedSourcesUiDebugRuns,
 } from "./connected-sources-ui-debug"
-import {
-  CONNECTED_APPS_UI_DEBUG_SCENARIO_VALUES,
-  isConnectedAppsUiDebugEnabled,
-} from "./connected-apps-ui-debug"
 import {
   getHomeImportSourcesScenario,
   HOME_IMPORT_SOURCES_SCENARIO_VALUES,
@@ -59,18 +50,9 @@ export function Home() {
   const { platforms, isPlatformConnected, refreshConnectedStatus } =
     usePlatforms()
   const { startImport, stopExport } = useConnector()
-  const { connectedApps, fetchConnectedApps } = useConnectedApps()
-  const personalServer = usePersonalServer()
   const runs = useSelector((state: RootState) => state.app.runs)
-  const [activeTab, setActiveTab] = useState("sources")
-  const [enableTabMotion, setEnableTabMotion] = useState(false)
   const [deepLinkInput, setDeepLinkInput] = useState("")
   const knownSuccessfulRunIdsRef = useRef<Set<string> | null>(null)
-
-  const tabs = [
-    { value: "sources", label: "Your data" },
-    { value: "apps", label: "Connected apps" },
-  ]
   const homeUiDebugEnabled = useMemo(
     () => isHomeImportSourcesDebugEnabled(location.search),
     [location.search]
@@ -87,10 +69,6 @@ export function Home() {
     () => new URLSearchParams(location.search).get("connectedSourcesScenario"),
     [location.search]
   )
-  const connectedAppsUiDebugEnabled = useMemo(
-    () => isConnectedAppsUiDebugEnabled(location.search),
-    [location.search]
-  )
   const appUpdateUiDebugEnabled = useMemo(
     () => isAppUpdateUiDebugEnabled(location.search),
     [location.search]
@@ -99,30 +77,7 @@ export function Home() {
     () => getAppUpdateUiDebugScenario(location.search),
     [location.search]
   )
-  const currentConnectedAppsUiDebugScenario = useMemo(
-    () => new URLSearchParams(location.search).get("connectedAppsScenario"),
-    [location.search]
-  )
-
   const displayPlatforms = platforms
-  const displayConnectedApps = connectedApps
-
-  // Fetch connected apps from Personal Server when it becomes available
-  useEffect(() => {
-    if (personalServer.port && personalServer.status === "running") {
-      fetchConnectedApps(personalServer.port, personalServer.devToken)
-    }
-  }, [
-    personalServer.port,
-    personalServer.status,
-    personalServer.devToken,
-    fetchConnectedApps,
-  ])
-
-  useEffect(() => {
-    const frame = requestAnimationFrame(() => setEnableTabMotion(true))
-    return () => cancelAnimationFrame(frame)
-  }, [])
 
   useEffect(() => {
     const successfulRunIds = runs
@@ -198,15 +153,6 @@ export function Home() {
       const nextParams = new URLSearchParams(location.search)
       if (scenario) nextParams.set("connectedSourcesScenario", scenario)
       else nextParams.delete("connectedSourcesScenario")
-      navigate({ search: `?${nextParams.toString()}` }, { replace: true })
-    },
-    [location.search, navigate]
-  )
-  const setConnectedAppsUiDebugScenario = useCallback(
-    (scenario: string | null) => {
-      const nextParams = new URLSearchParams(location.search)
-      if (scenario) nextParams.set("connectedAppsScenario", scenario)
-      else nextParams.delete("connectedAppsScenario")
       navigate({ search: `?${nextParams.toString()}` }, { replace: true })
     },
     [location.search, navigate]
@@ -296,40 +242,25 @@ export function Home() {
 
   return (
     <PageContainer>
-      {/* Tabs */}
-      <Tabs value={activeTab} onValueChange={setActiveTab}>
-        <MotionConfig reducedMotion={enableTabMotion ? "never" : "always"}>
-          <SlidingTabs
-            tabs={tabs}
-            value={activeTab}
-            onValueChange={setActiveTab}
-            className="pb-w12"
-          />
-        </MotionConfig>
-
-        {/* SOURCES */}
-        <TabsContent value="sources" className="space-y-w8">
-          <ConnectedSourcesList
-            platforms={connectedSourcesPlatforms}
-            runs={connectedSourcesRuns}
-            headline="Your imported data"
-            onOpenRuns={handleOpenRuns}
-            onSyncSource={handleImportSource}
-          />
-          <AvailableSourcesList
-            platforms={homeImportSourcesDebug.platforms}
-            runs={homeImportSourcesDebug.runs}
-            onExport={handleImportSource}
-            onStopRun={handleStopImport}
-            connectedPlatformIds={homeImportSourcesDebug.connectedPlatformIds}
-          />
-        </TabsContent>
-
-        {/* APPS */}
-        <TabsContent value="apps">
-          <ConnectedAppsList apps={displayConnectedApps} />
-        </TabsContent>
-      </Tabs>
+      <div className="space-y-w8">
+        <Text as="h1" intent="subtitle" weight="medium">
+          Your data
+        </Text>
+        <ConnectedSourcesList
+          platforms={connectedSourcesPlatforms}
+          runs={connectedSourcesRuns}
+          headline="Your imported data"
+          onOpenRuns={handleOpenRuns}
+          onSyncSource={handleImportSource}
+        />
+        <AvailableSourcesList
+          platforms={homeImportSourcesDebug.platforms}
+          runs={homeImportSourcesDebug.runs}
+          onExport={handleImportSource}
+          onStopRun={handleStopImport}
+          connectedPlatformIds={homeImportSourcesDebug.connectedPlatformIds}
+        />
+      </div>
 
       {/* DEV ONLY SHORTCUT: RickRoll /connect link */}
       {import.meta.env.DEV && (
@@ -399,34 +330,6 @@ export function Home() {
                       "none"}
                   </p>
                 ) : null}
-              </div>
-              <div className="space-y-2 pt-1">
-                <p className="text-xs font-medium">Connected apps</p>
-                <div className="flex flex-wrap gap-2">
-                  {CONNECTED_APPS_UI_DEBUG_SCENARIO_VALUES.map(scenario => (
-                    <Button
-                      key={scenario}
-                      size="xs"
-                      variant={
-                        currentConnectedAppsUiDebugScenario === scenario
-                          ? "default"
-                          : "outline"
-                      }
-                      onClick={() => setConnectedAppsUiDebugScenario(scenario)}
-                    >
-                      {scenario}
-                    </Button>
-                  ))}
-                  <Button
-                    size="xs"
-                    variant={
-                      connectedAppsUiDebugEnabled ? "outline" : "default"
-                    }
-                    onClick={() => setConnectedAppsUiDebugScenario(null)}
-                  >
-                    real
-                  </Button>
-                </div>
               </div>
               <div className="space-y-2 pt-1">
                 <p className="text-xs font-medium">App update toast</p>

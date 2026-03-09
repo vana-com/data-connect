@@ -29,8 +29,8 @@ const toneStyles: Record<
     dotClassName: "bg-accent",
   },
   warning: {
-    textClassName: "text-amber-600",
-    dotClassName: "bg-amber-600",
+    textClassName: "text-warning",
+    dotClassName: "bg-warning",
   },
   destructive: {
     textClassName: "text-destructive-foreground",

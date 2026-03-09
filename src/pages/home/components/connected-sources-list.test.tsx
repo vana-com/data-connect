@@ -44,6 +44,7 @@ describe("ConnectedSourcesList sync click guard", () => {
     const syncButton = screen.getByRole("button", {
       name: /fetch latest data for chatgpt/i,
     })
+    expect(document.querySelector('[data-slot="source-row-list"]')).toBeTruthy()
 
     fireEvent.click(syncButton)
     fireEvent.click(syncButton)

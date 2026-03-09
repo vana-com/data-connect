@@ -13,6 +13,7 @@ interface SlidingTabsProps {
   tabs: Tab[]
   value: string
   onValueChange: (value: string) => void
+  ariaLabel?: string
   className?: string
   ulClassName?: string
   disabled?: boolean
@@ -22,13 +23,18 @@ export function SlidingTabs({
   tabs,
   value,
   onValueChange,
+  ariaLabel,
   className,
   ulClassName,
   disabled,
 }: SlidingTabsProps) {
   return (
     <nav className={cn("relative", className)}>
-      <ul className={cn("flex gap-5 relative", ulClassName)}>
+      <ul
+        role="tablist"
+        aria-label={ariaLabel}
+        className={cn("flex gap-5 relative", ulClassName)}
+      >
         <div className="absolute z-0 rounded-button bg-foreground/10 h-px inset-x-0 bottom-[-0.8em]"></div>
 
         {tabs.map(tab => {

@@ -1,6 +1,12 @@
-import type { ComponentProps } from "react"
+import { type ComponentProps } from "react"
+import { AdaptiveIcon } from "@/components/icons/adaptive-icon"
+import type { AdaptiveIconVariant } from "@/components/icons/adaptive-icon"
 import { getPlatformIconComponentForName } from "@/lib/platform/icons"
-import { cn } from "@/lib/utils"
+import { getPlatformLogoUrlForDomain } from "@/lib/platform/logo-provider"
+import {
+  getPlatformRegistryEntryById,
+  getPlatformRegistryEntryByName,
+} from "@/lib/platform/utils"
 
 /**
  * Shared platform icon utilities for displaying connector icons.
@@ -12,14 +18,12 @@ interface PlatformIconProps extends Omit<ComponentProps<"div">, "children"> {
   imageSrc?: string
   imageAlt?: string
   size?: number
+  imageScale?: number
   fallbackLabel?: string
   fallbackScale?: number
+  variant?: AdaptiveIconVariant
   ariaHidden?: boolean
 }
-
-// Default 2px padding to ensure the icon is centered within the wrapper
-const iconWrapper =
-  "flex items-center justify-center rounded-button overflow-hidden p-1"
 
 /**
  * Platform icon component
@@ -30,68 +34,40 @@ export function PlatformIcon({
   imageSrc,
   imageAlt = "",
   size = 32,
+  imageScale = 1,
   className,
   fallbackLabel,
   fallbackScale = 0.75,
+  variant = "padded",
   ariaHidden,
   "aria-hidden": ariaHiddenProp,
   ...props
 }: PlatformIconProps) {
   const Icon = getPlatformIconComponentForName(iconName)
+  const registryEntry =
+    getPlatformRegistryEntryById(iconName) ??
+    getPlatformRegistryEntryByName(iconName)
+  const resolvedImageSrc =
+    imageSrc ??
+    (registryEntry?.brandDomain
+      ? getPlatformLogoUrlForDomain(registryEntry.brandDomain)
+      : undefined)
   const resolvedAriaHidden = ariaHidden ?? ariaHiddenProp ?? true
+  const label = (fallbackLabel?.trim() || iconName.trim().charAt(0)).toUpperCase()
 
-  if (imageSrc) {
-    return (
-      <div
-        className={cn(iconWrapper, className)}
-        aria-hidden={resolvedAriaHidden}
-        {...props}
-      >
-        <img
-          src={imageSrc}
-          alt={imageAlt}
-          className="object-cover"
-          style={{ width: `${size}px`, height: `${size}px` }}
-        />
-      </div>
-    )
-  }
-
-  if (Icon) {
-    return (
-      <div
-        className={cn(iconWrapper, className)}
-        aria-hidden={resolvedAriaHidden}
-        {...props}
-      >
-        <Icon style={{ width: `${size}px`, height: `${size}px` }} aria-hidden />
-      </div>
-    )
-  }
-
-  // Fallback: show first letter
-  const label = fallbackLabel?.trim() || iconName.charAt(0)
-  const fontSize = Math.round(size * fallbackScale)
   return (
-    <div
-      className={cn(
-        iconWrapper,
-        "text-background bg-foreground font-semi",
-        className
-      )}
+    <AdaptiveIcon
+      variant={variant}
+      className={className}
+      imageSources={resolvedImageSrc ? [resolvedImageSrc] : undefined}
+      imageAlt={imageAlt}
+      size={size}
+      imageScale={imageScale}
+      icon={Icon ?? undefined}
+      fallbackLabel={label}
+      fallbackScale={fallbackScale}
       aria-hidden={resolvedAriaHidden}
       {...props}
-    >
-      <span
-        className={cn("flex items-center justify-center")}
-        style={{
-          fontSize: `${fontSize}px`,
-          width: `${size}px`,
-          height: `${size}px`,
-        }}
-      >
-        <span>{label}</span>
-      </span>
-    </div>
+    />
   )
 }

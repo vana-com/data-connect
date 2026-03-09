@@ -10,6 +10,7 @@ import { ActionButton } from "@/components/typography/button-action"
 import { LearnMoreLink } from "@/components/typography/link-learn-more"
 import { ButtonArrow } from "@/components/ui/button"
 import { useConnectPage } from "./use-connect-page"
+import { ConnectDebugPanel } from "./components/connect-debug-panel"
 
 export function Connect() {
   const {
@@ -26,11 +27,15 @@ export function Connect() {
     showDebugBypass,
     handleConnect,
     handleDebugGrant,
+    debugState,
+    debugScopes,
+    setDebugState,
   } = useConnectPage()
 
-  if (isAutoRedirecting) return <LoadingState />
-
-  return (
+  const isDev = import.meta.env.DEV
+  const content = isAutoRedirecting ? (
+    <LoadingState />
+  ) : (
     <PageContainer>
       <div className="space-y-w6">
         <PageHeading>{connectTitle}</PageHeading>
@@ -59,7 +64,9 @@ export function Connect() {
                 No connector
               </EyebrowBadge>
             ) : isBusy ? (
-              <Spinner className="size-[1.5em] text-muted-foreground ml-auto" />
+              <div className="size-[2em] flex items-center justify-center ml-auto">
+                <Spinner className="size-5! text-muted-foreground" />
+              </div>
             ) : (
               <ButtonArrow
                 icon={ChevronRight}
@@ -104,5 +111,19 @@ export function Connect() {
         </div> */}
       </div>
     </PageContainer>
+  )
+
+  return (
+    <>
+      {content}
+      {isDev ? (
+        <ConnectDebugPanel
+          activeState={debugState}
+          dataSourceLabel={dataSourceLabel ?? "ChatGPT"}
+          scopes={debugScopes}
+          onChangeState={setDebugState}
+        />
+      ) : null}
+    </>
   )
 }

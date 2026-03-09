@@ -1,6 +1,5 @@
 import type { usePersonalServer } from "@/hooks/usePersonalServer"
 import { Text } from "@/components/typography/text"
-import { DEV_FLAGS } from "@/config/dev-flags"
 import { Row, RowDot } from "./row"
 
 /*
@@ -12,9 +11,6 @@ import { Row, RowDot } from "./row"
   - Users can confuse runtime status with protocol registration status.
 */
 type ServerRuntimeStatus = ReturnType<typeof usePersonalServer>["status"]
-const TEST_SERVER_STATUS: ServerRuntimeStatus | null = null
-const TEST_SERVER_PORT = 5488
-const TEST_SERVER_ERROR = "Could not start server"
 
 interface ServerStatusPresentation {
   dotClassName: string
@@ -26,24 +22,6 @@ interface StatusRowProps {
   status: ServerRuntimeStatus
   port: number | null
   error: string | null
-}
-
-function getPreviewStatusInputs(
-  status: ServerRuntimeStatus,
-  port: number | null,
-  error: string | null
-) {
-  const previewStatus =
-    DEV_FLAGS.useSettingsUiMocks && TEST_SERVER_STATUS
-      ? TEST_SERVER_STATUS
-      : status
-  const previewPort = previewStatus === "running" ? TEST_SERVER_PORT : port
-  const previewError = previewStatus === "error" ? TEST_SERVER_ERROR : error
-  return {
-    status: previewStatus,
-    port: previewPort,
-    error: previewError,
-  }
 }
 
 function getServerStatusPresentation(
@@ -59,7 +37,7 @@ function getServerStatusPresentation(
       }
     case "starting":
       return {
-        dotClassName: "bg-amber-600",
+        dotClassName: "bg-success-foreground",
         label: "Starting",
       }
     case "error":
@@ -70,8 +48,8 @@ function getServerStatusPresentation(
       }
     case "stopped":
       return {
-        dotClassName: "bg-destructive-foreground",
-        textClassName: "text-destructive-foreground",
+        dotClassName: "bg-warning",
+        textClassName: "text-warning",
         label: "Stopped",
       }
     default: {
@@ -82,12 +60,7 @@ function getServerStatusPresentation(
 }
 
 export function StatusRow({ status, port, error }: StatusRowProps) {
-  const previewInputs = getPreviewStatusInputs(status, port, error)
-  const statusUi = getServerStatusPresentation(
-    previewInputs.status,
-    previewInputs.port,
-    previewInputs.error
-  )
+  const statusUi = getServerStatusPresentation(status, port, error)
 
   return (
     <Row

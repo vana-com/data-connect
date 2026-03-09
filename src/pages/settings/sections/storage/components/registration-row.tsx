@@ -1,6 +1,5 @@
 import type { usePersonalServer } from "@/hooks/usePersonalServer"
 import { Text } from "@/components/typography/text"
-import { DEV_FLAGS } from "@/config/dev-flags"
 import { Row, RowDot } from "./row"
 
 /*
@@ -24,8 +23,6 @@ interface RegistrationPresentation {
   label: string
 }
 
-const TEST_REGISTRATION_STATE: RegistrationState | null = null
-
 interface RegistrationRowProps {
   status: ServerRuntimeStatus
   tunnelUrl: string | null
@@ -39,16 +36,6 @@ export function getRegistrationState(
   if (status === "error") return "error"
   if (status === "running" && tunnelUrl) return "registered"
   return "pending"
-}
-
-function getPreviewRegistrationState(
-  status: ServerRuntimeStatus,
-  tunnelUrl: string | null
-): RegistrationState {
-  const state = getRegistrationState(status, tunnelUrl)
-  return DEV_FLAGS.useSettingsUiMocks && TEST_REGISTRATION_STATE
-    ? TEST_REGISTRATION_STATE
-    : state
 }
 
 function getRegistrationPresentation(
@@ -68,8 +55,8 @@ function getRegistrationPresentation(
       }
     case "pending":
       return {
-        dotClassName: "bg-amber-600",
-        textClassName: "text-amber-600",
+        dotClassName: "bg-warning",
+        textClassName: "text-warning",
         label: "Not registered",
       }
     default: {
@@ -84,7 +71,7 @@ export function RegistrationRow({
   tunnelUrl,
   isLast = false,
 }: RegistrationRowProps) {
-  const registrationState = getPreviewRegistrationState(status, tunnelUrl)
+  const registrationState = getRegistrationState(status, tunnelUrl)
   const registrationUi = getRegistrationPresentation(registrationState)
 
   return (

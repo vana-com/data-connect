@@ -199,6 +199,7 @@ export function usePersonalServer() {
       console.log('[PersonalServer] Exited:', { exitCode, crashed });
 
       running.current = false;
+      _sharedPort = null;
       _sharedTunnelUrl = null;
       _sharedTunnelFailed = false;
       _sharedDevToken = null;

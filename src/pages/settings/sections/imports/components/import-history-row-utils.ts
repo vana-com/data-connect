@@ -5,7 +5,7 @@ export const finishedImportStatusBadgeClasses = {
   running: ["border-accent/25", "text-accent"],
   success: ["border-ring", "text-foreground-dim"],
   error: ["border-destructive/70", "text-destructive-foreground"],
-  stopped: ["border-amber-600/70", "text-amber-600"],
+  stopped: ["border-warning/70", "text-warning"],
   default: ["border-border", "text-foreground-dim"],
 } as const
 

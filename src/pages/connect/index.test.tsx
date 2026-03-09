@@ -137,11 +137,14 @@ describe("Connect", () => {
       expect(await screen.findByText("Connect your data")).toBeTruthy()
     })
 
-    it("does not fall back to app scopes when appId is known but grant scopes are missing", async () => {
-      mockClaimSession.mockRejectedValueOnce(new Error("prefetch failed"))
+    it("shows a missing app/scopes message when connect is opened without context", () => {
       mockUsePlatforms.mockReturnValue(defaultPlatforms())
-      renderConnect("?sessionId=sess-123&secret=my-secret&appId=rickroll")
-      expect(await screen.findByText("Connect your data")).toBeTruthy()
+      renderConnect()
+
+      expect(screen.getByText("Connect your data")).toBeTruthy()
+      expect(
+        screen.getByText(/missing app or scopes\. open connect from a data app/i)
+      ).toBeTruthy()
     })
 
     it("auto-navigates to grant when platform is already connected", async () => {
@@ -177,7 +180,7 @@ describe("Connect", () => {
   describe("platform resolution", () => {
     it("shows a missing connector message when no platform matches", () => {
       mockUsePlatforms.mockReturnValue(defaultPlatforms())
-      renderConnect()
+      renderConnect("?scopes=%5B%22chatgpt.conversations%22%5D")
 
       expect(
         screen.getByText(/no connector installed for chatgpt/i)
@@ -201,7 +204,7 @@ describe("Connect", () => {
       mockUsePlatforms.mockReturnValue(
         defaultPlatforms({ platformLoadError: "IPC error" })
       )
-      renderConnect()
+      renderConnect("?scopes=%5B%22chatgpt.conversations%22%5D")
       expect(screen.getByText(/could not load connectors/i)).toBeTruthy()
     })
 
@@ -211,7 +214,9 @@ describe("Connect", () => {
       )
       renderConnect()
 
-      const connectButton = screen.getByRole("button")
+      const connectButton = screen.getByRole("button", {
+        name: /checking connectors/i,
+      })
       expect(connectButton.getAttribute("aria-busy")).toBe("true")
       expect(screen.getByText("Checking connectors...")).toBeTruthy()
     })
@@ -563,6 +568,70 @@ describe("Connect", () => {
         expect(search).toContain("scopes=")
         expect(search).toContain("chatgpt.conversations")
       }
+    })
+  })
+
+  describe("connect debug panel", () => {
+    it("derives busy collecting UI from the debug state query param", () => {
+      mockUsePlatforms.mockReturnValue(
+        defaultPlatforms({ platforms: [CHATGPT_PLATFORM] })
+      )
+
+      const { container } = renderConnect(
+        "?appId=chatgpt&scopes=%5B%22chatgpt.conversations%22%5D&connectDebugState=collecting-data"
+      )
+
+      expect(screen.getByText("Collecting data...")).toBeTruthy()
+      expect(
+        screen.getByRole("button", { name: /collecting data/i }).getAttribute(
+          "aria-busy"
+        )
+      ).toBe("true")
+      expect(container.querySelector('[data-slot="spinner"]')).toBeTruthy()
+    })
+
+    it("falls back to live connect UI for invalid debug state query params", () => {
+      mockUsePlatforms.mockReturnValue(
+        defaultPlatforms({ platforms: [CHATGPT_PLATFORM] })
+      )
+
+      renderConnect(
+        "?appId=chatgpt&scopes=%5B%22chatgpt.conversations%22%5D&connectDebugState=not-real"
+      )
+
+      expect(
+        screen.getByRole("button", { name: /connect chatgpt/i }).getAttribute(
+          "aria-busy"
+        )
+      ).toBe("false")
+      expect(screen.queryByText("Collecting data...")).toBeNull()
+    })
+
+    it("writes and clears connect debug state from the URL via the debug panel", async () => {
+      mockUsePlatforms.mockReturnValue(
+        defaultPlatforms({ platforms: [CHATGPT_PLATFORM] })
+      )
+
+      const { router } = renderConnect(
+        "?appId=chatgpt&scopes=%5B%22chatgpt.conversations%22%5D"
+      )
+
+      fireEvent.click(screen.getByRole("button", { name: "Connect debug" }))
+      fireEvent.click(screen.getByRole("button", { name: "Collecting" }))
+
+      await waitFor(() => {
+        expect(router.state.location.search).toContain(
+          "connectDebugState=collecting-data"
+        )
+      })
+      expect(screen.getByText("Collecting data...")).toBeTruthy()
+
+      fireEvent.click(screen.getByRole("button", { name: "Live" }))
+
+      await waitFor(() => {
+        expect(router.state.location.search).not.toContain("connectDebugState=")
+      })
+      expect(screen.getByRole("button", { name: /connect chatgpt/i })).toBeTruthy()
     })
   })
 

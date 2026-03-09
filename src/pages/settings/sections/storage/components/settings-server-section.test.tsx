@@ -38,7 +38,7 @@ describe("SettingsServerSection", () => {
     window.localStorage.removeItem(ACTIVE_SERVER_OPTION_KEY)
   })
 
-  it.fails("uses real personal-server values instead of preview constants", () => {
+  it("uses real personal-server values instead of preview constants", () => {
     window.localStorage.setItem(ACTIVE_SERVER_OPTION_KEY, "personal-server")
 
     renderServerSection()

@@ -10,6 +10,10 @@ type OpenExternalLinkProps = Omit<TextProps<"a">, "as" | "href"> & {
   href: string
 }
 
+const isTauriRuntime = () =>
+  typeof window !== "undefined" &&
+  ("__TAURI__" in window || "__TAURI_INTERNALS__" in window)
+
 export function OpenExternalLink({
   href,
   className,
@@ -30,6 +34,7 @@ export function OpenExternalLink({
       onClick={(event: MouseEvent<HTMLAnchorElement>) => {
         onClick?.(event)
         if (event.defaultPrevented) return
+        if (!isTauriRuntime()) return
         event.preventDefault()
         void openExternalUrl(href)
       }}

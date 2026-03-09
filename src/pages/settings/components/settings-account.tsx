@@ -1,6 +1,5 @@
 import { MonitorIcon } from "lucide-react"
 import type { AuthUser } from "@/types"
-import { DEV_FLAGS } from "@/config/dev-flags"
 import { Text } from "@/components/typography/text"
 import { Button } from "@/components/ui/button"
 import {
@@ -10,9 +9,6 @@ import {
 } from "./settings-shared"
 import { SettingsRow } from "./settings-row"
 import { VanaV } from "@/components/icons/vana-v"
-
-const TEST_LOGGED_IN = DEV_FLAGS.useSettingsUiMocks
-const TEST_ACCOUNT_EMAIL = "test.user@vana.xyz"
 
 // Temporarily hide Sessions in Account tab without deleting implementation.
 const SHOW_ACCOUNT_SESSIONS = false
@@ -30,10 +26,8 @@ export function SettingsAccount({
   onLogout,
   onSignIn,
 }: SettingsAccountProps) {
-  const effectiveIsAuthenticated = TEST_LOGGED_IN || isAuthenticated
-  const effectiveAccountEmail = TEST_LOGGED_IN
-    ? TEST_ACCOUNT_EMAIL
-    : user?.email
+  const effectiveIsAuthenticated = isAuthenticated
+  const effectiveAccountEmail = user?.email
   const currentSessionLabel = "Vana Desktop on macOS"
   const currentSessionLocation = "Brisbane, AU"
   const otherSessionLabel = "Vana iOS"
@@ -87,7 +81,7 @@ export function SettingsAccount({
                     <Button
                       variant="ghost"
                       size="sm"
-                      onClick={TEST_LOGGED_IN ? undefined : onLogout}
+                      onClick={onLogout}
                     >
                       Log out
                     </Button>
@@ -95,9 +89,7 @@ export function SettingsAccount({
                     <Button
                       variant="ghost"
                       size="sm"
-                      onClick={
-                        TEST_LOGGED_IN ? undefined : handlePassportSignIn
-                      }
+                      onClick={handlePassportSignIn}
                     >
                       Sign in
                     </Button>
@@ -162,7 +154,7 @@ export function SettingsAccount({
                   <Button
                     variant="ghost"
                     size="sm"
-                    onClick={TEST_LOGGED_IN ? undefined : onLogout}
+                    onClick={onLogout}
                   >
                     Sign out
                   </Button>
@@ -170,7 +162,7 @@ export function SettingsAccount({
                   <Button
                     variant="ghost"
                     size="sm"
-                    onClick={TEST_LOGGED_IN ? undefined : handlePassportSignIn}
+                    onClick={handlePassportSignIn}
                   >
                     Sign in
                   </Button>

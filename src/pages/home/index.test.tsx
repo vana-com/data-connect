@@ -1,6 +1,6 @@
 import { describe, expect, it, vi, beforeEach, afterEach } from "vitest"
 import { render, waitFor, cleanup, fireEvent, screen } from "@testing-library/react"
-import { createMemoryRouter, RouterProvider } from "react-router-dom"
+import { createMemoryRouter, MemoryRouter, RouterProvider } from "react-router-dom"
 import { ROUTES } from "@/config/routes"
 import { TooltipProvider } from "@/components/ui/tooltip"
 import { Home } from "./index"
@@ -124,9 +124,21 @@ describe("Home", () => {
   it("shows sources tab content", async () => {
     const { getByRole } = renderHome()
 
+    expect(getByRole("heading", { level: 1, name: /your data/i })).toBeTruthy()
     expect(
       getByRole("heading", { name: /your imported data/i })
     ).toBeTruthy()
+  })
+
+  it("does not render the connected apps tab or surface", () => {
+    const { container } = renderHome()
+
+    expect(
+      screen.queryByRole("tab", { name: /connected apps/i })
+    ).toBeNull()
+    expect(
+      container.querySelector('[data-component="connected-apps-list"]')
+    ).toBeNull()
   })
 
   it("starts import without navigating to import history", async () => {
@@ -208,7 +220,13 @@ describe("Home", () => {
       isPlatformConnected: vi.fn(id => Boolean(mockConnectedPlatforms[id])),
     })
 
-    const { rerender, router } = renderHome()
+    const { rerender } = render(
+      <TooltipProvider delayDuration={120}>
+        <MemoryRouter>
+          <Home />
+        </MemoryRouter>
+      </TooltipProvider>
+    )
     expect(
       screen.getByRole("button", { name: /connect chatgpt/i })
     ).toBeTruthy()
@@ -231,7 +249,9 @@ describe("Home", () => {
 
     rerender(
       <TooltipProvider delayDuration={120}>
-        <RouterProvider router={router} />
+        <MemoryRouter>
+          <Home />
+        </MemoryRouter>
       </TooltipProvider>
     )
     await waitFor(() => {

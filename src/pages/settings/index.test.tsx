@@ -80,6 +80,7 @@ beforeEach(() => {
   mockUsePersonalServer.mockReturnValue({
     status: "stopped",
     port: null,
+    devToken: null,
     error: null,
     startServer: vi.fn(),
     stopServer: vi.fn(),
@@ -112,20 +113,42 @@ beforeEach(() => {
 })
 
 describe("Settings", () => {
-  it("shows the personal server section by default", () => {
-    const { getAllByRole } = renderSettings()
+  it("fetches connected apps when the Personal Server is ready", () => {
+    const mockFetchConnectedApps = vi.fn()
+    mockUsePersonalServer.mockReturnValue({
+      status: "running",
+      port: 4319,
+      devToken: "dev-token",
+      error: null,
+      startServer: vi.fn(),
+      stopServer: vi.fn(),
+    })
+    mockUseConnectedApps.mockReturnValue({
+      connectedApps: [],
+      fetchConnectedApps: mockFetchConnectedApps,
+      removeApp: vi.fn(),
+    })
 
-    expect(getAllByRole("heading", { name: "Personal Server" }).length).toBeGreaterThan(0)
+    renderSettings()
+
+    expect(mockFetchConnectedApps).toHaveBeenCalledWith(4319, "dev-token")
+  })
+
+  it("shows the app access section by default", () => {
+    const { getByRole, getByText } = renderSettings()
+
+    expect(getByRole("heading", { name: "App access" })).toBeTruthy()
+    expect(getByText("No connected apps")).toBeTruthy()
   })
 
   it("switches to the apps section from the nav", () => {
     const { getAllByRole, getByText, getByTestId } = renderSettings()
 
-    const [appsButton] = getAllByRole("button", { name: "Connected apps" })
+    const [appsButton] = getAllByRole("button", { name: "App access" })
     fireEvent.click(appsButton)
 
     expect(getByText("No connected apps")).toBeTruthy()
-    expect(getByTestId("search").textContent).toBe("?section=apps")
+    expect(getByTestId("search").textContent).toBe("")
   })
 
   it("shows sign out when authenticated", () => {
@@ -147,9 +170,9 @@ describe("Settings", () => {
     expect(getByRole("heading", { name: "Storage & Server" })).toBeTruthy()
   })
 
-  it("falls back to personal server for invalid section values", () => {
-    const { getAllByRole } = renderSettings(`${ROUTES.settings}?section=invalid`)
-    expect(getAllByRole("heading", { name: "Personal Server" }).length).toBeGreaterThan(0)
+  it("falls back to connected apps for invalid section values", () => {
+    const { getByRole } = renderSettings(`${ROUTES.settings}?section=invalid`)
+    expect(getByRole("heading", { name: "App access" })).toBeTruthy()
   })
 
   it("clears source param when switching between non-import sections", () => {
@@ -157,11 +180,11 @@ describe("Settings", () => {
       `${ROUTES.settings}?section=apps&source=github`
     )
 
-    const [personalServerButton] = getAllByRole("button", {
-      name: "Personal Server",
+    const [credentialsButton] = getAllByRole("button", {
+      name: "Credentials",
     })
-    fireEvent.click(personalServerButton)
+    fireEvent.click(credentialsButton)
 
-    expect(getByTestId("search").textContent).toBe("")
+    expect(getByTestId("search").textContent).toBe("?section=credentials")
   })
 })

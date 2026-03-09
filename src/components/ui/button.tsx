@@ -35,6 +35,9 @@ const buttonVariants = cva(
           "bg-primary text-primary-foreground hover:bg-primary/90 data-[state=open]:bg-primary/90",
         accent:
           "bg-accent text-background hover:bg-accent-foreground data-[state=open]:bg-accent-surface",
+        dc: [
+          "bg-dc text-background hover:bg-dc-foreground data-[state=open]:bg-accent-surface",
+        ],
         default: "bg-foreground text-background hover:bg-foreground",
         iris: "bg-irisLight text-background hover:bg-irisLight/90 data-[state=open]:bg-irisLight/90",
         outline: [
@@ -83,7 +86,7 @@ const buttonVariants = cva(
         ],
         xl: [
           fieldHeight.xl,
-          "rounded-button px-6 has-[>svg]:px-4 gap-1.75",
+          "rounded-card px-6 has-[>svg]:px-4 gap-1.75",
           "[&_svg:not([class*='size-'])]:size-[0.9lh]", // test lh :)
           // "[&_svg:not([class*='size-'])]:size-[1.25em]",
           "text-button",

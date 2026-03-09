@@ -4,10 +4,11 @@ import {
   HousePlusIcon,
   InfoIcon,
   KeyRoundIcon,
-  ServerIcon,
   UserIcon,
 } from "lucide-react"
 import type { ReactNode } from "react"
+import { Navigate, useSearchParams } from "react-router-dom"
+import { ROUTES } from "@/config/routes"
 import { SettingsAbout } from "./components/settings-about"
 import { SettingsAccount } from "./components/settings-account"
 import { SettingsApps } from "./components/settings-apps"
@@ -16,7 +17,6 @@ import { SettingsCredentials } from "./components/settings-credentials"
 import { SettingsLayout } from "./components/settings-overview-layout"
 import { SettingsLayoutSidebar } from "./components/settings-sidebar"
 import { SettingsImportsSection } from "./sections/imports/index"
-import { SettingsPersonalServer } from "./components/settings-personal-server"
 import { SettingsStorageSection } from "./sections/storage/index"
 import { SETTINGS_SECTION_META, SETTINGS_SECTION_ORDER } from "./sections"
 import type { SettingsSection } from "./types"
@@ -24,7 +24,6 @@ import { useSettingsPage } from "./use-settings-page"
 
 const sectionIcons: Record<SettingsSection, ReactNode> = {
   account: <UserIcon aria-hidden="true" />,
-  personalServer: <ServerIcon aria-hidden="true" />,
   apps: <BoxIcon aria-hidden="true" />,
   storage: <HousePlusIcon aria-hidden="true" />,
   imports: <ActivityIcon aria-hidden="true" />,
@@ -46,11 +45,15 @@ const settingsSections: Array<{
   }))
 
 export function Settings() {
+  const [searchParams] = useSearchParams()
+  if (searchParams.get("section") === "personalServer") {
+    return <Navigate to={ROUTES.personalServer} replace />
+  }
+
   const {
     activeSection,
     setActiveSection,
     dataPath,
-    personalServerDataPath,
     appVersion,
     logPath,
     appUpdateCheckStatus,
@@ -67,7 +70,6 @@ export function Settings() {
     isAuthenticated,
     walletAddress,
     onOpenDataFolder,
-    onOpenPersonalServerFolder,
     onOpenLogFolder,
     onCheckAppUpdate,
     onTestNodeJs,
@@ -82,7 +84,6 @@ export function Settings() {
     onRevokeApp,
     onLogout,
     onSignIn,
-    onSignInToStart,
   } = useSettingsPage()
 
   const sectionMeta = SETTINGS_SECTION_META[activeSection]
@@ -106,18 +107,6 @@ export function Settings() {
       <SettingsCredentials
         sessions={browserSessions}
         onClearSession={onClearBrowserSession}
-      />
-    )
-  } else if (activeSection === "personalServer") {
-    content = (
-      <SettingsPersonalServer
-        personalServer={personalServer}
-        onRestartPersonalServer={personalServer.startServer}
-        onStopPersonalServer={personalServer.stopServer}
-        onSignInToStart={onSignInToStart}
-        isAuthenticated={isAuthenticated}
-        personalServerDataPath={personalServerDataPath}
-        onOpenPersonalServerFolder={onOpenPersonalServerFolder}
       />
     )
   } else if (activeSection === "storage") {

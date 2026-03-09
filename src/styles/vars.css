@@ -61,8 +61,14 @@
   --success-foreground: color-mix(in oklch, var(--success) 90%, black);
   --success-reversed: color-mix(in oklch, var(--success) 10%, white);
 
+  /* Warning amber scale */
+  --warning: #d97706; /* tailwind amber-600 */
+  --warning-foreground: color-mix(in oklch, var(--warning) 90%, black);
+  --warning-reversed: color-mix(in oklch, var(--warning) 10%, white);
+
   --vana-blue: oklch(51.7% 0.265 272); /* #4141fc */
   --vana-blueLight: oklch(0.6888 0.166 281.13); /* #8B8BFE */
+  --dc-accent: oklch(0.472 0.1828 268.04); /* #314dc0 */
 
   /* Accent blue scale (anchor: #4141fc):  */
   /* 4060d9 */

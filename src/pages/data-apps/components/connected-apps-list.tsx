@@ -1,5 +1,6 @@
 import { Link } from "react-router-dom"
 import {
+  SourceRowList,
   SourceRowWithActions,
   sourceRowActionInteractiveClass,
 } from "@/components/elements/source-row"
@@ -30,7 +31,7 @@ interface ConnectedAppsListProps {
 
 function Header() {
   return (
-    <Text as="p" intent="small" dim balance>
+    <Text as="p" intent="small" muted balance>
       Connected apps have your permission to access imported data on your
       Personal Server. Manage access{" "}
       <Link
@@ -95,7 +96,7 @@ export function ConnectedAppsList({
 
   if (isLoading) {
     return (
-      <section data-component="connected-apps-list" className="space-y-gap">
+      <section data-component="connected-apps-list" className="space-y-w8">
         <Header />
         <div className="action-outset">
           <ActionPanel className="justify-start">
@@ -112,7 +113,7 @@ export function ConnectedAppsList({
 
   if (apps.length === 0) {
     return (
-      <section data-component="connected-apps-list" className="space-y-gap">
+      <section data-component="connected-apps-list" className="space-y-w8">
         <Header />
         <div className="action-outset">
           <ActionPanel>
@@ -125,9 +126,9 @@ export function ConnectedAppsList({
   }
 
   return (
-    <section data-component="connected-apps-list" className="space-y-gap">
+    <section data-component="connected-apps-list" className="space-y-w8">
       <Header />
-      <div className="flex flex-col gap-3 action-outset">
+      <SourceRowList>
         {apps.map(app => {
           const appCanOpen = canOpenApp(app)
           const handleOpenApp = appCanOpen ? () => onOpenApp(app) : undefined
@@ -159,6 +160,7 @@ export function ConnectedAppsList({
                 </Tooltip>
               }
               endSlotClassName="[&_svg:not([class*='size-']):not([data-slot=spinner])]:size-6!"
+              surface="list-item"
               endSlot={
                 <Tooltip>
                   <TooltipTrigger asChild>
@@ -172,7 +174,7 @@ export function ConnectedAppsList({
             />
           )
         })}
-      </div>
+      </SourceRowList>
       {debugPanel}
     </section>
   )

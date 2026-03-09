@@ -119,6 +119,7 @@ describe("DataApps", () => {
     expect(
       container.querySelector('[data-component="connected-apps-list"]')
     ).toBeTruthy()
+    expect(container.querySelector('[data-slot="source-row-list"]')).toBeTruthy()
     expect(screen.getByText("Test Connected App")).toBeTruthy()
 
     await waitFor(() => {

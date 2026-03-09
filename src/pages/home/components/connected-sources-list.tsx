@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react"
 import {
+  SourceRowList,
   SourceRowActionButton,
   SourceRowWithActions,
 } from "@/components/elements/source-row"
@@ -154,7 +155,7 @@ export function ConnectedSourcesList({
         </Text>
         <PersonalServerOnboardingCopy state={onboardingMessageState} />
       </div>
-      <div className="flex flex-col gap-3 action-outset">
+      <SourceRowList>
         {platforms.map(platform => {
           const meta = getLastRunLabel(runs, platform.id)
           const hasActiveRun = activePlatformIds.has(platform.id)
@@ -220,6 +221,7 @@ export function ConnectedSourcesList({
                 </Tooltip>
               }
               endSlotClassName="[&_svg:not([class*='size-']):not([data-slot=spinner])]:size-7!"
+              surface="list-item"
               endSlot={
                 <Tooltip>
                   <TooltipTrigger asChild>
@@ -235,7 +237,7 @@ export function ConnectedSourcesList({
             />
           )
         })}
-      </div>
+      </SourceRowList>
     </section>
   )
 }

@@ -1,4 +1,4 @@
-import type { ComponentProps, ReactNode } from "react"
+import { Children, Fragment, type ComponentProps, type ReactNode } from "react"
 import { ChevronRightIcon } from "lucide-react"
 import { PlatformIcon } from "@/components/icons/platform-icon"
 import { ActionButtonGroup } from "@/components/typography/button-action"
@@ -149,6 +149,38 @@ export interface SourceRowWithActionsProps {
   endSlot?: ReactNode
   endSlotClassName?: string
   className?: string
+  surface?: "standalone" | "list-item"
+}
+
+interface SourceRowListProps {
+  children: ReactNode
+  className?: string
+}
+
+export function SourceRowList({ children, className }: SourceRowListProps) {
+  const items = Children.toArray(children)
+
+  return (
+    <div
+      data-slot="source-row-list"
+      className={cn(
+        "action-outset overflow-hidden rounded-card ring ring-border/30 bg-background",
+        className
+      )}
+    >
+      {items.map((child, index) => (
+        <Fragment key={index}>
+          {child}
+          {index < items.length - 1 ? (
+            <div
+              data-slot="source-row-divider"
+              className="ml-row-gutter border-t border-border/70"
+            />
+          ) : null}
+        </Fragment>
+      ))}
+    </div>
+  )
 }
 
 export function SourceRowWithActions({
@@ -162,6 +194,7 @@ export function SourceRowWithActions({
   endSlot,
   endSlotClassName,
   className,
+  surface = "standalone",
 }: SourceRowWithActionsProps) {
   const {
     onClick: onRowClick,
@@ -171,7 +204,10 @@ export function SourceRowWithActions({
   } = rowAction ?? {}
 
   return (
-    <ActionButtonGroup className={className}>
+    <ActionButtonGroup
+      className={className}
+      surface={surface === "list-item" ? "flat" : "standalone"}
+    >
       <button
         data-slot="source-row-main-button"
         type="button"

@@ -50,7 +50,7 @@ export function DataApps() {
       {activeTab === "discover" ? (
         <section className="pt-w8">
           <div className="pb-w8">
-            <Text as="p" intent="small" dim>
+            <Text as="p" intent="small" muted>
               Create apps with the&nbsp;
               <LearnMoreLink
                 href={LINKS.vanaDocsProtocol}

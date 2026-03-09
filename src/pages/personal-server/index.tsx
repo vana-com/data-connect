@@ -82,7 +82,7 @@ export function PersonalServer() {
           Personal Server
         </Text>
         <div className="space-y-1 ">
-          <Text as="p" intent="small" dim>
+          <Text as="p" intent="small" muted>
             Your Personal Server lets connected apps request data from this
             device after you approve access.{" "}
             <LearnMoreLink

@@ -4,6 +4,21 @@
   "baseUrl": "https://raw.githubusercontent.com/vana-com/data-connectors/main",
   "connectors": [
     {
+      "id": "amazon-playwright",
+      "company": "amazon",
+      "version": "1.0.0",
+      "name": "Amazon",
+      "description": "Exports your Amazon order history and profile information using Playwright browser automation.",
+      "files": {
+        "script": "amazon/amazon-playwright.js",
+        "metadata": "amazon/amazon-playwright.json"
+      },
+      "checksums": {
+        "script": "sha256:4a318b3c3884661929d8625ec04fac57b9fcd0d7508b699a8a3c9eba758c8f0a",
+        "metadata": "sha256:8427eb8dd0a8bd588b3f579923c6294e6897aef9d45f83bc6fd9bdce96499f77"
+      }
+    },
+    {
       "id": "chatgpt-playwright",
       "company": "openai",
       "version": "2.0.0",

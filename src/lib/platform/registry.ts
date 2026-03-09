@@ -18,6 +18,17 @@ export interface PlatformRegistryEntry {
 
 export const PLATFORM_REGISTRY: PlatformRegistryEntry[] = [
   {
+    id: "amazon",
+    displayName: "Amazon",
+    iconKey: "amazon",
+    iconEmoji: "📦",
+    primaryColor: "#FF9900",
+    platformIds: ["amazon-playwright", "amazon"],
+    availability: "requiresConnector",
+    showInConnectList: true,
+    ingestScope: "amazon.orders",
+  },
+  {
     id: "chatgpt",
     displayName: "ChatGPT",
     iconKey: "chatgpt",

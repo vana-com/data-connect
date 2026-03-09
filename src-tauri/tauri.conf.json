@@ -56,6 +56,7 @@
       "icons/icon.ico"
     ],
     "resources": {
+      "../connectors/amazon/**/*": "connectors/amazon/",
       "../connectors/github/**/*": "connectors/github/",
       "../connectors/linkedin/**/*": "connectors/linkedin/",
       "../connectors/meta/**/*": "connectors/meta/",

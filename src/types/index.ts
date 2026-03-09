@@ -155,6 +155,7 @@ export interface ConnectedApp {
   icon?: string;
   permissions: string[];
   connectedAt: string;
+  externalUrl?: string;
 }
 
 export interface AppConfig {

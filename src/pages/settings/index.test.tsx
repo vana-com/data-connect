@@ -80,6 +80,7 @@ beforeEach(() => {
   mockUsePersonalServer.mockReturnValue({
     status: "stopped",
     port: null,
+    devToken: null,
     error: null,
     startServer: vi.fn(),
     stopServer: vi.fn(),
@@ -112,6 +113,27 @@ beforeEach(() => {
 })
 
 describe("Settings", () => {
+  it("fetches connected apps when the Personal Server is ready", () => {
+    const mockFetchConnectedApps = vi.fn()
+    mockUsePersonalServer.mockReturnValue({
+      status: "running",
+      port: 4319,
+      devToken: "dev-token",
+      error: null,
+      startServer: vi.fn(),
+      stopServer: vi.fn(),
+    })
+    mockUseConnectedApps.mockReturnValue({
+      connectedApps: [],
+      fetchConnectedApps: mockFetchConnectedApps,
+      removeApp: vi.fn(),
+    })
+
+    renderSettings()
+
+    expect(mockFetchConnectedApps).toHaveBeenCalledWith(4319, "dev-token")
+  })
+
   it("shows the connected apps section by default", () => {
     const { getByRole, getByText } = renderSettings()
 

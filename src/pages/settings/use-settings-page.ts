@@ -4,6 +4,7 @@ import { useCallback, useEffect, useState } from "react"
 import { useNavigate, useSearchParams } from "react-router-dom"
 import { useAuth } from "@/hooks/useAuth"
 import { useAppUpdate } from "@/hooks/use-app-update"
+import { useLoadConnectedAppsWhenReady } from "@/hooks/use-load-connected-apps-when-ready"
 import { usePersonalServer } from "@/hooks/usePersonalServer"
 import { useConnectedApps } from "@/hooks/useConnectedApps"
 import { ROUTES } from "@/config/routes"
@@ -154,17 +155,12 @@ export function useSettingsPage() {
     setPathsDebug(null)
   }, [])
 
-  // Fetch connected apps from Personal Server when available
-  useEffect(() => {
-    if (personalServer.port && personalServer.status === "running") {
-      fetchConnectedApps(personalServer.port, personalServer.devToken)
-    }
-  }, [
-    personalServer.port,
-    personalServer.status,
-    personalServer.devToken,
+  useLoadConnectedAppsWhenReady({
+    port: personalServer.port,
+    status: personalServer.status,
+    devToken: personalServer.devToken,
     fetchConnectedApps,
-  ])
+  })
 
   // Persist simulateNoChrome to localStorage — only store when explicitly true.
   // Remove the key when false so a fresh profile starts with the correct default.

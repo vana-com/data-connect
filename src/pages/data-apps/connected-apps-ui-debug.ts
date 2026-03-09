@@ -1,16 +1,21 @@
 import type { ConnectedApp } from "@/types"
 
-// Home > Connected apps debug (development only):
-// - Query param: /?connectedAppsScenario=<scenario>
-// - Available scenarios:
-//   - empty
-//     - Returns no connected apps.
-//   - two-test-apps
-//     - Returns two mocked connected apps.
-// - Missing/invalid scenario:
+// Data Apps > Connected apps debug (development only):
+// - Pick a state:
+//   - `/apps?tab=connected&connectedAppsScenario=empty`
+//   - `/apps?tab=connected&connectedAppsScenario=loading`
+//   - `/apps?tab=connected&connectedAppsScenario=two-test-apps`
+// - Scenarios:
+//   - `empty`
+//     - Shows the connected-app empty state.
+//   - `loading`
+//     - Shows the connected-app loading state.
+//   - `two-test-apps`
+//     - Shows two mocked connected apps with deterministic launch URLs.
+// - Invalid/missing scenario:
 //   - No override is applied; real connected apps are used.
 // - Production build ignores this query param.
-type ConnectedAppsUiDebugScenario = "empty" | "two-test-apps"
+type ConnectedAppsUiDebugScenario = "empty" | "loading" | "two-test-apps"
 
 const RICKROLL_YOUTUBE_URL = "https://www.youtube.com/watch?v=dQw4w9WgXcQ"
 
@@ -20,12 +25,14 @@ const TEST_CONNECTED_APPS: ConnectedApp[] = [
     name: "Even Stevens",
     permissions: ["Read", "Write"],
     connectedAt: new Date().toISOString(),
+    externalUrl: RICKROLL_YOUTUBE_URL,
   },
   {
     id: "test-app-rickroll",
     name: "RickRoll",
     permissions: ["Read", "Receive Realtime Updates"],
     connectedAt: new Date().toISOString(),
+    externalUrl: RICKROLL_YOUTUBE_URL,
   },
 ]
 
@@ -34,11 +41,12 @@ const CONNECTED_APPS_UI_DEBUG_SCENARIOS: Record<
   ConnectedApp[]
 > = {
   empty: [],
+  loading: [],
   "two-test-apps": TEST_CONNECTED_APPS,
 }
 
 export const CONNECTED_APPS_UI_DEBUG_SCENARIO_VALUES: ConnectedAppsUiDebugScenario[] =
-  ["empty", "two-test-apps"]
+  ["empty", "loading", "two-test-apps"]
 
 function isConnectedAppsUiDebugScenario(
   value: string | null
@@ -68,6 +76,12 @@ export function isConnectedAppsUiDebugEnabled(search: string): boolean {
   return resolveConnectedAppsUiDebugConfig(search).enabled
 }
 
+export function getConnectedAppsUiDebugScenario(
+  search: string
+): ConnectedAppsUiDebugScenario | null {
+  return resolveConnectedAppsUiDebugConfig(search).scenario
+}
+
 export function resolveConnectedAppsUiDebugApps({
   apps,
   search,
@@ -78,20 +92,4 @@ export function resolveConnectedAppsUiDebugApps({
   const debug = resolveConnectedAppsUiDebugConfig(search)
   if (!debug.enabled || !debug.scenario) return apps
   return CONNECTED_APPS_UI_DEBUG_SCENARIOS[debug.scenario]
-}
-
-export function resolveConnectedAppsUiDebugExternalUrl({
-  appId,
-  search,
-}: {
-  appId: string
-  search: string
-}): string | null {
-  const debug = resolveConnectedAppsUiDebugConfig(search)
-  if (!debug.enabled || debug.scenario !== "two-test-apps") return null
-
-  const isDebugTestApp = TEST_CONNECTED_APPS.some(app => app.id === appId)
-  if (!isDebugTestApp) return null
-
-  return RICKROLL_YOUTUBE_URL
 }

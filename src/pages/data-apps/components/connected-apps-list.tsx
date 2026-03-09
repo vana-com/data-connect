@@ -1,39 +1,47 @@
-import { useCallback, useMemo } from "react"
-import { Link, useLocation, useNavigate } from "react-router-dom"
+import { Link } from "react-router-dom"
 import {
-  openSubmittedAppExternalUrl,
-  parseSubmittedAppExternalUrl,
-} from "@/apps/external-url"
-import {
-  SourceRowActionButton,
   SourceRowWithActions,
+  sourceRowActionInteractiveClass,
 } from "@/components/elements/source-row"
-import { ActionPanel } from "@/components/typography/button-action"
+import { Spinner } from "@/components/elements/spinner"
 import { DebugTogglePanel } from "@/components/elements/debug-toggle-panel"
+import { ActionPanel } from "@/components/typography/button-action"
 import { Text } from "@/components/typography/text"
+import { Button } from "@/components/ui/button"
 import {
   Tooltip,
   TooltipContent,
   TooltipTrigger,
 } from "@/components/ui/tooltip"
 import { buildSettingsUrl } from "@/pages/settings/url"
-import { getAppRegistryEntry } from "@/apps/registry"
 import type { ConnectedApp } from "@/types"
-import { Button } from "@/components/ui/button"
 import { ArrowUpRightIcon, SettingsIcon } from "lucide-react"
-import {
-  CONNECTED_APPS_UI_DEBUG_SCENARIO_VALUES,
-  isConnectedAppsUiDebugEnabled,
-  resolveConnectedAppsUiDebugExternalUrl,
-  resolveConnectedAppsUiDebugApps,
-} from "@/pages/home/connected-apps-ui-debug"
-
-// Home surface for Connected apps.
-// This is a quick-launch/activity surface: it shows recency and open/manage shortcuts.
-// It is intentionally different from Settings' permission management list.
+import { CONNECTED_APPS_UI_DEBUG_SCENARIO_VALUES } from "../connected-apps-ui-debug"
 
 interface ConnectedAppsListProps {
   apps: ConnectedApp[]
+  canOpenApp: (app: ConnectedApp) => boolean
+  connectedAppsUiDebugEnabled: boolean
+  currentConnectedAppsUiDebugScenario: string | null
+  isLoading: boolean
+  onOpenApp: (app: ConnectedApp) => void
+  onSetConnectedAppsUiDebugScenario: (scenario: string | null) => void
+}
+
+function Header() {
+  return (
+    <Text as="p" intent="small" dim balance>
+      Connected apps have your permission to access imported data on your
+      Personal Server. Manage access{" "}
+      <Link
+        to={buildSettingsUrl({ section: "apps" })}
+        className="link hover:text-foreground"
+      >
+        here
+      </Link>
+      .
+    </Text>
+  )
 }
 
 function formatConnectedAt(value: string) {
@@ -48,63 +56,15 @@ function formatConnectedAt(value: string) {
   })
 }
 
-function getConnectedAppUrl(app: ConnectedApp, search: string) {
-  const debugUrl = resolveConnectedAppsUiDebugExternalUrl({
-    appId: app.id,
-    search,
-  })
-  if (debugUrl) return new URL(debugUrl, window.location.origin)
-
-  const entry = getAppRegistryEntry(app.id)
-  return entry?.status === "live"
-    ? parseSubmittedAppExternalUrl(entry.externalUrl)
-    : null
-}
-
-const Header = () => {
-  return (
-    <Text as="p" intent="small" muted balance>
-      Connected apps have your permission to access imported data on your
-      Personal Server. Manage access{" "}
-      <Link
-        to={buildSettingsUrl({ section: "apps" })}
-        className="link hover:text-foreground"
-      >
-        here
-      </Link>
-      .
-    </Text>
-  )
-}
-
-export function ConnectedAppsList({ apps }: ConnectedAppsListProps) {
-  const location = useLocation()
-  const navigate = useNavigate()
-  const currentConnectedAppsUiDebugScenario = useMemo(
-    () => new URLSearchParams(location.search).get("connectedAppsScenario"),
-    [location.search]
-  )
-  const connectedAppsUiDebugEnabled = useMemo(
-    () => isConnectedAppsUiDebugEnabled(location.search),
-    [location.search]
-  )
-  const effectiveApps = useMemo(
-    () =>
-      resolveConnectedAppsUiDebugApps({
-        apps,
-        search: location.search,
-      }),
-    [apps, location.search]
-  )
-  const setConnectedAppsUiDebugScenario = useCallback(
-    (scenario: string | null) => {
-      const nextParams = new URLSearchParams(location.search)
-      if (scenario) nextParams.set("connectedAppsScenario", scenario)
-      else nextParams.delete("connectedAppsScenario")
-      navigate({ search: `?${nextParams.toString()}` }, { replace: true })
-    },
-    [location.search, navigate]
-  )
+export function ConnectedAppsList({
+  apps,
+  canOpenApp,
+  connectedAppsUiDebugEnabled,
+  currentConnectedAppsUiDebugScenario,
+  isLoading,
+  onOpenApp,
+  onSetConnectedAppsUiDebugScenario,
+}: ConnectedAppsListProps) {
   const debugPanel = import.meta.env.DEV ? (
     <DebugTogglePanel title="Connected apps debug">
       <div className="flex flex-wrap gap-2">
@@ -117,7 +77,7 @@ export function ConnectedAppsList({ apps }: ConnectedAppsListProps) {
                 ? "default"
                 : "outline"
             }
-            onClick={() => setConnectedAppsUiDebugScenario(scenario)}
+            onClick={() => onSetConnectedAppsUiDebugScenario(scenario)}
           >
             {scenario}
           </Button>
@@ -125,7 +85,7 @@ export function ConnectedAppsList({ apps }: ConnectedAppsListProps) {
         <Button
           size="xs"
           variant={connectedAppsUiDebugEnabled ? "outline" : "default"}
-          onClick={() => setConnectedAppsUiDebugScenario(null)}
+          onClick={() => onSetConnectedAppsUiDebugScenario(null)}
         >
           real
         </Button>
@@ -133,7 +93,24 @@ export function ConnectedAppsList({ apps }: ConnectedAppsListProps) {
     </DebugTogglePanel>
   ) : null
 
-  if (effectiveApps.length === 0) {
+  if (isLoading) {
+    return (
+      <section data-component="connected-apps-list" className="space-y-gap">
+        <Header />
+        <div className="action-outset">
+          <ActionPanel className="justify-start">
+            <Text weight="medium" withIcon>
+              <Spinner />
+              Loading…
+            </Text>
+          </ActionPanel>
+        </div>
+        {debugPanel}
+      </section>
+    )
+  }
+
+  if (apps.length === 0) {
     return (
       <section data-component="connected-apps-list" className="space-y-gap">
         <Header />
@@ -151,13 +128,9 @@ export function ConnectedAppsList({ apps }: ConnectedAppsListProps) {
     <section data-component="connected-apps-list" className="space-y-gap">
       <Header />
       <div className="flex flex-col gap-3 action-outset">
-        {effectiveApps.map(app => {
-          const appUrl = getConnectedAppUrl(app, location.search)
-          const handleOpenApp = appUrl
-            ? () => {
-                void openSubmittedAppExternalUrl(appUrl)
-              }
-            : undefined
+        {apps.map(app => {
+          const appCanOpen = canOpenApp(app)
+          const handleOpenApp = appCanOpen ? () => onOpenApp(app) : undefined
 
           return (
             <SourceRowWithActions
@@ -174,19 +147,15 @@ export function ConnectedAppsList({ apps }: ConnectedAppsListProps) {
               middleSlot={
                 <Tooltip>
                   <TooltipTrigger asChild>
-                    <SourceRowActionButton
-                      className="pl-4 pr-3.5"
-                      onClick={() =>
-                        navigate(buildSettingsUrl({ section: "apps" }))
-                      }
+                    <Link
+                      to={buildSettingsUrl({ section: "apps" })}
+                      className={`${sourceRowActionInteractiveClass} pl-4 pr-3.5`}
                       aria-label="Connected apps settings"
                     >
                       <SettingsIcon aria-hidden />
-                    </SourceRowActionButton>
+                    </Link>
                   </TooltipTrigger>
-                  <TooltipContent side="top">
-                    View connected app settings
-                  </TooltipContent>
+                  <TooltipContent side="top">View settings</TooltipContent>
                 </Tooltip>
               }
               endSlotClassName="[&_svg:not([class*='size-']):not([data-slot=spinner])]:size-6!"

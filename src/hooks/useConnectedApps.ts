@@ -2,6 +2,7 @@ import { useCallback } from "react"
 import { useDispatch, useSelector } from "react-redux"
 import { setConnectedApps, addConnectedApp, removeConnectedApp as removeConnectedAppAction } from "../state/store"
 import { listGrants, revokeGrant } from "../services/personalServer"
+import { fetchBuilderAppUrl } from "../services/builder"
 import { getPrimaryDataSourceLabel } from "../lib/scope-labels"
 import type { Grant } from "../services/personalServer"
 import type { ConnectedApp, RootState } from "../types"
@@ -14,16 +15,18 @@ import type { ConnectedApp, RootState } from "../types"
  * Uses the scope's platform label (e.g., "ChatGPT") to produce a meaningful
  * name when the builder's display name isn't available from the grant data.
  */
-function grantToConnectedApp(grant: Grant): ConnectedApp {
+async function grantToConnectedApp(grant: Grant): Promise<ConnectedApp> {
   const platformLabel = getPrimaryDataSourceLabel(grant.scopes)
   const name = platformLabel
     ? `${platformLabel} access`
     : `App ${grant.granteeAddress.slice(0, 6)}…${grant.granteeAddress.slice(-4)}`
+
   return {
     id: grant.grantId,
     name,
     permissions: grant.scopes,
     connectedAt: grant.createdAt,
+    externalUrl: await fetchBuilderAppUrl(grant.granteeAddress),
   }
 }
 
@@ -51,7 +54,7 @@ export function useConnectedApps() {
         const grants = await listGrants(port, devToken)
         // Filter out revoked grants
         const activeGrants = grants.filter((g) => !g.revokedAt)
-        const apps = activeGrants.map(grantToConnectedApp)
+        const apps = await Promise.all(activeGrants.map(grantToConnectedApp))
         dispatch(setConnectedApps(apps))
       } catch (error) {
         console.warn("[useConnectedApps] Failed to fetch grants:", error)

@@ -206,7 +206,8 @@ export const Text = <T extends ElementType = "div">({
   ...props
 }: TextProps<T>) => {
   const ResolvedComponent = Component ?? "div"
-  const bulletProp = ResolvedComponent === "li" ? true : bullet
+  const bulletProp =
+    ResolvedComponent === "li" ? (bullet ?? false) : bullet
   const preProp = ResolvedComponent === "pre" ? true : pre
   const linkProp = ResolvedComponent === "a" ? (link ?? "default") : link
   const resolvedOptical =

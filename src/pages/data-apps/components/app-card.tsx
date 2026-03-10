@@ -1,7 +1,10 @@
+"use client"
+
 import { actionButtonSurfaceClass } from "@/components/typography/button-action"
 import { buttonVariants } from "@/components/ui/button"
 import { cn } from "@/lib/classes"
 import { ArrowUpRightIcon } from "lucide-react"
+import { motion } from "motion/react"
 import type { ReactNode } from "react"
 
 type AppCardProps = {
@@ -11,6 +14,27 @@ type AppCardProps = {
   interactive?: boolean
   className?: string
 }
+
+const trailingAffordanceVariants = {
+  rest: {
+    opacity: 0,
+    y: 8,
+    transition: {
+      duration: 0.14,
+      ease: [0.4, 0, 1, 1],
+    },
+  },
+  hover: {
+    opacity: 1,
+    y: 0,
+    transition: {
+      type: "spring",
+      stiffness: 400,
+      damping: 35,
+      delay: 0.2,
+    },
+  },
+} as const
 
 export function AppCard({
   children,
@@ -27,7 +51,7 @@ export function AppCard({
     }),
     "group min-h-[220px] min-w-0 whitespace-normal p-0! items-start!",
     interactive
-      ? actionButtonSurfaceClass
+      ? [actionButtonSurfaceClass, "overflow-visible"]
       : "bg-background/30! hover:border-ring/20 cursor-default p-0 transition-none",
     className
   )
@@ -38,26 +62,25 @@ export function AppCard({
       <div className="mt-auto">
         <div
           className={cn(
-            // border-t
             "flex w-full items-center justify-end text-left",
-            // fieldHeight.default,
-            "px-3 py-2.5"
+            "py-3.5 px-3"
           )}
         >
           {interactive ? (
-            <div
+            <motion.div
+              data-slot="app-card-affordance"
+              variants={trailingAffordanceVariants}
               className={cn(
                 // size-5 + p-1 = 28px
-                "p-1 bg-foreground rounded-full opacity-0 translate-y-0.5",
-                "transition-[opacity,transform]",
-                "group-hover:opacity-100 group-hover:translate-y-0 group-focus-visible:opacity-100 group-focus-visible:translate-y-0"
+                "pointer-events-none rounded-full bg-foreground p-1",
+                "motion-reduce:transform-none motion-reduce:transition-none"
               )}
             >
               <ArrowUpRightIcon
-                className="size-5 text-background"
+                className="size-6 text-background"
                 aria-hidden
               />
-            </div>
+            </motion.div>
           ) : null}
         </div>
       </div>
@@ -66,17 +89,28 @@ export function AppCard({
 
   if (onClick) {
     return (
-      <button
+      <motion.button
         data-slot="app-card"
         type="button"
         onClick={onClick}
         aria-label={ariaLabel}
         className={cn(cardClassName, "text-left")}
+        initial="rest"
+        whileHover={interactive ? "hover" : undefined}
+        whileFocus={interactive ? "hover" : undefined}
       >
         {cardContent}
-      </button>
+      </motion.button>
     )
   }
 
-  return <div className={cardClassName}>{cardContent}</div>
+  return (
+    <motion.div
+      className={cardClassName}
+      initial="rest"
+      whileHover={interactive ? "hover" : undefined}
+    >
+      {cardContent}
+    </motion.div>
+  )
 }

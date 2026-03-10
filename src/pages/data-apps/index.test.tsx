@@ -108,6 +108,14 @@ describe("DataApps", () => {
     ).toBe(1)
   })
 
+  it("renders three list items in discover section", () => {
+    const { container } = renderDataApps()
+    const list = container.querySelector("ul.list-none")
+    expect(list).toBeTruthy()
+    const items = list?.querySelectorAll(":scope > li")
+    expect(items?.length).toBe(2)
+  })
+
   it("renders connected apps on first render for /apps?tab=connected", async () => {
     const { container } = renderDataApps("/apps?tab=connected")
 

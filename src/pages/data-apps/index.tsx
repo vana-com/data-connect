@@ -5,7 +5,7 @@ import { LearnMoreLink } from "@/components/typography/link-learn-more"
 import { Text } from "@/components/typography/text"
 import { LINKS } from "@/config/links"
 import { MotionConfig } from "motion/react"
-import { ArrowUpRightIcon } from "lucide-react"
+import { GithubIcon, BoxIcon } from "lucide-react"
 import { ConnectedAppsList } from "./components/connected-apps-list"
 import { RegistryAppCard } from "./components/registry-app-card"
 import { cn } from "@/lib/utils"
@@ -50,32 +50,50 @@ export function DataApps() {
       {activeTab === "discover" ? (
         <section className="pt-w8">
           <div className="pb-w8">
-            <Text as="p" intent="small" muted>
-              Create apps with the&nbsp;
-              <LearnMoreLink
-                href={LINKS.vanaDocsProtocol}
-                className="inline-flex items-center gap-px!"
+            <ul className="list-none space-y-1.25">
+              <Text
+                as="li"
+                intent="small"
+                muted
+                withIcon
+                className="flex gap-1.5"
               >
-                Vana Data Protocol
-              </LearnMoreLink>
-              . Here's an{" "}
-              <LearnMoreLink
-                href={LINKS.appBuilderExample}
-                className="inline-flex items-center gap-px!"
+                <BoxIcon aria-hidden="true" />
+                <span>
+                  Create apps with the&nbsp;
+                  <LearnMoreLink
+                    href={LINKS.vanaDocsProtocol}
+                    className="inline-flex items-center gap-px!"
+                  >
+                    Vana Data Protocol
+                  </LearnMoreLink>
+                  . Here's an{" "}
+                  <LearnMoreLink
+                    href={LINKS.appBuilderExample}
+                    className="inline-flex items-center gap-px!"
+                  >
+                    example to fork
+                  </LearnMoreLink>
+                  .
+                </span>
+              </Text>
+              <Text
+                as="li"
+                intent="small"
+                muted
+                withIcon
+                className="flex gap-1.5"
               >
-                example to fork
-              </LearnMoreLink>
-              .
-              <br />
-              Already have an app?&nbsp;
-              <LearnMoreLink
-                href={LINKS.appSubmissionGuide}
-                className="inline-flex items-center gap-px!"
-              >
-                Submit via GitHub
-                <ArrowUpRightIcon aria-hidden="true" className="size-em" />
-              </LearnMoreLink>
-            </Text>
+                <GithubIcon aria-hidden="true" />
+                <span>
+                  Already have an app?&nbsp;
+                  <LearnMoreLink href={LINKS.appSubmissionGuide}>
+                    Submit via GitHub
+                  </LearnMoreLink>
+                  .
+                </span>
+              </Text>
+            </ul>
           </div>
           <section className="md:-mx-w24 lg:-mx-w48 xl:-mx-w64">
             <div

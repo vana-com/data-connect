@@ -2,6 +2,8 @@
 
 Use GitHub so the submission itself is reviewable, linkable, and easy to preview locally before merge.
 
+If you are shipping a new connector in DataConnect itself, not just submitting an app that uses an existing connector scope, also read [`docs/260310-adding-a-new-connector.md`](../docs/260310-adding-a-new-connector.md).
+
 ## What actually matters
 
 - Only the frontmatter is machine-read.
@@ -49,6 +51,8 @@ For `live` apps:
 - `status: live`
 - `icon`
 - `iconUrl` (optional, `https://` only)
+- `builderName` (optional)
+- `builderUrl` (optional, `https://` only)
 - `description`
 - `category`
 - `externalUrl` (`https://` only)
@@ -61,12 +65,16 @@ For `coming-soon` apps:
 - `status: coming-soon`
 - `icon`
 - `iconUrl` (optional, `https://` only)
+- `builderName` (optional)
+- `builderUrl` (optional, `https://` only)
 - `description`
 - `category`
 
 `icon` is the fallback letter tile. If you already know the exact website icon URL, include `iconUrl`.
 If you omit it, DataConnect tries `/icon.svg`, `/icon.png`, `/favicon.ico`, and `/apple-touch-icon.png` from `externalUrl`.
 `iconUrl` must also be `https://` if you provide it.
+`builderName` and `builderUrl` let the community page show authorship for the app card.
+`builderUrl` must also use `https://` if you provide it.
 `externalUrl` must be a production `https://` URL. No `http://`, localhost, or custom URI schemes.
 
 ## Where to get scopes
@@ -91,6 +99,18 @@ Example:
 - `oura` connector metadata should make the exact Oura scope obvious the same way.
 
 Use the actual protocol-style scope strings from connector metadata, like `chatgpt.conversations` or `linkedin.profile`.
+
+## What this doc does not cover
+
+This doc is for app submission.
+
+It does not cover the extra work for shipping a new runtime connector in DataConnect itself, such as:
+
+- upstream connector script/metadata work
+- runtime connector sync/verification
+- optional platform registry overrides for non-standard domains or aliases
+
+For that workflow, use [`docs/260310-adding-a-new-connector.md`](../docs/260310-adding-a-new-connector.md).
 
 ## Fallback
 

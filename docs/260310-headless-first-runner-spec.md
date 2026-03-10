@@ -279,7 +279,7 @@ The cloud deployment responds to `request-input` from an agent or credential sto
 
 Tracked separately. The headless vs headed fingerprint gap is closed in Chrome's new headless mode. Detection in 2026 targets CDP protocol artifacts, TLS fingerprinting, and behavioral signals — none of which are addressed by switching to headed mode.
 
-See stealth research for current tool landscape (Patchright, rebrowser-patches, Camoufox, nodriver).
+See [browser stealth landscape](260310-browser-stealth-landscape.md) for the current tool landscape (Patchright, rebrowser-patches, Camoufox, nodriver).
 
 ## Backward compatibility
 

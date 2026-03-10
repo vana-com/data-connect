@@ -943,7 +943,7 @@ async function main() {
           if (!pending) break;
           inputRun.runState.pendingInputs.delete(cmd.requestId);
           if (cmd.error) {
-            pending.reject(new Error(cmd.error));
+            pending.reject(new Error(typeof cmd.error === 'string' ? cmd.error : JSON.stringify(cmd.error)));
           } else {
             pending.resolve(cmd.data);
           }

@@ -31,7 +31,7 @@ On error:
 {"type": "evaluate-result", "runId": "run-123", "error": "Cannot read properties of null"}
 ```
 
-### `requestInput` — connector requests data from the driver
+### `requestInput` — connector requests data from the driver (implemented)
 
 The runner is a pipe. It relays the connector's request to stdout and the driver's response back to the connector. It does not validate or interpret the payload in either direction.
 
@@ -129,6 +129,40 @@ case 'input-response': {
   }
   break;
 }
+```
+
+### `screenshot` command (implemented)
+
+The driver can take a PNG screenshot of the active browser page. Also available to connectors via `page.screenshot()`.
+
+**stdin (driver → runner):**
+```json
+{"type": "screenshot", "runId": "run-123"}
+```
+
+**stdout (runner → driver):**
+```json
+{"type": "screenshot-result", "runId": "run-123", "data": "<base64-encoded PNG>"}
+```
+
+On error:
+```json
+{"type": "screenshot-result", "runId": "run-123", "error": "Browser is closed"}
+```
+
+Connectors can use `page.screenshot()` to capture the page and include it in a `requestInput` payload (e.g., for CAPTCHA solving):
+
+```javascript
+const image = await page.screenshot();
+const { solution } = await page.requestInput({
+  message: 'Solve this CAPTCHA',
+  schema: {
+    type: 'object',
+    properties: { solution: { type: 'string' } },
+    required: ['solution']
+  },
+  image // base64 PNG — driver can display or feed to a solver
+});
 ```
 
 ## Runner behavior changes
@@ -250,13 +284,13 @@ Credentials flow as plaintext JSON over stdin/stdout between local processes. Th
 
 ## Migration path
 
-### Phase 1: Runner protocol
+### Phase 1: Runner protocol (done)
 
-Already done:
-- `evaluate` stdin command.
-
-To implement:
-- `requestInput` / `input-response` in the runner.
+- `evaluate` stdin command
+- `screenshot` stdin command + `page.screenshot()` PageAPI
+- `requestInput` / `input-response` protocol + `page.requestInput()` PageAPI
+- `allowHeaded` capability flag
+- `showBrowser()` capability-gated
 
 ### Phase 2: First connector migration
 

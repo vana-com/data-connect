@@ -7,6 +7,8 @@
  * - { type: "run", runId, connectorPath, url, headless, allowHeaded }
  * - { type: "stop", runId }
  * - { type: "evaluate", runId, script }
+ * - { type: "input-response", runId, requestId, data?, error? }
+ * - { type: "screenshot", runId }
  * - { type: "quit" }
  *
  * Supports two-phase connectors:
@@ -383,6 +385,20 @@ function createPageApi(runState, runId) {
       return await page.evaluate(script);
     },
 
+    screenshot: async () => {
+      const page = requirePage();
+      const buffer = await page.screenshot({ type: 'png' });
+      return buffer.toString('base64');
+    },
+
+    requestInput: async (payload) => {
+      const requestId = `input-${++runState.requestCounter}`;
+      send({ type: 'request-input', runId, requestId, payload });
+      return new Promise((resolve, reject) => {
+        runState.pendingInputs.set(requestId, { resolve, reject });
+      });
+    },
+
     sleep: (ms) => new Promise(resolve => setTimeout(resolve, ms)),
 
     setData: async (key, value) => {
@@ -694,6 +710,8 @@ async function runConnector(runId, connectorPath, url, headless = true, allowHea
     allowHeaded,
     userDataDir,
     browserPath: null,
+    requestCounter: 0,
+    pendingInputs: new Map(),
   };
 
   try {
@@ -909,6 +927,41 @@ async function main() {
               .catch(e => send({ type: 'evaluate-result', runId: cmd.runId, error: e.stack || e.message }));
           } catch (e) {
             send({ type: 'evaluate-result', runId: cmd.runId, error: e.stack || e.message });
+          }
+          break;
+        }
+
+        case 'input-response': {
+          const inputRun = activeRuns.get(cmd.runId);
+          if (!inputRun) break;
+          const pending = inputRun.runState.pendingInputs.get(cmd.requestId);
+          if (!pending) break;
+          inputRun.runState.pendingInputs.delete(cmd.requestId);
+          if (cmd.error) {
+            pending.reject(new Error(cmd.error));
+          } else {
+            pending.resolve(cmd.data);
+          }
+          break;
+        }
+
+        case 'screenshot': {
+          const ssRun = activeRuns.get(cmd.runId);
+          if (!ssRun) {
+            send({ type: 'screenshot-result', runId: cmd.runId, error: `No active run: ${cmd.runId}` });
+            break;
+          }
+          const { runState: ssState } = ssRun;
+          if (ssState.browserClosed || !ssState.page) {
+            send({ type: 'screenshot-result', runId: cmd.runId, error: 'Browser is closed' });
+            break;
+          }
+          try {
+            ssState.page.screenshot({ type: 'png' })
+              .then(buffer => send({ type: 'screenshot-result', runId: cmd.runId, data: buffer.toString('base64') }))
+              .catch(e => send({ type: 'screenshot-result', runId: cmd.runId, error: e.stack || e.message }));
+          } catch (e) {
+            send({ type: 'screenshot-result', runId: cmd.runId, error: e.stack || e.message });
           }
           break;
         }

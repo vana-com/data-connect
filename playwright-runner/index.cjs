@@ -4,8 +4,9 @@
  * Runs as a sidecar process, receives commands via stdin, sends results via stdout.
  *
  * Commands:
- * - { type: "run", runId, connectorPath, url, headless }
+ * - { type: "run", runId, connectorPath, url, headless, allowHeaded }
  * - { type: "stop", runId }
+ * - { type: "evaluate", runId, script }
  * - { type: "quit" }
  *
  * Supports two-phase connectors:
@@ -321,7 +322,7 @@ function createPageApi(runState, runId) {
   // Helper to get current page, throw if browser is closed
   function requirePage() {
     if (runState.browserClosed || !runState.page) {
-      throw new Error('Browser is closed. Use page.httpFetch() for HTTP requests or page.showBrowser() to reopen.');
+      throw new Error('Browser is closed. Use page.httpFetch() for HTTP requests.');
     }
     return runState.page;
   }
@@ -379,9 +380,6 @@ function createPageApi(runState, runId) {
 
     evaluate: async (script) => {
       const page = requirePage();
-      if (typeof script === 'string') {
-        return await page.evaluate(script);
-      }
       return await page.evaluate(script);
     },
 
@@ -482,15 +480,33 @@ function createPageApi(runState, runId) {
       log('Browser closed, process stays alive for background work');
     },
 
-    // Reopen browser in headed mode (e.g., for login when headless session expired).
-    // Closes any existing browser first, then opens a new headed one.
+    // Escalate to headed mode for live human interaction (e.g., interactive CAPTCHAs).
+    // Gated by allowHeaded capability — if the driver doesn't support headed mode,
+    // navigates in the existing headless browser and returns { headed: false }.
     showBrowser: async (url) => {
       log('showBrowser requested');
+
+      if (runState.browserClosed) {
+        log('showBrowser called but browser is already closed');
+        return { headed: false };
+      }
+
+      if (!runState.allowHeaded) {
+        log('Headed mode not available — navigating headless');
+        if (url && runState.page) {
+          try {
+            await runState.page.goto(url, { waitUntil: 'domcontentloaded' });
+          } catch (e) {
+            log(`showBrowser headless navigation failed: ${e.message}`);
+          }
+        }
+        send({ type: 'log', runId, message: 'Headed interaction unavailable — staying headless' });
+        return { headed: false };
+      }
 
       // Close existing browser if open
       if (runState.context && !runState.browserClosed) {
         log('Closing existing browser before reopening headed');
-        // Set flag BEFORE closing so the disconnect handler doesn't exit the process
         runState.browserClosedByConnector = true;
         try {
           await runState.context.close();
@@ -535,6 +551,7 @@ function createPageApi(runState, runId) {
 
       send({ type: 'log', runId, message: 'Browser opened for user interaction' });
       log('Headed browser opened');
+      return { headed: true };
     },
 
     // Switch to headless mode — browser becomes invisible but stays running.
@@ -658,8 +675,8 @@ function createPageApi(runState, runId) {
 }
 
 // Run a connector
-async function runConnector(runId, connectorPath, url, headless = true) {
-  log(`Starting run ${runId} with connector ${connectorPath} (headless: ${headless})`);
+async function runConnector(runId, connectorPath, url, headless = true, allowHeaded = true) {
+  log(`Starting run ${runId} with connector ${connectorPath} (headless: ${headless}, allowHeaded: ${allowHeaded})`);
 
   // Derive connector ID for persistent browser profile
   const connectorFileName = path.basename(connectorPath, path.extname(connectorPath));
@@ -674,6 +691,7 @@ async function runConnector(runId, connectorPath, url, headless = true) {
     browserClosedByConnector: false,
     connectorCompleted: false,
     headless,
+    allowHeaded,
     userDataDir,
     browserPath: null,
   };
@@ -837,7 +855,7 @@ async function main() {
 
       switch (cmd.type) {
         case 'run':
-          runConnector(cmd.runId, cmd.connectorPath, cmd.url, cmd.headless !== false);
+          runConnector(cmd.runId, cmd.connectorPath, cmd.url, cmd.headless !== false, cmd.allowHeaded !== false);
           break;
 
         case 'stop':
@@ -870,6 +888,30 @@ async function main() {
             }
           });
           break;
+
+        case 'evaluate': {
+          const evalRun = activeRuns.get(cmd.runId);
+          if (!evalRun) {
+            send({ type: 'evaluate-result', runId: cmd.runId, error: `No active run: ${cmd.runId}` });
+            break;
+          }
+          const { runState: evalState } = evalRun;
+          if (evalState.browserClosed || !evalState.page) {
+            send({ type: 'evaluate-result', runId: cmd.runId, error: 'Browser is closed' });
+            break;
+          }
+          // Non-blocking: don't await so stdin loop keeps processing other commands.
+          // Wrapped in try so synchronous throws (e.g. page torn down mid-call)
+          // always produce an evaluate-result instead of hanging the driver.
+          try {
+            evalState.page.evaluate(cmd.script)
+              .then(result => send({ type: 'evaluate-result', runId: cmd.runId, result }))
+              .catch(e => send({ type: 'evaluate-result', runId: cmd.runId, error: e.stack || e.message }));
+          } catch (e) {
+            send({ type: 'evaluate-result', runId: cmd.runId, error: e.stack || e.message });
+          }
+          break;
+        }
 
         default:
           log(`Unknown command: ${cmd.type}`);

@@ -5,8 +5,10 @@ status: live
 externalUrl: https://linkedin-to-readcv.vercel.app/
 icon: L
 iconUrl: https://linkedin-to-readcv.vercel.app/icon.svg?icon.57c7b5ca.svg
+builderName: Callum Flack
+builderUrl: https://callum.website
 description: Format your LinkedIn into a ReadCV-style one-page site you own.
-category: Resume
+category: Career
 scopes:
   - linkedin.profile
 ---

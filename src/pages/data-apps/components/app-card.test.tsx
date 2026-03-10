@@ -25,6 +25,8 @@ describe("AppCard", () => {
     )
 
     expect(container.querySelector("button")).toBeNull()
-    expect(container.querySelector("svg[aria-hidden='true']")).toBeNull()
+    expect(
+      container.querySelector('[data-slot="app-card-affordance"]')
+    ).toBeNull()
   })
 })

@@ -36,11 +36,35 @@ scopes:
       externalUrl: "https://example.com",
       icon: "E",
       iconUrl: undefined,
+      builderName: undefined,
+      builderUrl: undefined,
       description: "Example app description.",
       category: "Assistant",
-      dataRequired: ["ChatGPT"],
+      dataRequired: [{ token: "chatgpt", label: "ChatGPT" }],
       scopes: ["chatgpt.conversations"],
     })
+  })
+
+  it("parses optional builder attribution fields", () => {
+    const entry = parseAppSubmissionMarkdown(
+      "/virtual/ecosystem/app-submissions/example.md",
+      `---
+id: example
+name: Example App
+status: live
+externalUrl: https://example.com
+icon: E
+builderName: Example Builder
+builderUrl: https://example.com/about
+description: Example app description.
+category: Assistant
+scopes:
+  - chatgpt.conversations
+---`
+    )
+
+    expect(entry?.builderName).toBe("Example Builder")
+    expect(entry?.builderUrl).toBe("https://example.com/about")
   })
 
   it("parses an optional iconUrl override", () => {
@@ -83,6 +107,27 @@ scopes:
     ).toThrow(/iconUrl/i)
   })
 
+  it("rejects non-https builder urls", () => {
+    expect(() =>
+      parseAppSubmissionMarkdown(
+        "/virtual/ecosystem/app-submissions/invalid.md",
+        `---
+id: invalid
+name: Invalid App
+status: live
+externalUrl: https://example.com
+icon: I
+builderName: Invalid Builder
+builderUrl: http://example.com/about
+description: Invalid builder URL.
+category: Demo
+scopes:
+  - chatgpt.conversations
+---`
+      )
+    ).toThrow(/builderUrl/i)
+  })
+
   it("parses submission markdown when Buffer is unavailable", () => {
     globalThis.Buffer = undefined as never
 
@@ -101,7 +146,7 @@ scopes:
 ---`
     )
 
-    expect(entry?.dataRequired).toEqual(["ChatGPT"])
+    expect(entry?.dataRequired).toEqual([{ token: "chatgpt", label: "ChatGPT" }])
   })
 
   it("dedupes multiple scopes from the same platform into one label", () => {
@@ -121,7 +166,30 @@ scopes:
 ---`
     )
 
-    expect(entry?.dataRequired).toEqual(["LinkedIn"])
+    expect(entry?.dataRequired).toEqual([{ token: "linkedin", label: "LinkedIn" }])
+  })
+
+  it("preserves canonical platform tokens for unknown platforms", () => {
+    const entry = parseAppSubmissionMarkdown(
+      "/virtual/ecosystem/app-submissions/example.md",
+      `---
+id: example
+name: Example App
+status: live
+externalUrl: https://example.com
+icon: E
+description: Example app description.
+category: Assistant
+scopes:
+  - amazon.orders
+  - shop.orders
+---`
+    )
+
+    expect(entry?.dataRequired).toEqual([
+      { token: "amazon", label: "Amazon" },
+      { token: "shop", label: "Shop" },
+    ])
   })
 
   it("ignores the template file", () => {

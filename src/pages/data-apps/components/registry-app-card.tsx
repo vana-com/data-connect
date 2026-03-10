@@ -11,6 +11,7 @@ import { AdaptiveIcon } from "@/components/icons/adaptive-icon"
 import { EyebrowBadge } from "@/components/typography/eyebrow-badge"
 import { Text } from "@/components/typography/text"
 import { buildGrantSearchParams } from "@/lib/grant-params"
+import { getPlatformLogoUrlForToken } from "@/lib/platform/logo-provider"
 import { AppCard } from "./app-card"
 
 export function RegistryAppCard({ app }: { app: AppRegistryEntry }) {
@@ -19,7 +20,12 @@ export function RegistryAppCard({ app }: { app: AppRegistryEntry }) {
     app.iconUrl
   )
   const requiredPlatformItems = app.dataRequired.map(data => ({
-    iconName: data,
+    iconName: data.label,
+    imageSrc: getPlatformLogoUrlForToken(data.token, {
+      size: 32,
+      theme: "light",
+    }),
+    fallbackLabel: data.label,
   }))
 
   const handleOpenApp = () => {
@@ -46,22 +52,23 @@ export function RegistryAppCard({ app }: { app: AppRegistryEntry }) {
       ariaLabel={app.status === "live" ? `Open ${app.name}` : undefined}
       onClick={app.status === "live" ? handleOpenApp : undefined}
       interactive={app.status === "live"}
+      // className="bg-linear-to-b from-dc/20 to-transparent"
     >
-      <div className="space-y-1.5">
+      <div className="space-y-2.5">
         <div className="flex items-start justify-between gap-3">
-          <div className="pt-2 px-1 pb-1">
+          <div className="p-0.5">
             {requiredPlatformItems.length > 0 ? (
               <IconFlow
-                className="gap-0.5"
+                className="gap-1"
                 from={
-                  <PlatformIconGroup items={requiredPlatformItems} size={28} />
+                  <PlatformIconGroup items={requiredPlatformItems} size={32} />
                 }
                 to={
                   <AdaptiveIcon
                     imageSources={appIconImageSources}
                     fallbackLabel={app.icon}
                     variant="plain"
-                    size={28}
+                    size={32}
                   />
                 }
               />
@@ -70,12 +77,12 @@ export function RegistryAppCard({ app }: { app: AppRegistryEntry }) {
                 imageSources={appIconImageSources}
                 fallbackLabel={app.icon}
                 variant="plain"
-                size={28}
+                size={32}
               />
             )}
           </div>
           <div className="flex flex-wrap justify-end gap-2">
-            <EyebrowBadge className="bg-dc/10 text-dc border-transparent">
+            <EyebrowBadge className="bg-dc/[0.05] text-dc border-transparent">
               {app.category}
             </EyebrowBadge>
             {app.status === "coming-soon" ? (
@@ -92,22 +99,27 @@ export function RegistryAppCard({ app }: { app: AppRegistryEntry }) {
             ) : null}
           </div>
         </div>
-        <div className="space-y-0.5">
-          <div className="flex flex-wrap items-center gap-2">
-            <Text as="h3" intent="xlarge" weight="medium">
-              {app.name}
-            </Text>
-          </div>
-          <Text
-            as="p"
-            intent="small"
-            dim
-            balance
-            className="line-clamp-2 whitespace-normal"
-          >
-            {app.description}
+      </div>
+      <div className="space-y-1 pt-4">
+        <div className="flex flex-wrap items-center gap-2">
+          <Text as="h3" intent="xlarge" weight="medium">
+            {app.name}
           </Text>
         </div>
+        <Text
+          as="p"
+          intent="small"
+          dim
+          balance
+          className="line-clamp-2 whitespace-normal"
+        >
+          {app.description}
+        </Text>
+        {app.builderName ? (
+          <Text as="p" intent="fine" muted className="pt-0.5">
+            By {app.builderName}
+          </Text>
+        ) : null}
       </div>
     </AppCard>
   )

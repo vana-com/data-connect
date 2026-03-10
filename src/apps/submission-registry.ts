@@ -1,6 +1,9 @@
 import { z } from "zod"
 import { isAllowedSubmittedAppExternalUrl } from "./external-url"
-import { getPrimaryDataSourceLabel } from "@/lib/scope-labels"
+import {
+  getPrimaryDataSourceLabel,
+  getPrimaryScopeToken,
+} from "@/lib/scope-labels"
 import type { AppRegistryEntry } from "./registry-types"
 
 const rawSubmissionFiles = import.meta.glob(
@@ -21,6 +24,14 @@ const appSubmissionBaseSchema = z.object({
     .url()
     .refine(isAllowedSubmittedAppExternalUrl, {
       message: "iconUrl must use https://.",
+    })
+    .optional(),
+  builderName: z.string().min(1).optional(),
+  builderUrl: z
+    .string()
+    .url()
+    .refine(isAllowedSubmittedAppExternalUrl, {
+      message: "builderUrl must use https://.",
     })
     .optional(),
   description: z.string().min(1),
@@ -85,13 +96,20 @@ function getDataRequiredFromScopes(scopes?: string[]) {
     return []
   }
 
-  return Array.from(
-    new Set(
-      scopes
-        .map(scope => getPrimaryDataSourceLabel([scope]))
-        .filter((label): label is string => Boolean(label))
-    )
-  )
+  const itemsByToken = new Map<string, { token: string; label: string }>()
+
+  for (const scope of scopes) {
+    const token = getPrimaryScopeToken([scope])
+    const label = getPrimaryDataSourceLabel([scope])
+    if (!token || !label) {
+      continue
+    }
+    if (!itemsByToken.has(token)) {
+      itemsByToken.set(token, { token, label })
+    }
+  }
+
+  return Array.from(itemsByToken.values())
 }
 
 function parseFrontmatter(rawMarkdown: string): Record<string, unknown> {

@@ -1,11 +1,18 @@
+export type AppRequiredPlatform = {
+  token: string
+  label: string
+}
+
 export type BaseAppRegistryEntry = {
   id: string
   name: string
   icon: string
   iconUrl?: string
+  builderName?: string
+  builderUrl?: string
   description: string
   category: string
-  dataRequired: string[]
+  dataRequired: AppRequiredPlatform[]
   scopes?: string[]
 }
 

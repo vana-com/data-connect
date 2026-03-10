@@ -133,7 +133,7 @@ case 'input-response': {
 
 ### `screenshot` command (implemented)
 
-The driver can take a PNG screenshot of the active browser page. Also available to connectors via `page.screenshot()`.
+The driver can take a JPEG screenshot of the active browser page. Also available to connectors via `page.screenshot()`. Uses JPEG at quality 70 to keep payloads small (typically 100-300 KB vs 3-10 MB for PNG).
 
 **stdin (driver → runner):**
 ```json
@@ -142,7 +142,7 @@ The driver can take a PNG screenshot of the active browser page. Also available 
 
 **stdout (runner → driver):**
 ```json
-{"type": "screenshot-result", "runId": "run-123", "data": "<base64-encoded PNG>"}
+{"type": "screenshot-result", "runId": "run-123", "data": "<base64-encoded JPEG>"}
 ```
 
 On error:
@@ -161,7 +161,7 @@ const { solution } = await page.requestInput({
     properties: { solution: { type: 'string' } },
     required: ['solution']
   },
-  image // base64 PNG — driver can display or feed to a solver
+  image // base64 JPEG — driver can display or feed to a solver
 });
 ```
 

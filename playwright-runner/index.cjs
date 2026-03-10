@@ -387,7 +387,7 @@ function createPageApi(runState, runId) {
 
     screenshot: async () => {
       const page = requirePage();
-      const buffer = await page.screenshot({ type: 'png' });
+      const buffer = await page.screenshot({ type: 'jpeg', quality: 70, timeout: 5000 });
       return buffer.toString('base64');
     },
 
@@ -848,6 +848,11 @@ async function stopRun(runId) {
   const run = activeRuns.get(runId);
   if (run) {
     log(`Stopping run ${runId}`);
+    // Reject any pending requestInput promises so the connector doesn't hang
+    for (const [, pending] of run.runState.pendingInputs) {
+      pending.reject(new Error('Run stopped'));
+    }
+    run.runState.pendingInputs.clear();
     if (run.runState && run.runState.context && !run.runState.browserClosed) {
       await run.runState.context.close().catch(() => {});
     }
@@ -957,7 +962,7 @@ async function main() {
             break;
           }
           try {
-            ssState.page.screenshot({ type: 'png' })
+            ssState.page.screenshot({ type: 'jpeg', quality: 70, timeout: 5000 })
               .then(buffer => send({ type: 'screenshot-result', runId: cmd.runId, data: buffer.toString('base64') }))
               .catch(e => send({ type: 'screenshot-result', runId: cmd.runId, error: e.stack || e.message }));
           } catch (e) {

@@ -1,34 +1,62 @@
-import { BRAND_DEV_PUBLIC_CLIENT_ID } from "@/config/logo-provider"
+import { LOGO_DEV_PUBLISHABLE_KEY } from "@/config/logo-provider"
+import { getPlatformRegistryEntryById } from "@/lib/platform/utils"
 
-type PlatformLogoProvider = "logoDev" | "brandDev"
+type LogoDevImageFormat = "webp" | "png" | "jpg"
+type LogoDevTheme = "auto" | "light" | "dark"
+type LogoDevFallback = "monogram" | "404"
 
-const configuredBrandDevPublicClientId = BRAND_DEV_PUBLIC_CLIENT_ID.trim()
-
-const resolveProvider = (): PlatformLogoProvider => {
-  const configured = import.meta.env.VITE_PLATFORM_LOGO_PROVIDER
-  if (configured === "logoDev") return "logoDev"
-  if (configured === "brandDev") return "brandDev"
-  return "brandDev"
+type PlatformLogoOptions = {
+  size?: number
+  format?: LogoDevImageFormat
+  theme?: LogoDevTheme
+  fallback?: LogoDevFallback
+  retina?: boolean
 }
 
-const provider = resolveProvider()
+const buildLogoDevUrl = (
+  domain: string,
+  {
+    size = 64,
+    format = "webp",
+    theme = "auto",
+    fallback = "monogram",
+    retina = true,
+  }: PlatformLogoOptions = {}
+) => {
+  const normalizedDomain = domain.trim()
+  if (!normalizedDomain) {
+    return undefined
+  }
 
-const buildLogoDevUrl = (domain: string, size: number) =>
-  `https://img.logo.dev/${domain}?size=${size}&format=webp&retina=true&fallback=monogram`
+  const params = new URLSearchParams({
+    token: LOGO_DEV_PUBLISHABLE_KEY,
+    size: String(size),
+    format,
+    theme,
+    fallback,
+    retina: String(retina),
+  })
 
-const buildBrandDevUrl = (domain: string) =>
-  `https://logos.brand.dev/?publicClientId=${encodeURIComponent(configuredBrandDevPublicClientId)}&domain=${encodeURIComponent(domain)}`
+  return `https://img.logo.dev/${normalizedDomain}?${params.toString()}`
+}
 
 export const getPlatformLogoUrlForDomain = (
   domain: string,
-  options?: { size?: number }
+  options?: PlatformLogoOptions
+) => buildLogoDevUrl(domain, options)
+
+export const getPlatformLogoUrlForToken = (
+  token: string,
+  options?: PlatformLogoOptions
 ) => {
-  const size = options?.size ?? 64
-  if (provider === "brandDev" && configuredBrandDevPublicClientId) {
-    return buildBrandDevUrl(domain)
+  const normalizedToken = token.trim().toLowerCase()
+  if (!normalizedToken) {
+    return undefined
   }
 
-  // If Brand.dev is selected but no public client id is configured,
-  // keep logos working by falling back to logo.dev.
-  return buildLogoDevUrl(domain, size)
+  const brandDomain =
+    getPlatformRegistryEntryById(normalizedToken)?.brandDomain ??
+    `${normalizedToken}.com`
+
+  return getPlatformLogoUrlForDomain(brandDomain, options)
 }

@@ -161,6 +161,8 @@ export function AdaptiveIcon({
           src={activeImageSrc}
           alt={imageAlt}
           className="h-full w-full object-contain"
+          loading="lazy"
+          decoding="async"
           onLoad={handleImageLoad}
           onError={handleImageError}
         />
@@ -172,6 +174,8 @@ export function AdaptiveIcon({
         alt={imageAlt}
         aria-hidden={imageAlt === "" ? true : undefined}
         className="size-full object-contain"
+        loading="lazy"
+        decoding="async"
         onLoad={handleImageLoad}
         onError={handleImageError}
       />

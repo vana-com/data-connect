@@ -47,11 +47,14 @@ export function PlatformIcon({
   const registryEntry =
     getPlatformRegistryEntryById(iconName) ??
     getPlatformRegistryEntryByName(iconName)
-  const resolvedImageSrc =
-    imageSrc ??
-    (registryEntry?.brandDomain
-      ? getPlatformLogoUrlForDomain(registryEntry.brandDomain)
-      : undefined)
+  const resolvedImageSrc = imageSrc
+  const providerFallbackImageSrc =
+    !resolvedImageSrc && !Icon && registryEntry?.brandDomain
+      ? getPlatformLogoUrlForDomain(registryEntry.brandDomain, {
+          size,
+          theme: "dark",
+        })
+      : undefined
   const resolvedAriaHidden = ariaHidden ?? ariaHiddenProp ?? true
   const label = (fallbackLabel?.trim() || iconName.trim().charAt(0)).toUpperCase()
 
@@ -59,7 +62,13 @@ export function PlatformIcon({
     <AdaptiveIcon
       variant={variant}
       className={className}
-      imageSources={resolvedImageSrc ? [resolvedImageSrc] : undefined}
+      imageSources={
+        resolvedImageSrc
+          ? [resolvedImageSrc]
+          : providerFallbackImageSrc
+            ? [providerFallbackImageSrc]
+            : undefined
+      }
       imageAlt={imageAlt}
       size={size}
       imageScale={imageScale}

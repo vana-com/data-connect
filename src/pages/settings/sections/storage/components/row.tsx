@@ -36,7 +36,7 @@ export function Row({ label, value, isLast = false, labelInfo }: RowProps) {
         !isLast && "border-b border-border"
       )}
     >
-      <div className="flex items-center gap-1.5">
+      <div className="shrink-0 flex items-center gap-1.5">
         {labelContent}
         {labelInfo ? (
           <Tooltip>
@@ -58,7 +58,7 @@ export function Row({ label, value, isLast = false, labelInfo }: RowProps) {
           </Tooltip>
         ) : null}
       </div>
-      {value}
+      <div className="min-w-0 flex flex-1 justify-end">{value}</div>
     </div>
   )
 }

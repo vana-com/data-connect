@@ -52,7 +52,7 @@ export function SettingsDetailRow({
           <hr />
         </div>
       ) : null}
-      <div className="flex items-center gap-1.5">
+      <div className="shrink-0 flex items-center gap-1.5">
         {labelContent}
         {labelInfo ? (
           <Tooltip>
@@ -77,7 +77,7 @@ export function SettingsDetailRow({
           </Tooltip>
         ) : null}
       </div>
-      {value}
+      <div className="min-w-0 flex flex-1 justify-end">{value}</div>
     </div>
   )
 }

@@ -5,6 +5,7 @@ Source docs:
 - `docs/260311-tauri-auto-update-phase2-feasibility.md`
 - `docs/260226-tauri-app-update-toast-overview.md`
 - `docs/plans/260226-app-update-toast-phase1-implementation-plan.md`
+- `docs/plans/260311-macos-updater-ci-proof-run.md`
 
 Use this doc in two modes:
 

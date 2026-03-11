@@ -18,6 +18,22 @@ This is an updater/distribution pipeline project, not mainly a UI project.
 - Feed/distribution: use GitHub Releases if it works; do not build a custom update service unless forced.
 - Download timing: start after idle/startup settles, not immediately at launch.
 - UX target: silent background download, then one-click restart/apply.
+- Packaging assumption: treat the macOS post-build `node_modules` copy step as dead unless runtime or notarization evidence disproves it.
+- Spike order: move next to updater plumbing; keep the nested in-app re-sign loop question as a narrower CI notarization follow-up.
+
+## Spike outcome summary (2026-03-11)
+
+What we did:
+
+1. Proved raw Tauri macOS bundling already includes `personal-server/dist/node_modules`.
+2. Removed the redundant macOS copy step from local and CI build paths.
+3. Proved locally that pre-signed nested binaries keep their signatures/entitlements when Tauri bundles them.
+
+What that means:
+
+- The old “can Tauri package `node_modules` at all?” question is answered enough to unblock the next spike.
+- The remaining packaging uncertainty is now much smaller: whether Apple notarization in CI still succeeds if we later remove the nested in-app re-sign loop.
+- Updater plugin and updater artifact plumbing can now be planned against the simplified assumption that the copy step is gone.
 
 ## Current repo state
 
@@ -33,11 +49,16 @@ Missing today:
 
 Relevant files:
 
+- `package.json`
 - `src-tauri/Cargo.toml`
 - `src-tauri/src/lib.rs`
+- `src-tauri/capabilities/default.json`
 - `src-tauri/tauri.conf.json`
 - `.github/workflows/release.yml`
 - `scripts/build-prod.js`
+- `src/hooks/app-update/check-app-update.ts`
+- `src/hooks/use-app-update.tsx`
+- `src/components/ui/sonner.tsx`
 
 ## Answer: can we generate updater artifacts/signatures from the final post-processed bundles?
 
@@ -152,11 +173,12 @@ This avoids competing with startup, connector initialization, and personal-serve
 
 The main ship/no-ship questions are:
 
-1. Can we eliminate post-build bundle mutation by packaging `personal-server/dist` correctly through Tauri resources?
-2. If not, can we generate final updater bundles/signatures after all mutations and re-signing are complete?
-3. Can GitHub Actions publish the final updater metadata/assets cleanly for macOS-first rollout?
+1. Can the updater plumbing be added cleanly now that the macOS copy step is removed?
+2. Can GitHub Actions publish updater artifacts plus updater metadata cleanly for a macOS-first rollout?
+3. Does Apple notarization in CI still pass if we later remove the nested in-app re-sign loop?
 
-Question 1 is the best first bet.
+Question 3 is now the only unresolved macOS packaging-specific follow-up.
+It should not block the updater plumbing spike.
 
 ## Recommended next steps
 
@@ -254,12 +276,123 @@ Working recommendation:
 
 Goal: prove updater mechanics on macOS once Track A works.
 
-- add updater plugin/config
-- generate signing keys
-- enable `createUpdaterArtifacts`
-- publish updater metadata to GitHub Releases
-- wire a minimal check -> download -> restart flow
-- verify update from one macOS release to the next
+Implementation plan:
+
+- `docs/plans/260311-tauri-auto-update-phase2-track-b-plan.md`
+
+#### Scope decision
+
+Proceed on the simplified assumption that:
+
+- the macOS copy step is gone
+- pre-build signing of nested binaries stays
+- final outer-app signing stays
+- the nested in-app re-sign loop remains temporarily in CI until notarization evidence proves it can be removed
+
+#### Exact files to change
+
+- `package.json`
+  - add `@tauri-apps/plugin-updater`
+  - likely add `@tauri-apps/plugin-process` if the relaunch step is owned in JS
+- `src-tauri/Cargo.toml`
+  - add `tauri-plugin-updater`
+- `src-tauri/src/lib.rs`
+  - register the updater plugin on the Tauri builder
+- `src-tauri/capabilities/default.json`
+  - add updater capability permissions (`updater:default`)
+- `src-tauri/tauri.conf.json`
+  - enable `bundle.createUpdaterArtifacts`
+  - add `plugins.updater.pubkey`
+  - add `plugins.updater.endpoints`
+- `.github/workflows/release.yml`
+  - inject updater signing private key env vars during build
+  - upload updater bundle assets and generated signatures
+  - publish/update static updater metadata asset on the GitHub Release
+- `scripts/build-prod.js`
+  - optionally mirror the updater-artifact path for local macOS smoke builds if we want local end-to-end update testing outside CI
+- `src/hooks/app-update/check-app-update.ts`
+  - either replace the GitHub Releases polling path on macOS or split “release page check” from “Tauri updater check”
+- `src/hooks/use-app-update.tsx`
+  - evolve from `check -> external release URL` into `check -> idle download -> restart toast`
+- `src/components/ui/sonner.tsx`
+  - reuse existing toast surface for the staged `Restart to update` UX
+
+#### Updater keys and config
+
+- generate a dedicated updater signing keypair with `npm run tauri signer generate`
+- store the private key and optional password in CI secrets
+- put the public key content directly in `src-tauri/tauri.conf.json` under `plugins.updater.pubkey`
+- do not rely on `.env` files for the private key during build; Tauri reads it from environment variables at build time
+
+#### GitHub Releases / metadata shape
+
+For Tauri v2 static metadata, the endpoint can point directly at a JSON asset on GitHub Releases, for example:
+
+- `https://github.com/vana-com/data-connect/releases/latest/download/latest.json`
+
+That JSON should contain:
+
+- top-level `version`
+- optional `notes`
+- optional `pub_date`
+- `platforms` map keyed by platform-arch, for example:
+  - `darwin-aarch64`
+  - `darwin-x86_64`
+- each platform entry needs:
+  - `url` pointing to the updater bundle asset
+  - `signature` containing the literal `.sig` file contents, not a URL
+
+Important constraint:
+
+- Tauri validates the JSON before version comparison, so every platform key present in the file must be complete and correct.
+- For a macOS-first rollout, the safest static metadata is a macOS-only updater JSON until Windows/Linux updater artifacts are also supported.
+
+Expected macOS release assets:
+
+- normal installer:
+  - `.dmg`
+- updater assets:
+  - `.app.tar.gz`
+  - `.app.tar.gz.sig`
+- static updater metadata:
+  - `latest.json`
+
+#### Runtime state machine
+
+Target runtime behavior for macOS phase 2:
+
+1. Startup:
+   - call updater `check()`
+   - do not block startup-critical work
+2. No update:
+   - stay idle
+3. Update available:
+   - record the available update
+   - wait for startup-settled / idle delay
+4. Idle download:
+   - call updater download/install path in background
+   - keep UI silent while downloading
+5. Download staged:
+   - show one persistent toast: `Restart to update`
+6. User clicks restart:
+   - install/apply if needed
+   - relaunch app
+7. Failure at any step:
+   - fail soft
+   - log for diagnostics
+   - do not interrupt normal app usage
+
+Recommended implementation note:
+
+- keep the existing `useAppUpdate` provider as the single app-shell orchestration point
+- split decision states so phase 1 (`external update available`) and phase 2 (`update downloading`, `update ready to restart`) are not conflated
+
+#### Exit criteria
+
+- macOS build produces updater artifacts and signatures from the finalized signed app pipeline
+- release workflow uploads `.app.tar.gz`, `.sig`, and `latest.json`
+- an older macOS build updates in-app to a newer macOS build through the full staged-download flow
+- non-macOS platforms remain on the phase-1 external release flow until explicitly migrated
 
 ### Track C: fallback if Track A fails
 
@@ -278,12 +411,11 @@ This is more work and should only be used if Track A fails.
 
 Do not start by wiring updater APIs into the app UI.
 
-Start with a macOS packaging spike to answer one binary question:
+Start with the updater plumbing spike, not another broad packaging spike.
 
-- can `personal-server/dist/node_modules` be bundled correctly by Tauri without post-build mutation?
+Current alignment:
 
-Current answer:
-
-- yes for resource packaging
-- not yet fully proven for runtime launch behavior
-- final-sign/final-artifact generation still needs to happen after the completed app exists
+- yes, the macOS resource-copy subproblem is solved enough to proceed
+- updater plugin + updater artifact plumbing is the next concrete spike
+- the only remaining packaging follow-up is whether CI notarization later lets us delete the nested in-app re-sign loop too
+- keep that notarization question scoped as a follow-up validation, not as the blocker for updater planning

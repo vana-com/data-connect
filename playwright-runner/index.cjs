@@ -254,7 +254,17 @@ const activeRuns = new Map();
 
 // Send message to parent process
 function send(msg) {
-  console.log(JSON.stringify(msg));
+  process.stdout.write(JSON.stringify(msg) + '\n');
+}
+
+function drainStdout() {
+  return new Promise(resolve => {
+    if (process.stdout.writableNeedDrain) {
+      process.stdout.once('drain', resolve);
+    } else {
+      process.stdout.write('', resolve);
+    }
+  });
 }
 
 // Log to stderr (doesn't interfere with JSON protocol)
@@ -549,7 +559,7 @@ function createPageApi(runState, runId) {
           runState.page = null;
           activeRuns.delete(runId);
           send({ type: 'status', runId, status: 'STOPPED' });
-          process.exit(0);
+          drainStdout().then(() => process.exit(0));
         }
       });
 
@@ -609,7 +619,7 @@ function createPageApi(runState, runId) {
           runState.page = null;
           activeRuns.delete(runId);
           send({ type: 'status', runId, status: 'STOPPED' });
-          process.exit(0);
+          drainStdout().then(() => process.exit(0));
         }
       });
 
@@ -752,7 +762,7 @@ async function runConnector(runId, connectorPath, url, headless = true, allowHea
         runState.page = null;
         activeRuns.delete(runId);
         send({ type: 'status', runId, status: 'STOPPED' });
-        process.exit(0);
+        drainStdout().then(() => process.exit(0));
       }
     });
 
@@ -822,6 +832,7 @@ async function runConnector(runId, connectorPath, url, headless = true, allowHea
 
     // Exit process after successful completion
     log('Connector completed successfully, exiting');
+    await drainStdout();
     process.exit(0);
 
   } catch (error) {
@@ -839,6 +850,7 @@ async function runConnector(runId, connectorPath, url, headless = true, allowHea
 
     // Exit process after error
     log('Connector failed, exiting');
+    await drainStdout();
     process.exit(1);
   }
 }

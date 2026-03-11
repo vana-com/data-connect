@@ -13,6 +13,19 @@ Use this doc in two modes:
 
 ## Strategy Lock
 
+### Execution status update (2026-03-11)
+
+New discovery from execution:
+
+- Directly enabling Tauri `createUpdaterArtifacts` is not safe in the current macOS release flow.
+- Reason: updater artifacts are generated during `tauri build`, but this repo final-signs the macOS `.app` after `tauri build`.
+- That means the generated `.app.tar.gz` can drift from the final shipped app bytes.
+
+Immediate strategy adjustment:
+
+- Implement a custom post-finalization macOS updater-asset path first.
+- Defer updater plugin/config/runtime wiring until the final-asset path is proven.
+
 ### Goal
 
 Ship macOS-first phase 2 app updates in DataConnect:
@@ -55,7 +68,8 @@ Out of scope:
 | ---------- | ------ | ----- | ----------- | ----- |
 | Tauri updater signing keypair generated and stored securely | SOFT BLOCKED | release owner | before implementation finish | Need private key + optional password in CI; public key embedded in config |
 | GitHub Release workflow can upload updater bundle assets plus `latest.json` | UNBLOCKED | repo/CI | during implementation | Current workflow already uploads release artifacts; needs updater asset/metadata extension |
-| Tauri updater artifacts are generated from the finalized signed macOS app path | SOFT BLOCKED | implementation | during spike | Must verify final served `.app.tar.gz` matches the final signed app assumptions |
+| Tauri default updater artifact generation happens before repo final-sign step | BLOCKED for direct adoption | implementation | discovered 2026-03-11 | Current workflow cannot safely rely on raw `createUpdaterArtifacts` output alone |
+| Custom post-finalization macOS updater asset generation path | SOFT BLOCKED | implementation | first execution slice | Must generate `.app.tar.gz` and `.sig` from finalized signed `.app` |
 | Real upgrade smoke path from old macOS build to new macOS build | SOFT BLOCKED | implementation/release | before merge/release | Need a reproducible way to test one released build upgrading to another |
 | CI notarization result for removing nested in-app re-sign loop | UNBLOCKED for Track B, unresolved for follow-up | release owner | after Track B or alongside first CI proof | Not a blocker for updater plumbing |
 
@@ -64,6 +78,7 @@ Out of scope:
 Chosen approach:
 
 - macOS-first Tauri v2 updater
+- custom post-finalization macOS updater asset generation before any runtime updater wiring
 - static `latest.json` metadata hosted as a GitHub Release asset
 - keep GitHub Releases as the only distribution surface
 - keep phase-1 release-page check as the fallback path for non-macOS
@@ -88,21 +103,24 @@ Rejected alternatives:
 
 ### Ordered implementation steps
 
-1. Add updater dependencies and Tauri capability/config wiring.
-2. Add a repo-owned script to build `latest.json` from generated updater assets and `.sig` contents.
-3. Extend `.github/workflows/release.yml` to:
+1. Implement a repo-owned script that creates and signs a macOS updater bundle from the finalized `.app`.
+2. Extend `.github/workflows/release.yml` to:
+   - call that script after final outer-app signing
+   - upload `.app.tar.gz` and `.app.tar.gz.sig`
+3. Only after the custom macOS asset path works, add updater dependencies and Tauri capability/config wiring.
+4. Add a repo-owned script to build `latest.json` from final updater assets and `.sig` contents.
+5. Extend `.github/workflows/release.yml` to:
    - inject updater signing key env vars
-   - upload macOS updater assets
    - upload `latest.json`
-4. Add a dedicated runtime seam around the Tauri updater plugin.
-5. Refactor `useAppUpdate` from phase-1 `release available` logic into:
+6. Add a dedicated runtime seam around the Tauri updater plugin.
+7. Refactor `useAppUpdate` from phase-1 `release available` logic into:
    - platform-aware decision path
    - startup check
    - idle download
    - staged restart toast
-6. Preserve phase-1 behavior for non-macOS and for failure fallback.
-7. Add focused tests for config, state transitions, and action behavior.
-8. Run local macOS artifact smoke, then release/upgrade proof.
+8. Preserve phase-1 behavior for non-macOS and for failure fallback.
+9. Add focused tests for config, state transitions, and action behavior.
+10. Run local macOS artifact smoke, then release/upgrade proof.
 
 ### Mandatory file edit contract
 
@@ -114,10 +132,11 @@ Fill `Status` with `PASS` / `NO-OP` / `FAIL` during execution.
 | `src-tauri/Cargo.toml` | add `tauri-plugin-updater` |  |  |
 | `src-tauri/src/lib.rs` | register updater plugin; move runtime config here only if config file is insufficient |  |  |
 | `src-tauri/capabilities/default.json` | add updater permissions (`updater:default`) |  |  |
-| `src-tauri/tauri.conf.json` | add `bundle.createUpdaterArtifacts`; add `plugins.updater.pubkey`; add `plugins.updater.endpoints` |  |  |
+| `src-tauri/tauri.conf.json` | add `bundle.createUpdaterArtifacts`; add `plugins.updater.pubkey`; add `plugins.updater.endpoints` after post-finalization asset path is proven |  |  |
+| `scripts/build-macos-updater-artifacts.mjs` | new script to archive/sign finalized macOS `.app` into `.app.tar.gz` and `.sig` | PASS | repo script added; uses `tauri signer sign` on finalized tarball |
 | `scripts/build-updater-manifest.mjs` | new script to generate `latest.json` from release asset inputs |  |  |
-| `.github/workflows/release.yml` | build with updater signing env vars; upload `.app.tar.gz`, `.sig`, `latest.json` |  |  |
-| `scripts/build-prod.js` | optional local-macOS parity for updater-artifact smoke; otherwise mark `NO-OP` explicitly |  |  |
+| `.github/workflows/release.yml` | call post-finalization updater script; upload `.app.tar.gz`, `.sig`, later `latest.json` | PASS | finalization step now generates updater tarball/signature after outer app re-sign and uploads them when present |
+| `scripts/build-prod.js` | optional local-macOS parity for updater-artifact smoke; otherwise mark `NO-OP` explicitly | NO-OP | local build path intentionally unchanged in this slice |
 | `src/hooks/app-update/check-app-update.ts` | preserve or narrow phase-1 external-release check as fallback path |  |  |
 | `src/hooks/app-update/tauri-updater.ts` | new seam around `@tauri-apps/plugin-updater` APIs |  |  |
 | `src/hooks/use-app-update.tsx` | orchestrate phase-2 state machine and preserve non-macOS fallback |  |  |

@@ -193,6 +193,9 @@ jobs:
       - name: Finalize bundles
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          TAURI_SIGNING_PRIVATE_KEY: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}
+          TAURI_SIGNING_PRIVATE_KEY_PATH: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY_PATH }}
+          TAURI_SIGNING_PRIVATE_KEY_PASSWORD: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY_PASSWORD }}
         run: |
           set -x  # Enable verbose debugging
 
@@ -246,6 +249,15 @@ jobs:
                 --sign "Developer ID Application: Corsali, Inc (${{ secrets.APPLE_TEAM_ID }})" \
                 "$app"
               echo "Re-signed $app"
+
+              # Create updater artifacts from the finalized .app, not the pre-finalization Tauri output.
+              if [ -n "$TAURI_SIGNING_PRIVATE_KEY" ] || [ -n "$TAURI_SIGNING_PRIVATE_KEY_PATH" ]; then
+                node scripts/build-macos-updater-artifacts.mjs \
+                  --app "$app" \
+                  --output-dir "src-tauri/target/${{ matrix.target }}/release/bundle/macos"
+              else
+                echo "::notice::Skipping finalized macOS updater artifact generation because no Tauri updater signing key is configured"
+              fi
             done
 
             # Recreate DMG with updated .app (including Applications symlink)
@@ -355,6 +367,13 @@ jobs:
           # Upload macOS DMG
           if [ "${{ matrix.platform }}" = "macos-latest" ]; then
             for f in src-tauri/target/${{ matrix.target }}/release/bundle/dmg/*.dmg; do
+              if [ -f "$f" ]; then
+                gh release upload "${{ github.ref_name }}" "$f" --clobber
+                echo "Uploaded $(basename "$f")"
+              fi
+            done
+            for f in src-tauri/target/${{ matrix.target }}/release/bundle/macos/*.app.tar.gz \
+                     src-tauri/target/${{ matrix.target }}/release/bundle/macos/*.app.tar.gz.sig; do
               if [ -f "$f" ]; then
                 gh release upload "${{ github.ref_name }}" "$f" --clobber
                 echo "Uploaded $(basename "$f")"

@@ -197,11 +197,12 @@ jobs:
           TAURI_SIGNING_PRIVATE_KEY_PATH: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY_PATH }}
           TAURI_SIGNING_PRIVATE_KEY_PASSWORD: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY_PASSWORD }}
         run: |
-          set -x  # Enable verbose debugging
+          set -euo pipefail
 
           # Re-sign the completed macOS app and recreate the DMG from the final app.
           # personal-server/dist/node_modules is already bundled by Tauri resources.
           if [ "${{ matrix.platform }}" = "macos-latest" ]; then
+            echo "=== Finalizing macOS bundles for ${{ matrix.target }} ==="
             # Debug: Show what's in personal-server/dist
             echo "=== Contents of personal-server/dist ==="
             ls -la personal-server/dist/ || echo "dist not found"
@@ -223,6 +224,10 @@ jobs:
               [ -e "$app" ] || continue
 
               echo "=== Processing $app ==="
+              app_name=$(basename "$app" .app)
+              version=$(grep '"version"' src-tauri/tauri.conf.json | head -1 | sed 's/.*: "\(.*\)".*/\1/')
+              arch=$(echo "${{ matrix.target }}" | cut -d- -f1)
+              updater_name="${app_name}_${version}_${arch}.app.tar.gz"
               echo "Bundled resource contents:"
               ls -la "$app/Contents/Resources/personal-server/dist/" || echo "personal-server/dist not in Resources"
               ls -la "$app/Contents/Resources/personal-server/dist/node_modules/" || { echo "ERROR: node_modules NOT in app bundle!"; exit 1; }
@@ -250,11 +255,31 @@ jobs:
                 "$app"
               echo "Re-signed $app"
 
-              # Create updater artifacts from the finalized .app, not the pre-finalization Tauri output.
+              # Notarize/staple the finalized .app before packaging the updater tarball.
+              APPLE_NOTARY_KEY_PATH="$APPLE_API_KEY_PATH" \
+              APPLE_NOTARY_KEY_ID="${{ secrets.APPLE_ASC_API_KEY_ID }}" \
+              APPLE_NOTARY_ISSUER="${{ secrets.APPLE_ASC_API_KEY_ISSUER_UUID }}" \
+              node scripts/notarize-macos-app.mjs \
+                --app "$app" \
+                --output-dir "src-tauri/target/${{ matrix.target }}/release/bundle/macos"
+
+              # Create updater artifacts from the finalized notarized .app, not the pre-finalization Tauri output.
               if [ -n "$TAURI_SIGNING_PRIVATE_KEY" ] || [ -n "$TAURI_SIGNING_PRIVATE_KEY_PATH" ]; then
                 node scripts/build-macos-updater-artifacts.mjs \
                   --app "$app" \
-                  --output-dir "src-tauri/target/${{ matrix.target }}/release/bundle/macos"
+                  --output-dir "src-tauri/target/${{ matrix.target }}/release/bundle/macos" \
+                  --artifact-name "$updater_name"
+
+                # Smoke-check the updater payload after tar packaging. This must stay a hard gate.
+                updater_smoke_dir="/tmp/updater_smoke_${arch}"
+                rm -rf "$updater_smoke_dir"
+                mkdir -p "$updater_smoke_dir"
+                tar -xzf "src-tauri/target/${{ matrix.target }}/release/bundle/macos/$updater_name" -C "$updater_smoke_dir"
+                extracted_app="$updater_smoke_dir/$(basename "$app")"
+                xcrun stapler validate "$extracted_app"
+                spctl --assess -vv "$extracted_app"
+                codesign --verify --strict "$extracted_app"
+                rm -rf "$updater_smoke_dir"
               else
                 echo "::notice::Skipping finalized macOS updater artifact generation because no Tauri updater signing key is configured"
               fi
@@ -308,7 +333,7 @@ jobs:
               # Notarize the DMG using App Store Connect API key
               echo "=== Notarizing $dmg_path ==="
               if xcrun notarytool submit "$dmg_path" \
-                --key "${{ env.APPLE_API_KEY_PATH }}" \
+                --key "$APPLE_API_KEY_PATH" \
                 --key-id "${{ secrets.APPLE_ASC_API_KEY_ID }}" \
                 --issuer "${{ secrets.APPLE_ASC_API_KEY_ISSUER_UUID }}" \
                 --wait 2>&1 | tee /tmp/notarize_${arch}.log; then
@@ -322,7 +347,7 @@ jobs:
                 if [ -n "$submission_id" ]; then
                   echo "=== Fetching notarization log for $submission_id ==="
                   xcrun notarytool log "$submission_id" \
-                    --key "${{ env.APPLE_API_KEY_PATH }}" \
+                    --key "$APPLE_API_KEY_PATH" \
                     --key-id "${{ secrets.APPLE_ASC_API_KEY_ID }}" \
                     --issuer "${{ secrets.APPLE_ASC_API_KEY_ISSUER_UUID }}" || true
                 fi

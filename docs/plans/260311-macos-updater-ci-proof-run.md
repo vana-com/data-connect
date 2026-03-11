@@ -22,6 +22,33 @@ Important constraint:
 - updater signing key secrets configured in GitHub Actions
 - all release-path commits for this spike merged into the branch you are proving
 
+### Exact GitHub Actions secrets required
+
+Already required for the current release flow:
+
+- `APPLE_BUILD_CERTIFICATE_BASE64`
+- `APPLE_BUILD_CERTIFICATE_PASSWORD`
+- `APPLE_ASC_API_KEY_KEY_BASE64`
+- `APPLE_ASC_API_KEY_ID`
+- `APPLE_ASC_API_KEY_ISSUER_UUID`
+- `APPLE_TEAM_ID`
+- `VITE_PRIVY_APP_ID`
+- `VITE_PRIVY_CLIENT_ID`
+- `VITE_SESSION_RELAY_URL`
+- `VITE_GATEWAY_URL`
+
+Required specifically for the updater proof path:
+
+- `TAURI_SIGNING_PRIVATE_KEY`
+  - value: the full contents of your Tauri updater private key file
+  - preferred over path-based config in GitHub Actions
+- `TAURI_SIGNING_PRIVATE_KEY_PASSWORD`
+  - value: the password for that private key
+  - if the key has no password, set this to an empty string or omit only if you have confirmed the CLI accepts that in CI
+
+Do not rely on `TAURI_SIGNING_PRIVATE_KEY_PATH` in GitHub Actions for this flow.
+The runner does not automatically have your local key file path.
+
 ## Exact proof command
 
 If proving on the current feature branch:
@@ -42,8 +69,8 @@ Minimum macOS proof assets that must exist on the GitHub Release:
 - `DataConnect_<version>_x86_64.dmg`
 - `DataConnect_<version>_aarch64.app.tar.gz`
 - `DataConnect_<version>_aarch64.app.tar.gz.sig`
-- `DataConnect_<version>_x86_64.app.tar.gz`
-- `DataConnect_<version>_x86_64.app.tar.gz.sig`
+- `DataConnect_<version>_x64.app.tar.gz`
+- `DataConnect_<version>_x64.app.tar.gz.sig`
 
 Baseline non-macOS artifacts may also be present:
 
@@ -78,6 +105,10 @@ Red flags:
 - `rejected`
 - `invalid`
 - `Permission denied`
+- generic macOS updater assets from `tauri-action`, for example:
+  - `DataConnect.app.tar.gz`
+  - `DataConnect_aarch64.app.tar.gz`
+  - `DataConnect_x64.app.tar.gz` without matching `.sig`
 - any overwrite/clobber behavior on macOS updater assets
 
 ## Exact post-run inspection commands

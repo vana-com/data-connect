@@ -40,6 +40,19 @@ Current working implication:
 - Therefore the current post-finalization updater script ordering is still incomplete if it runs before app notarization/stapling proof exists.
 - Next execution slice should prove or implement: final-sign app -> notarize/staple app-compatible submission -> package stapled app into updater tarball -> sign tarball -> publish metadata.
 
+First real CI proof result:
+
+- release job passed overall
+- DMG notarization path worked
+- custom updater artifact path did not run because updater signing secrets were missing
+- `tauri-action` still uploaded its own macOS updater tarballs, which polluted the release asset contract
+
+Follow-up adjustment:
+
+- stop `tauri-action` from uploading release assets
+- keep all release uploads in the explicit manual upload step
+- re-run proof only after updater signing secrets are configured
+
 ### Goal
 
 Ship macOS-first phase 2 app updates in DataConnect:
@@ -153,7 +166,7 @@ Fill `Status` with `PASS` / `NO-OP` / `FAIL` during execution.
 | `scripts/notarize-macos-app.mjs` | new script to submit a zip of the finalized `.app`, wait for notarization, staple the ticket back onto the `.app`, and validate it | PASS | repo script added; uses `ditto` + `xcrun notarytool submit` + `xcrun stapler` |
 | `scripts/build-macos-updater-artifacts.mjs` | new script to archive/sign finalized macOS `.app` into `.app.tar.gz` and `.sig` | PASS | repo script added; uses `tauri signer sign` on finalized tarball |
 | `scripts/build-updater-manifest.mjs` | new script to generate `latest.json` from release asset inputs |  |  |
-| `.github/workflows/release.yml` | call post-finalization updater script; upload `.app.tar.gz`, `.sig`, later `latest.json` | PASS | workflow now avoids xtrace around updater secrets, notarizes/staples the finalized `.app` before packaging the updater tarball, and hard-fails if the extracted updater payload fails stapler/spctl/codesign checks |
+| `.github/workflows/release.yml` | call post-finalization updater script; upload `.app.tar.gz`, `.sig`, later `latest.json` | PASS | workflow now avoids xtrace around updater secrets, disables `tauri-action` release uploads, notarizes/staples the finalized `.app` before packaging the updater tarball, and hard-fails if the extracted updater payload fails stapler/spctl/codesign checks |
 | `scripts/build-prod.js` | optional local-macOS parity for updater-artifact smoke; otherwise mark `NO-OP` explicitly | NO-OP | local build path intentionally unchanged in this slice |
 | `src/hooks/app-update/check-app-update.ts` | preserve or narrow phase-1 external-release check as fallback path |  |  |
 | `src/hooks/app-update/tauri-updater.ts` | new seam around `@tauri-apps/plugin-updater` APIs |  |  |

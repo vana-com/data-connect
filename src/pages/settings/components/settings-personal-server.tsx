@@ -100,12 +100,6 @@ export function SettingsPersonalServer({
   const endpoint = getResolvedEndpoint(previewTunnelUrl, previewPort)
   const mcpEndpoint =
     endpoint.kind === "public" ? getMcpEndpoint(endpoint.url) : null
-  const endpointLabel =
-    endpoint.kind === "public"
-      ? "Public endpoint"
-      : endpoint.kind === "local"
-        ? "Local endpoint"
-        : "Endpoint"
   const serverStatusDescription = getServerStatusDescription(
     previewStatus,
     previewPort,
@@ -204,7 +198,8 @@ export function SettingsPersonalServer({
                 className="px-4"
                 label="Authentication"
                 value={
-                  <Text intent="small" dim className="pr-2.5">
+                  // className="pr-2.5"
+                  <Text intent="small" dim>
                     Vana account connected
                   </Text>
                 }
@@ -217,7 +212,7 @@ export function SettingsPersonalServer({
         <SettingsCardStack>
           <SettingsCard>
             <SettingsDetailRow
-              label={endpointLabel}
+              label="Public endpoint"
               className="px-4"
               value={
                 <SettingsRowDescriptionCopy
@@ -242,7 +237,7 @@ export function SettingsPersonalServer({
                 <SettingsRowDescriptionCopy
                   value={mcpEndpoint}
                   intent="small"
-                  emptyLabel="Available when your Personal Server is publicly reachable."
+                  emptyLabel="Available once endpoint is live"
                   copyLabel="Copy MCP endpoint"
                   className="pr-2.5"
                   textClassName="max-w-[300px] sm:max-w-[420px]"

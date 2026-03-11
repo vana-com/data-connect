@@ -143,7 +143,7 @@ describe("PersonalServer page", () => {
     )
 
     await waitFor(() => {
-      expect(screen.getByText("Endpoint")).toBeTruthy()
+      expect(screen.getByText("Public endpoint")).toBeTruthy()
     })
     expect(screen.queryByRole("button", { name: "Sign in to start" })).toBeNull()
   })
@@ -239,7 +239,7 @@ describe("PersonalServer page", () => {
     )
 
     expect(screen.getByRole("button", { name: "Sign in to start" })).toBeTruthy()
-    expect(screen.queryByText("Endpoint")).toBeNull()
+    expect(screen.queryByText("Public endpoint")).toBeNull()
   })
 
   it("writes and removes debug scenario via panel controls", async () => {

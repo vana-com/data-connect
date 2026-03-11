@@ -158,6 +158,7 @@ describe("SettingsPersonalServer", () => {
       </TooltipProvider>
     )
 
+    expect(screen.getByText("Public endpoint")).toBeTruthy()
     expect(screen.getByText("Server is stopped. Endpoint unavailable.")).toBeTruthy()
     expect(screen.getByText("MCP endpoint")).toBeTruthy()
     expect(screen.queryByRole("button", { name: "Copy MCP endpoint" })).toBeNull()
@@ -181,6 +182,7 @@ describe("SettingsPersonalServer", () => {
       </TooltipProvider>
     )
 
+    expect(screen.getByText("Public endpoint")).toBeTruthy()
     expect(
       screen.getByText("Server failed to start. Retry to regenerate endpoint.")
     ).toBeTruthy()
@@ -201,6 +203,7 @@ describe("SettingsPersonalServer", () => {
       </TooltipProvider>
     )
 
+    expect(screen.getByText("Public endpoint")).toBeTruthy()
     expect(screen.queryByRole("button", { name: "Starting…" })).toBeNull()
     expect(screen.queryByRole("button", { name: "Retry start" })).toBeNull()
   })

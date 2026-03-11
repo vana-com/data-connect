@@ -10,6 +10,8 @@ export const LINKS = {
   vanaDocsProtocol: "https://docs.vana.org/data-portability-protocol",
   vanaDocsPersonalServers:
     "https://docs.vana.org/protocol-reference/personal-servers",
+  vanaDocsProtocolMcpServer:
+    "https://docs.vana.org/protocol-reference/full-specification#mcp-server",
   vana: "https://www.vana.org/",
   openDataLabs: "https://opendatalabs.xyz/",
   legalDataExtractionRiskResponsibilityDisclosure:

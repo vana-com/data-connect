@@ -83,14 +83,22 @@ export function PersonalServer() {
         </Text>
         <div className="space-y-1 ">
           <Text as="p" intent="small" muted>
-            Your Personal Server lets connected apps request data from this
-            device after you approve access.{" "}
+            Your Personal Server lets connected apps and AI assistants request
+            data from this device after you approve access.{" "}
             <LearnMoreLink
               href={LINKS.vanaDocsPersonalServers}
               withIcon
               className="gap-px!"
             >
-              Learn how Personal Servers work
+              Personal Server docs
+              <ArrowUpRightIcon aria-hidden="true" />
+            </LearnMoreLink>{" "}
+            <LearnMoreLink
+              href={LINKS.vanaDocsProtocolMcpServer}
+              withIcon
+              className="gap-px!"
+            >
+              MCP docs
               <ArrowUpRightIcon aria-hidden="true" />
             </LearnMoreLink>
           </Text>

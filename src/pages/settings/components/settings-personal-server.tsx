@@ -24,6 +24,11 @@ type ResolvedEndpointInfo =
   | { kind: "local"; url: string }
   | { kind: "none"; url: null }
 
+function getMcpEndpoint(url: string | null): string | null {
+  if (!url) return null
+  return `${url.replace(/\/$/, "")}/mcp`
+}
+
 function getResolvedEndpoint(
   tunnelUrl: string | null,
   port: number | null
@@ -93,6 +98,8 @@ export function SettingsPersonalServer({
   const previewError = personalServer.error
   const previewTunnelUrl = personalServer.tunnelUrl
   const endpoint = getResolvedEndpoint(previewTunnelUrl, previewPort)
+  const mcpEndpoint =
+    endpoint.kind === "public" ? getMcpEndpoint(endpoint.url) : null
   const endpointLabel =
     endpoint.kind === "public"
       ? "Public endpoint"
@@ -193,7 +200,7 @@ export function SettingsPersonalServer({
                 className="h-tab"
               />
               <SettingsDetailRow
-                isLast
+                hasTopRule
                 className="px-4"
                 label="Authentication"
                 value={
@@ -227,7 +234,24 @@ export function SettingsPersonalServer({
               }
             />
             <SettingsDetailRow
-              isLast
+              hasTopRule
+              className="px-4"
+              label="MCP endpoint"
+              labelInfo="Use this in Claude Code or another MCP client as your custom MCP server URL. It connects to your Personal Server."
+              value={
+                <SettingsRowDescriptionCopy
+                  value={mcpEndpoint}
+                  intent="small"
+                  emptyLabel="Available when your Personal Server is publicly reachable."
+                  copyLabel="Copy MCP endpoint"
+                  className="pr-2.5"
+                  textClassName="max-w-[300px] sm:max-w-[420px]"
+                  buttonClassName="max-h-[21.17px]"
+                />
+              }
+            />
+            <SettingsDetailRow
+              hasTopRule
               className="px-4"
               label="Data location"
               value={

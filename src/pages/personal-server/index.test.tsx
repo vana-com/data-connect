@@ -172,6 +172,8 @@ describe("PersonalServer page", () => {
     expect(screen.getByRole("button", { name: "Stop" })).toBeTruthy()
     expect(screen.getByText("Running")).toBeTruthy()
     expect(screen.getAllByText("https://abc123.server.vana.org").length).toBeGreaterThan(0)
+    expect(screen.getByText("MCP endpoint")).toBeTruthy()
+    expect(screen.getByText("https://abc123.server.vana.org/mcp")).toBeTruthy()
   })
 
   it("renders auth-error debug scenario", async () => {

@@ -12,7 +12,7 @@ import { settingsRowDescriptionTooltipStyle } from "./settings-row-description-s
 interface SettingsDetailRowProps {
   label: ReactNode
   value: ReactNode
-  isLast?: boolean
+  hasTopRule?: boolean
   labelInfo?: ReactNode
   className?: string
   ruleClassName?: string
@@ -24,7 +24,7 @@ interface SettingsDetailRowProps {
 export function SettingsDetailRow({
   label,
   value,
-  isLast = false,
+  hasTopRule = false,
   labelInfo,
   className,
   ruleClassName,
@@ -47,7 +47,7 @@ export function SettingsDetailRow({
         className
       )}
     >
-      {isLast ? (
+      {hasTopRule ? (
         <div className={cn("absolute top-0 inset-x-0", ruleClassName)}>
           <hr />
         </div>

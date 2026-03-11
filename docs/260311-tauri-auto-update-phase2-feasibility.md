@@ -72,7 +72,7 @@ Conclusion:
 
 ## Answer: can we stop post-processing bundles by changing how `personal-server` resources are packaged?
 
-Probably yes, and this is the highest-leverage path.
+For macOS resource copying, yes.
 
 Why I think that:
 
@@ -80,25 +80,28 @@ Why I think that:
 - `bundle.resources` supports `"dir/"` for recursive copy and object mapping for explicit target paths.
 - The current repo comments still talk about old `dist/*` behavior (“only copies files”), but the actual config already uses object mapping, which suggests the current workaround may be partly stale or based on an older failure mode.
 
-Current likely issue:
+What we needed to prove:
+
+- whether Tauri can already package `personal-server/dist/node_modules` into the raw `.app`
+- whether the repo's current custom copy step is actually doing anything essential on macOS
+
+Current remaining issue:
 
 - `personal-server` is a `pkg` binary that still needs real filesystem `node_modules` beside it for native addons like `better-sqlite3`.
-- The repo currently compensates by copying those modules into the app bundle after build.
+- the repo still needs a final signing/notarization strategy for the completed macOS app bundle
 
 Best-case outcome:
 
-- Bundle `../personal-server/dist/` recursively as a normal Tauri resource.
-- Ensure the final app ships with:
-  - `personal-server/dist/personal-server`
-  - `personal-server/dist/node_modules/**`
-- Remove the post-build copy/repack steps.
+- keep bundling `personal-server/dist` through normal Tauri resources
+- remove the macOS resource-copy step from the custom post-processing path
+- keep a final-sign step on the completed app bundle before creating updater artifacts / DMG
 
 If that works, updater support gets much simpler because the Tauri-built bundle becomes the final shipped bundle.
 
 Conclusion:
 
-- **Likely yes**
-- This should be proven with a packaging spike before doing the full updater integration.
+- **Yes for macOS resource copying**
+- **Still need final app signing after bundle completion**
 
 ## GitHub Releases as feed
 
@@ -161,12 +164,41 @@ Question 1 is the best first bet.
 
 Goal: remove post-processing.
 
-- create a branch/spike that packages `../personal-server/dist/` recursively through `bundle.resources`
-- build macOS app
-- inspect resulting `.app` contents
-- verify `personal-server/dist/node_modules` exists in the final bundle
-- verify the bundled personal server launches correctly from the packaged app
-- if successful, delete the copy/re-sign/rebuild workaround path
+#### Result (2026-03-11)
+
+I ran a raw local macOS bundle build with no custom post-copy step:
+
+- command: `CI=true npm run tauri -- build --bundles app`
+- output: `src-tauri/target/release/bundle/macos/DataConnect.app`
+
+Observed:
+
+- raw Tauri packaging already included:
+  - `Contents/Resources/personal-server/dist/personal-server`
+  - `Contents/Resources/personal-server/dist/node_modules/better-sqlite3`
+  - `Contents/Resources/personal-server/dist/node_modules/bindings`
+  - `Contents/Resources/personal-server/dist/node_modules/file-uri-to-path`
+- the same resource tree also existed earlier in Tauri's staging directory at `src-tauri/target/release/personal-server/dist`
+- the bundled `personal-server` binary verified successfully with `codesign --verify --strict`
+- the bundled `better_sqlite3.node` addon also verified successfully with `codesign --verify --strict`
+
+Important failure:
+
+- the outer raw `.app` failed `codesign --verify --strict`
+- `codesign -dv --verbose=4` showed `Sealed Resources=none`
+- ad-hoc re-signing the completed `.app` fixed verification immediately and produced `Sealed Resources version=2`
+
+Interpretation:
+
+- the current macOS resource-copy workaround is not needed to get `node_modules` into the final `.app`
+- the remaining macOS finalization need is signing the completed app bundle after all resources are in place
+
+Current status:
+
+- status: partially proven
+- raw macOS app already contains `personal-server/dist/node_modules`
+- next proof still needed: launch/runtime validation from the packaged app
+- if runtime passes, delete the macOS copy step and keep only final-sign/final-artifact steps
 
 ### Track B: updater pipeline spike
 
@@ -200,5 +232,8 @@ Start with a macOS packaging spike to answer one binary question:
 
 - can `personal-server/dist/node_modules` be bundled correctly by Tauri without post-build mutation?
 
-If yes, phase 2 becomes straightforward.
-If no, we need a custom final-artifact updater pipeline before any product work matters.
+Current answer:
+
+- yes for resource packaging
+- not yet fully proven for runtime launch behavior
+- final-sign/final-artifact generation still needs to happen after the completed app exists

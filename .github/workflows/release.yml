@@ -190,13 +190,14 @@ jobs:
           df -h / || true
         shell: bash
 
-      - name: Copy native modules and finalize bundles
+      - name: Finalize bundles
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
           set -x  # Enable verbose debugging
 
-          # Copy node_modules into macOS .app bundles (preserving directory structure)
+          # Re-sign the completed macOS app and recreate the DMG from the final app.
+          # personal-server/dist/node_modules is already bundled by Tauri resources.
           if [ "${{ matrix.platform }}" = "macos-latest" ]; then
             # Debug: Show what's in personal-server/dist
             echo "=== Contents of personal-server/dist ==="
@@ -214,33 +215,14 @@ jobs:
                 "$node_binary"
             done
 
-            for app in src-tauri/target/${{ matrix.target }}/release/bundle/macos/*.app; do
-              [ -e "$app" ] || { echo "No .app found at $app"; continue; }
-              echo "=== Processing $app ==="
-
-              # Show current state
-              echo "Before copy - Resources contents:"
-              ls -la "$app/Contents/Resources/personal-server/dist/" || echo "personal-server/dist not in Resources"
-
-              dest="$app/Contents/Resources/personal-server/dist/node_modules"
-              mkdir -p "$dest"
-
-              # Copy with verbose output
-              if [ -d "personal-server/dist/node_modules" ]; then
-                cp -Rv personal-server/dist/node_modules/* "$dest/"
-                echo "=== After copy - node_modules contents ==="
-                ls -la "$dest/" || echo "copy failed"
-              else
-                echo "ERROR: personal-server/dist/node_modules does not exist!"
-                exit 1
-              fi
-
-              echo "Copied node_modules to $dest"
-            done
-
             # Re-sign nested binaries with their entitlements, then re-sign the .app
             for app in src-tauri/target/${{ matrix.target }}/release/bundle/macos/*.app; do
               [ -e "$app" ] || continue
+
+              echo "=== Processing $app ==="
+              echo "Bundled resource contents:"
+              ls -la "$app/Contents/Resources/personal-server/dist/" || echo "personal-server/dist not in Resources"
+              ls -la "$app/Contents/Resources/personal-server/dist/node_modules/" || { echo "ERROR: node_modules NOT in app bundle!"; exit 1; }
 
               # Sign personal-server binary with JIT entitlements (--deep would strip them)
               ps_bin="$app/Contents/Resources/personal-server/dist/${{ matrix.ps_binary_name }}"

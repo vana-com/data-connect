@@ -149,9 +149,10 @@ Fill `Status` with `PASS` / `NO-OP` / `FAIL` during execution.
 | `src-tauri/src/lib.rs` | register updater plugin; move runtime config here only if config file is insufficient |  |  |
 | `src-tauri/capabilities/default.json` | add updater permissions (`updater:default`) |  |  |
 | `src-tauri/tauri.conf.json` | add `bundle.createUpdaterArtifacts`; add `plugins.updater.pubkey`; add `plugins.updater.endpoints` after post-finalization asset path is proven |  |  |
+| `scripts/notarize-macos-app.mjs` | new script to submit a zip of the finalized `.app`, wait for notarization, staple the ticket back onto the `.app`, and validate it | PASS | repo script added; uses `ditto` + `xcrun notarytool submit` + `xcrun stapler` |
 | `scripts/build-macos-updater-artifacts.mjs` | new script to archive/sign finalized macOS `.app` into `.app.tar.gz` and `.sig` | PASS | repo script added; uses `tauri signer sign` on finalized tarball |
 | `scripts/build-updater-manifest.mjs` | new script to generate `latest.json` from release asset inputs |  |  |
-| `.github/workflows/release.yml` | call post-finalization updater script; upload `.app.tar.gz`, `.sig`, later `latest.json` | FAIL | script hook exists, but notarization proof now indicates final updater tarball likely needs a stapled/notarized app input before packaging |
+| `.github/workflows/release.yml` | call post-finalization updater script; upload `.app.tar.gz`, `.sig`, later `latest.json` | PASS | workflow now avoids xtrace around updater secrets, notarizes/staples the finalized `.app` before packaging the updater tarball, and hard-fails if the extracted updater payload fails stapler/spctl/codesign checks |
 | `scripts/build-prod.js` | optional local-macOS parity for updater-artifact smoke; otherwise mark `NO-OP` explicitly | NO-OP | local build path intentionally unchanged in this slice |
 | `src/hooks/app-update/check-app-update.ts` | preserve or narrow phase-1 external-release check as fallback path |  |  |
 | `src/hooks/app-update/tauri-updater.ts` | new seam around `@tauri-apps/plugin-updater` APIs |  |  |

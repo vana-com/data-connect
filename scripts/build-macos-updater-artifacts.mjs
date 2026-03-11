@@ -5,10 +5,10 @@ import { existsSync, mkdirSync, rmSync } from 'fs';
 import { basename, dirname, join, resolve } from 'path';
 
 function printHelp() {
-  console.log(`Usage: node scripts/build-macos-updater-artifacts.mjs --app <path> [--output-dir <path>]
+  console.log(`Usage: node scripts/build-macos-updater-artifacts.mjs --app <path> [--output-dir <path>] [--artifact-name <name>]
 
-Create a finalized macOS updater tarball from a signed .app bundle and sign it
-with the Tauri updater private key.
+Create a finalized macOS updater tarball from a notarized/stapled .app bundle
+and sign it with the Tauri updater private key.
 
 Required environment:
   TAURI_SIGNING_PRIVATE_KEY or TAURI_SIGNING_PRIVATE_KEY_PATH
@@ -17,7 +17,7 @@ Optional environment:
 }
 
 function parseArgs(argv) {
-  const args = { app: null, outputDir: null };
+  const args = { app: null, outputDir: null, artifactName: null };
 
   for (let index = 0; index < argv.length; index += 1) {
     const arg = argv[index];
@@ -35,6 +35,12 @@ function parseArgs(argv) {
 
     if (arg === '--output-dir') {
       args.outputDir = argv[index + 1] ?? null;
+      index += 1;
+      continue;
+    }
+
+    if (arg === '--artifact-name') {
+      args.artifactName = argv[index + 1] ?? null;
       index += 1;
       continue;
     }
@@ -95,7 +101,13 @@ function main() {
   mkdirSync(outputDir, { recursive: true });
 
   const appName = basename(appPath);
-  const tarballPath = join(outputDir, `${appName}.tar.gz`);
+  const tarballName = args.artifactName ?? `${appName}.tar.gz`;
+  if (!tarballName.endsWith('.app.tar.gz')) {
+    throw new Error(
+      `Expected --artifact-name to end with .app.tar.gz, received: ${tarballName}`
+    );
+  }
+  const tarballPath = join(outputDir, tarballName);
   const signaturePath = `${tarballPath}.sig`;
 
   rmSync(tarballPath, { force: true });

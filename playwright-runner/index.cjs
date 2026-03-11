@@ -29,14 +29,24 @@ const CHROME_PATHS = {
   linux: '/usr/bin/google-chrome'
 };
 
-// Get browser cache directory - checks PLAYWRIGHT_BROWSERS_PATH first (for bundled browsers)
+// Get browser cache directory - checks multiple candidate paths
 function getBrowserCacheDir() {
   if (process.env.PLAYWRIGHT_BROWSERS_PATH) {
     log(`Using PLAYWRIGHT_BROWSERS_PATH: ${process.env.PLAYWRIGHT_BROWSERS_PATH}`);
     return process.env.PLAYWRIGHT_BROWSERS_PATH;
   }
   const home = process.env.HOME || process.env.USERPROFILE || '';
-  return path.join(home, '.dataconnect', 'browsers');
+  const candidates = [
+    path.join(home, '.dataconnect', 'browsers'),
+    path.join(home, '.dataconnect', 'playwright-runner', 'node_modules', 'playwright-core', '.local-browsers'),
+  ];
+  for (const dir of candidates) {
+    if (fs.existsSync(dir)) {
+      log(`Found browser cache: ${dir}`);
+      return dir;
+    }
+  }
+  return candidates[0];
 }
 
 // Check if system Chrome exists

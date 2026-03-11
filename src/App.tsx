@@ -25,7 +25,6 @@ const DataApps = lazy(() =>
 const PersonalServer = lazy(() =>
   import("./pages/personal-server").then(m => ({ default: m.PersonalServer }))
 )
-const Mcp = lazy(() => import("./pages/mcp").then(m => ({ default: m.Mcp })))
 const Docs = lazy(() => import("./pages/docs").then(m => ({ default: m.Docs })))
 const SourceOverview = lazy(() =>
   import("./pages/source").then(m => ({ default: m.SourceOverview }))
@@ -64,7 +63,6 @@ function AppContent() {
                   path={ROUTES.personalServer}
                   element={<PersonalServer />}
                 />
-                <Route path={ROUTES.mcp} element={<Mcp />} />
                 <Route path={ROUTES.docs} element={<Docs />} />
                 <Route path={ROUTES.source} element={<SourceOverview />} />
                 <Route path={ROUTES.settings} element={<Settings />} />

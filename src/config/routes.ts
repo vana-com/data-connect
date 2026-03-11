@@ -3,7 +3,6 @@ export const ROUTES = {
   debugLoading: "/__loading",
   apps: "/apps",
   personalServer: "/personal-server",
-  mcp: "/mcp",
   docs: "/docs",
   source: "/sources/:platformId",
   settings: "/settings",

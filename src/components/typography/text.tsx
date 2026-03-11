@@ -100,6 +100,8 @@ export const textVariants = cva(
         true: "font-mono",
       },
       truncate: {
+        // TODO: Consider forcing inline-block for span truncation. It's easier to reason about than relying on inline/flex-item display behavior in nested layouts.
+        // Tailwind's truncate utility = overflow-hidden text-ellipsis whitespace-nowrap.
         // For text truncation to work properly, the element needs a constrained width (explicit or from its container):
         // 1. min-w-0 prevents overflow in flex/grid parents
         // 2. max-w-full prevents overflow beyond the parent in non-flex contexts
@@ -206,8 +208,7 @@ export const Text = <T extends ElementType = "div">({
   ...props
 }: TextProps<T>) => {
   const ResolvedComponent = Component ?? "div"
-  const bulletProp =
-    ResolvedComponent === "li" ? (bullet ?? false) : bullet
+  const bulletProp = ResolvedComponent === "li" ? (bullet ?? false) : bullet
   const preProp = ResolvedComponent === "pre" ? true : pre
   const linkProp = ResolvedComponent === "a" ? (link ?? "default") : link
   const resolvedOptical =

@@ -107,7 +107,7 @@ export function SettingsRowDescriptionCopy({
           dim
           truncate
           className={cn(
-            "w-auto max-w-[240px] sm:max-w-[320px] group-hover:text-foreground",
+            "inline-block max-w-[18ch] sm:max-w-[24ch] group-hover:text-foreground",
             textClassName
           )}
           title={title ?? value}

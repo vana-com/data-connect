@@ -222,7 +222,7 @@ export function SettingsPersonalServer({
                   copyLabel="Copy URL"
                   // className={cn(previewStatus !== "running" && "pr-2.5")}
                   className="pr-2.5"
-                  textClassName="max-w-[300px] sm:max-w-[420px]"
+                  textClassName=""
                   // Callum says I know but don't touch please! :)
                   buttonClassName="max-h-[21.17px]"
                 />
@@ -239,8 +239,9 @@ export function SettingsPersonalServer({
                   intent="small"
                   emptyLabel="Available once endpoint is live"
                   copyLabel="Copy MCP endpoint"
-                  className="pr-2.5"
-                  textClassName="max-w-[300px] sm:max-w-[420px]"
+                  // purposefully revised pr here, Callum says leave please
+                  className="pr-0.5"
+                  textClassName=""
                   buttonClassName="max-h-[21.17px]"
                 />
               }

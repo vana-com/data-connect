@@ -200,6 +200,56 @@ Current status:
 - next proof still needed: launch/runtime validation from the packaged app
 - if runtime passes, delete the macOS copy step and keep only final-sign/final-artifact steps
 
+#### Follow-up cleanup (2026-03-11)
+
+Implemented the first cleanup pass:
+
+- removed the redundant macOS `node_modules` copy step from `scripts/build-prod.js`
+- removed the redundant macOS `node_modules` copy step from `.github/workflows/release.yml`
+- kept final app signing in place
+
+Validation:
+
+- `node scripts/build-prod.js` completed successfully
+- `codesign --verify --strict` passed on the final `.app`
+- bundled `personal-server/dist/node_modules` was still present in the final `.app`
+- the packaged app binary stayed up during a short local smoke run
+
+Open question that remains after this cleanup:
+
+- whether CI still needs the nested in-app re-sign loop for `personal-server` and `.node` files, or whether pre-build signing plus final outer-app signing is sufficient
+
+#### Nested-signature preservation check (2026-03-11)
+
+Ran a follow-up preservation test:
+
+- ad-hoc signed `personal-server/dist/personal-server` with `personal-server/entitlements.plist`
+- ad-hoc signed `personal-server/dist/node_modules/better-sqlite3/build/Release/better_sqlite3.node`
+- built a raw macOS app with `CI=true npm run tauri -- build --bundles app`
+- inspected the bundled copies inside `DataConnect.app`
+
+Observed:
+
+- the bundled `personal-server` copy preserved the same signature metadata and CDHash as the pre-signed source binary
+- the bundled `personal-server` copy preserved the JIT entitlements from `personal-server/entitlements.plist`
+- the bundled `better_sqlite3.node` copy verified successfully with `codesign --verify --strict`
+
+Interpretation:
+
+- Tauri resource bundling preserves the nested binary signatures/entitlements we apply before build
+- the current CI in-app nested re-sign loop is likely redundant
+
+Remaining uncertainty:
+
+- local ad-hoc signature preservation is proven
+- Apple notarization with Developer ID signatures is still not yet proven in CI
+
+Working recommendation:
+
+- keep pre-build signing of `personal-server` and `.node` files
+- keep final outer-app signing
+- defer removing the CI in-app nested re-sign loop until one notarization-backed CI run proves it is unnecessary
+
 ### Track B: updater pipeline spike
 
 Goal: prove updater mechanics on macOS once Track A works.

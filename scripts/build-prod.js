@@ -7,16 +7,12 @@
  * 1. Builds the playwright-runner into a standalone binary
  * 2. Builds the personal-server into a standalone binary
  * 3. Builds the Tauri .app bundle
- * 4. Injects personal-server native addons (node_modules/) into the .app
+ * 4. Re-signs the completed .app so macOS seals bundled resources
  * 5. Creates the DMG from the complete .app
- *
- * Tauri's resource glob flattens subdirectories, so we can't include
- * node_modules/ via tauri.conf.json. Instead we build the .app first,
- * copy node_modules/ in, then create the DMG ourselves.
  */
 
 import { execSync } from 'child_process';
-import { existsSync, cpSync, readdirSync, mkdirSync, readFileSync } from 'fs';
+import { existsSync, readdirSync, mkdirSync, readFileSync } from 'fs';
 import { join, dirname } from 'path';
 import { fileURLToPath } from 'url';
 import { platform, arch } from 'os';
@@ -42,21 +38,6 @@ function getVersion() {
   return conf.version;
 }
 
-/** Copy personal-server native addons (node_modules/) into .app Resources */
-function copyNativeModulesIntoApp(appPath) {
-  const srcNodeModules = join(PERSONAL_SERVER, 'dist', 'node_modules');
-
-  if (!existsSync(srcNodeModules)) {
-    log('WARNING: personal-server dist/node_modules not found, skipping copy');
-    return;
-  }
-
-  const destNodeModules = join(appPath, 'Contents', 'Resources', 'personal-server', 'dist', 'node_modules');
-  log(`  Copying native addons to ${destNodeModules}`);
-  mkdirSync(dirname(destNodeModules), { recursive: true });
-  cpSync(srcNodeModules, destNodeModules, { recursive: true });
-}
-
 /** Find the .app bundle in the macos bundle directory */
 function findAppBundle() {
   const macosBundle = join(ROOT, 'src-tauri', 'target', 'release', 'bundle', 'macos');
@@ -67,6 +48,11 @@ function findAppBundle() {
     }
   }
   return null;
+}
+
+function finalizeAppBundle(appPath) {
+  log(`Finalizing app signature for ${appPath}...`);
+  exec(`codesign --force --sign - "${appPath}"`);
 }
 
 async function build() {
@@ -103,19 +89,15 @@ async function build() {
   exec('npm run build');
 
   // 6. Build the .app bundle only (no DMG).
-  // Tauri's resource glob flattens directory structures, so node_modules/
-  // can't be included via tauri.conf.json. We build .app first, inject
-  // node_modules, then create the DMG ourselves.
   log('Building Tauri .app bundle...');
-  exec('npx tauri build --bundles app');
+  exec('CI=true npm run tauri -- build --bundles app');
 
-  // 7. Inject personal-server native addons into the .app bundle.
+  // 7. Re-sign the completed .app so the bundled resources are sealed.
   const appPath = findAppBundle();
   if (!appPath) {
     throw new Error('.app bundle not found after build');
   }
-  log(`Injecting native addons into ${appPath}...`);
-  copyNativeModulesIntoApp(appPath);
+  finalizeAppBundle(appPath);
 
   // 8. Create DMG from the complete .app.
   if (PLAT === 'darwin') {

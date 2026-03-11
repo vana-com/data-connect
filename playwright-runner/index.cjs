@@ -417,6 +417,8 @@ function createPageApi(runState, runId) {
         log(`[status] ${value}`);
       } else if (key === 'error') {
         log(`[error] ${value}`);
+      } else if (key === 'result') {
+        runState.hasResult = true;
       }
       send({ type: 'data', runId, key, value });
     },
@@ -810,9 +812,10 @@ async function runConnector(runId, connectorPath, url, headless = true, allowHea
     const result = await runConnectorFn.call(null, pageApi);
     log('Connector function completed with result:', result ? 'has result' : 'undefined');
 
-    // Unwrap the data if connector returns { success: true, data: ... }
-    const exportData = (result && result.success && result.data) ? result.data : result;
-    send({ type: 'result', runId, data: exportData });
+    if (!runState.hasResult && result != null) {
+      const exportData = (result && result.success && result.data) ? result.data : result;
+      send({ type: 'result', runId, data: exportData });
+    }
     send({ type: 'status', runId, status: 'COMPLETE' });
 
     // Mark as completed to prevent disconnect handler from sending STOPPED

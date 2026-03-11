@@ -26,6 +26,19 @@ Immediate strategy adjustment:
 - Implement a custom post-finalization macOS updater-asset path first.
 - Defer updater plugin/config/runtime wiring until the final-asset path is proven.
 
+Focused notarization proof:
+
+- DMG notarization is sufficient for first-install from the DMG.
+- It is not sufficient evidence for the separately downloaded updater `.app.tar.gz` path.
+- Apple `notarytool` only accepts UDIF disk images, signed flat installer packages, and zip files.
+- That means the updater `.app.tar.gz` cannot itself be notarized directly.
+
+Current working implication:
+
+- The updater-served `.app` must be notarized/stapled before it is packaged into the updater `.app.tar.gz`.
+- Therefore the current post-finalization updater script ordering is still incomplete if it runs before app notarization/stapling proof exists.
+- Next execution slice should prove or implement: final-sign app -> notarize/staple app-compatible submission -> package stapled app into updater tarball -> sign tarball -> publish metadata.
+
 ### Goal
 
 Ship macOS-first phase 2 app updates in DataConnect:
@@ -69,7 +82,7 @@ Out of scope:
 | Tauri updater signing keypair generated and stored securely | SOFT BLOCKED | release owner | before implementation finish | Need private key + optional password in CI; public key embedded in config |
 | GitHub Release workflow can upload updater bundle assets plus `latest.json` | UNBLOCKED | repo/CI | during implementation | Current workflow already uploads release artifacts; needs updater asset/metadata extension |
 | Tauri default updater artifact generation happens before repo final-sign step | BLOCKED for direct adoption | implementation | discovered 2026-03-11 | Current workflow cannot safely rely on raw `createUpdaterArtifacts` output alone |
-| Custom post-finalization macOS updater asset generation path | SOFT BLOCKED | implementation | first execution slice | Must generate `.app.tar.gz` and `.sig` from finalized signed `.app` |
+| Custom post-finalization macOS updater asset generation path | SOFT BLOCKED | implementation | first execution slice | Must generate `.app.tar.gz` and `.sig` from a finalized notarized/stapled `.app`, not merely a finalized signed `.app` |
 | Real upgrade smoke path from old macOS build to new macOS build | SOFT BLOCKED | implementation/release | before merge/release | Need a reproducible way to test one released build upgrading to another |
 | CI notarization result for removing nested in-app re-sign loop | UNBLOCKED for Track B, unresolved for follow-up | release owner | after Track B or alongside first CI proof | Not a blocker for updater plumbing |
 
@@ -79,6 +92,7 @@ Chosen approach:
 
 - macOS-first Tauri v2 updater
 - custom post-finalization macOS updater asset generation before any runtime updater wiring
+- package the updater tarball from a notarized/stapled `.app`, not only a signed `.app`
 - static `latest.json` metadata hosted as a GitHub Release asset
 - keep GitHub Releases as the only distribution surface
 - keep phase-1 release-page check as the fallback path for non-macOS
@@ -95,6 +109,7 @@ Rejected alternatives:
 ### Replan triggers
 
 - `createUpdaterArtifacts` outputs do not match the finalized signed macOS app path we need to ship.
+- We cannot produce a notarized/stapled app bundle before creating the updater `.app.tar.gz`.
 - Static GitHub Release metadata cannot express the macOS-first rollout cleanly.
 - Updater plugin permissions/config force broader Tauri capability changes than expected.
 - Runtime updater API shape forces a larger state-model rewrite than `useAppUpdate` can absorb cleanly.
@@ -103,24 +118,25 @@ Rejected alternatives:
 
 ### Ordered implementation steps
 
-1. Implement a repo-owned script that creates and signs a macOS updater bundle from the finalized `.app`.
-2. Extend `.github/workflows/release.yml` to:
-   - call that script after final outer-app signing
+1. Prove or implement an app-level notarization/stapling path compatible with updater delivery.
+2. Implement a repo-owned script that creates and signs a macOS updater bundle from the finalized notarized/stapled `.app`.
+3. Extend `.github/workflows/release.yml` to:
+   - call that script after app notarization/stapling
    - upload `.app.tar.gz` and `.app.tar.gz.sig`
-3. Only after the custom macOS asset path works, add updater dependencies and Tauri capability/config wiring.
-4. Add a repo-owned script to build `latest.json` from final updater assets and `.sig` contents.
-5. Extend `.github/workflows/release.yml` to:
+4. Only after the custom macOS asset path works, add updater dependencies and Tauri capability/config wiring.
+5. Add a repo-owned script to build `latest.json` from final updater assets and `.sig` contents.
+6. Extend `.github/workflows/release.yml` to:
    - inject updater signing key env vars
    - upload `latest.json`
-6. Add a dedicated runtime seam around the Tauri updater plugin.
-7. Refactor `useAppUpdate` from phase-1 `release available` logic into:
+7. Add a dedicated runtime seam around the Tauri updater plugin.
+8. Refactor `useAppUpdate` from phase-1 `release available` logic into:
    - platform-aware decision path
    - startup check
    - idle download
    - staged restart toast
-8. Preserve phase-1 behavior for non-macOS and for failure fallback.
-9. Add focused tests for config, state transitions, and action behavior.
-10. Run local macOS artifact smoke, then release/upgrade proof.
+9. Preserve phase-1 behavior for non-macOS and for failure fallback.
+10. Add focused tests for config, state transitions, and action behavior.
+11. Run local macOS artifact smoke, then release/upgrade proof.
 
 ### Mandatory file edit contract
 
@@ -135,7 +151,7 @@ Fill `Status` with `PASS` / `NO-OP` / `FAIL` during execution.
 | `src-tauri/tauri.conf.json` | add `bundle.createUpdaterArtifacts`; add `plugins.updater.pubkey`; add `plugins.updater.endpoints` after post-finalization asset path is proven |  |  |
 | `scripts/build-macos-updater-artifacts.mjs` | new script to archive/sign finalized macOS `.app` into `.app.tar.gz` and `.sig` | PASS | repo script added; uses `tauri signer sign` on finalized tarball |
 | `scripts/build-updater-manifest.mjs` | new script to generate `latest.json` from release asset inputs |  |  |
-| `.github/workflows/release.yml` | call post-finalization updater script; upload `.app.tar.gz`, `.sig`, later `latest.json` | PASS | finalization step now generates updater tarball/signature after outer app re-sign and uploads them when present |
+| `.github/workflows/release.yml` | call post-finalization updater script; upload `.app.tar.gz`, `.sig`, later `latest.json` | FAIL | script hook exists, but notarization proof now indicates final updater tarball likely needs a stapled/notarized app input before packaging |
 | `scripts/build-prod.js` | optional local-macOS parity for updater-artifact smoke; otherwise mark `NO-OP` explicitly | NO-OP | local build path intentionally unchanged in this slice |
 | `src/hooks/app-update/check-app-update.ts` | preserve or narrow phase-1 external-release check as fallback path |  |  |
 | `src/hooks/app-update/tauri-updater.ts` | new seam around `@tauri-apps/plugin-updater` APIs |  |  |

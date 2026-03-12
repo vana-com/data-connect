@@ -129,6 +129,10 @@ export const textVariants = cva(
           "list-disc",
         ],
       },
+      textBox: {
+        // Perfectly trims the text box to the actual glyph bounds
+        true: "[text-box-trim:trim-both_cap_alphabetic]",
+      },
     },
     compoundVariants: [
       // mono displays
@@ -199,6 +203,7 @@ export const Text = <T extends ElementType = "div">({
   optical,
   truncate,
   bullet,
+  textBox,
   pre,
   link,
   dim,
@@ -255,6 +260,7 @@ export const Text = <T extends ElementType = "div">({
           truncate,
           pre: preProp,
           bullet: bulletProp,
+          textBox,
           link: linkProp,
           withIcon,
           dim,

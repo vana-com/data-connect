@@ -5,14 +5,16 @@ import { useEmbrowsePage } from "./use-embrowse-page"
 
 // Config — will come from the connect flow (session relay / URL params).
 // For dev, use the mock HTML served by Vite's public dir.
-const EMBROWSE_URL = import.meta.env.VITE_EMBROWSE_URL ?? "/mock-embrowse.html"
+const EMBROWSE_URL = import.meta.env.VITE_EMBROWSE_URL ?? new URL("/mock-embrowse.html", window.location.origin).href
 const SERVER_URL = import.meta.env.VITE_DEMO_SERVER_URL ?? "http://localhost:8080"
 
 /** Feature-detect credentialless iframe support (Chrome 110+, FF 119+, no Safari) */
 const supportsCredentialless = "credentialless" in HTMLIFrameElement.prototype
 
 export function Embrowse() {
-  const mode = supportsCredentialless ? "iframe" as const : "popup" as const
+  // For dev/demo, always use iframe — the mock is same-origin so credentialless isn't needed.
+  // Production will need popup fallback for cross-origin Embrowse on browsers without credentialless.
+  const mode = "iframe" as const
 
   const { iframeRef, embrowseUrl, status, openPopup } = useEmbrowsePage({
     embrowseUrl: EMBROWSE_URL,

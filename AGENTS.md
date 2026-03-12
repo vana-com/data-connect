@@ -52,4 +52,5 @@ Use skills only when the task matches; explore the code first.
 - Text usage edits: when changing usage of `src/components/typography/text.tsx`, read ui-component-audit first (soft default; use judgment).
 - Testing: invoke react-testing when writing/running tests or before commit.
 - Linear: invoke linear skill when asked to create/update tickets or statuses.
+- Commit messages: invoke conventional-commits when creating, reviewing, or fixing commit messages.
 - Committing: invoke committing skill only when user explicitly asks to commit.

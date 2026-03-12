@@ -1,6 +1,6 @@
 ---
 name: conventional-commits
-description: Write commit messages using Conventional Commits 1.0.0. Use when creating, reviewing, or fixing commit messages so they follow <type>[optional scope]: <description> with optional body/footer and proper BREAKING CHANGE handling.
+description: Use Conventional Commits when creating reviewing or fixing commit messages.
 ---
 
 # Conventional Commits

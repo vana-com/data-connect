@@ -328,11 +328,4 @@
   }
 }
 
-/* Draggable title bar area for macOS */
-.titlebar-drag-region {
-  -webkit-app-region: drag;
-}
 
-.titlebar-no-drag {
-  -webkit-app-region: no-drag;
-}

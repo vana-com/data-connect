@@ -17,6 +17,13 @@ export default defineConfig({
   },
   test: {
     environment: "happy-dom",
+    exclude: [
+      "cloud-server/**",
+      "**/node_modules/**",
+      "**/dist/**",
+      "personal-server/**",
+      "playwright-runner/**",
+    ],
   },
   define: {
     __COMMIT_HASH__: JSON.stringify(commitHash),

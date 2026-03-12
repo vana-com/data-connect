@@ -38,6 +38,9 @@ const Grant = lazy(() =>
 const Connect = lazy(() =>
   import("./pages/connect").then(m => ({ default: m.Connect }))
 )
+const Embrowse = lazy(() =>
+  import("./pages/embrowse").then(m => ({ default: m.Embrowse }))
+)
 
 function AppContent() {
   useEvents()
@@ -67,6 +70,7 @@ function AppContent() {
                 <Route path={ROUTES.source} element={<SourceOverview />} />
                 <Route path={ROUTES.settings} element={<Settings />} />
                 <Route path={ROUTES.connect} element={<Connect />} />
+                <Route path={ROUTES.embrowse} element={<Embrowse />} />
                 <Route path={ROUTES.grant} element={<Grant />} />
               </Routes>
             </Suspense>

@@ -7,6 +7,7 @@ export const ROUTES = {
   source: "/sources/:platformId",
   settings: "/settings",
   connect: "/connect",
+  embrowse: "/embrowse",
   grant: "/grant",
 } as const
 

@@ -1,0 +1,38 @@
+{
+  "skill_name": "patch-first-debugging",
+  "evals": [
+    {
+      "id": 1,
+      "prompt": "A Vitest file started failing after a small refactor. Fix the bug with the smallest possible change, avoid touching unrelated files, and verify only the most relevant test target first.",
+      "expected_output": "The response narrows scope quickly, favors a minimal patch over a rewrite, and runs or recommends a targeted verification step.",
+      "files": [],
+      "expectations": [
+        "The workflow focuses on the smallest relevant file or function first",
+        "The solution prefers a patch or surgical edit instead of rewriting whole files",
+        "The verification step is targeted rather than defaulting to the full test suite"
+      ]
+    },
+    {
+      "id": 2,
+      "prompt": "Here is a stack trace and one file, auth.ts. Find the bug and output only a unified diff. Do not return the full file.",
+      "expected_output": "The response honors the patch-only format and limits analysis to the supplied file and error context.",
+      "files": [],
+      "expectations": [
+        "The output format is a diff or patch rather than a full-file rewrite",
+        "The response stays scoped to auth.ts and the provided failure context",
+        "The edit changes only the code needed to address the bug"
+      ]
+    },
+    {
+      "id": 3,
+      "prompt": "Login regressed, but the root cause is unclear. Investigate carefully, start with the smallest likely surface area, and only broaden scope if the first patch does not hold.",
+      "expected_output": "The response follows a patch-first debugging loop, explains when to widen scope, and avoids broad churn before evidence requires it.",
+      "files": [],
+      "expectations": [
+        "The response identifies or reproduces the failure before making broad changes",
+        "The initial repair attempt is a minimal patch",
+        "The response explains that wider refactoring or additional files should be pulled in only if evidence requires it"
+      ]
+    }
+  ]
+}

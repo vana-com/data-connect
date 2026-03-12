@@ -20,6 +20,7 @@ DataConnect is the protocol client: it runs connectors, orchestrates grants, and
 
 - Prefer retrieval‑led reasoning for project‑specific knowledge.
 - Don’t overwrite comments; don’t change styles/classes unless asked.
+- Prefer minimal patches over full-file rewrites when feasible; this keeps outputs smaller, reduces token usage in debug loops, and makes changes easier to review. Keep context scoped to the relevant file, function, and failure, and avoid regenerating entire files unless a full rewrite is clearly justified.
 - When I report a bug, don't start by trying to fix it. Instead, start by writing a test that reproduces the bug. Then, have subagents try to fix the bug and prove it with a passing test.
 - Commit only when asked; never push; stage explicit paths only (no `git add .`, `-A`, `-u`, `git commit -a`); run relevant tests before commit.
 - For all commit actions, follow `.agents/skills/commit-discipline/SKILL.md` exactly.

@@ -54,4 +54,5 @@ Use skills only when the task matches; explore the code first.
 - Testing: invoke react-testing when writing/running tests or before commit.
 - Linear: invoke linear skill when asked to create/update tickets or statuses.
 - Commit messages: invoke conventional-commits when creating, reviewing, or fixing commit messages.
+- Test-fix harnesses: invoke test-fix-loop when the user wants a constrained failing-test repair loop, minimal-patch harness, or automated test-fix workflow.
 - Committing: invoke committing skill only when user explicitly asks to commit.

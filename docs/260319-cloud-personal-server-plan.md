@@ -8,20 +8,40 @@
 
 When a user logs into account.vana.org, a Personal Server is provisioned for them in the cloud. They can see its status, copy its MCP endpoint, and use it for grants. No desktop app required.
 
+## Decisions
+
+1. **URL scheme:** Unified `{userId}.server.vana.org` — same domain as existing FRP tunnels. Apps and the Gateway don't need to know whether a PS is tunneled or cloud-hosted. A Cloudflare Worker routes traffic to the right backend.
+   - *Future consideration:* A dedicated domain (e.g., `{name}.server.vana`) would follow industry best practice (Vercel uses `vercel.app`, Supabase uses `supabase.co`, etc.) for origin isolation. Worth revisiting if the PS ever serves a consumer-facing admin UI. For now, `*.server.vana.org` is already in production with wildcard DNS and Cloudflare proxy, so we use it.
+2. **Subdomains over paths:** The PS may serve an admin web UI in the future (like self-hosted tools such as Grafana, Portainer). Subdomains give proper origin isolation (cookies, localStorage, service workers scoped per user). Path-based routing makes this fragile.
+3. **Persistent disk lifecycle:** Keep disks for 30 days after deprovision. Data survives re-provision.
+4. **Gateway registration:** Auto-register with the Gateway after health check passes. No manual step.
+5. **Keypair derivation:** Wallet-derived `masterKeySignature` (not server-generated) so the keypair is recoverable from the user's wallet. Passed as env var for MVP; move to GCP Secret Manager or Sprites.dev secret injection in production.
+6. **Cost:** e2-micro ~$7/mo per user. Acceptable for early users. Provider abstraction exists specifically to swap to Sprites.dev MicroVMs at scale.
+7. **Naming:** Use the user's ID (wallet address or Privy ID) as the subdomain, same as the existing tunnel scheme. No user-chosen names or uniqueness system needed.
+
 ## Architecture
 
 ```
+*.server.vana.org (Cloudflare — wildcard DNS already in place)
+   |
+   v
+Cloudflare Worker (routing layer)
+   |
+   +-- Cloud VM? → proxy to VM IP (looked up from Neon DB)
+   +-- Otherwise → pass through to FRP origin (existing tunnel behavior)
+
 account.vana.org (Next.js on Vercel)
    |
-   |  /api/server/provision   (serverless)
-   |  /api/server/status
-   |  /api/server/deprovision
+   |  POST   /api/servers          (provision)
+   |  GET    /api/servers/:id      (status)
+   |  DELETE /api/servers/:id      (deprovision)
+   |  GET    /api/servers          (list)
    |
    v
 Provider Abstraction Layer
    |
-   +-- GCPProvider     (initial: GCE micro VMs)
-   +-- SpritesProvider  (future: Sprites.dev Firecracker MicroVMs)
+   +-- GCPProvider      (initial: GCE micro VMs)
+   +-- SpritesProvider   (future: Sprites.dev Firecracker MicroVMs)
    |
    v
 Per-User Personal Server (personal-server-ts in Docker)
@@ -29,6 +49,7 @@ Per-User Personal Server (personal-server-ts in Docker)
    - SQLite index + local data storage
    - Grant management + Gateway registration
    - MCP endpoint at /mcp
+   - Admin UI (future)
 ```
 
 ## Repos & Responsibilities
@@ -45,7 +66,7 @@ The server is a Node.js monorepo (core/server/cli) using Hono, better-sqlite3, a
    - `EXPOSE 8080`, `CMD ["node", "packages/server/dist/index.js"]`
 
 2. **Cloud-mode config defaults:**
-   - `tunnel.enabled: false` (server is directly addressable)
+   - `tunnel.enabled: false` (server is directly addressable via Cloudflare Worker)
    - `devUi.enabled: false` (no browser on the VM)
    - `sync.enabled: false` (for now)
    - Accept `SERVER_ORIGIN` env var so it knows its own public URL
@@ -57,9 +78,22 @@ The server is a Node.js monorepo (core/server/cli) using Hono, better-sqlite3, a
 5. **Persistent volume:** `$PERSONAL_SERVER_ROOT_PATH` (default `/data`) must be a persistent disk for `index.db`, `key.json`, `data/`, `logs/`.
 
 **Env vars at container start:**
-- `VANA_MASTER_KEY_SIGNATURE` — derived from user's wallet, used for server identity
+- `VANA_MASTER_KEY_SIGNATURE` — derived from user's wallet, used for server identity (recoverable)
 - `PERSONAL_SERVER_ROOT_PATH` — `/data` (mounted persistent volume)
-- `SERVER_ORIGIN` — public URL (e.g., `https://<user-id>.ps.vana.org`)
+- `SERVER_ORIGIN` — public URL (e.g., `https://{userId}.server.vana.org`)
+
+### Cloudflare Worker — Routing Layer
+
+A Worker on `*.server.vana.org` that unifies cloud and tunnel traffic:
+
+1. Extract user ID from subdomain
+2. Look up in Neon DB — is this a cloud-hosted server?
+   - **Yes:** Proxy request to the VM's IP
+   - **No:** Pass through to the FRP origin (existing behavior, zero disruption)
+
+The Worker is the only component that knows whether a server is cloud or tunneled. Everything else (Gateway, apps, MCP clients) sees a single `{userId}.server.vana.org` URL.
+
+**Caching:** Cache the DB lookup (user ID → VM IP) with a short TTL (30-60s) to avoid hitting the DB on every request. Invalidate on provision/deprovision.
 
 ### vana-connect — Provisioning API + UI
 
@@ -90,9 +124,9 @@ interface ServerProvider {
 #### 2. GCP Provider (initial implementation)
 
 Uses GCP Compute Engine API to manage e2-micro VMs:
-- `provision()`: Create VM from personal-server container image, attach persistent disk, set env vars, assign external IP or use a load balancer
+- `provision()`: Create VM from personal-server container image, attach persistent disk, set env vars, assign external IP
 - `status()`: Check VM status + hit `/health`
-- `deprovision()`: Stop and delete VM
+- `deprovision()`: Stop VM, keep persistent disk for 30 days, remove routing entry
 
 Authentication: Vercel serverless routes use a GCP service account key (stored as env var/secret).
 
@@ -104,14 +138,17 @@ Simple table mapping users to their provisioned servers:
 
 ```sql
 CREATE TABLE personal_servers (
-  id          TEXT PRIMARY KEY,        -- generated server ID
-  user_id     TEXT UNIQUE NOT NULL,    -- Privy user ID or wallet address
-  provider    TEXT NOT NULL,           -- 'gcp' | 'sprites'
-  provider_id TEXT,                    -- GCP instance name / Sprites VM ID
-  url         TEXT,                    -- public URL of the server
-  state       TEXT NOT NULL DEFAULT 'provisioning',
-  created_at  TIMESTAMPTZ DEFAULT now(),
-  updated_at  TIMESTAMPTZ DEFAULT now()
+  id            TEXT PRIMARY KEY,        -- srv_ prefixed ID
+  user_id       TEXT UNIQUE NOT NULL,    -- Privy user ID or wallet address
+  provider      TEXT NOT NULL,           -- 'gcp' | 'sprites'
+  provider_id   TEXT,                    -- GCP instance name / Sprites VM ID
+  vm_ip         TEXT,                    -- internal IP for Cloudflare Worker routing
+  url           TEXT,                    -- public URL ({userId}.server.vana.org)
+  state         TEXT NOT NULL DEFAULT 'provisioning',
+  disk_id       TEXT,                    -- persistent disk ID (retained 30 days after deprovision)
+  disk_expires  TIMESTAMPTZ,            -- set on deprovision: now() + 30 days
+  created_at    TIMESTAMPTZ DEFAULT now(),
+  updated_at    TIMESTAMPTZ DEFAULT now()
 );
 ```
 
@@ -154,8 +191,8 @@ GET    /api/servers          → List servers (for now, returns the user's singl
   object: "server",
   id: "srv_abc123",
   status: "running",
-  url: "https://srv-abc123.ps.vana.org",
-  mcp_endpoint: "https://srv-abc123.ps.vana.org/mcp",
+  url: "https://{userId}.server.vana.org",
+  mcp_endpoint: "https://{userId}.server.vana.org/mcp",
   owner_address: "0x...",
   provider: "gcp",
   created: 1710806400,
@@ -168,9 +205,10 @@ GET    /api/servers          → List servers (for now, returns the user's singl
 #### 5. Provisioning on Login
 
 In the connect app's auth flow, after Privy login completes:
-- Call `/api/server/provision` with the user's master key signature
-- If server already exists and is running, just fetch status
-- Show provisioning progress in UI (polling `/api/server/status`)
+- Call `POST /api/servers` with the user's master key signature
+- If server already exists and is running, return existing (idempotent)
+- Show provisioning progress in UI (polling `GET /api/servers/:id`)
+- After server health check passes, auto-register with Gateway
 
 #### 6. UI (in connect app)
 
@@ -184,39 +222,104 @@ Add a "Personal Server" section to the authenticated user's dashboard:
 
 No changes needed in data-connect for this work. Its personal server code (Tauri subprocess management, grant flow, ingest) serves as reference for how the protocol works. The vana-connect SDK's `src/personal-server/` client already has grant and ingest functionality that can be evolved.
 
-## Sequencing
+## Execution Plan
 
 ### Phase 1: Containerize Personal Server
-- [ ] Write Dockerfile for personal-server-ts
-- [ ] Test locally with `docker run`
-- [ ] Push to GCP Artifact Registry
-- [ ] Verify: container starts, `/health` responds, grants work
 
-### Phase 2: GCP Provider + API Routes
-- [ ] Create GCP provider implementation
-- [ ] Set up Neon Postgres table
-- [ ] Implement `/api/server/provision`, `/status`, `/deprovision`
-- [ ] Test end-to-end: API call → VM created → server running → health OK
+**Tasks:**
+- [ ] Write Dockerfile for personal-server-ts (multi-stage, Node 20 alpine)
+- [ ] Add `HEALTHCHECK` instruction
+- [ ] Add cloud-mode env var support (`SERVER_ORIGIN`, `tunnel.enabled=false`)
+- [ ] Build and test locally with `docker run`
+- [ ] Push image to GCP Artifact Registry
+- [ ] Document env vars and volume mount in personal-server-ts README
 
-### Phase 3: Login Integration + UI
-- [ ] Wire provisioning into post-login flow
-- [ ] Build server status UI in connect app
-- [ ] Show MCP endpoint
-- [ ] Test full user journey: login → server provisioned → MCP endpoint works
+**Validation:**
+- [ ] `docker build` completes without errors
+- [ ] `docker run -p 8080:8080 -v /tmp/ps-data:/data -e VANA_MASTER_KEY_SIGNATURE=<test> -e SERVER_ORIGIN=http://localhost:8080` starts successfully
+- [ ] `curl http://localhost:8080/health` returns 200 with `{ ownerAddress: "0x..." }`
+- [ ] Server generates `key.json` on first boot in `/data`
+- [ ] Server persists data across container restart (stop, start, check `/data/index.db` survives)
+- [ ] `better-sqlite3` native addon works in alpine container (common failure point)
+- [ ] Container runs with non-root user (security baseline)
+- [ ] Grant flow works against containerized server: create grant via API, verify grant is stored, query granted data
 
-### Phase 4: Sprites.dev Provider (later)
-- [ ] Implement SpritesProvider against Sprites.dev API
+### Phase 2: Cloudflare Worker + Routing
+
+**Tasks:**
+- [ ] Create Cloudflare Worker for `*.server.vana.org`
+- [ ] Worker logic: extract subdomain → check Neon DB → route to VM IP or fall through to FRP origin
+- [ ] Add KV or cached DB lookup (30-60s TTL) for user ID → VM IP mapping
+- [ ] Deploy Worker with FRP as default backend (zero disruption to existing tunnels)
+
+**Validation:**
+- [ ] Existing tunnel URLs (`{userId}.server.vana.org`) still work after Worker deployment — test with a real tunneled PS
+- [ ] Worker correctly falls through to FRP for unknown/tunnel users
+- [ ] Worker returns 502/504 with useful error when a cloud VM is unreachable
+- [ ] Latency overhead of Worker is <50ms (measure with `curl -w` timing)
+- [ ] Cache invalidation works: provision a test entry in DB, verify Worker routes to it, delete entry, verify Worker falls back to FRP within TTL window
+
+### Phase 3: GCP Provider + API Routes
+
+**Tasks:**
+- [ ] Set up Neon Postgres database and `personal_servers` table
+- [ ] Implement `ServerProvider` interface
+- [ ] Implement `GCPProvider` (provision, status, deprovision)
+- [ ] Implement API routes: `POST /api/servers`, `GET /api/servers/:id`, `DELETE /api/servers/:id`, `GET /api/servers`
+- [ ] Add GCP service account credentials to Vercel env vars
+- [ ] Wire provision flow to update Neon DB (so Cloudflare Worker can route)
+
+**Validation:**
+- [ ] `POST /api/servers` with valid `masterKeySignature` → returns `{ status: "provisioning" }`
+- [ ] `POST /api/servers` again with same user → returns existing server (idempotent), not duplicate
+- [ ] GCE VM appears in GCP console within 2 minutes of POST
+- [ ] `GET /api/servers/:id` transitions from `provisioning` → `running` once VM is healthy
+- [ ] `https://{userId}.server.vana.org/health` returns 200 (proving Cloudflare Worker routes to the new VM)
+- [ ] `https://{userId}.server.vana.org/mcp` responds (MCP endpoint reachable)
+- [ ] `DELETE /api/servers/:id` stops the VM, DB state → `stopped`, disk retained
+- [ ] After DELETE, `https://{userId}.server.vana.org` falls through to FRP (returns "no tunnel active")
+- [ ] Re-provision after DELETE reuses the retained disk (data survives)
+- [ ] Auth: request without valid `masterKeySignature` → 401
+- [ ] Auth: user A cannot access user B's server → 403
+- [ ] Error handling: provision with invalid signature → clear error message
+- [ ] Error handling: GCP API failure during provision → server state set to `error`, not stuck in `provisioning`
+
+### Phase 4: Login Integration + UI
+
+**Tasks:**
+- [ ] Wire `POST /api/servers` into post-Privy-login flow
+- [ ] Build server status UI (status indicator, URL, MCP endpoint)
+- [ ] Add polling for provisioning → running transition
+- [ ] Auto-register server with Gateway after health check passes
+- [ ] Add restart action (deprovision + re-provision)
+
+**Validation:**
+- [ ] **Full user journey (happy path):** New user → Privy login → server auto-provisions → status UI shows "provisioning" → transitions to "running" → MCP endpoint displayed → copy endpoint → paste into Claude Desktop → Claude can call tools on the PS
+- [ ] **Returning user:** Login → existing server detected → status shows "running" immediately (no re-provision)
+- [ ] **Gateway registration:** After provision, server appears in Gateway (`GET /v1/servers` returns the cloud PS)
+- [ ] **Grant flow end-to-end:** Builder app requests grant → user approves on account.vana.org → PS stores grant → builder can query data via MCP endpoint
+- [ ] **Restart flow:** User clicks restart → old VM stops → new VM starts → same data (disk reused) → URL unchanged
+- [ ] **Error recovery:** If VM dies (simulate by stopping it in GCP console) → status UI shows "error" → user can restart
+- [ ] **Concurrent provision:** Two rapid login attempts from same user → only one server created (idempotency)
+- [ ] **UI states:** Verify all status indicators render correctly: provisioning (spinner), running (green), stopped (gray), error (red)
+- [ ] **MCP endpoint copy:** Clipboard copy works, copied URL is correct and reachable
+
+### Phase 5: Sprites.dev Provider (later)
+
+**Tasks:**
+- [ ] Implement `SpritesProvider` against Sprites.dev API
 - [ ] Swap provider via env var (`SERVER_PROVIDER=sprites`)
 - [ ] Same interface, different backend
 
-## Open Questions
+**Validation:**
+- [ ] All Phase 3 and Phase 4 validations pass with `SERVER_PROVIDER=sprites`
+- [ ] Provision time is comparable or faster than GCP
+- [ ] Cost per server is lower than GCE e2-micro
+- [ ] Existing cloud servers on GCP continue working (no migration needed for MVP; both providers can coexist)
 
-1. **DNS / URL scheme:** Per-user subdomains (`<userId>.ps.vana.org`) vs path-based (`ps.vana.org/<userId>`) vs opaque (`ps.vana.org/srv_abc123`)? Subdomains are cleanest for MCP but need wildcard DNS + TLS.
+## Rollback Plan
 
-2. **Persistent disk lifecycle:** When a user deprovisions, do we keep the disk (data survives re-provision) or delete it? Leaning toward keep-for-30-days.
-
-3. **Server registration with Gateway:** Currently the desktop app calls `/api/sign` on account.vana.org to sign the EIP-712 registration message. In the cloud flow, the provisioning API can trigger registration automatically after the server starts. Should it?
-
-4. **Cost:** e2-micro is ~$7/mo per user. At scale, Sprites.dev MicroVMs should be cheaper. For testing/early users this is fine.
-
-5. **Security:** The `masterKeySignature` is sensitive — it derives the server's keypair. We pass it to the container as an env var. In production we should use GCP Secret Manager or Sprites.dev's secret injection. For MVP, env var is acceptable.
+- **Phase 2 (Worker):** Worker has a kill switch — set a flag to bypass all logic and pass everything to FRP origin. Existing tunnels are never broken.
+- **Phase 3 (API):** API routes are additive. If broken, disable the routes; no existing functionality affected.
+- **Phase 4 (Login):** Auto-provision on login can be feature-flagged. If it causes issues, disable the flag and users see no server UI.
+- **VM failure:** If a specific VM is unhealthy, the provisioning API can deprovision and re-provision. Data survives on the retained disk.

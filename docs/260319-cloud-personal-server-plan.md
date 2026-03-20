@@ -10,8 +10,8 @@ When a user logs into account.vana.org, a Personal Server is provisioned for the
 
 ## Decisions
 
-1. **URL scheme:** Unified `{userId}.server.vana.org` — same domain as existing FRP tunnels. Apps and the Gateway don't need to know whether a PS is tunneled or cloud-hosted. A Cloudflare Worker routes traffic to the right backend.
-   - *Future consideration:* A dedicated domain (e.g., `{name}.server.vana`) would follow industry best practice (Vercel uses `vercel.app`, Supabase uses `supabase.co`, etc.) for origin isolation. Worth revisiting if the PS ever serves a consumer-facing admin UI. For now, `*.server.vana.org` is already in production with wildcard DNS and Cloudflare proxy, so we use it.
+1. **URL scheme:** `{userId}.myvana.app` — a dedicated domain for cloud-hosted Personal Servers, following industry best practice (Vercel uses `vercel.app`, Supabase uses `supabase.co`). Existing FRP tunnels remain on `*.myvana.app` undisturbed. A Cloudflare Worker on `*.myvana.app` routes to cloud VMs via Neon DB lookup with KV cache.
+   - *Future consideration:* Unify `*.myvana.app` (tunneled) and `*.myvana.app` (cloud) under a single domain once the Worker is proven. A dedicated domain like `{name}.server.vana` would be ideal.
 2. **Subdomains over paths:** The PS may serve an admin web UI in the future (like self-hosted tools such as Grafana, Portainer). Subdomains give proper origin isolation (cookies, localStorage, service workers scoped per user). Path-based routing makes this fragile.
 3. **Persistent disk lifecycle:** Keep disks for 30 days after deprovision. Data survives re-provision.
 4. **Gateway registration:** Auto-register with the Gateway after health check passes. No manual step.
@@ -22,7 +22,7 @@ When a user logs into account.vana.org, a Personal Server is provisioned for the
 ## Architecture
 
 ```
-*.server.vana.org (Cloudflare — wildcard DNS already in place)
+*.myvana.app (Cloudflare — wildcard DNS already in place)
    |
    v
 Cloudflare Worker (routing layer)
@@ -80,18 +80,18 @@ The server is a Node.js monorepo (core/server/cli) using Hono, better-sqlite3, a
 **Env vars at container start:**
 - `VANA_MASTER_KEY_SIGNATURE` — derived from user's wallet, used for server identity (recoverable)
 - `PERSONAL_SERVER_ROOT_PATH` — `/data` (mounted persistent volume)
-- `SERVER_ORIGIN` — public URL (e.g., `https://{userId}.server.vana.org`)
+- `SERVER_ORIGIN` — public URL (e.g., `https://{userId}.myvana.app`)
 
 ### Cloudflare Worker — Routing Layer
 
-A Worker on `*.server.vana.org` that unifies cloud and tunnel traffic:
+A Worker on `*.myvana.app` that unifies cloud and tunnel traffic:
 
 1. Extract user ID from subdomain
 2. Look up in Neon DB — is this a cloud-hosted server?
    - **Yes:** Proxy request to the VM's IP
    - **No:** Pass through to the FRP origin (existing behavior, zero disruption)
 
-The Worker is the only component that knows whether a server is cloud or tunneled. Everything else (Gateway, apps, MCP clients) sees a single `{userId}.server.vana.org` URL.
+The Worker is the only component that knows whether a server is cloud or tunneled. Everything else (Gateway, apps, MCP clients) sees a single `{userId}.myvana.app` URL.
 
 **Caching:** Cache the DB lookup (user ID → VM IP) with a short TTL (30-60s) to avoid hitting the DB on every request. Invalidate on provision/deprovision.
 
@@ -143,7 +143,7 @@ CREATE TABLE personal_servers (
   provider      TEXT NOT NULL,           -- 'gcp' | 'sprites'
   provider_id   TEXT,                    -- GCP instance name / Sprites VM ID
   vm_ip         TEXT,                    -- internal IP for Cloudflare Worker routing
-  url           TEXT,                    -- public URL ({userId}.server.vana.org)
+  url           TEXT,                    -- public URL ({userId}.myvana.app)
   state         TEXT NOT NULL DEFAULT 'provisioning',
   disk_id       TEXT,                    -- persistent disk ID (retained 30 days after deprovision)
   disk_expires  TIMESTAMPTZ,            -- set on deprovision: now() + 30 days
@@ -191,8 +191,8 @@ GET    /api/servers          → List servers (for now, returns the user's singl
   object: "server",
   id: "srv_abc123",
   status: "running",
-  url: "https://{userId}.server.vana.org",
-  mcp_endpoint: "https://{userId}.server.vana.org/mcp",
+  url: "https://{userId}.myvana.app",
+  mcp_endpoint: "https://{userId}.myvana.app/mcp",
   owner_address: "0x...",
   provider: "gcp",
   created: 1710806400,
@@ -247,13 +247,13 @@ No changes needed in data-connect for this work. Its personal server code (Tauri
 ### Phase 2: Cloudflare Worker + Routing
 
 **Tasks:**
-- [ ] Create Cloudflare Worker for `*.server.vana.org`
+- [ ] Create Cloudflare Worker for `*.myvana.app`
 - [ ] Worker logic: extract subdomain → check Neon DB → route to VM IP or fall through to FRP origin
 - [ ] Add KV or cached DB lookup (30-60s TTL) for user ID → VM IP mapping
 - [ ] Deploy Worker with FRP as default backend (zero disruption to existing tunnels)
 
 **Validation:**
-- [ ] Existing tunnel URLs (`{userId}.server.vana.org`) still work after Worker deployment — test with a real tunneled PS
+- [ ] Existing tunnel URLs (`{userId}.myvana.app`) still work after Worker deployment — test with a real tunneled PS
 - [ ] Worker correctly falls through to FRP for unknown/tunnel users
 - [ ] Worker returns 502/504 with useful error when a cloud VM is unreachable
 - [ ] Latency overhead of Worker is <50ms (measure with `curl -w` timing)
@@ -274,10 +274,10 @@ No changes needed in data-connect for this work. Its personal server code (Tauri
 - [ ] `POST /api/servers` again with same user → returns existing server (idempotent), not duplicate
 - [ ] GCE VM appears in GCP console within 2 minutes of POST
 - [ ] `GET /api/servers/:id` transitions from `provisioning` → `running` once VM is healthy
-- [ ] `https://{userId}.server.vana.org/health` returns 200 (proving Cloudflare Worker routes to the new VM)
-- [ ] `https://{userId}.server.vana.org/mcp` responds (MCP endpoint reachable)
+- [ ] `https://{userId}.myvana.app/health` returns 200 (proving Cloudflare Worker routes to the new VM)
+- [ ] `https://{userId}.myvana.app/mcp` responds (MCP endpoint reachable)
 - [ ] `DELETE /api/servers/:id` stops the VM, DB state → `stopped`, disk retained
-- [ ] After DELETE, `https://{userId}.server.vana.org` falls through to FRP (returns "no tunnel active")
+- [ ] After DELETE, `https://{userId}.myvana.app` falls through to FRP (returns "no tunnel active")
 - [ ] Re-provision after DELETE reuses the retained disk (data survives)
 - [ ] Auth: request without valid `masterKeySignature` → 401
 - [ ] Auth: user A cannot access user B's server → 403

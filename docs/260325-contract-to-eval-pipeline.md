@@ -140,6 +140,7 @@ This is the specific eval pack we effectively built, plus the ones that should b
 | Contract | Invariant | Fixture | Oracle |
 | --- | --- | --- | --- |
 | `latest.json` is published once after matrix completion | the release workflow contains one post-matrix manifest job | workflow file | structural presence of the job and dependency chain |
+| macOS-only permissions do not break non-mac builds | shared capabilities validate on Linux/Windows without `process` or `updater` permissions leaking in | capability files plus release-matrix targets | no macOS-only plugin permissions in globally validated capability files |
 | updater endpoint is stable | Tauri config points at the GitHub latest-download manifest URL | config file | exact URL and pubkey presence |
 | finalized macOS assets are uploadable | release scripts output updater tarball plus `.sig` after finalization | script invocation inputs | exact emitted artifact names |
 
@@ -149,6 +150,7 @@ This is the specific eval pack we effectively built, plus the ones that should b
 | --- | --- | --- | --- |
 | release proof may use a branch target as a special flow | a proof release can be driven from an implementation branch without changing the normal main-first release rule | manual proof checklist | exact proof checklist completion |
 | GitHub Actions signing uses secret contents | CI proof uses `TAURI_SIGNING_PRIVATE_KEY` contents, not a file path | credentialed workflow run | successful signing path |
+| post-matrix publish depends on matrix health | when the workflow keeps Linux/Windows in the matrix, those legs do not fail before `latest.json` publication | real release run | build matrix succeeds and manifest upload job runs |
 
 ## Operationalized template
 

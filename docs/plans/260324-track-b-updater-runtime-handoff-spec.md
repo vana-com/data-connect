@@ -81,6 +81,8 @@ These decisions are already made and should not be reopened during implementatio
 6. Do not use a one-shot `downloadAndInstall()` flow.
 7. Non-macOS stays on the existing release-page path.
 8. Relaunch may stay in JS via `@tauri-apps/plugin-process`.
+9. macOS-only updater/process permissions must not live in a capability file that is validated on Linux/Windows.
+10. If the release workflow keeps Linux/Windows build legs, the shared/default capability must remain valid on those targets so the post-matrix `latest.json` job can run.
 
 ## Files that should change
 
@@ -92,6 +94,7 @@ Expected code files:
 - `src-tauri/Cargo.lock`
 - `src-tauri/src/lib.rs`
 - `src-tauri/capabilities/default.json`
+- `src-tauri/capabilities/updater-macos.json`
 - `src-tauri/tauri.conf.json`
 - `scripts/build-updater-manifest.mjs`
 - `.github/workflows/release.yml`
@@ -157,6 +160,7 @@ Add one non-matrix workflow job after the matrix build completes.
 Requirements:
 
 - job depends on the existing build matrix
+- if the matrix includes non-macOS targets, they must still succeed or be intentionally excluded, otherwise this job will be skipped
 - job fetches the tagged release metadata
 - job downloads the published `.sig` assets
 - job runs the manifest builder once
@@ -184,6 +188,7 @@ Requirements:
 - Rust dependency for process plugin if needed
 - register plugins in Tauri app setup
 - add updater/process permissions
+- keep macOS-only updater/process permissions in a macOS-scoped capability file rather than the shared default capability
 - configure updater public key
 - configure updater endpoint to the stable `latest.json` URL
 

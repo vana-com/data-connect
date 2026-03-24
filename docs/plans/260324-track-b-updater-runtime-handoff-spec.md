@@ -83,6 +83,7 @@ These decisions are already made and should not be reopened during implementatio
 8. Relaunch may stay in JS via `@tauri-apps/plugin-process`.
 9. macOS-only updater/process permissions must not live in a capability file that is validated on Linux/Windows.
 10. If the release workflow keeps Linux/Windows build legs, the shared/default capability must remain valid on those targets so the post-matrix `latest.json` job can run.
+11. Release asset publication must have one authoritative upload path so default Tauri uploads do not create extra generic updater bundles alongside the canonical finalized artifacts.
 
 ## Files that should change
 
@@ -161,6 +162,10 @@ Requirements:
 
 - job depends on the existing build matrix
 - if the matrix includes non-macOS targets, they must still succeed or be intentionally excluded, otherwise this job will be skipped
+- release asset publication must stay single-path:
+  - either let the Tauri action upload release assets
+  - or run it in build-only mode and upload finalized artifacts explicitly
+- for this cut, explicit upload of finalized artifacts is the canonical path
 - job fetches the tagged release metadata
 - job downloads the published `.sig` assets
 - job runs the manifest builder once
@@ -170,6 +175,7 @@ Do not:
 
 - generate `latest.json` inside each macOS matrix job
 - upload separate per-arch manifests
+- mix default Tauri release uploads with the explicit finalized-artifact upload path
 
 Gate before moving on:
 

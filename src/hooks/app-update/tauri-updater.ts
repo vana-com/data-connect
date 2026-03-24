@@ -25,8 +25,11 @@ function isTauriRuntime(): boolean {
 function isMacOsPlatform(): boolean {
   if (typeof navigator === "undefined") return false
 
+  const navigatorWithUserAgentData = navigator as Navigator & {
+    userAgentData?: { platform?: string }
+  }
   const platform =
-    navigator.userAgentData?.platform ??
+    navigatorWithUserAgentData.userAgentData?.platform ??
     navigator.platform ??
     navigator.userAgent ??
     ""

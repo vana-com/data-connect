@@ -182,8 +182,8 @@ jobs:
           rm -rf src-tauri/target/${{ matrix.target }}/release/build
           rm -rf src-tauri/target/${{ matrix.target }}/release/.fingerprint
           rm -rf src-tauri/target/${{ matrix.target }}/release/incremental
-          # Remove npm caches no longer needed
-          rm -rf node_modules
+          # Keep the root node_modules available for Tauri signer usage during
+          # post-finalization updater artifact creation.
           rm -rf playwright-runner/node_modules
           rm -rf ~/.cargo/registry/cache
           echo "=== Disk usage after cleanup ==="
@@ -193,6 +193,11 @@ jobs:
       - name: Copy native modules and finalize bundles
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          APPLE_NOTARY_KEY_PATH: ${{ env.APPLE_API_KEY_PATH }}
+          APPLE_NOTARY_KEY_ID: ${{ secrets.APPLE_ASC_API_KEY_ID }}
+          APPLE_NOTARY_ISSUER: ${{ secrets.APPLE_ASC_API_KEY_ISSUER_UUID }}
+          TAURI_SIGNING_PRIVATE_KEY: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}
+          TAURI_SIGNING_PRIVATE_KEY_PASSWORD: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY_PASSWORD }}
         run: |
           set -x  # Enable verbose debugging
 
@@ -264,6 +269,18 @@ jobs:
                 --sign "Developer ID Application: Corsali, Inc (${{ secrets.APPLE_TEAM_ID }})" \
                 "$app"
               echo "Re-signed $app"
+
+              # Notarize and validate the finalized app before packaging updater artifacts.
+              node scripts/notarize-macos-app.mjs --app "$app"
+              spctl --assess -vv "$app"
+              codesign --verify --strict "$app"
+
+              version=$(grep '"version"' src-tauri/tauri.conf.json | head -1 | sed 's/.*: "\(.*\)".*/\1/')
+              arch=$(echo "${{ matrix.target }}" | cut -d- -f1)
+              node scripts/build-macos-updater-artifacts.mjs \
+                --app "$app" \
+                --output-dir "src-tauri/target/${{ matrix.target }}/release/bundle/macos" \
+                --artifact-name "DataConnect_${version}_${arch}.app.tar.gz"
             done
 
             # Recreate DMG with updated .app (including Applications symlink)
@@ -372,7 +389,9 @@ jobs:
         run: |
           # Upload macOS DMG
           if [ "${{ matrix.platform }}" = "macos-latest" ]; then
-            for f in src-tauri/target/${{ matrix.target }}/release/bundle/dmg/*.dmg; do
+            for f in src-tauri/target/${{ matrix.target }}/release/bundle/dmg/*.dmg \
+                     src-tauri/target/${{ matrix.target }}/release/bundle/macos/*.app.tar.gz \
+                     src-tauri/target/${{ matrix.target }}/release/bundle/macos/*.app.tar.gz.sig; do
               if [ -f "$f" ]; then
                 gh release upload "${{ github.ref_name }}" "$f" --clobber
                 echo "Uploaded $(basename "$f")"

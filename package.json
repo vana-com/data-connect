@@ -10,6 +10,8 @@
     "dev": "vite",
     "dev:app": "vite --port 5173 --strictPort",
     "build": "tsc -b && vite build",
+    "native:bootstrap": "node scripts/ensure-connectors.js && node scripts/ensure-playwright-runner.js && node scripts/ensure-personal-server.js",
+    "native:check": "npm run native:bootstrap && cargo check --manifest-path src-tauri/Cargo.toml --locked",
     "prebuild:all": "node scripts/ensure-connectors.js && node scripts/ensure-playwright-runner.js && node scripts/ensure-personal-server.js",
     "pretauri:dev": "npm run prebuild:all",
     "lint": "eslint .",

@@ -61,6 +61,28 @@ npm run tauri:dev
 cp .env.example .env
 ```
 
+### Native verification
+
+Native Rust checks depend on generated Tauri bundle resources being present first.
+That includes:
+
+- required connector directories under `./connectors/`
+- `playwright-runner/dist`
+- `personal-server/dist`
+
+Use the helper commands instead of running `cargo check` cold:
+
+```bash
+# Generate the local sidecar and connector artifacts needed by Tauri
+npm run native:bootstrap
+
+# Bootstrap artifacts, then run native Rust verification
+npm run native:check
+```
+
+If you run `cargo check` directly in a fresh checkout, Tauri may fail early on
+missing resource globs from `src-tauri/tauri.conf.json`.
+
 ### Connector lifecycle (important)
 
 Connector files have two locations in dev:

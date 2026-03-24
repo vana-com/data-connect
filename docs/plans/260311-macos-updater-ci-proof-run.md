@@ -102,25 +102,28 @@ Choose `<proof-version>` as a real unused semver greater than the latest remote 
 
 ## Latest observed proof result
 
-`v0.7.39` / run `23474736220` is the current best evidence snapshot.
+`v0.7.41` / run `23475779248` is the current best evidence snapshot.
 
 Observed:
 
-- Linux and Windows jobs passed
-- both macOS jobs reached the custom post-finalization updater path
-- both macOS jobs successfully re-signed the final app, notarized it, stapled it, validated the stapled app, and created the updater `.app.tar.gz`
-- both macOS jobs then failed while signing that updater tarball
-- the failing command was `node <repo>/node_modules/@tauri-apps/cli/tauri.js signer sign -- <tarball>`
-- the previous `sh: tauri: command not found` error is gone
-- the immediate error is `a value is required for '--private-key-path <PRIVATE_KEY_PATH>' but none was supplied`
-- only Linux and Windows assets were published on release `v0.7.39`; required macOS updater artifacts were missing
+- all matrix jobs passed
+- both macOS jobs reached the custom post-finalization updater path and completed it successfully
+- both macOS jobs successfully re-signed the final app, notarized it, stapled it, validated the stapled app, created the updater `.app.tar.gz`, signed it, and uploaded the final artifacts
+- release `v0.7.40` had already proved the required versioned macOS updater assets were published
+- release `v0.7.41` then re-ran after the raw-tarball cleanup patch and no longer published the generic `DataConnect.app.tar.gz`
+- release `v0.7.41` includes the required macOS updater assets:
+  - `DataConnect_0.7.41_aarch64.app.tar.gz`
+  - `DataConnect_0.7.41_aarch64.app.tar.gz.sig`
+  - `DataConnect_0.7.41_x86_64.app.tar.gz`
+  - `DataConnect_0.7.41_x86_64.app.tar.gz.sig`
 
 Interpretation:
 
-- updater signing secrets are still correctly wired
-- the custom updater path is definitely being exercised
-- the CLI-availability fix worked
-- the current blocker is that GitHub Actions still exports `TAURI_SIGNING_PRIVATE_KEY_PATH` as an empty env var, and the Tauri signer treats that as an invalid `--private-key-path`
+- updater signing secrets are correctly wired
+- the repo-pinned Tauri CLI path is stable in CI
+- empty `TAURI_SIGNING_PRIVATE_KEY_PATH` handling is fixed
+- the repo-owned post-finalization flow now owns the macOS updater-tarball contract end-to-end
+- separate release-hygiene note: the Intel macOS release still contains both `DataConnect_<version>_x64.dmg` and `DataConnect_<version>_x86_64.dmg`; that does not block the updater proof, but it shows the same broad-glob risk still exists for DMGs
 
 ## Expected release assets
 
@@ -130,8 +133,8 @@ Minimum macOS proof assets that must exist on the GitHub Release:
 - `DataConnect_<version>_x86_64.dmg`
 - `DataConnect_<version>_aarch64.app.tar.gz`
 - `DataConnect_<version>_aarch64.app.tar.gz.sig`
-- `DataConnect_<version>_x64.app.tar.gz`
-- `DataConnect_<version>_x64.app.tar.gz.sig`
+- `DataConnect_<version>_x86_64.app.tar.gz`
+- `DataConnect_<version>_x86_64.app.tar.gz.sig`
 
 Baseline non-macOS artifacts may also be present:
 
@@ -172,6 +175,9 @@ Red flags:
   - `DataConnect.app.tar.gz`
   - `DataConnect_aarch64.app.tar.gz`
   - `DataConnect_x64.app.tar.gz` without matching `.sig`
+- raw Intel DMGs leaking alongside finalized Intel DMGs, for example both:
+  - `DataConnect_<version>_x64.dmg`
+  - `DataConnect_<version>_x86_64.dmg`
 - any overwrite/clobber behavior on macOS updater assets
 
 ## Exact post-run inspection commands
@@ -187,7 +193,7 @@ gh run list --workflow Release --limit 10
 gh run view <run-id> --log > "/tmp/dataconnect-release-proof-v<proof-version>.log"
 
 # filter the log for proof markers
-rg -n "Finalizing macOS bundles|Submitting|Stapling accepted ticket|Validating stapled ticket|Created updater artifacts|spctl --assess|codesign --verify|Uploaded DataConnect_|Notarized and stapled|Skipping finalized macOS updater artifact generation|tauri: command not found|private-key-path|Notarization FAILED|does not have a ticket stapled|rejected|invalid" "/tmp/dataconnect-release-proof-v<proof-version>.log"
+rg -n "Finalizing macOS bundles|Submitting|Stapling accepted ticket|Validating stapled ticket|Created updater artifacts|spctl --assess|codesign --verify|Uploaded DataConnect_|Notarized and stapled|Skipping finalized macOS updater artifact generation|tauri: command not found|private-key-path|DataConnect\\.app\\.tar\\.gz|DataConnect_.*_x64\\.dmg|Notarization FAILED|does not have a ticket stapled|rejected|invalid" "/tmp/dataconnect-release-proof-v<proof-version>.log"
 ```
 
 ## Pass criteria

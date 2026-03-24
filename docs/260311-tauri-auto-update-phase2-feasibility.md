@@ -63,6 +63,27 @@ What this changes:
 - the current blocker is now narrower still: empty path env handling in CI, not CLI availability
 - the next execution slice should stop exporting `TAURI_SIGNING_PRIVATE_KEY_PATH` in GitHub Actions for this proof flow and defensively strip empty signing env vars before invoking the Tauri signer
 
+`v0.7.40` then proved the actual macOS release path after that empty-path fix:
+
+- all matrix jobs passed
+- both macOS jobs completed final app re-signing, notarization, stapling, stapled-app validation, updater tarball creation/signing, and artifact upload
+- the required versioned macOS updater artifacts were present on the GitHub Release for both arches
+- but the release still included a raw generic `DataConnect.app.tar.gz` left behind by `tauri-action`
+
+`v0.7.41` then re-ran after suppressing that raw tarball:
+
+- all matrix jobs passed again
+- the generic `DataConnect.app.tar.gz` no longer appeared on the release
+- the finalized versioned updater tarballs/signatures remained correct
+
+What this changes:
+
+- the repo-owned post-finalization flow is now proven for the macOS updater tarball path
+- the key learning is not just “make the custom script work”; it is “own the publication contract explicitly”
+- if raw Tauri outputs are left in globbed upload directories, they can leak onto the GitHub Release even when the finalized post-processing path is correct
+- that means the durable strategy is: finalize assets, remove or ignore raw intermediates, then upload from an explicit allowlist or tightly controlled directory
+- same pattern still shows up on the DMG side with both `x64` and `x86_64` Intel DMGs present; that is release-surface hygiene, not an updater-path blocker
+
 ## Current repo state
 
 Missing today:

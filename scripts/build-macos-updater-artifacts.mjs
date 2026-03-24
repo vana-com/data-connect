@@ -117,7 +117,15 @@ function main() {
   run('tar', ['-czf', tarballPath, '-C', dirname(appPath), appName]);
 
   log(`Signing updater tarball ${basename(tarballPath)}`);
-  run(resolveNpmCommand(), ['run', 'tauri', 'signer', 'sign', '--', tarballPath]);
+  run(resolveNpmCommand(), [
+    'run',
+    'tauri',
+    '--',
+    'signer',
+    'sign',
+    '--',
+    tarballPath,
+  ]);
 
   if (!existsSync(tarballPath)) {
     throw new Error(`Updater tarball was not created: ${tarballPath}`);

@@ -1,0 +1,11 @@
+{
+  "$schema": "../gen/schemas/macOS-schema.json",
+  "identifier": "updater-macos",
+  "description": "macOS-only updater and process capabilities for DataConnect",
+  "windows": ["main"],
+  "platforms": ["macOS"],
+  "permissions": [
+    "process:default",
+    "updater:default"
+  ]
+}

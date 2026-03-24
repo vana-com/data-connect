@@ -2,6 +2,7 @@
 
 Source docs:
 
+- `docs/plans/260324-track-b-updater-runtime-canonical-plan.md`
 - `docs/plans/260324-track-b-updater-runtime-cut.md`
 - `docs/plans/260311-tauri-auto-update-phase2-track-b-plan.md`
 - `docs/260311-tauri-auto-update-phase2-feasibility.md`

@@ -34,16 +34,18 @@ pub fn run() {
         .plugin(tauri_plugin_fs::init())
         .plugin(tauri_plugin_shell::init())
         .plugin(tauri_plugin_http::init())
-        .plugin(tauri_plugin_process::init())
         .plugin(tauri_plugin_deep_link::init())
         .plugin(tauri_plugin_clipboard_manager::init());
 
     #[cfg(debug_assertions)]
     let builder = builder.plugin(tauri_plugin_mcp_bridge::init());
 
+    #[cfg(target_os = "macos")]
+    let builder = builder.plugin(tauri_plugin_process::init());
+
     builder
         .setup(|app| {
-            #[cfg(desktop)]
+            #[cfg(target_os = "macos")]
             app.handle()
                 .plugin(tauri_plugin_updater::Builder::new().build())?;
 

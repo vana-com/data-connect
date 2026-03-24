@@ -102,7 +102,7 @@ Choose `<proof-version>` as a real unused semver greater than the latest remote 
 
 ## Latest observed proof result
 
-`v0.7.38` / run `23471687132` is the current best evidence snapshot.
+`v0.7.39` / run `23474736220` is the current best evidence snapshot.
 
 Observed:
 
@@ -110,15 +110,17 @@ Observed:
 - both macOS jobs reached the custom post-finalization updater path
 - both macOS jobs successfully re-signed the final app, notarized it, stapled it, validated the stapled app, and created the updater `.app.tar.gz`
 - both macOS jobs then failed while signing that updater tarball
-- the failing command was `npm run tauri -- signer sign -- <tarball>`
-- the immediate error was `sh: tauri: command not found`
-- only Linux and Windows assets were published on release `v0.7.38`; required macOS updater artifacts were missing
+- the failing command was `node <repo>/node_modules/@tauri-apps/cli/tauri.js signer sign -- <tarball>`
+- the previous `sh: tauri: command not found` error is gone
+- the immediate error is `a value is required for '--private-key-path <PRIVATE_KEY_PATH>' but none was supplied`
+- only Linux and Windows assets were published on release `v0.7.39`; required macOS updater artifacts were missing
 
 Interpretation:
 
-- updater signing secrets are now correctly wired
+- updater signing secrets are still correctly wired
 - the custom updater path is definitely being exercised
-- the current blocker is that the workflow deletes `node_modules` before the updater script calls `npm run tauri`, so the local Tauri CLI is no longer available
+- the CLI-availability fix worked
+- the current blocker is that GitHub Actions still exports `TAURI_SIGNING_PRIVATE_KEY_PATH` as an empty env var, and the Tauri signer treats that as an invalid `--private-key-path`
 
 ## Expected release assets
 
@@ -160,6 +162,7 @@ Red flags:
 
 - `Skipping finalized macOS updater artifact generation`
 - `sh: tauri: command not found`
+- `a value is required for '--private-key-path <PRIVATE_KEY_PATH>'`
 - `Notarization FAILED`
 - `does not have a ticket stapled`
 - `rejected`
@@ -184,7 +187,7 @@ gh run list --workflow Release --limit 10
 gh run view <run-id> --log > "/tmp/dataconnect-release-proof-v<proof-version>.log"
 
 # filter the log for proof markers
-rg -n "Finalizing macOS bundles|Submitting|Stapling accepted ticket|Validating stapled ticket|Created updater artifacts|spctl --assess|codesign --verify|Uploaded DataConnect_|Notarized and stapled|Skipping finalized macOS updater artifact generation|tauri: command not found|Notarization FAILED|does not have a ticket stapled|rejected|invalid" "/tmp/dataconnect-release-proof-v<proof-version>.log"
+rg -n "Finalizing macOS bundles|Submitting|Stapling accepted ticket|Validating stapled ticket|Created updater artifacts|spctl --assess|codesign --verify|Uploaded DataConnect_|Notarized and stapled|Skipping finalized macOS updater artifact generation|tauri: command not found|private-key-path|Notarization FAILED|does not have a ticket stapled|rejected|invalid" "/tmp/dataconnect-release-proof-v<proof-version>.log"
 ```
 
 ## Pass criteria

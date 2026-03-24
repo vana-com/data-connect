@@ -51,6 +51,18 @@ What this changes:
 - the current blocker is release-job cleanup order: the workflow removes `node_modules`, then later asks the updater script to use the local Tauri CLI from `npm run tauri`
 - the next execution slice should fix that CLI availability problem first, then re-run the same proof
 
+`v0.7.39` then re-ran the same proof after the CLI-availability patch:
+
+- Linux and Windows passed again
+- both macOS jobs again completed re-signing, notarization, stapling, stapled-app validation, and updater tarball creation
+- the `sh: tauri: command not found` failure disappeared
+- both macOS jobs now fail because the signer sees an empty `TAURI_SIGNING_PRIVATE_KEY_PATH` env var and errors with `a value is required for '--private-key-path <PRIVATE_KEY_PATH>' but none was supplied`
+
+What this changes:
+
+- the current blocker is now narrower still: empty path env handling in CI, not CLI availability
+- the next execution slice should stop exporting `TAURI_SIGNING_PRIVATE_KEY_PATH` in GitHub Actions for this proof flow and defensively strip empty signing env vars before invoking the Tauri signer
+
 ## Current repo state
 
 Missing today:

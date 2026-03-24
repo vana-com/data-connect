@@ -74,6 +74,22 @@ function hasSigningKey() {
   );
 }
 
+function sanitizedSignerEnv() {
+  const env = { ...process.env };
+
+  for (const name of [
+    'TAURI_SIGNING_PRIVATE_KEY',
+    'TAURI_SIGNING_PRIVATE_KEY_PATH',
+    'TAURI_SIGNING_PRIVATE_KEY_PASSWORD',
+  ]) {
+    if (typeof env[name] === 'string' && env[name].trim() === '') {
+      delete env[name];
+    }
+  }
+
+  return env;
+}
+
 function main() {
   const args = parseArgs(process.argv.slice(2));
 
@@ -126,7 +142,7 @@ function main() {
     'sign',
     '--',
     tarballPath,
-  ]);
+  ], { env: sanitizedSignerEnv() });
 
   if (!existsSync(tarballPath)) {
     throw new Error(`Updater tarball was not created: ${tarballPath}`);

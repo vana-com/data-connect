@@ -70,6 +70,21 @@ Immediate next adjustment:
 - implementation note (2026-03-24): local patch applied in `release.yml` and `scripts/build-macos-updater-artifacts.mjs`; a temp-key local proof produced both `.app.tar.gz` and `.app.tar.gz.sig` successfully through the new direct CLI path
 - re-run proof after that CLI-availability fix
 
+Third real CI proof result (`v0.7.39`, run `23474736220`):
+
+- Linux and Windows jobs passed
+- both macOS jobs again advanced through final app re-sign, notarization, stapling, validation, and updater tarball creation
+- the previous `sh: tauri: command not found` failure is gone
+- both macOS jobs still failed in `Finalize bundles`, but now the signer itself ran and failed with `error: a value is required for '--private-key-path <PRIVATE_KEY_PATH>' but none was supplied`
+- concrete cause: `release.yml` still exported `TAURI_SIGNING_PRIVATE_KEY_PATH` into CI as an empty environment variable, and the Tauri CLI treated that empty var as a provided `--private-key-path` flag
+
+Immediate next adjustment:
+
+- keep using the repo-pinned Tauri CLI directly
+- stop exporting `TAURI_SIGNING_PRIVATE_KEY_PATH` in GitHub Actions for this proof path
+- defensively strip empty signing env vars before invoking the Tauri signer so empty CI config cannot override the inline private key path again
+- re-run proof after that empty-path fix
+
 ### Goal
 
 Ship macOS-first phase 2 app updates in DataConnect:
@@ -113,7 +128,7 @@ Out of scope:
 | Tauri updater signing keypair generated and stored securely | UNBLOCKED | release owner | before implementation finish | Confirmed in CI by `v0.7.38`; updater private key and password were available to the custom updater path |
 | GitHub Release workflow can upload updater bundle assets plus `latest.json` | UNBLOCKED | repo/CI | during implementation | Current workflow already uploads release artifacts; needs updater asset/metadata extension |
 | Tauri default updater artifact generation happens before repo final-sign step | BLOCKED for direct adoption | implementation | discovered 2026-03-11 | Current workflow cannot safely rely on raw `createUpdaterArtifacts` output alone |
-| Custom post-finalization macOS updater asset generation path | SOFT BLOCKED | implementation | first execution slice | `v0.7.38` proved finalized app re-sign + notarize + staple + tarball creation ordering, but updater tarball signing still fails because the Tauri CLI is unavailable after `node_modules` cleanup |
+| Custom post-finalization macOS updater asset generation path | SOFT BLOCKED | implementation | first execution slice | `v0.7.39` proved the CLI-availability fix worked, but updater tarball signing still fails in CI because an empty `TAURI_SIGNING_PRIVATE_KEY_PATH` env var overrides the inline updater key |
 | Real upgrade smoke path from old macOS build to new macOS build | SOFT BLOCKED | implementation/release | before merge/release | Need a reproducible way to test one released build upgrading to another |
 | CI notarization result for removing nested in-app re-sign loop | UNBLOCKED for Track B, unresolved for follow-up | release owner | after Track B or alongside first CI proof | Not a blocker for updater plumbing |
 
@@ -181,9 +196,9 @@ Fill `Status` with `PASS` / `NO-OP` / `FAIL` during execution.
 | `src-tauri/capabilities/default.json` | add updater permissions (`updater:default`) |  |  |
 | `src-tauri/tauri.conf.json` | add `bundle.createUpdaterArtifacts`; add `plugins.updater.pubkey`; add `plugins.updater.endpoints` after post-finalization asset path is proven |  |  |
 | `scripts/notarize-macos-app.mjs` | new script to submit a zip of the finalized `.app`, wait for notarization, staple the ticket back onto the `.app`, and validate it | PASS | repo script added; uses `ditto` + `xcrun notarytool submit` + `xcrun stapler` |
-| `scripts/build-macos-updater-artifacts.mjs` | new script to archive/sign finalized macOS `.app` into `.app.tar.gz` and `.sig` | FAIL | `v0.7.38` created the finalized tarball successfully but failed at `npm run tauri -- signer sign` with `sh: tauri: command not found` after workflow cleanup removed `node_modules` |
+| `scripts/build-macos-updater-artifacts.mjs` | new script to archive/sign finalized macOS `.app` into `.app.tar.gz` and `.sig` | FAIL | `v0.7.39` proved direct local CLI invocation works, but CI still exported an empty `TAURI_SIGNING_PRIVATE_KEY_PATH`, causing Tauri signer to fail with `a value is required for '--private-key-path <PRIVATE_KEY_PATH>'`; local regression proof with inline key plus empty path now succeeds after sanitizing empty signer env vars |
 | `scripts/build-updater-manifest.mjs` | new script to generate `latest.json` from release asset inputs |  |  |
-| `.github/workflows/release.yml` | call post-finalization updater script; upload `.app.tar.gz`, `.sig`, later `latest.json` | FAIL | workflow proves app re-sign + notarize + staple ordering, but `Free disk space before finalization` removes `node_modules` too early for the later updater tarball signing step |
+| `.github/workflows/release.yml` | call post-finalization updater script; upload `.app.tar.gz`, `.sig`, later `latest.json` | FAIL | `v0.7.39` proved the `node_modules` cleanup fix worked, but the workflow still exported an empty `TAURI_SIGNING_PRIVATE_KEY_PATH`, which caused the later updater tarball signing step to fail |
 | `scripts/build-prod.js` | optional local-macOS parity for updater-artifact smoke; otherwise mark `NO-OP` explicitly | NO-OP | local build path intentionally unchanged in this slice |
 | `src/hooks/app-update/check-app-update.ts` | preserve or narrow phase-1 external-release check as fallback path |  |  |
 | `src/hooks/app-update/tauri-updater.ts` | new seam around `@tauri-apps/plugin-updater` APIs |  |  |

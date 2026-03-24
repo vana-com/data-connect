@@ -34,6 +34,7 @@ pub fn run() {
         .plugin(tauri_plugin_fs::init())
         .plugin(tauri_plugin_shell::init())
         .plugin(tauri_plugin_http::init())
+        .plugin(tauri_plugin_process::init())
         .plugin(tauri_plugin_deep_link::init())
         .plugin(tauri_plugin_clipboard_manager::init());
 
@@ -42,6 +43,10 @@ pub fn run() {
 
     builder
         .setup(|app| {
+            #[cfg(desktop)]
+            app.handle()
+                .plugin(tauri_plugin_updater::Builder::new().build())?;
+
             // Enable logging in both debug and release builds, writing to both stdout and a file
             // Default targets are already [Stdout, LogDir] — do NOT add
             // .target() calls or each log line gets written twice.

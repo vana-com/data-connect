@@ -1,24 +1,45 @@
 import {
+  act,
   cleanup,
   fireEvent,
   render,
   screen,
-  waitFor,
 } from "@testing-library/react"
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest"
 import { MemoryRouter } from "react-router-dom"
 import { AppUpdateProvider, useAppUpdate } from "./use-app-update"
 
-const { mockCheckAppUpdate, mockOpenExternalUrl, mockToast } = vi.hoisted(
-  () => ({
-    mockCheckAppUpdate: vi.fn(),
-    mockOpenExternalUrl: vi.fn(),
-    mockToast: Object.assign(vi.fn(), { dismiss: vi.fn() }),
-  })
-)
+const {
+  mockCanUseTauriUpdater,
+  mockCheckAppUpdate,
+  mockCheckForTauriUpdate,
+  mockDownloadTauriUpdate,
+  mockInstallTauriUpdate,
+  mockOpenExternalUrl,
+  mockRelaunchTauriApp,
+  mockToast,
+} = vi.hoisted(() => ({
+  mockCanUseTauriUpdater: vi.fn(),
+  mockCheckAppUpdate: vi.fn(),
+  mockCheckForTauriUpdate: vi.fn(),
+  mockDownloadTauriUpdate: vi.fn(),
+  mockInstallTauriUpdate: vi.fn(),
+  mockOpenExternalUrl: vi.fn(),
+  mockRelaunchTauriApp: vi.fn(),
+  mockToast: Object.assign(vi.fn(), { dismiss: vi.fn() }),
+}))
 
 vi.mock("@/hooks/app-update/check-app-update", () => ({
   checkAppUpdate: (...args: unknown[]) => mockCheckAppUpdate(...args),
+}))
+
+vi.mock("@/hooks/app-update/tauri-updater", () => ({
+  canUseTauriUpdater: () => mockCanUseTauriUpdater(),
+  checkForTauriUpdate: (...args: unknown[]) => mockCheckForTauriUpdate(...args),
+  clearPendingTauriUpdate: vi.fn(),
+  downloadTauriUpdate: (...args: unknown[]) => mockDownloadTauriUpdate(...args),
+  installTauriUpdate: (...args: unknown[]) => mockInstallTauriUpdate(...args),
+  relaunchTauriApp: (...args: unknown[]) => mockRelaunchTauriApp(...args),
 }))
 
 vi.mock("@/lib/open-resource", () => ({
@@ -59,14 +80,35 @@ function renderWithAppUpdateProvider(initialEntries?: string[]) {
   )
 }
 
+async function settleInitialCheck() {
+  await act(async () => {
+    await vi.advanceTimersByTimeAsync(1500)
+    await Promise.resolve()
+    await Promise.resolve()
+  })
+}
+
+async function flushAsyncWork() {
+  await act(async () => {
+    await Promise.resolve()
+    await Promise.resolve()
+  })
+}
+
 describe("AppUpdateProvider", () => {
   beforeEach(() => {
+    vi.useFakeTimers()
     localStorage.clear()
     vi.clearAllMocks()
+    mockCanUseTauriUpdater.mockReturnValue(false)
+    mockDownloadTauriUpdate.mockResolvedValue(true)
+    mockInstallTauriUpdate.mockResolvedValue(true)
+    mockRelaunchTauriApp.mockResolvedValue(true)
   })
 
   afterEach(() => {
     cleanup()
+    vi.useRealTimers()
   })
 
   it("shows update toast when a newer version is found", async () => {
@@ -78,27 +120,25 @@ describe("AppUpdateProvider", () => {
     })
 
     renderWithAppUpdateProvider()
+    await settleInitialCheck()
 
-    await waitFor(() => {
-      expect(mockToast).toHaveBeenCalledWith(
-        "Update available",
-        expect.objectContaining({
-          description: "Version 1.2.4 is ready",
-        })
-      )
-    })
+    expect(mockToast).toHaveBeenCalledWith(
+      "Update available",
+      expect.objectContaining({
+        description: "Version 1.2.4 is ready",
+      })
+    )
   })
 
   it("shows only one debug toast on initial debug mount", async () => {
     renderWithAppUpdateProvider(["/?appUpdateScenario=update-available"])
+    await settleInitialCheck()
 
-    await waitFor(() => {
-      expect(mockToast).toHaveBeenCalledTimes(1)
-    })
+    expect(mockToast).toHaveBeenCalledTimes(1)
     expect(mockCheckAppUpdate).toHaveBeenCalledTimes(1)
   })
 
-  it("dismisses update and suppresses same version", async () => {
+  it("dismisses fallback updates and suppresses the same version", async () => {
     mockCheckAppUpdate.mockResolvedValue({
       status: "updateAvailable",
       localVersion: "1.2.3",
@@ -107,13 +147,11 @@ describe("AppUpdateProvider", () => {
     })
 
     renderWithAppUpdateProvider()
+    await settleInitialCheck()
 
-    await waitFor(() => {
-      expect(mockToast).toHaveBeenCalled()
-    })
+    expect(mockToast).toHaveBeenCalled()
 
-    const lastCall = mockToast.mock.calls.at(-1)
-    const options = lastCall?.[1] as {
+    const options = mockToast.mock.calls.at(-1)?.[1] as {
       cancel: { onClick: () => void }
     }
     options.cancel.onClick()
@@ -127,7 +165,7 @@ describe("AppUpdateProvider", () => {
     expect(mockToast).toHaveBeenCalledTimes(1)
   })
 
-  it("re-shows toast for a newer version after dismissal", async () => {
+  it("re-shows a newer fallback version after dismissal", async () => {
     mockCheckAppUpdate
       .mockResolvedValueOnce({
         status: "updateAvailable",
@@ -143,15 +181,14 @@ describe("AppUpdateProvider", () => {
       })
 
     renderWithAppUpdateProvider()
+    await settleInitialCheck()
 
-    await waitFor(() => {
-      expect(mockToast).toHaveBeenCalledWith(
-        "Update available",
-        expect.objectContaining({
-          description: "Version 1.2.4 is ready",
-        })
-      )
-    })
+    expect(mockToast).toHaveBeenCalledWith(
+      "Update available",
+      expect.objectContaining({
+        description: "Version 1.2.4 is ready",
+      })
+    )
 
     const firstOptions = mockToast.mock.calls.at(-1)?.[1] as {
       cancel: { onClick: () => void }
@@ -159,18 +196,17 @@ describe("AppUpdateProvider", () => {
     firstOptions.cancel.onClick()
 
     fireEvent.click(screen.getByRole("button", { name: "Trigger check" }))
+    await flushAsyncWork()
 
-    await waitFor(() => {
-      expect(mockToast).toHaveBeenLastCalledWith(
-        "Update available",
-        expect.objectContaining({
-          description: "Version 1.2.5 is ready",
-        })
-      )
-    })
+    expect(mockToast).toHaveBeenLastCalledWith(
+      "Update available",
+      expect.objectContaining({
+        description: "Version 1.2.5 is ready",
+      })
+    )
   })
 
-  it("re-shows dismissed same-version toast on manual check", async () => {
+  it("re-shows a dismissed fallback same-version toast on manual check", async () => {
     mockCheckAppUpdate.mockResolvedValue({
       status: "updateAvailable",
       localVersion: "1.2.3",
@@ -179,31 +215,28 @@ describe("AppUpdateProvider", () => {
     })
 
     renderWithAppUpdateProvider()
+    await settleInitialCheck()
 
-    await waitFor(() => {
-      expect(mockToast).toHaveBeenCalledTimes(1)
-    })
+    expect(mockToast).toHaveBeenCalledTimes(1)
 
-    const firstOptions = mockToast.mock.calls.at(-1)?.[1] as {
+    const options = mockToast.mock.calls.at(-1)?.[1] as {
       cancel: { onClick: () => void }
     }
-    firstOptions.cancel.onClick()
+    options.cancel.onClick()
 
     fireEvent.click(screen.getByRole("button", { name: "Trigger check" }))
+    await flushAsyncWork()
+    expect(mockCheckAppUpdate).toHaveBeenCalledTimes(2)
     expect(mockToast).toHaveBeenCalledTimes(1)
-    await waitFor(() => {
-      expect(mockCheckAppUpdate).toHaveBeenCalledTimes(2)
-    })
 
     fireEvent.click(
       screen.getByRole("button", { name: "Trigger manual check" })
     )
-    await waitFor(() => {
-      expect(mockToast).toHaveBeenCalledTimes(2)
-    })
+    await flushAsyncWork()
+    expect(mockToast).toHaveBeenCalledTimes(2)
   })
 
-  it("opens release URL when update now is clicked", async () => {
+  it("opens the release URL when update now is clicked", async () => {
     mockCheckAppUpdate.mockResolvedValue({
       status: "updateAvailable",
       localVersion: "1.2.3",
@@ -212,13 +245,11 @@ describe("AppUpdateProvider", () => {
     })
 
     renderWithAppUpdateProvider()
+    await settleInitialCheck()
 
-    await waitFor(() => {
-      expect(mockToast).toHaveBeenCalled()
-    })
+    expect(mockToast).toHaveBeenCalled()
 
-    const lastCall = mockToast.mock.calls.at(-1)
-    const options = lastCall?.[1] as {
+    const options = mockToast.mock.calls.at(-1)?.[1] as {
       action: { onClick: () => void }
     }
     options.action.onClick()
@@ -227,5 +258,80 @@ describe("AppUpdateProvider", () => {
       "https://github.com/vana-com/data-connect/releases/latest"
     )
     expect(mockToast.dismiss).toHaveBeenCalledWith("app-update-toast")
+  })
+
+  it("downloads silently and shows a restart toast for macOS tauri updates", async () => {
+    mockCanUseTauriUpdater.mockReturnValue(true)
+    mockCheckForTauriUpdate.mockResolvedValue({
+      currentVersion: "1.2.3",
+      version: "1.2.4",
+      rawJson: { version: "1.2.4" },
+    })
+
+    renderWithAppUpdateProvider()
+    await settleInitialCheck()
+
+    expect(mockDownloadTauriUpdate).toHaveBeenCalledTimes(1)
+    expect(mockToast).toHaveBeenCalledWith(
+      "Restart to update",
+      expect.objectContaining({
+        description: "Version 1.2.4 is ready",
+      })
+    )
+
+    expect(mockCheckAppUpdate).not.toHaveBeenCalled()
+  })
+
+  it("suppresses restart-ready toast for the session and re-shows it on manual check", async () => {
+    mockCanUseTauriUpdater.mockReturnValue(true)
+    mockCheckForTauriUpdate.mockResolvedValue({
+      currentVersion: "1.2.3",
+      version: "1.2.4",
+      rawJson: { version: "1.2.4" },
+    })
+
+    renderWithAppUpdateProvider()
+    await settleInitialCheck()
+
+    expect(mockToast).toHaveBeenCalledTimes(1)
+
+    const options = mockToast.mock.calls.at(-1)?.[1] as {
+      cancel: { onClick: () => void }
+    }
+    options.cancel.onClick()
+
+    fireEvent.click(screen.getByRole("button", { name: "Trigger check" }))
+    await flushAsyncWork()
+    expect(mockCheckForTauriUpdate).toHaveBeenCalledTimes(2)
+    expect(mockToast).toHaveBeenCalledTimes(1)
+
+    fireEvent.click(
+      screen.getByRole("button", { name: "Trigger manual check" })
+    )
+    await flushAsyncWork()
+    expect(mockToast).toHaveBeenCalledTimes(2)
+  })
+
+  it("installs and relaunches when restart now is clicked", async () => {
+    mockCanUseTauriUpdater.mockReturnValue(true)
+    mockCheckForTauriUpdate.mockResolvedValue({
+      currentVersion: "1.2.3",
+      version: "1.2.4",
+      rawJson: { version: "1.2.4" },
+    })
+
+    renderWithAppUpdateProvider()
+    await settleInitialCheck()
+
+    expect(mockToast).toHaveBeenCalled()
+
+    const options = mockToast.mock.calls.at(-1)?.[1] as {
+      action: { onClick: () => void }
+    }
+    options.action.onClick()
+
+    await flushAsyncWork()
+    expect(mockInstallTauriUpdate).toHaveBeenCalledTimes(1)
+    expect(mockRelaunchTauriApp).toHaveBeenCalledTimes(1)
   })
 })

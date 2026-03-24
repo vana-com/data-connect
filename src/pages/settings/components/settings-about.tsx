@@ -37,6 +37,8 @@ interface SettingsAboutProps {
   appUpdateCheckStatus?:
     | "idle"
     | "checking"
+    | "downloading"
+    | "restartReady"
     | "upToDate"
     | "updateAvailable"
     | "unknown"
@@ -145,7 +147,11 @@ export function SettingsAbout({
           : { tone: "muted" as const, label: "Test bundled Node.js runtime" }
 
   const appUpdateStatusDescription =
-    appUpdateCheckStatus === "upToDate"
+    appUpdateCheckStatus === "restartReady"
+      ? { tone: "warning" as const, label: "Restart to update" }
+      : appUpdateCheckStatus === "downloading"
+        ? { tone: "accent" as const, label: "Downloading update…" }
+        : appUpdateCheckStatus === "upToDate"
       ? { tone: "success" as const, label: "Up to date" }
       : appUpdateCheckStatus === "updateAvailable"
         ? { tone: "warning" as const, label: "Update available" }
@@ -232,8 +238,15 @@ export function SettingsAbout({
               right={
                 <SettingsRowAction
                   onClick={onCheckAppUpdate}
-                  isLoading={appUpdateCheckStatus === "checking"}
-                  loadingLabel="Checking…"
+                  isLoading={
+                    appUpdateCheckStatus === "checking" ||
+                    appUpdateCheckStatus === "downloading"
+                  }
+                  loadingLabel={
+                    appUpdateCheckStatus === "downloading"
+                      ? "Downloading…"
+                      : "Checking…"
+                  }
                 >
                   Check for updates
                 </SettingsRowAction>

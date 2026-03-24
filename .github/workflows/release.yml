@@ -59,8 +59,8 @@ jobs:
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
-          node-version: '22'
-          cache: 'npm'
+          node-version: "22"
+          cache: "npm"
 
       - name: Setup Rust
         uses: dtolnay/rust-toolchain@stable
@@ -444,3 +444,46 @@ jobs:
         if: matrix.platform == 'macos-latest' && always()
         run: |
           security delete-keychain $RUNNER_TEMP/app-signing.keychain-db || true
+
+  publish_updater_manifest:
+    needs: build
+    runs-on: ubuntu-22.04
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+
+      - name: Build latest.json
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          set -euo pipefail
+
+          manifest_dir="/tmp/dataconnect-updater-manifest"
+          signatures_dir="$manifest_dir/signatures"
+          release_json="$manifest_dir/release.json"
+          output_path="$manifest_dir/latest.json"
+
+          rm -rf "$manifest_dir"
+          mkdir -p "$signatures_dir"
+
+          gh api "repos/${{ github.repository }}/releases/tags/${{ github.ref_name }}" > "$release_json"
+          gh release download "${{ github.ref_name }}" \
+            --pattern "*.app.tar.gz.sig" \
+            --dir "$signatures_dir"
+
+          node scripts/build-updater-manifest.mjs \
+            --release-json "$release_json" \
+            --signature-dir "$signatures_dir" \
+            --output "$output_path"
+
+      - name: Upload latest.json
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          gh release upload "${{ github.ref_name }}" /tmp/dataconnect-updater-manifest/latest.json --clobber

@@ -37,6 +37,8 @@ interface SettingsAboutProps {
   appUpdateCheckStatus?:
     | "idle"
     | "checking"
+    | "downloading"
+    | "restartReady"
     | "upToDate"
     | "updateAvailable"
     | "unknown"
@@ -147,16 +149,20 @@ export function SettingsAbout({
   const appUpdateStatusDescription =
     appUpdateCheckStatus === "upToDate"
       ? { tone: "success" as const, label: "Up to date" }
-      : appUpdateCheckStatus === "updateAvailable"
-        ? { tone: "warning" as const, label: "Update available" }
-        : appUpdateCheckStatus === "unknown"
-          ? { tone: "destructive" as const, label: "Check failed" }
-          : appUpdateCheckStatus === "checking"
-            ? { tone: "accent" as const, label: "Checking…" }
-            : {
-                tone: "muted" as const,
-                label: "Check if a newer app version exists",
-              }
+      : appUpdateCheckStatus === "restartReady"
+        ? { tone: "success" as const, label: "Restart to update" }
+        : appUpdateCheckStatus === "downloading"
+          ? { tone: "accent" as const, label: "Downloading update…" }
+          : appUpdateCheckStatus === "updateAvailable"
+            ? { tone: "warning" as const, label: "Update available" }
+            : appUpdateCheckStatus === "unknown"
+              ? { tone: "destructive" as const, label: "Check failed" }
+              : appUpdateCheckStatus === "checking"
+                ? { tone: "accent" as const, label: "Checking…" }
+                : {
+                    tone: "muted" as const,
+                    label: "Check if a newer app version exists",
+                  }
 
   const personalServerStatusDescription =
     personalServer.status === "running"
@@ -232,7 +238,10 @@ export function SettingsAbout({
               right={
                 <SettingsRowAction
                   onClick={onCheckAppUpdate}
-                  isLoading={appUpdateCheckStatus === "checking"}
+                  isLoading={
+                    appUpdateCheckStatus === "checking" ||
+                    appUpdateCheckStatus === "downloading"
+                  }
                   loadingLabel="Checking…"
                 >
                   Check for updates

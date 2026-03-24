@@ -18,13 +18,24 @@ import {
   isAppUpdateUiDebugEnabled,
   resolveAppUpdateUiDebugDecision,
 } from "@/hooks/app-update/app-update-ui-debug"
+import {
+  checkForTauriAppUpdate,
+  isTauriMacOsRuntime,
+  type TauriAppUpdate,
+} from "@/hooks/app-update/tauri-updater"
 import { openExternalUrl } from "@/lib/open-resource"
 
 const DISMISSED_VERSION_STORAGE_KEY = "dataconnect_app_update_dismissed_version"
 const APP_UPDATE_RECHECK_INTERVAL_MS = 6 * 60 * 60 * 1000
+const APP_UPDATE_STARTUP_SETTLE_MS = import.meta.env.TEST ? 0 : 15_000
 const APP_UPDATE_TOAST_ID = "app-update-toast"
 
-type AppUpdateStatus = AppUpdateDecision["status"] | "idle" | "checking"
+type AppUpdateStatus =
+  | AppUpdateDecision["status"]
+  | "idle"
+  | "checking"
+  | "downloading"
+  | "restartReady"
 type UpdateAvailableDecision = Extract<
   AppUpdateDecision,
   { status: "updateAvailable" }
@@ -33,7 +44,9 @@ type UpdateAvailableDecision = Extract<
 interface AppUpdateContextValue {
   isChecking: boolean
   lastStatus: AppUpdateStatus
-  checkForUpdates: (options?: { ignoreDismissedVersion?: boolean }) => Promise<void>
+  checkForUpdates: (options?: {
+    ignoreDismissedVersion?: boolean
+  }) => Promise<void>
 }
 
 const fallbackContextValue: AppUpdateContextValue = {
@@ -74,19 +87,50 @@ export function AppUpdateProvider({ children }: { children: ReactNode }) {
   const inFlightRef = useRef(false)
   const hasSeenInitialSearchEffectRef = useRef(false)
   const dismissedVersionRef = useRef<string | null>(readDismissedVersion())
+  const dismissedStagedVersionRef = useRef<string | null>(null)
+  const stagedUpdateRef = useRef<TauriAppUpdate | null>(null)
 
-  const dismissUpdate = useCallback((remoteVersion: string) => {
+  const clearStagedUpdate = useCallback(async () => {
+    const current = stagedUpdateRef.current
+    stagedUpdateRef.current = null
+    if (!current) return
+
+    try {
+      await current.close()
+    } catch (error) {
+      console.error("[AppUpdate] Failed to close staged updater handle:", error)
+    }
+  }, [])
+
+  const dismissFallbackUpdate = useCallback((remoteVersion: string) => {
     dismissedVersionRef.current = remoteVersion
     writeDismissedVersion(remoteVersion)
     toast.dismiss(APP_UPDATE_TOAST_ID)
   }, [])
 
-  const openUpdate = useCallback((releaseUrl: string) => {
+  const dismissStagedUpdate = useCallback((remoteVersion: string) => {
+    dismissedStagedVersionRef.current = remoteVersion
+    toast.dismiss(APP_UPDATE_TOAST_ID)
+  }, [])
+
+  const openFallbackUpdate = useCallback((releaseUrl: string) => {
     void openExternalUrl(releaseUrl)
     toast.dismiss(APP_UPDATE_TOAST_ID)
   }, [])
 
-  const showUpdateToast = useCallback(
+  const installStagedUpdate = useCallback(async (remoteVersion: string) => {
+    const stagedUpdate = stagedUpdateRef.current
+    if (!stagedUpdate || stagedUpdate.version !== remoteVersion) return
+
+    try {
+      await stagedUpdate.installAndRelaunch()
+    } catch (error) {
+      console.error("[AppUpdate] Failed to install staged update:", error)
+      setLastStatus("unknown")
+    }
+  }, [])
+
+  const showFallbackUpdateToast = useCallback(
     (decision: UpdateAvailableDecision) => {
       toast("Update available", {
         id: APP_UPDATE_TOAST_ID,
@@ -95,21 +139,44 @@ export function AppUpdateProvider({ children }: { children: ReactNode }) {
         action: {
           label: "Update now",
           onClick: () => {
-            openUpdate(decision.releaseUrl)
+            openFallbackUpdate(decision.releaseUrl)
           },
         },
         cancel: {
           label: "Later",
           onClick: () => {
-            dismissUpdate(decision.remoteVersion)
+            dismissFallbackUpdate(decision.remoteVersion)
           },
         },
       })
     },
-    [dismissUpdate, openUpdate]
+    [dismissFallbackUpdate, openFallbackUpdate]
   )
 
-  const applyDecision = useCallback(
+  const showRestartToast = useCallback(
+    (update: TauriAppUpdate) => {
+      toast("Restart to update", {
+        id: APP_UPDATE_TOAST_ID,
+        description: `Version ${update.version} is ready`,
+        duration: Infinity,
+        action: {
+          label: "Restart now",
+          onClick: () => {
+            void installStagedUpdate(update.version)
+          },
+        },
+        cancel: {
+          label: "Later",
+          onClick: () => {
+            dismissStagedUpdate(update.version)
+          },
+        },
+      })
+    },
+    [dismissStagedUpdate, installStagedUpdate]
+  )
+
+  const applyFallbackDecision = useCallback(
     (
       decision: AppUpdateDecision,
       options: { ignoreDismissedVersion?: boolean } = {}
@@ -139,40 +206,132 @@ export function AppUpdateProvider({ children }: { children: ReactNode }) {
         writeDismissedVersion(null)
       }
 
-      showUpdateToast(decision)
+      showFallbackUpdateToast(decision)
     },
-    [showUpdateToast]
+    [showFallbackUpdateToast]
+  )
+
+  const applyStagedUpdate = useCallback(
+    async (
+      nextUpdate: TauriAppUpdate | null,
+      options: { ignoreDismissedVersion?: boolean } = {}
+    ) => {
+      if (!nextUpdate) {
+        dismissedStagedVersionRef.current = null
+        await clearStagedUpdate()
+        setLastStatus("upToDate")
+        toast.dismiss(APP_UPDATE_TOAST_ID)
+        return
+      }
+
+      const currentStagedUpdate = stagedUpdateRef.current
+      if (
+        currentStagedUpdate &&
+        currentStagedUpdate.version === nextUpdate.version
+      ) {
+        await nextUpdate.close()
+        setLastStatus("restartReady")
+
+        if (
+          !options.ignoreDismissedVersion &&
+          dismissedStagedVersionRef.current === currentStagedUpdate.version
+        ) {
+          toast.dismiss(APP_UPDATE_TOAST_ID)
+          return
+        }
+
+        showRestartToast(currentStagedUpdate)
+        return
+      }
+
+      if (
+        dismissedStagedVersionRef.current &&
+        dismissedStagedVersionRef.current !== nextUpdate.version
+      ) {
+        dismissedStagedVersionRef.current = null
+      }
+
+      await clearStagedUpdate()
+      stagedUpdateRef.current = nextUpdate
+
+      setLastStatus("downloading")
+      try {
+        await nextUpdate.download()
+      } catch (error) {
+        console.error("[AppUpdate] Failed to download update:", error)
+        await clearStagedUpdate()
+        setLastStatus("unknown")
+        return
+      }
+
+      setLastStatus("restartReady")
+
+      if (
+        !options.ignoreDismissedVersion &&
+        dismissedStagedVersionRef.current === nextUpdate.version
+      ) {
+        toast.dismiss(APP_UPDATE_TOAST_ID)
+        return
+      }
+
+      showRestartToast(nextUpdate)
+    },
+    [clearStagedUpdate, showRestartToast]
   )
 
   const checkForUpdates = useCallback(
     async (options: { ignoreDismissedVersion?: boolean } = {}) => {
       if (inFlightRef.current) return
 
-      const debugDecision = resolveAppUpdateUiDebugDecision(window.location.search)
+      const debugDecision = resolveAppUpdateUiDebugDecision(location.search)
       if (debugDecision) {
-        applyDecision(debugDecision, options)
+        await clearStagedUpdate()
+        applyFallbackDecision(debugDecision, options)
         return
       }
 
       inFlightRef.current = true
       setIsChecking(true)
       setLastStatus("checking")
+
       try {
-        const decision = await checkAppUpdate()
-        applyDecision(decision, options)
-      } catch {
+        if (isTauriMacOsRuntime()) {
+          const update = await checkForTauriAppUpdate()
+          await applyStagedUpdate(update, options)
+        } else {
+          const decision = await checkAppUpdate()
+          applyFallbackDecision(decision, options)
+        }
+      } catch (error) {
+        console.error("[AppUpdate] Failed to check for updates:", error)
         setLastStatus("unknown")
       } finally {
         inFlightRef.current = false
         setIsChecking(false)
       }
     },
-    [applyDecision]
+    [
+      applyFallbackDecision,
+      applyStagedUpdate,
+      clearStagedUpdate,
+      location.search,
+    ]
   )
 
   useEffect(() => {
-    void checkForUpdates()
-  }, [checkForUpdates])
+    if (isAppUpdateUiDebugEnabled(location.search)) {
+      void checkForUpdates()
+      return
+    }
+
+    const timeoutId = window.setTimeout(() => {
+      void checkForUpdates()
+    }, APP_UPDATE_STARTUP_SETTLE_MS)
+
+    return () => {
+      window.clearTimeout(timeoutId)
+    }
+  }, [checkForUpdates, location.search])
 
   useEffect(() => {
     if (!hasSeenInitialSearchEffectRef.current) {
@@ -184,13 +343,20 @@ export function AppUpdateProvider({ children }: { children: ReactNode }) {
   }, [checkForUpdates, location.search])
 
   useEffect(() => {
-    const interval = window.setInterval(() => {
+    const intervalId = window.setInterval(() => {
       void checkForUpdates()
     }, APP_UPDATE_RECHECK_INTERVAL_MS)
+
     return () => {
-      window.clearInterval(interval)
+      window.clearInterval(intervalId)
     }
   }, [checkForUpdates])
+
+  useEffect(() => {
+    return () => {
+      void clearStagedUpdate()
+    }
+  }, [clearStagedUpdate])
 
   const contextValue = useMemo(
     () => ({

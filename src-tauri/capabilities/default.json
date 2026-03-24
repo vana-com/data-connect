@@ -26,8 +26,10 @@
     "shell:default",
     "shell:allow-open",
     "deep-link:default",
+    "process:default",
     "clipboard-manager:allow-write-text",
     "http:default",
+    "updater:default",
     "mcp-bridge:default",
     {
       "identifier": "http:allow-fetch",

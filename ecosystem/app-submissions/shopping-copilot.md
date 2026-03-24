@@ -4,7 +4,7 @@ name: Shopping Copilot
 status: live
 externalUrl: https://shopping-copilot-eta.vercel.app/
 icon: S
-builderName: Tim Nunamaker
+builderName: Ton-Chanh Le
 description: Connect your Amazon and Shop data to get wrapped-style shopping insights.
 category: Commerce
 scopes:

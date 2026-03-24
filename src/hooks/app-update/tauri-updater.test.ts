@@ -75,6 +75,56 @@ describe("tauri-updater", () => {
     expect(mockRelaunch).toHaveBeenCalledTimes(1)
   })
 
+  it("keeps the staged update handle when the same version is re-checked", async () => {
+    const initialClose = vi.fn()
+    const initialDownload = vi.fn()
+    const initialInstall = vi.fn()
+    const duplicateClose = vi.fn()
+    const duplicateDownload = vi.fn()
+    const duplicateInstall = vi.fn()
+
+    mockCheck
+      .mockResolvedValueOnce({
+        currentVersion: "0.7.41",
+        version: "0.7.42",
+        rawJson: { version: "0.7.42" },
+        close: initialClose,
+        download: initialDownload,
+        install: initialInstall,
+      })
+      .mockResolvedValueOnce({
+        currentVersion: "0.7.41",
+        version: "0.7.42",
+        rawJson: { version: "0.7.42" },
+        close: duplicateClose,
+        download: duplicateDownload,
+        install: duplicateInstall,
+      })
+
+    await expect(checkForTauriUpdate()).resolves.toEqual({
+      currentVersion: "0.7.41",
+      version: "0.7.42",
+      rawJson: { version: "0.7.42" },
+    })
+    await expect(downloadTauriUpdate()).resolves.toBe(true)
+    await expect(checkForTauriUpdate()).resolves.toEqual({
+      currentVersion: "0.7.41",
+      version: "0.7.42",
+      rawJson: { version: "0.7.42" },
+    })
+
+    expect(initialClose).not.toHaveBeenCalled()
+    expect(initialDownload).toHaveBeenCalledTimes(1)
+    expect(duplicateClose).toHaveBeenCalledTimes(1)
+    expect(duplicateDownload).not.toHaveBeenCalled()
+    expect(duplicateInstall).not.toHaveBeenCalled()
+
+    await expect(installTauriUpdate()).resolves.toBe(true)
+
+    expect(initialInstall).toHaveBeenCalledTimes(1)
+    expect(initialClose).toHaveBeenCalledTimes(1)
+  })
+
   it("fails soft outside the macOS Tauri runtime", async () => {
     Reflect.deleteProperty(window, "__TAURI__")
     Object.defineProperty(window.navigator, "platform", {

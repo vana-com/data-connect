@@ -303,12 +303,17 @@ describe("AppUpdateProvider", () => {
     fireEvent.click(screen.getByRole("button", { name: "Trigger check" }))
     await flushAsyncWork()
     expect(mockCheckForTauriUpdate).toHaveBeenCalledTimes(2)
+    expect(mockDownloadTauriUpdate).toHaveBeenCalledTimes(1)
+    expect(screen.getByTestId("app-update-status").textContent).toBe(
+      "restartReady"
+    )
     expect(mockToast).toHaveBeenCalledTimes(1)
 
     fireEvent.click(
       screen.getByRole("button", { name: "Trigger manual check" })
     )
     await flushAsyncWork()
+    expect(mockDownloadTauriUpdate).toHaveBeenCalledTimes(2)
     expect(mockToast).toHaveBeenCalledTimes(2)
   })
 

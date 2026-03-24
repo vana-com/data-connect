@@ -69,13 +69,20 @@ export async function checkForTauriUpdate(
   const { check } = await import("@tauri-apps/plugin-updater")
   const update = await check(options)
 
-  await closePendingUpdate()
   if (!update) {
+    await closePendingUpdate()
     return null
   }
 
+  const metadata = toMetadata(update)
+  if (pendingUpdate?.version === update.version) {
+    await update.close()
+    return metadata
+  }
+
+  await closePendingUpdate()
   pendingUpdate = update
-  return toMetadata(update)
+  return metadata
 }
 
 export async function downloadTauriUpdate(

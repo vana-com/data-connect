@@ -42,7 +42,7 @@ Runtime boundaries:
 
 ## Flow architecture
 
-- Grant + Connect flow overview: `docs/260203-grant-connect-flow.md`
+- Grant + Connect flow overview: `docs/260325-grant-connect-flow-architecture.md`
 
 ## State ownership
 

@@ -45,7 +45,7 @@ This change set refactors the connect flow for readability/safety and hardens ru
 
 ## Risk notes
 
-- Kept canonical grant URL behavior (`sessionId`, `appId`, `scopes`, and `secret`) unchanged by design.
+- Kept canonical grant URL behavior (`sessionId`, `secret`, and `scopes`) unchanged by design. `appId` remains optional context only.
 - Highest-risk area was event contract overlap between Rust download and connector runtime completion events; that is now separated by event name.
 
 ## Validation run
@@ -68,4 +68,3 @@ If regressions appear:
 
 1. Revert this change set commit as a single unit.
 2. Keep only the busy CTA UX fix commit (`b0db676`) while reworking structural extraction in smaller slices.
-

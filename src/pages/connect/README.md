@@ -14,8 +14,13 @@
 
 ## Data flow
 
-- URL params (`sessionId`, `appId`, `scopes`) → `getGrantParamsFromSearchParams` → resolve platform
-- `startImport` → Tauri `start_connector_run` → run status in Redux → navigate to `/grant`
+- URL params (`sessionId`, `secret`, `scopes`, optional `appId`) →
+  `getGrantParamsFromSearchParams` → resolve platform
+- For real grant sessions, background prefetch claims the session and verifies the
+  builder before the user reaches `/grant`
+- `startImport` → Tauri `start_connector_run` → run status in Redux → navigate to
+  `/grant` with canonical query params, plus pre-fetched session/builder data in
+  `location.state` as an optimization
 
 ## App integration
 
@@ -26,16 +31,19 @@
 ## Behavior
 
 - Renders “Connect your <data source>” based on `scopes`
-- Starts connector run; on success routes to `/grant?sessionId&appId&scopes`
+- For real grant sessions, claims the session with `sessionId` + `secret` and
+  verifies the builder in the background
+- Starts connector run; on success routes to `/grant` with the built canonical
+  query params
 - Disables CTA if no connector platform is available
 
 ## Mocking
 
 - Localhost (dev): hit `/connect` directly with query params.
-  - Example: `http://localhost:5173/connect?sessionId=ext-123&appId=rickroll&scopes=read:chatgpt-conversations`
+  - Example: `http://localhost:5173/connect?sessionId=ext-123&secret=test-secret&scopes=chatgpt.conversations`
   - JSON `scopes` also works: `scopes=["read:chatgpt-conversations"]`
 - Production: use deep linking with the same params.
-  - Example: `dataconnect://?sessionId=ext-123&appId=rickroll&scopes=read:chatgpt-conversations`
+  - Example: `vana://connect?sessionId=ext-123&secret=test-secret&scopes=chatgpt.conversations`
 
 ## Notes
 
@@ -44,4 +52,5 @@
   - otherwise uses claimed session scopes after `claimSession`
   - does not infer fallback app scopes
 - For non-grant connect entries (no `sessionId`), app default scopes may be used
-- External apps should deep-link with `sessionId`, `appId`, and `scopes` for deterministic source resolution
+- `appId` is supplemental routing/context data, not the grant-session authority
+- External apps should deep-link grant sessions with `sessionId`, `secret`, and `scopes`

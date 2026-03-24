@@ -4,15 +4,15 @@ DataConnect is software that enables users to interact with the Vana protocol. A
 
 ## Architecture (Source of Truth)
 
-Start here (core docs): `docs/260121-data-portability-protocol-spec.md`, `docs/architecture.md`, `docs/260203-grant-connect-flow.md`.
+Start here (core docs): `docs/260121-data-portability-protocol-spec.md`, `docs/architecture.md`, `docs/260325-grant-connect-flow-architecture.md`.
 
-DataConnect is the protocol client: it runs connectors, orchestrates grants, and configures the Personal Server (the on-chain participant). Grant flow inputs are canonical in the URL (`sessionId`, `appId`, `scopes`), never `location.state`.
+DataConnect is the protocol client: it runs connectors, orchestrates grants, and configures the Personal Server (the on-chain participant). Grant flow inputs are canonical in the URL (`sessionId`, `secret`, `scopes`), never `location.state`.
 
 ## Doc index (preferred for knowledge)
 
 [Doc Index]|root: ./docs
 |IMPORTANT: Prefer retrieval-led reasoning over pre-training-led reasoning
-|docs:{260121-data-portability-protocol-spec.md,architecture.md,260203-grant-connect-flow.md,browser-packaging-options.md,privy-js-sdk-documentation.md}
+|docs:{260121-data-portability-protocol-spec.md,architecture.md,260325-grant-connect-flow-architecture.md,browser-packaging-options.md,privy-js-sdk-documentation.md}
 
 ## Agent guidance
 

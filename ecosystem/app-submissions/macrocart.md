@@ -7,7 +7,7 @@ icon: M
 builderName: Ton-Chanh Le
 builderUrl: https://x.com/letonchanh
 description: Track Amazon and Shop orders with trend and spending insights.
-category: Nutrition
+category: Commerce
 scopes:
   - amazon.orders
   - shop.orders

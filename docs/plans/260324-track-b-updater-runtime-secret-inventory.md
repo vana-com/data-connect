@@ -11,6 +11,20 @@ Important:
 - this file is a names-only inventory
 - actual values must come from GitHub repo/environment secrets or local machine credential setup
 
+## Storage model
+
+There are two different storage systems in play:
+
+1. GitHub Actions secrets for the real CI release flow
+2. local machine files, keychains, and environment variables for local signing/proof work
+
+That distinction matters:
+
+- an agent can verify that a GitHub secret name exists
+- an agent cannot read the value of an existing GitHub Actions secret back out of GitHub
+- for a local proof flow, some credentials can be pulled from known local paths
+- for a GitHub Actions proof flow, a human must ensure the needed secrets have already been populated in GitHub
+
 ## Use this with the handoff spec
 
 Primary implementation doc:
@@ -57,6 +71,40 @@ Notes:
 - `GITHUB_TOKEN` is normally provided automatically by GitHub Actions
 - the rest must exist in GitHub secrets or the workflow will fail
 
+### Where these are stored
+
+Expected storage location:
+
+- GitHub repository secrets for `vana-com/data-connect`
+
+How to verify names exist:
+
+```bash
+gh secret list --repo vana-com/data-connect
+```
+
+Important limitation:
+
+- GitHub does not let the agent or colleague read secret values back out once stored
+- if a required secret is missing, a human must source the value from the original credential owner or local source material and set it again
+
+How to set or reset a secret:
+
+```bash
+gh secret set SECRET_NAME --repo vana-com/data-connect
+```
+
+### What a colleague needs to know
+
+If the colleague is running a real release proof from `main`, they do **not** need a new secret store just because the branch changed.
+
+They do need:
+
+- the branch workflow run to have access to the same repository secrets
+- confirmation that those names already exist in GitHub
+
+If those names do not exist, the colleague cannot recover the values from GitHub and must ask whoever originally provisioned them.
+
 ## Mode C: local macOS release/signing proof
 
 If the agent is expected to run the equivalent signing/notarization path locally on macOS, the local machine must have the following available.
@@ -81,6 +129,46 @@ Common app build environment values:
 - `VITE_SESSION_RELAY_URL`
 - `VITE_GATEWAY_URL`
 
+### Where these are stored locally
+
+Updater signing key:
+
+- expected local source path is one of:
+  - `$HOME/.vana/updater.key`
+  - `$HOME/.dataconnect/updater.key`
+
+Public updater key:
+
+- expected local source path is one of:
+  - `$HOME/.vana/updater.key.pub`
+  - `$HOME/.dataconnect/updater.key.pub`
+
+How to check which path is real on a machine:
+
+```bash
+ls -l \
+  "$HOME/.dataconnect/updater.key" \
+  "$HOME/.dataconnect/updater.key.pub" \
+  "$HOME/.vana/updater.key" \
+  "$HOME/.vana/updater.key.pub"
+```
+
+Important note from prior proof work:
+
+- the Tauri CLI may ignore the requested `--write-keys` path and write under `$HOME/.vana/` anyway
+- always check which file actually exists before wiring secrets or local env vars
+
+Apple notarization key:
+
+- local storage path is operator-chosen
+- the workflow decodes the App Store Connect key from `APPLE_ASC_API_KEY_KEY_BASE64` into a temporary `.p8` file at runtime
+- for local proof work, the operator must provide a real `APPLE_NOTARY_KEY_PATH`
+
+Build-time frontend env values:
+
+- may come from local shell env or a local `.env` file if the operator uses one
+- in CI they come from GitHub Actions secrets
+
 ### Local machine credentials and tooling
 
 Required in the local macOS keychain/tooling setup:
@@ -101,12 +189,32 @@ Script source:
 
 - `scripts/build-macos-updater-artifacts.mjs`
 - `scripts/notarize-macos-app.mjs`
+- `docs/plans/260311-macos-updater-ci-proof-run.md`
+
+## Retrieval instructions to give a colleague or agent
+
+Use this exact guidance:
+
+1. If you are only implementing and testing from `main`, do not block on release secrets.
+2. If you are running a real release proof in GitHub Actions, first run:
+
+```bash
+gh secret list --repo vana-com/data-connect
+```
+
+3. Confirm the required names in this file exist.
+4. If a required GitHub secret is missing, stop and ask a human to re-provision it. You cannot read the old value back out of GitHub.
+5. If you are running local macOS signing work, first check whether the updater key exists at:
+   - `$HOME/.vana/updater.key`
+   - `$HOME/.dataconnect/updater.key`
+6. If the updater key is missing locally, stop and ask a human for the key material or regenerate and re-wire it intentionally.
+7. If local notarization is required, confirm the machine has a valid `APPLE_NOTARY_KEY_PATH`, Apple signing certificate, and keychain setup before continuing.
 
 ## What the agent should be told
 
 Give the agent this instruction:
 
-`Implement from main using docs/plans/260324-track-b-updater-runtime-handoff-spec.md. Do not assume secrets exist. Before any real release, signing, or notarization step, verify that the secret names in docs/plans/260324-track-b-updater-runtime-secret-inventory.md are available in the target environment. If they are not available, stop before the release proof step.`
+`Implement from main using docs/plans/260324-track-b-updater-runtime-handoff-spec.md. Do not assume secrets exist. Before any real release, signing, or notarization step, use docs/plans/260324-track-b-updater-runtime-secret-inventory.md to verify where each secret should live, check whether it is present, and stop if any required GitHub secret value or local signing credential cannot be sourced.`
 
 ## Exact practical meaning
 

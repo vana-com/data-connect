@@ -257,6 +257,15 @@ jobs:
                 --app "$app" \
                 --output-dir "src-tauri/target/${{ matrix.target }}/release/bundle/macos"
 
+              # tauri-action still leaves behind a raw archless updater tarball
+              # for the pre-finalization .app. Remove those artifacts so the
+              # release only publishes the finalized, versioned updater payloads.
+              raw_updater_name="$(basename "$app").tar.gz"
+              raw_updater_sig_name="${raw_updater_name}.sig"
+              rm -f \
+                "src-tauri/target/${{ matrix.target }}/release/bundle/macos/$raw_updater_name" \
+                "src-tauri/target/${{ matrix.target }}/release/bundle/macos/$raw_updater_sig_name"
+
               # Create updater artifacts from the finalized notarized .app, not the pre-finalization Tauri output.
               if [ -n "$TAURI_SIGNING_PRIVATE_KEY" ] || [ -n "$TAURI_SIGNING_PRIVATE_KEY_PATH" ]; then
                 node scripts/build-macos-updater-artifacts.mjs \

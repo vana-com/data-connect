@@ -53,6 +53,23 @@ Follow-up adjustment:
 - keep all release uploads in the explicit manual upload step
 - re-run proof only after updater signing secrets are configured
 
+Second real CI proof result (`v0.7.38`, run `23471687132`):
+
+- updater signing secrets were present and the custom updater path ran
+- both macOS jobs advanced through final app re-sign, notarization, stapling, validation, and updater tarball creation
+- both macOS jobs still failed in `Finalize bundles`
+- the failure moved later: signing the updater tarball failed with `sh: tauri: command not found`
+- concrete cause: `release.yml` deletes `node_modules` in the disk-cleanup step, then `scripts/build-macos-updater-artifacts.mjs` calls `npm run tauri -- signer sign`, which depends on the local Tauri CLI in `node_modules/.bin`
+- release `v0.7.38` therefore published Linux and Windows assets only; required macOS updater artifacts were not uploaded
+
+Immediate next adjustment:
+
+- keep the current notarize/staple ordering
+- decision: keep the repo-pinned Tauri CLI available through updater signing rather than inventing a separate signing path
+- remove the post-cleanup dependency on `npm run tauri`; updater signing should call the local Tauri CLI directly and cleanup must not delete it before finalization completes
+- implementation note (2026-03-24): local patch applied in `release.yml` and `scripts/build-macos-updater-artifacts.mjs`; a temp-key local proof produced both `.app.tar.gz` and `.app.tar.gz.sig` successfully through the new direct CLI path
+- re-run proof after that CLI-availability fix
+
 ### Goal
 
 Ship macOS-first phase 2 app updates in DataConnect:
@@ -93,10 +110,10 @@ Out of scope:
 
 | Dependency | Status | Owner | Target date | Notes |
 | ---------- | ------ | ----- | ----------- | ----- |
-| Tauri updater signing keypair generated and stored securely | SOFT BLOCKED | release owner | before implementation finish | Need private key + optional password in CI; public key embedded in config |
+| Tauri updater signing keypair generated and stored securely | UNBLOCKED | release owner | before implementation finish | Confirmed in CI by `v0.7.38`; updater private key and password were available to the custom updater path |
 | GitHub Release workflow can upload updater bundle assets plus `latest.json` | UNBLOCKED | repo/CI | during implementation | Current workflow already uploads release artifacts; needs updater asset/metadata extension |
 | Tauri default updater artifact generation happens before repo final-sign step | BLOCKED for direct adoption | implementation | discovered 2026-03-11 | Current workflow cannot safely rely on raw `createUpdaterArtifacts` output alone |
-| Custom post-finalization macOS updater asset generation path | SOFT BLOCKED | implementation | first execution slice | Must generate `.app.tar.gz` and `.sig` from a finalized notarized/stapled `.app`, not merely a finalized signed `.app` |
+| Custom post-finalization macOS updater asset generation path | SOFT BLOCKED | implementation | first execution slice | `v0.7.38` proved finalized app re-sign + notarize + staple + tarball creation ordering, but updater tarball signing still fails because the Tauri CLI is unavailable after `node_modules` cleanup |
 | Real upgrade smoke path from old macOS build to new macOS build | SOFT BLOCKED | implementation/release | before merge/release | Need a reproducible way to test one released build upgrading to another |
 | CI notarization result for removing nested in-app re-sign loop | UNBLOCKED for Track B, unresolved for follow-up | release owner | after Track B or alongside first CI proof | Not a blocker for updater plumbing |
 
@@ -164,9 +181,9 @@ Fill `Status` with `PASS` / `NO-OP` / `FAIL` during execution.
 | `src-tauri/capabilities/default.json` | add updater permissions (`updater:default`) |  |  |
 | `src-tauri/tauri.conf.json` | add `bundle.createUpdaterArtifacts`; add `plugins.updater.pubkey`; add `plugins.updater.endpoints` after post-finalization asset path is proven |  |  |
 | `scripts/notarize-macos-app.mjs` | new script to submit a zip of the finalized `.app`, wait for notarization, staple the ticket back onto the `.app`, and validate it | PASS | repo script added; uses `ditto` + `xcrun notarytool submit` + `xcrun stapler` |
-| `scripts/build-macos-updater-artifacts.mjs` | new script to archive/sign finalized macOS `.app` into `.app.tar.gz` and `.sig` | PASS | repo script added; uses `tauri signer sign` on finalized tarball |
+| `scripts/build-macos-updater-artifacts.mjs` | new script to archive/sign finalized macOS `.app` into `.app.tar.gz` and `.sig` | FAIL | `v0.7.38` created the finalized tarball successfully but failed at `npm run tauri -- signer sign` with `sh: tauri: command not found` after workflow cleanup removed `node_modules` |
 | `scripts/build-updater-manifest.mjs` | new script to generate `latest.json` from release asset inputs |  |  |
-| `.github/workflows/release.yml` | call post-finalization updater script; upload `.app.tar.gz`, `.sig`, later `latest.json` | PASS | workflow now avoids xtrace around updater secrets, disables `tauri-action` release uploads, notarizes/staples the finalized `.app` before packaging the updater tarball, and hard-fails if the extracted updater payload fails stapler/spctl/codesign checks |
+| `.github/workflows/release.yml` | call post-finalization updater script; upload `.app.tar.gz`, `.sig`, later `latest.json` | FAIL | workflow proves app re-sign + notarize + staple ordering, but `Free disk space before finalization` removes `node_modules` too early for the later updater tarball signing step |
 | `scripts/build-prod.js` | optional local-macOS parity for updater-artifact smoke; otherwise mark `NO-OP` explicitly | NO-OP | local build path intentionally unchanged in this slice |
 | `src/hooks/app-update/check-app-update.ts` | preserve or narrow phase-1 external-release check as fallback path |  |  |
 | `src/hooks/app-update/tauri-updater.ts` | new seam around `@tauri-apps/plugin-updater` APIs |  |  |
@@ -252,6 +269,7 @@ Record here if implementation changes:
 - relaunch ownership (JS vs Rust)
 - macOS-only rollout boundary
 - release workflow shape
+- updater tarball signing mechanism after post-build cleanup
 
 ## Unresolved questions
 

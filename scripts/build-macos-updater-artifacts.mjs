@@ -1,6 +1,7 @@
 #!/usr/bin/env node
 
 import { execFileSync } from 'child_process';
+import { fileURLToPath } from 'url';
 import { existsSync, mkdirSync, rmSync } from 'fs';
 import { basename, dirname, join, resolve } from 'path';
 
@@ -60,8 +61,10 @@ function run(command, args, options = {}) {
   execFileSync(command, args, { stdio: 'inherit', ...options });
 }
 
-function resolveNpmCommand() {
-  return process.platform === 'win32' ? 'npm.cmd' : 'npm';
+function resolveTauriCliEntry() {
+  return fileURLToPath(
+    new URL('../node_modules/@tauri-apps/cli/tauri.js', import.meta.url)
+  );
 }
 
 function hasSigningKey() {
@@ -117,10 +120,8 @@ function main() {
   run('tar', ['-czf', tarballPath, '-C', dirname(appPath), appName]);
 
   log(`Signing updater tarball ${basename(tarballPath)}`);
-  run(resolveNpmCommand(), [
-    'run',
-    'tauri',
-    '--',
+  run(process.execPath, [
+    resolveTauriCliEntry(),
     'signer',
     'sign',
     '--',

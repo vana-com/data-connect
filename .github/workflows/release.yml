@@ -176,8 +176,9 @@ jobs:
           rm -rf src-tauri/target/${{ matrix.target }}/release/build
           rm -rf src-tauri/target/${{ matrix.target }}/release/.fingerprint
           rm -rf src-tauri/target/${{ matrix.target }}/release/incremental
-          # Remove npm caches no longer needed
-          rm -rf node_modules
+          # Keep root node_modules until finalization completes because the
+          # custom macOS updater artifact signer uses the repo-pinned Tauri CLI.
+          # Removing it here breaks updater tarball signing in Finalize bundles.
           rm -rf playwright-runner/node_modules
           rm -rf ~/.cargo/registry/cache
           echo "=== Disk usage after cleanup ==="

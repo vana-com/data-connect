@@ -35,6 +35,22 @@ What that means:
 - The remaining packaging uncertainty is now much smaller: whether Apple notarization in CI still succeeds if we later remove the nested in-app re-sign loop.
 - Updater plugin and updater artifact plumbing can now be planned against the simplified assumption that the copy step is gone.
 
+## Release proof update (2026-03-24)
+
+The first two real release proofs narrowed the CI problem substantially:
+
+- earlier proof runs showed the custom updater path was skipped when updater signing secrets were missing
+- `v0.7.38` proved those secrets are now wired correctly and that the custom post-finalization updater path is actually running
+- in `v0.7.38`, both macOS jobs successfully completed final app re-signing, app notarization, stapling, stapled-app validation, and updater tarball creation
+- both macOS jobs then failed on the updater tarball signing command: `npm run tauri -- signer sign -- <tarball>`
+- the immediate failure was `sh: tauri: command not found`
+
+What this changes:
+
+- the current blocker is no longer secret wiring or notarization ordering
+- the current blocker is release-job cleanup order: the workflow removes `node_modules`, then later asks the updater script to use the local Tauri CLI from `npm run tauri`
+- the next execution slice should fix that CLI availability problem first, then re-run the same proof
+
 ## Current repo state
 
 Missing today:
@@ -44,7 +60,6 @@ Missing today:
 - no updater plugin registration in `src-tauri/src/lib.rs`
 - no updater config in `src-tauri/tauri.conf.json`
 - no `bundle.createUpdaterArtifacts`
-- no updater signing key setup in release automation
 - no published updater metadata asset (`latest.json` or equivalent)
 
 Relevant files:
@@ -323,6 +338,8 @@ Proceed on the simplified assumption that:
 - store the private key and optional password in CI secrets
 - put the public key content directly in `src-tauri/tauri.conf.json` under `plugins.updater.pubkey`
 - do not rely on `.env` files for the private key during build; Tauri reads it from environment variables at build time
+- for GitHub Actions, prefer `TAURI_SIGNING_PRIVATE_KEY` with the full private key contents plus `TAURI_SIGNING_PRIVATE_KEY_PASSWORD`; do not rely on `TAURI_SIGNING_PRIVATE_KEY_PATH`
+- after key generation, verify the actual output path before uploading secrets; in real execution the Tauri CLI wrote to `$HOME/.vana/updater.key` even when `--write-keys "$HOME/.dataconnect/updater.key"` was requested
 
 #### GitHub Releases / metadata shape
 

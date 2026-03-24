@@ -49,6 +49,45 @@ Required specifically for the updater proof path:
 Do not rely on `TAURI_SIGNING_PRIVATE_KEY_PATH` in GitHub Actions for this flow.
 The runner does not automatically have your local key file path.
 
+### Exact setup commands for updater signing secrets
+
+Generate a dedicated updater keypair locally with a real password you choose:
+
+```bash
+cd /Users/cflack/Repos/vana-com/data-connect
+npm run tauri signer generate -- --password '<real-password>' --write-keys "$HOME/.dataconnect/updater.key" --force
+```
+
+Important notes from real execution:
+
+- The current Tauri CLI may ignore the requested `--write-keys` path and still write the generated keypair under `$HOME/.vana/`.
+- After generating, do not assume the output path. Check which files actually exist:
+
+```bash
+ls -l \
+  "$HOME/.dataconnect/updater.key" \
+  "$HOME/.dataconnect/updater.key.pub" \
+  "$HOME/.vana/updater.key" \
+  "$HOME/.vana/updater.key.pub"
+```
+
+If Tauri wrote to `$HOME/.vana/updater.key`, use that file for the GitHub secret upload.
+
+Set the GitHub Actions secrets with the GitHub CLI:
+
+```bash
+gh secret set TAURI_SIGNING_PRIVATE_KEY --repo vana-com/data-connect < "$HOME/.vana/updater.key"
+printf '%s' '<real-password>' | gh secret set TAURI_SIGNING_PRIVATE_KEY_PASSWORD --repo vana-com/data-connect
+```
+
+If the key really was written to `$HOME/.dataconnect/updater.key`, substitute that path in the first command.
+
+Verify the secrets exist:
+
+```bash
+gh secret list --repo vana-com/data-connect | rg 'TAURI_SIGNING_PRIVATE_KEY|TAURI_SIGNING_PRIVATE_KEY_PASSWORD'
+```
+
 ## Exact proof command
 
 If proving on the current feature branch:
@@ -60,6 +99,26 @@ npm run release:github -- --version <proof-version> --target callum1/bui-249-aut
 ```
 
 Choose `<proof-version>` as a real unused semver greater than the latest remote tag.
+
+## Latest observed proof result
+
+`v0.7.38` / run `23471687132` is the current best evidence snapshot.
+
+Observed:
+
+- Linux and Windows jobs passed
+- both macOS jobs reached the custom post-finalization updater path
+- both macOS jobs successfully re-signed the final app, notarized it, stapled it, validated the stapled app, and created the updater `.app.tar.gz`
+- both macOS jobs then failed while signing that updater tarball
+- the failing command was `npm run tauri -- signer sign -- <tarball>`
+- the immediate error was `sh: tauri: command not found`
+- only Linux and Windows assets were published on release `v0.7.38`; required macOS updater artifacts were missing
+
+Interpretation:
+
+- updater signing secrets are now correctly wired
+- the custom updater path is definitely being exercised
+- the current blocker is that the workflow deletes `node_modules` before the updater script calls `npm run tauri`, so the local Tauri CLI is no longer available
 
 ## Expected release assets
 
@@ -100,6 +159,7 @@ For each macOS matrix job, confirm logs contain:
 Red flags:
 
 - `Skipping finalized macOS updater artifact generation`
+- `sh: tauri: command not found`
 - `Notarization FAILED`
 - `does not have a ticket stapled`
 - `rejected`
@@ -124,7 +184,7 @@ gh run list --workflow Release --limit 10
 gh run view <run-id> --log > "/tmp/dataconnect-release-proof-v<proof-version>.log"
 
 # filter the log for proof markers
-rg -n "Finalizing macOS bundles|Submitting|Stapling accepted ticket|Validating stapled ticket|Created updater artifacts|spctl --assess|codesign --verify|Uploaded DataConnect_|Notarized and stapled|Skipping finalized macOS updater artifact generation|Notarization FAILED|does not have a ticket stapled|rejected|invalid" "/tmp/dataconnect-release-proof-v<proof-version>.log"
+rg -n "Finalizing macOS bundles|Submitting|Stapling accepted ticket|Validating stapled ticket|Created updater artifacts|spctl --assess|codesign --verify|Uploaded DataConnect_|Notarized and stapled|Skipping finalized macOS updater artifact generation|tauri: command not found|Notarization FAILED|does not have a ticket stapled|rejected|invalid" "/tmp/dataconnect-release-proof-v<proof-version>.log"
 ```
 
 ## Pass criteria

@@ -221,7 +221,11 @@ jobs:
               app_name=$(basename "$app" .app)
               version=$(grep '"version"' src-tauri/tauri.conf.json | head -1 | sed 's/.*: "\(.*\)".*/\1/')
               arch=$(echo "${{ matrix.target }}" | cut -d- -f1)
-              updater_name="${app_name}_${version}_${arch}.app.tar.gz"
+              public_arch="$arch"
+              if [ "$public_arch" = "x86_64" ]; then
+                public_arch="x64"
+              fi
+              updater_name="${app_name}_${version}_${public_arch}.app.tar.gz"
               echo "Bundled resource contents:"
               ls -la "$app/Contents/Resources/personal-server/dist/" || echo "personal-server/dist not in Resources"
               ls -la "$app/Contents/Resources/personal-server/dist/node_modules/" || { echo "ERROR: node_modules NOT in app bundle!"; exit 1; }
@@ -294,7 +298,11 @@ jobs:
               app_name=$(basename "$app" .app)
               version=$(grep '"version"' src-tauri/tauri.conf.json | head -1 | sed 's/.*: "\(.*\)".*/\1/')
               arch=$(echo "${{ matrix.target }}" | cut -d- -f1)
-              dmg_name="${app_name}_${version}_${arch}.dmg"
+              public_arch="$arch"
+              if [ "$public_arch" = "x86_64" ]; then
+                public_arch="x64"
+              fi
+              dmg_name="${app_name}_${version}_${public_arch}.dmg"
               dmg_path="src-tauri/target/${{ matrix.target }}/release/bundle/dmg/${dmg_name}"
 
               # Create temp folder with app and Applications symlink

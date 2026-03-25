@@ -1,5 +1,12 @@
 # 260324 Implementation Plan: Source Pipeline Home And Local App Creation
 
+> [!WARNING]
+> SUPERSEDED — archived on 2026-03-25.
+> This document is retained for early ideation/reference only and is no longer
+> an active source of truth.
+> Use `docs/builder-flow/260325-app-quickstart-spec.md` and
+> `docs/plans/260325-app-quickstart-implementation-plan.md` instead.
+
 ## Goal
 
 Implement the Home/source-overview changes needed to:
@@ -156,6 +163,130 @@ Reason:
 - this avoids turning existing mixed-responsibility components into harder-to-read
   transition code
 - this gives us a clearer cut line between orchestration and presentation
+
+### Concrete prop interface sketch
+
+The target shape is:
+
+- route/container builds view models
+- layout components render only
+- sections take plain data + callbacks
+- lower-level item components stay small and dumb
+
+Example sketch:
+
+```ts
+type HomePipelineColumnKey = "available" | "imported"
+
+interface HomeSourcePipelineLayoutProps {
+  title: string
+  leftColumn: HomePipelineColumnProps
+  rightColumn: HomePipelineColumnProps
+}
+
+interface HomePipelineColumnProps {
+  key: HomePipelineColumnKey
+  heading: string
+  description?: string
+  emptyState?: {
+    title: string
+    description?: string
+  }
+  children: ReactNode
+}
+
+interface HomeAvailableSourcesSectionProps {
+  heading: string
+  description?: string
+  addYourOwnHref: string
+  sources: HomeAvailableSourceCardProps[]
+  onConnect: (platformId: string) => void
+  onStopImport: (runId: string) => void
+}
+
+interface HomeAvailableSourceCardProps {
+  id: string
+  name: string
+  iconName: string
+  iconImageSrc?: string
+  availability: "available" | "running" | "blocked" | "coming-soon"
+  statusLine?: string
+  accountLine?: string
+  expectationLine?: string
+  helperLine?: string
+  runId?: string
+  canConnect: boolean
+  canStop: boolean
+}
+
+interface HomeImportedSourcesSectionProps {
+  heading: string
+  description?: string
+  sources: HomeImportedSourceRowProps[]
+  onViewData: (platformId: string) => void
+  onCreateApp: (platformId: string) => void
+  onSync: (platformId: string) => void
+}
+
+interface HomeImportedSourceRowProps {
+  id: string
+  name: string
+  iconName: string
+  lastUpdatedLabel?: string
+  syncState?: "idle" | "running" | "backgrounding"
+  syncDisabled?: boolean
+  createAppDisabled?: boolean
+}
+```
+
+Container responsibility:
+
+- derive `availability`
+- derive copy such as `statusLine`, `accountLine`, `expectationLine`
+- derive whether actions are enabled
+- map platform/run state to simple row/card props
+
+Presentation responsibility:
+
+- render headings and body copy with `Text`
+- render layout spacing and column structure
+- wire button clicks back through provided callbacks
+- avoid reading router/store/hooks directly
+
+### Suggested file shape
+
+```text
+src/pages/home/
+  index.tsx
+  use-home-page.ts
+  components/
+    home-source-pipeline-layout.tsx
+    home-pipeline-column.tsx
+    home-available-sources-section.tsx
+    home-available-source-card.tsx
+    home-imported-sources-section.tsx
+    home-imported-source-row.tsx
+```
+
+The point of `use-home-page.ts` is not to invent more abstraction. It is just a
+clean place to hold Home orchestration once the route starts doing more:
+
+- derive available/imported view models
+- expose callbacks
+- handle import-success refresh/toast behavior
+- keep `index.tsx` mostly composition
+
+### Layout notes from existing components
+
+Use the current page and source overview rhythm as the guide:
+
+- keep `PageContainer` at the route level
+- keep headings/subcopy grouped in `space-y-1` or `space-y-gap` blocks
+- keep `Text` as the default for visible copy
+- prefer simple column wrappers over deeply nested section shells
+- preserve the existing calm spacing patterns before trying to redesign them
+
+This should feel like the current app, just reorganized into a clearer pipeline.
 
 ### Slice 2: Completion CTA plumbing
 

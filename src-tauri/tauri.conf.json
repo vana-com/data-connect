@@ -37,10 +37,17 @@
           "vana"
         ]
       }
+    },
+    "updater": {
+      "endpoints": [
+        "https://github.com/vana-com/data-connect/releases/latest/download/latest.json"
+      ],
+      "pubkey": "dW50cnVzdGVkIGNvbW1lbnQ6IG1pbmlzaWduIHB1YmxpYyBrZXk6IDlBNjk0QzI5MUI4MTE2NzMKUldSekZvRWJLVXhwbW91MG50WHpxTVFzR1dsWmErUGtOQVlEZ2IwVWRKVGR6L2swd0Vrc3k2TlUK"
     }
   },
   "bundle": {
     "active": true,
+    "createUpdaterArtifacts": true,
     "targets": [
       "dmg",
       "app",

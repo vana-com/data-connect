@@ -1,8 +1,7 @@
 const DATA_SOURCE_LABELS: Record<string, string> = {
   chatgpt: "ChatGPT",
   reddit: "Reddit",
-  twitter: "Twitter",
-  x: "X (Twitter)",
+  x: "X",
   instagram: "Instagram",
   linkedin: "LinkedIn",
   spotify: "Spotify",

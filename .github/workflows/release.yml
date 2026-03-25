@@ -154,11 +154,12 @@ jobs:
       - name: Build Tauri app
         uses: tauri-apps/tauri-action@v0
         env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           VITE_PRIVY_APP_ID: ${{ secrets.VITE_PRIVY_APP_ID }}
           VITE_PRIVY_CLIENT_ID: ${{ secrets.VITE_PRIVY_CLIENT_ID }}
           VITE_SESSION_RELAY_URL: ${{ secrets.VITE_SESSION_RELAY_URL }}
           VITE_GATEWAY_URL: ${{ secrets.VITE_GATEWAY_URL }}
+          TAURI_SIGNING_PRIVATE_KEY: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}
+          TAURI_SIGNING_PRIVATE_KEY_PASSWORD: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY_PASSWORD }}
           APPLE_CERTIFICATE: ${{ secrets.APPLE_BUILD_CERTIFICATE_BASE64 }}
           APPLE_CERTIFICATE_PASSWORD: ${{ secrets.APPLE_BUILD_CERTIFICATE_PASSWORD }}
           APPLE_SIGNING_IDENTITY: "Developer ID Application: Corsali, Inc (${{ secrets.APPLE_TEAM_ID }})"
@@ -166,11 +167,6 @@ jobs:
           APPLE_API_KEY: ${{ secrets.APPLE_ASC_API_KEY_ID }}
           APPLE_API_ISSUER: ${{ secrets.APPLE_ASC_API_KEY_ISSUER_UUID }}
         with:
-          tagName: ${{ github.ref_name }}
-          releaseName: 'DataConnect v__VERSION__'
-          releaseBody: 'See the assets to download this version and install.'
-          releaseDraft: false
-          prerelease: false
           args: --target ${{ matrix.target }}
 
       - name: Free disk space before finalization
@@ -372,6 +368,35 @@ jobs:
         run: |
           # Upload macOS DMG
           if [ "${{ matrix.platform }}" = "macos-latest" ]; then
+            version=$(grep '"version"' src-tauri/tauri.conf.json | head -1 | sed 's/.*: "\(.*\)".*/\1/')
+            arch=$(echo "${{ matrix.target }}" | cut -d- -f1)
+
+            for tarball in src-tauri/target/${{ matrix.target }}/release/bundle/macos/*.app.tar.gz; do
+              if [ -f "$tarball" ]; then
+                canonical_tarball="src-tauri/target/${{ matrix.target }}/release/bundle/macos/DataConnect_${version}_${arch}.app.tar.gz"
+                canonical_signature="${canonical_tarball}.sig"
+                signature_path="${tarball}.sig"
+
+                if [ "$tarball" != "$canonical_tarball" ]; then
+                  cp "$tarball" "$canonical_tarball"
+                fi
+
+                if [ ! -f "$signature_path" ]; then
+                  echo "::error::Missing updater signature for $tarball"
+                  exit 1
+                fi
+
+                if [ "$signature_path" != "$canonical_signature" ]; then
+                  cp "$signature_path" "$canonical_signature"
+                fi
+
+                gh release upload "${{ github.ref_name }}" "$canonical_tarball" --clobber
+                gh release upload "${{ github.ref_name }}" "$canonical_signature" --clobber
+                echo "Uploaded $(basename "$canonical_tarball")"
+                echo "Uploaded $(basename "$canonical_signature")"
+              fi
+            done
+
             for f in src-tauri/target/${{ matrix.target }}/release/bundle/dmg/*.dmg; do
               if [ -f "$f" ]; then
                 gh release upload "${{ github.ref_name }}" "$f" --clobber
@@ -407,3 +432,45 @@ jobs:
         if: matrix.platform == 'macos-latest' && always()
         run: |
           security delete-keychain $RUNNER_TEMP/app-signing.keychain-db || true
+
+  publish_updater_manifest:
+    runs-on: ubuntu-22.04
+    needs: build
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+
+      - name: Fetch release metadata
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          gh api "repos/${{ github.repository }}/releases/tags/${{ github.ref_name }}" > release.json
+
+      - name: Download updater signatures
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          mkdir -p updater-signatures
+          gh release download "${{ github.ref_name }}" \
+            --pattern "*.sig" \
+            --dir updater-signatures \
+            --clobber
+
+      - name: Build updater manifest
+        run: |
+          node scripts/build-updater-manifest.mjs \
+            --release-json release.json \
+            --signatures-dir updater-signatures \
+            --output latest.json
+
+      - name: Upload updater manifest
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          gh release upload "${{ github.ref_name }}" latest.json --clobber

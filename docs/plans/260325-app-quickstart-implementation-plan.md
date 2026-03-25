@@ -14,6 +14,12 @@ the concrete v1 contract:
 - optional AI-assisted generation through the same contract
 - adjacent starter-app action when there is exactly one strong source match
 
+Current status:
+
+- the first implementation wedge is now complete in code
+- the current next phase is artifact-quality and truthfulness work, not hosted
+  builder enablement
+
 ## Decision Anchors
 
 - `Create app` always means generate a new quickstart handoff from the current
@@ -23,6 +29,11 @@ the concrete v1 contract:
   exactly one live registry match for the current source.
 - v1 must remain local-first and must not upload exported source data remotely.
 - deterministic fallback artifact is mandatory even if AI generation exists.
+- the guaranteed completion contract is a copyable handoff artifact, not a
+  hosted app that is already runnable.
+- the repo's Personal Server grant/tunnel flow is real infrastructure, but a
+  generic hosted builder is not yet packaged into App Quickstart's default
+  happy path.
 - on-chain, CMS, deployment, and app-management concerns remain out of scope.
 
 ## Thin Vertical Slice
@@ -40,6 +51,12 @@ The first end-to-end implementation slice is:
 
 AI-assisted generation plugs into this same slice, but the slice is not allowed
 to depend on AI availability for usability.
+
+The important boundary for this plan is:
+
+- local-first handoff is guaranteed
+- hosted-builder execution is exploratory and must not be implied as already
+  working by default
 
 ## Implementation Slices
 
@@ -155,6 +172,25 @@ Work:
 
 This slice must not change the UI contract.
 
+### Slice 7: Artifact quality and execution-boundary tightening
+
+Work:
+
+- strengthen the handoff artifact so it reads like a dense, constrained build
+  brief rather than a generic starter prompt
+- make the prompt more explicit about the current local-first execution model
+- keep completion copy truthful about what exists now:
+  - copyable handoff artifact now
+  - protocol-aware hosted-builder handshake later
+- add tests that reject generic or overclaiming prompt content
+
+Do not implement in this slice:
+
+- generic "paste into Lovable and it just works" claims
+- hidden dependency on hosted builder registration, manifest, or grant wiring
+- any requirement that a hosted builder path be complete before the artifact is
+  useful
+
 ## Test Plan
 
 ### Route and UI behavior
@@ -186,6 +222,10 @@ This slice must not change the UI contract.
   - next step
 - `Copy prompt` copies the prompt string
 - `Reveal handoff files` creates and opens the quickstart folder
+- prompt content is source-specific, non-generic, and explicit about local-first
+  constraints
+- prompt content does not imply that a hosted builder integration is already
+  wired end-to-end
 
 ### Starter-app path
 
@@ -199,6 +239,8 @@ This slice must not change the UI contract.
 - completion states never claim the app is built/deployed/live
 - no quickstart happy-path code depends on on-chain or CMS calls
 - no quickstart path is gated on coding-agent installation detection
+- no quickstart copy claims that paste-into-hosted-builder is guaranteed before
+  a protocol-aware hosted-builder contract exists
 
 ## Acceptance Gates
 
@@ -225,6 +267,8 @@ Implementation is not complete until the following eval-backed gates pass:
 - fallback artifact quality may feel generic until source summaries improve
 - adding AI too early can pressure the privacy boundary if the adapter contract
   is not enforced strictly
+- implying hosted-builder readiness too early can make the handoff feel
+  misleading even if the underlying protocol pieces exist separately
 
 ## Exit Criteria
 
@@ -233,5 +277,8 @@ Implementation is not complete until the following eval-backed gates pass:
 - starter-app actions appear only when there is exactly one strong match and are
   clearly distinct from quickstart
 - users can copy the prompt and reveal handoff files from source overview
+- the shipped slice stays truthful about the current execution boundary: local
+  handoff is guaranteed; hosted-builder protocol integration is not yet the
+  default success contract
 - the shipped slice still excludes hosted generation, deployment, on-chain happy
   path work, CMS dependency, and Data Apps redesign

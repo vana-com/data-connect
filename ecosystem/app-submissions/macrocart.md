@@ -2,15 +2,19 @@
 id: macrocart
 name: MacroCart
 status: live
-externalUrl: https://macrocartapp.vercel.app?demo&flags
+externalUrl: https://macrocartapp.vercel.app?demo
 icon: M
-builderName: Ton-Chanh Le
-builderUrl: https://x.com/letonchanh
-description: Track Amazon and Shop orders with trend and spending insights.
+builderName: Tim Nunamaker
+builderUrl: https://x.com/dondo_eth
+description: Track Whole Foods and H-E-B orders with trend and spending insights.
 category: Commerce
 scopes:
-  - amazon.orders
-  - shop.orders
+  - heb.profile
+  - heb.orders
+  - heb.nutrition
+  - wholefoods.profile
+  - wholefoods.orders
+  - wholefoods.nutrition
 ---
 
 ## Builder
@@ -21,7 +25,7 @@ scopes:
 
 ## Demo
 
-- Demo URL: https://macrocartapp.vercel.app?demo&flags
+- Demo URL: https://macrocartapp.vercel.app?demo
 - Screenshots:
 
 ## Notes

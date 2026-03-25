@@ -37,6 +37,8 @@ interface SettingsAboutProps {
   appUpdateCheckStatus?:
     | "idle"
     | "checking"
+    | "downloading"
+    | "restartReady"
     | "upToDate"
     | "updateAvailable"
     | "unknown"
@@ -147,6 +149,10 @@ export function SettingsAbout({
   const appUpdateStatusDescription =
     appUpdateCheckStatus === "upToDate"
       ? { tone: "success" as const, label: "Up to date" }
+      : appUpdateCheckStatus === "restartReady"
+        ? { tone: "warning" as const, label: "Restart to update" }
+        : appUpdateCheckStatus === "downloading"
+          ? { tone: "accent" as const, label: "Downloading update…" }
       : appUpdateCheckStatus === "updateAvailable"
         ? { tone: "warning" as const, label: "Update available" }
         : appUpdateCheckStatus === "unknown"

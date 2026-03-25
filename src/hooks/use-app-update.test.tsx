@@ -9,16 +9,37 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest"
 import { MemoryRouter } from "react-router-dom"
 import { AppUpdateProvider, useAppUpdate } from "./use-app-update"
 
-const { mockCheckAppUpdate, mockOpenExternalUrl, mockToast } = vi.hoisted(
-  () => ({
-    mockCheckAppUpdate: vi.fn(),
-    mockOpenExternalUrl: vi.fn(),
-    mockToast: Object.assign(vi.fn(), { dismiss: vi.fn() }),
-  })
-)
+const {
+  mockCheckAppUpdate,
+  mockCheckForTauriUpdate,
+  mockDownloadTauriUpdate,
+  mockInstallTauriUpdate,
+  mockIsMacOsTauriUpdaterRuntime,
+  mockOpenExternalUrl,
+  mockRelaunchTauriApp,
+  mockToast,
+} = vi.hoisted(() => ({
+  mockCheckAppUpdate: vi.fn(),
+  mockCheckForTauriUpdate: vi.fn(),
+  mockDownloadTauriUpdate: vi.fn(),
+  mockInstallTauriUpdate: vi.fn(),
+  mockIsMacOsTauriUpdaterRuntime: vi.fn(),
+  mockOpenExternalUrl: vi.fn(),
+  mockRelaunchTauriApp: vi.fn(),
+  mockToast: Object.assign(vi.fn(), { dismiss: vi.fn() }),
+}))
 
 vi.mock("@/hooks/app-update/check-app-update", () => ({
   checkAppUpdate: (...args: unknown[]) => mockCheckAppUpdate(...args),
+}))
+
+vi.mock("@/hooks/app-update/tauri-updater", () => ({
+  checkForTauriUpdate: (...args: unknown[]) => mockCheckForTauriUpdate(...args),
+  downloadTauriUpdate: (...args: unknown[]) => mockDownloadTauriUpdate(...args),
+  installTauriUpdate: (...args: unknown[]) => mockInstallTauriUpdate(...args),
+  isMacOsTauriUpdaterRuntime: (...args: unknown[]) =>
+    mockIsMacOsTauriUpdaterRuntime(...args),
+  relaunchTauriApp: (...args: unknown[]) => mockRelaunchTauriApp(...args),
 }))
 
 vi.mock("@/lib/open-resource", () => ({
@@ -59,17 +80,24 @@ function renderWithAppUpdateProvider(initialEntries?: string[]) {
   )
 }
 
+async function flushMicrotasks() {
+  await Promise.resolve()
+  await Promise.resolve()
+}
+
 describe("AppUpdateProvider", () => {
   beforeEach(() => {
     localStorage.clear()
     vi.clearAllMocks()
+    mockIsMacOsTauriUpdaterRuntime.mockReturnValue(false)
   })
 
   afterEach(() => {
     cleanup()
+    vi.useRealTimers()
   })
 
-  it("shows update toast when a newer version is found", async () => {
+  it("shows fallback update toast when a newer version is found", async () => {
     mockCheckAppUpdate.mockResolvedValue({
       status: "updateAvailable",
       localVersion: "1.2.3",
@@ -89,6 +117,52 @@ describe("AppUpdateProvider", () => {
     })
   })
 
+  it("waits for the macOS startup settle delay before checking", async () => {
+    vi.useFakeTimers()
+    mockIsMacOsTauriUpdaterRuntime.mockReturnValue(true)
+    mockCheckForTauriUpdate.mockResolvedValue(null)
+
+    renderWithAppUpdateProvider()
+
+    expect(mockCheckForTauriUpdate).not.toHaveBeenCalled()
+
+    await vi.advanceTimersByTimeAsync(4_999)
+    expect(mockCheckForTauriUpdate).not.toHaveBeenCalled()
+
+    await vi.advanceTimersByTimeAsync(1)
+    await flushMicrotasks()
+
+    expect(mockCheckForTauriUpdate).toHaveBeenCalledTimes(1)
+  })
+
+  it("downloads a macOS update before showing the restart toast", async () => {
+    vi.useFakeTimers()
+    mockIsMacOsTauriUpdaterRuntime.mockReturnValue(true)
+    const update = {
+      version: "1.2.4",
+      notes: "Release notes",
+      publishedAt: "2026-03-24T09:10:11Z",
+      download: vi.fn(),
+      install: vi.fn(),
+    }
+
+    mockCheckForTauriUpdate.mockResolvedValue(update)
+    mockDownloadTauriUpdate.mockResolvedValue(undefined)
+
+    renderWithAppUpdateProvider()
+
+    await vi.advanceTimersByTimeAsync(5_000)
+    await flushMicrotasks()
+
+    expect(mockDownloadTauriUpdate).toHaveBeenCalledWith(update)
+    expect(mockToast).toHaveBeenCalledWith(
+      "Restart to update",
+      expect.objectContaining({
+        description: "Version 1.2.4 is ready",
+      })
+    )
+  })
+
   it("shows only one debug toast on initial debug mount", async () => {
     renderWithAppUpdateProvider(["/?appUpdateScenario=update-available"])
 
@@ -98,7 +172,113 @@ describe("AppUpdateProvider", () => {
     expect(mockCheckAppUpdate).toHaveBeenCalledTimes(1)
   })
 
-  it("dismisses update and suppresses same version", async () => {
+  it("dismisses a staged macOS update for the current session only", async () => {
+    vi.useFakeTimers()
+    mockIsMacOsTauriUpdaterRuntime.mockReturnValue(true)
+    const update = {
+      version: "1.2.4",
+      notes: "Release notes",
+      publishedAt: "2026-03-24T09:10:11Z",
+      download: vi.fn(),
+      install: vi.fn(),
+    }
+
+    mockCheckForTauriUpdate.mockResolvedValue(update)
+    mockDownloadTauriUpdate.mockResolvedValue(undefined)
+
+    renderWithAppUpdateProvider()
+
+    await vi.advanceTimersByTimeAsync(5_000)
+    await flushMicrotasks()
+    expect(mockToast).toHaveBeenCalledTimes(1)
+
+    const lastCall = mockToast.mock.calls.at(-1)
+    const options = lastCall?.[1] as {
+      cancel: { onClick: () => void }
+    }
+    options.cancel.onClick()
+
+    expect(
+      localStorage.getItem("dataconnect_app_update_dismissed_version")
+    ).toBeNull()
+    expect(mockToast.dismiss).toHaveBeenCalledWith("app-update-toast")
+
+    fireEvent.click(screen.getByRole("button", { name: "Trigger check" }))
+    await flushMicrotasks()
+
+    expect(mockCheckForTauriUpdate).toHaveBeenCalledTimes(1)
+    expect(mockDownloadTauriUpdate).toHaveBeenCalledTimes(1)
+    expect(mockToast).toHaveBeenCalledTimes(1)
+  })
+
+  it("re-shows a dismissed staged macOS update on manual check", async () => {
+    vi.useFakeTimers()
+    mockIsMacOsTauriUpdaterRuntime.mockReturnValue(true)
+    const update = {
+      version: "1.2.4",
+      notes: "Release notes",
+      publishedAt: "2026-03-24T09:10:11Z",
+      download: vi.fn(),
+      install: vi.fn(),
+    }
+
+    mockCheckForTauriUpdate.mockResolvedValue(update)
+    mockDownloadTauriUpdate.mockResolvedValue(undefined)
+
+    renderWithAppUpdateProvider()
+
+    await vi.advanceTimersByTimeAsync(5_000)
+    await flushMicrotasks()
+    expect(mockToast).toHaveBeenCalledTimes(1)
+
+    const firstOptions = mockToast.mock.calls.at(-1)?.[1] as {
+      cancel: { onClick: () => void }
+    }
+    firstOptions.cancel.onClick()
+
+    fireEvent.click(
+      screen.getByRole("button", { name: "Trigger manual check" })
+    )
+
+    await flushMicrotasks()
+    expect(mockToast).toHaveBeenCalledTimes(2)
+  })
+
+  it("installs and relaunches the staged macOS update on restart", async () => {
+    vi.useFakeTimers()
+    mockIsMacOsTauriUpdaterRuntime.mockReturnValue(true)
+    const update = {
+      version: "1.2.4",
+      notes: "Release notes",
+      publishedAt: "2026-03-24T09:10:11Z",
+      download: vi.fn(),
+      install: vi.fn(),
+    }
+
+    mockCheckForTauriUpdate.mockResolvedValue(update)
+    mockDownloadTauriUpdate.mockResolvedValue(undefined)
+    mockInstallTauriUpdate.mockResolvedValue(undefined)
+    mockRelaunchTauriApp.mockResolvedValue(undefined)
+
+    renderWithAppUpdateProvider()
+
+    await vi.advanceTimersByTimeAsync(5_000)
+    await flushMicrotasks()
+    expect(mockToast).toHaveBeenCalledTimes(1)
+
+    const lastCall = mockToast.mock.calls.at(-1)
+    const options = lastCall?.[1] as {
+      action: { onClick: () => void }
+    }
+    options.action.onClick()
+
+    await flushMicrotasks()
+
+    expect(mockInstallTauriUpdate).toHaveBeenCalledWith(update)
+    expect(mockRelaunchTauriApp).toHaveBeenCalledTimes(1)
+  })
+
+  it("keeps the fallback dismissed version behavior on non-macOS", async () => {
     mockCheckAppUpdate.mockResolvedValue({
       status: "updateAvailable",
       localVersion: "1.2.3",
@@ -124,10 +304,12 @@ describe("AppUpdateProvider", () => {
     expect(mockToast.dismiss).toHaveBeenCalledWith("app-update-toast")
 
     fireEvent.click(screen.getByRole("button", { name: "Trigger check" }))
-    expect(mockToast).toHaveBeenCalledTimes(1)
+    await waitFor(() => {
+      expect(mockToast).toHaveBeenCalledTimes(1)
+    })
   })
 
-  it("re-shows toast for a newer version after dismissal", async () => {
+  it("re-shows fallback toast for a newer version after dismissal", async () => {
     mockCheckAppUpdate
       .mockResolvedValueOnce({
         status: "updateAvailable",
@@ -170,7 +352,7 @@ describe("AppUpdateProvider", () => {
     })
   })
 
-  it("re-shows dismissed same-version toast on manual check", async () => {
+  it("re-shows dismissed same-version fallback toast on manual check", async () => {
     mockCheckAppUpdate.mockResolvedValue({
       status: "updateAvailable",
       localVersion: "1.2.3",
@@ -203,7 +385,7 @@ describe("AppUpdateProvider", () => {
     })
   })
 
-  it("opens release URL when update now is clicked", async () => {
+  it("opens release URL when fallback update now is clicked", async () => {
     mockCheckAppUpdate.mockResolvedValue({
       status: "updateAvailable",
       localVersion: "1.2.3",

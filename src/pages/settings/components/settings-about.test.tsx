@@ -243,4 +243,37 @@ describe("SettingsAbout", () => {
     fireEvent.click(screen.getByRole("button", { name: "Check for updates" }))
     expect(onCheckAppUpdate).toHaveBeenCalledTimes(1)
   })
+
+  it("shows restart-ready updater state without mislabeling it as a generic update", () => {
+    render(
+      <TooltipProvider delayDuration={120}>
+        <SettingsAbout
+          appVersion="1.2.3"
+          logPath="/tmp/logs"
+          appUpdateCheckStatus="restartReady"
+          nodeTestStatus="idle"
+          nodeTestResult={null}
+          nodeTestError={null}
+          browserStatus={{ available: true, browser_type: "system" }}
+          pathsDebug={null}
+          personalServer={{ status: "stopped", port: null, error: null }}
+          simulateNoChrome={false}
+          onTestNodeJs={vi.fn()}
+          onCheckBrowserStatus={vi.fn()}
+          onDebugPaths={vi.fn()}
+          onClearDebugPaths={vi.fn()}
+          onRestartPersonalServer={vi.fn()}
+          onStopPersonalServer={vi.fn()}
+          onSimulateNoChromeChange={vi.fn()}
+          onOpenLogFolder={vi.fn()}
+          clearPersonalServerDataStatus="idle"
+          clearPersonalServerDataError={null}
+          onClearPersonalServerData={vi.fn()}
+        />
+      </TooltipProvider>
+    )
+
+    expect(screen.getByText("Restart to update")).toBeTruthy()
+    expect(screen.queryByText("Update available")).toBeNull()
+  })
 })

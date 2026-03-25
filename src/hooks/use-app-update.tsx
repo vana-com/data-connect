@@ -18,17 +18,35 @@ import {
   isAppUpdateUiDebugEnabled,
   resolveAppUpdateUiDebugDecision,
 } from "@/hooks/app-update/app-update-ui-debug"
+import {
+  checkForTauriUpdate,
+  downloadTauriUpdate,
+  installTauriUpdate,
+  isMacOsTauriUpdaterRuntime,
+  relaunchTauriApp,
+  type TauriUpdaterHandle,
+} from "@/hooks/app-update/tauri-updater"
 import { openExternalUrl } from "@/lib/open-resource"
 
 const DISMISSED_VERSION_STORAGE_KEY = "dataconnect_app_update_dismissed_version"
-const APP_UPDATE_RECHECK_INTERVAL_MS = 6 * 60 * 60 * 1000
 const APP_UPDATE_TOAST_ID = "app-update-toast"
+export const APP_UPDATE_STARTUP_SETTLE_DELAY_MS = 5 * 1000
+export const APP_UPDATE_RECHECK_INTERVAL_MS = 6 * 60 * 60 * 1000
 
-type AppUpdateStatus = AppUpdateDecision["status"] | "idle" | "checking"
+type AppUpdateStatus =
+  | AppUpdateDecision["status"]
+  | "idle"
+  | "checking"
+  | "downloading"
+  | "restartReady"
 type UpdateAvailableDecision = Extract<
   AppUpdateDecision,
   { status: "updateAvailable" }
 >
+interface StagedMacUpdate {
+  remoteVersion: string
+  update: TauriUpdaterHandle
+}
 
 interface AppUpdateContextValue {
   isChecking: boolean
@@ -74,19 +92,62 @@ export function AppUpdateProvider({ children }: { children: ReactNode }) {
   const inFlightRef = useRef(false)
   const hasSeenInitialSearchEffectRef = useRef(false)
   const dismissedVersionRef = useRef<string | null>(readDismissedVersion())
+  const dismissedStagedVersionRef = useRef<string | null>(null)
+  const stagedMacUpdateRef = useRef<StagedMacUpdate | null>(null)
 
-  const dismissUpdate = useCallback((remoteVersion: string) => {
+  const dismissFallbackUpdate = useCallback((remoteVersion: string) => {
     dismissedVersionRef.current = remoteVersion
     writeDismissedVersion(remoteVersion)
     toast.dismiss(APP_UPDATE_TOAST_ID)
   }, [])
 
-  const openUpdate = useCallback((releaseUrl: string) => {
+  const dismissStagedMacUpdate = useCallback((remoteVersion: string) => {
+    dismissedStagedVersionRef.current = remoteVersion
+    toast.dismiss(APP_UPDATE_TOAST_ID)
+  }, [])
+
+  const openFallbackUpdate = useCallback((releaseUrl: string) => {
     void openExternalUrl(releaseUrl)
     toast.dismiss(APP_UPDATE_TOAST_ID)
   }, [])
 
-  const showUpdateToast = useCallback(
+  const restartToUpdate = useCallback(async () => {
+    const stagedUpdate = stagedMacUpdateRef.current
+    if (!stagedUpdate) return
+
+    try {
+      await installTauriUpdate(stagedUpdate.update)
+      await relaunchTauriApp()
+    } catch {
+      setLastStatus("unknown")
+      toast.dismiss(APP_UPDATE_TOAST_ID)
+    }
+  }, [])
+
+  const showRestartToast = useCallback(
+    (remoteVersion: string) => {
+      toast("Restart to update", {
+        id: APP_UPDATE_TOAST_ID,
+        description: `Version ${remoteVersion} is ready`,
+        duration: Infinity,
+        action: {
+          label: "Restart now",
+          onClick: () => {
+            void restartToUpdate()
+          },
+        },
+        cancel: {
+          label: "Later",
+          onClick: () => {
+            dismissStagedMacUpdate(remoteVersion)
+          },
+        },
+      })
+    },
+    [dismissStagedMacUpdate, restartToUpdate]
+  )
+
+  const showFallbackUpdateToast = useCallback(
     (decision: UpdateAvailableDecision) => {
       toast("Update available", {
         id: APP_UPDATE_TOAST_ID,
@@ -95,21 +156,21 @@ export function AppUpdateProvider({ children }: { children: ReactNode }) {
         action: {
           label: "Update now",
           onClick: () => {
-            openUpdate(decision.releaseUrl)
+            openFallbackUpdate(decision.releaseUrl)
           },
         },
         cancel: {
           label: "Later",
           onClick: () => {
-            dismissUpdate(decision.remoteVersion)
+            dismissFallbackUpdate(decision.remoteVersion)
           },
         },
       })
     },
-    [dismissUpdate, openUpdate]
+    [dismissFallbackUpdate, openFallbackUpdate]
   )
 
-  const applyDecision = useCallback(
+  const applyFallbackDecision = useCallback(
     (
       decision: AppUpdateDecision,
       options: { ignoreDismissedVersion?: boolean } = {}
@@ -139,9 +200,64 @@ export function AppUpdateProvider({ children }: { children: ReactNode }) {
         writeDismissedVersion(null)
       }
 
-      showUpdateToast(decision)
+      showFallbackUpdateToast(decision)
     },
-    [showUpdateToast]
+    [showFallbackUpdateToast]
+  )
+
+  const applyMacRestartReadyState = useCallback(
+    (
+      stagedUpdate: StagedMacUpdate,
+      options: { ignoreDismissedVersion?: boolean } = {}
+    ) => {
+      setLastStatus("restartReady")
+
+      if (
+        !options.ignoreDismissedVersion &&
+        dismissedStagedVersionRef.current === stagedUpdate.remoteVersion
+      ) {
+        toast.dismiss(APP_UPDATE_TOAST_ID)
+        return
+      }
+
+      if (
+        dismissedStagedVersionRef.current &&
+        dismissedStagedVersionRef.current !== stagedUpdate.remoteVersion
+      ) {
+        dismissedStagedVersionRef.current = null
+      }
+
+      showRestartToast(stagedUpdate.remoteVersion)
+    },
+    [showRestartToast]
+  )
+
+  const checkForMacOsTauriUpdates = useCallback(
+    async (options: { ignoreDismissedVersion?: boolean } = {}) => {
+      const stagedUpdate = stagedMacUpdateRef.current
+      if (stagedUpdate) {
+        applyMacRestartReadyState(stagedUpdate, options)
+        return
+      }
+
+      const availableUpdate = await checkForTauriUpdate()
+      if (!availableUpdate) {
+        setLastStatus("upToDate")
+        toast.dismiss(APP_UPDATE_TOAST_ID)
+        return
+      }
+
+      setLastStatus("downloading")
+      await downloadTauriUpdate(availableUpdate)
+
+      const nextStagedUpdate = {
+        remoteVersion: availableUpdate.version,
+        update: availableUpdate,
+      }
+      stagedMacUpdateRef.current = nextStagedUpdate
+      applyMacRestartReadyState(nextStagedUpdate, options)
+    },
+    [applyMacRestartReadyState]
   )
 
   const checkForUpdates = useCallback(
@@ -150,7 +266,7 @@ export function AppUpdateProvider({ children }: { children: ReactNode }) {
 
       const debugDecision = resolveAppUpdateUiDebugDecision(window.location.search)
       if (debugDecision) {
-        applyDecision(debugDecision, options)
+        applyFallbackDecision(debugDecision, options)
         return
       }
 
@@ -158,8 +274,12 @@ export function AppUpdateProvider({ children }: { children: ReactNode }) {
       setIsChecking(true)
       setLastStatus("checking")
       try {
-        const decision = await checkAppUpdate()
-        applyDecision(decision, options)
+        if (isMacOsTauriUpdaterRuntime()) {
+          await checkForMacOsTauriUpdates(options)
+        } else {
+          const decision = await checkAppUpdate()
+          applyFallbackDecision(decision, options)
+        }
       } catch {
         setLastStatus("unknown")
       } finally {
@@ -167,10 +287,20 @@ export function AppUpdateProvider({ children }: { children: ReactNode }) {
         setIsChecking(false)
       }
     },
-    [applyDecision]
+    [applyFallbackDecision, checkForMacOsTauriUpdates]
   )
 
   useEffect(() => {
+    if (isMacOsTauriUpdaterRuntime()) {
+      const timeoutId = window.setTimeout(() => {
+        void checkForUpdates()
+      }, APP_UPDATE_STARTUP_SETTLE_DELAY_MS)
+
+      return () => {
+        window.clearTimeout(timeoutId)
+      }
+    }
+
     void checkForUpdates()
   }, [checkForUpdates])
 

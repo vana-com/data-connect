@@ -1,8 +1,11 @@
-import { Link, useParams } from "react-router-dom"
+import { useCallback } from "react"
+import { Link, useParams, useSearchParams } from "react-router-dom"
 import { ArrowLeftIcon } from "lucide-react"
 import { PageContainer } from "@/components/elements/page-container"
 import { Text } from "@/components/typography/text"
 import { ROUTES } from "@/config/routes"
+import { openExternalUrl } from "@/lib/open-resource"
+import { SourceAppQuickstartDialog } from "./components/source-app-quickstart-dialog"
 import { SourceOverviewLayout } from "./components/source-overview-layout"
 import { SourcePreviewCard } from "./components/source-preview-card"
 import { SourceSidebar } from "./components/source-sidebar"
@@ -10,6 +13,7 @@ import { useSourceOverviewPage } from "./use-source-overview-page"
 
 export function SourceOverview() {
   const { platformId } = useParams<{ platformId: string }>()
+  const [searchParams, setSearchParams] = useSearchParams()
   const {
     sourceEntry,
     sourceName,
@@ -18,10 +22,32 @@ export function SourceOverview() {
     isPreviewLoading,
     previewError,
     copyStatus,
+    promptCopyStatus,
+    revealFilesStatus,
+    starterAppMatch,
+    quickstartIdea,
+    quickstartState,
+    openSourcePath,
+    sourceSummary,
     fallbackPreviewJson,
     handleOpenSourcePath,
     handleCopyFullJson,
+    handleQuickstartIdeaChange,
+    handleGenerateQuickstart,
+    handleCopyCreateAppPrompt,
+    handleRevealQuickstartFiles,
   } = useSourceOverviewPage(platformId)
+  const isCreateAppOpen = searchParams.get("intent") === "create-app"
+
+  const setCreateAppOpen = useCallback(
+    (open: boolean) => {
+      const nextParams = new URLSearchParams(searchParams)
+      if (open) nextParams.set("intent", "create-app")
+      else nextParams.delete("intent")
+      setSearchParams(nextParams, { replace: true })
+    },
+    [searchParams, setSearchParams]
+  )
 
   if (!sourceEntry) {
     return (
@@ -66,15 +92,38 @@ export function SourceOverview() {
           - Tauri file ops command surface: src-tauri/src/commands/file_ops.rs
           - IPC bindings: src/lib/tauri-paths.ts
         */
-        <SourcePreviewCard
-          isPreviewLoading={isPreviewLoading}
-          previewError={previewError}
-          preview={preview}
-          fallbackPreviewJson={fallbackPreviewJson}
-          copyStatus={copyStatus}
-          onCopyFullJson={handleCopyFullJson}
-          onOpenSourcePath={handleOpenSourcePath}
-        />
+        <>
+          <SourcePreviewCard
+            sourceName={sourceName}
+            isPreviewLoading={isPreviewLoading}
+            previewError={previewError}
+            preview={preview}
+            fallbackPreviewJson={fallbackPreviewJson}
+            copyStatus={copyStatus}
+            onCopyFullJson={handleCopyFullJson}
+            onOpenSourcePath={handleOpenSourcePath}
+            onOpenCreateApp={() => setCreateAppOpen(true)}
+          />
+          <SourceAppQuickstartDialog
+            open={isCreateAppOpen}
+            sourceName={sourceName}
+            localDataLocation={openSourcePath}
+            sourceSummary={sourceSummary}
+            starterAppMatch={starterAppMatch}
+            quickstartIdea={quickstartIdea}
+            quickstartState={quickstartState}
+            promptCopyStatus={promptCopyStatus}
+            revealFilesStatus={revealFilesStatus}
+            onOpenChange={setCreateAppOpen}
+            onQuickstartIdeaChange={handleQuickstartIdeaChange}
+            onGenerateQuickstart={handleGenerateQuickstart}
+            onCopyPrompt={handleCopyCreateAppPrompt}
+            onRevealFiles={handleRevealQuickstartFiles}
+            onOpenStarterApp={match => {
+              void openExternalUrl(match.destinationUrl)
+            }}
+          />
+        </>
       }
     />
   )

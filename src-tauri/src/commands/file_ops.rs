@@ -1,9 +1,9 @@
+use dirs::home_dir;
 use serde::{Deserialize, Serialize};
 use std::fs::{self, File};
 use std::io::Read;
 use std::path::{Path, PathBuf};
 use tauri::{AppHandle, Manager};
-use dirs::home_dir;
 
 #[derive(Debug, Serialize, Deserialize)]
 pub struct FileInfo {
@@ -128,10 +128,9 @@ fn scan_latest_json_in_tree(dir: &Path, latest: &mut Option<(PathBuf, i64)>) -> 
         }
 
         let timestamp = json_timestamp(&path);
-        if latest
-            .as_ref()
-            .map_or(true, |(_, current_timestamp)| timestamp > *current_timestamp)
-        {
+        if latest.as_ref().map_or(true, |(_, current_timestamp)| {
+            timestamp > *current_timestamp
+        }) {
             *latest = Some((path, timestamp));
         }
     }
@@ -156,8 +155,8 @@ fn find_latest_source_json(
 }
 
 fn read_export_content(path: &Path) -> Result<serde_json::Value, String> {
-    let content = fs::read_to_string(path)
-        .map_err(|e| format!("Failed to read export file: {}", e))?;
+    let content =
+        fs::read_to_string(path).map_err(|e| format!("Failed to read export file: {}", e))?;
     let data = serde_json::from_str::<serde_json::Value>(&content)
         .map_err(|e| format!("Failed to parse export file: {}", e))?;
     match data.get("content") {
@@ -184,6 +183,25 @@ fn sanitize_path_component(input: &str) -> String {
     }
 }
 
+fn slugify_path_component(input: &str) -> String {
+    let sanitized = sanitize_path_component(input)
+        .chars()
+        .map(|ch| if ch.is_ascii_alphanumeric() { ch } else { '-' })
+        .collect::<String>();
+
+    let collapsed = sanitized
+        .split('-')
+        .filter(|segment| !segment.is_empty())
+        .collect::<Vec<_>>()
+        .join("-");
+
+    if collapsed.is_empty() {
+        "quickstart".to_string()
+    } else {
+        collapsed.to_lowercase()
+    }
+}
+
 fn truncate_utf8_by_bytes(input: &str, max_bytes: usize) -> (String, bool) {
     if input.len() <= max_bytes {
         return (input.to_string(), false);
@@ -205,8 +223,8 @@ fn truncate_utf8_by_bytes(input: &str, max_bytes: usize) -> (String, bool) {
 }
 
 fn read_raw_export_preview(path: &Path, max_bytes: usize) -> Result<(String, bool), String> {
-    let mut file = File::open(path)
-        .map_err(|e| format!("Failed to open export file for preview: {}", e))?;
+    let mut file =
+        File::open(path).map_err(|e| format!("Failed to open export file for preview: {}", e))?;
     let mut buffer = vec![0u8; max_bytes.saturating_add(1)];
     let bytes_read = file
         .read(&mut buffer)
@@ -220,7 +238,10 @@ fn read_raw_export_preview(path: &Path, max_bytes: usize) -> Result<(String, boo
         end -= 1;
     }
 
-    Ok((String::from_utf8_lossy(&slice[..end]).to_string(), is_truncated))
+    Ok((
+        String::from_utf8_lossy(&slice[..end]).to_string(),
+        is_truncated,
+    ))
 }
 
 fn build_source_export_preview(
@@ -283,7 +304,7 @@ pub async fn write_export_data(
     platform_id: String,
     company: String,
     name: Option<String>, // Optional display name from frontend
-    data: String, // JSON string from frontend
+    data: String,         // JSON string from frontend
 ) -> Result<String, String> {
     let timestamp = std::time::SystemTime::now()
         .duration_since(std::time::UNIX_EPOCH)
@@ -291,8 +312,8 @@ pub async fn write_export_data(
         .as_secs();
 
     // Parse the JSON string to get the content
-    let content: serde_json::Value = serde_json::from_str(&data)
-        .map_err(|e| format!("Failed to parse data: {}", e))?;
+    let content: serde_json::Value =
+        serde_json::from_str(&data).map_err(|e| format!("Failed to parse data: {}", e))?;
 
     // Use provided name, or try to extract from content, or default to platform_id
     let name = name.unwrap_or_else(|| {
@@ -379,21 +400,30 @@ pub async fn load_runs(app: AppHandle) -> Result<Vec<SavedRun>, String> {
     let mut runs = Vec::new();
 
     // Walk through company directories
-    for company_entry in fs::read_dir(&data_dir).map_err(|e| e.to_string())?.flatten() {
+    for company_entry in fs::read_dir(&data_dir)
+        .map_err(|e| e.to_string())?
+        .flatten()
+    {
         if !company_entry.path().is_dir() {
             continue;
         }
         let company = company_entry.file_name().to_string_lossy().to_string();
 
         // Walk through platform directories
-        for platform_entry in fs::read_dir(company_entry.path()).map_err(|e| e.to_string())?.flatten() {
+        for platform_entry in fs::read_dir(company_entry.path())
+            .map_err(|e| e.to_string())?
+            .flatten()
+        {
             if !platform_entry.path().is_dir() {
                 continue;
             }
             let platform_name = platform_entry.file_name().to_string_lossy().to_string();
 
             // Walk through run directories
-            for run_entry in fs::read_dir(platform_entry.path()).map_err(|e| e.to_string())?.flatten() {
+            for run_entry in fs::read_dir(platform_entry.path())
+                .map_err(|e| e.to_string())?
+                .flatten()
+            {
                 if !run_entry.path().is_dir() {
                     continue;
                 }
@@ -402,14 +432,20 @@ pub async fn load_runs(app: AppHandle) -> Result<Vec<SavedRun>, String> {
 
                 // Find JSON files in the run directory
                 let mut latest_json: Option<(PathBuf, u64)> = None;
-                for file_entry in fs::read_dir(&run_path).map_err(|e| e.to_string())?.flatten() {
+                for file_entry in fs::read_dir(&run_path)
+                    .map_err(|e| e.to_string())?
+                    .flatten()
+                {
                     let path = file_entry.path();
                     if path.extension().map_or(false, |ext| ext == "json") {
                         // Extract timestamp from filename (format: platformId_timestamp.json)
                         let filename = path.file_stem().unwrap_or_default().to_string_lossy();
                         if let Some(ts_str) = filename.split('_').last() {
                             if let Ok(ts) = ts_str.parse::<u64>() {
-                                if latest_json.as_ref().map_or(true, |(_, prev_ts)| ts > *prev_ts) {
+                                if latest_json
+                                    .as_ref()
+                                    .map_or(true, |(_, prev_ts)| ts > *prev_ts)
+                                {
                                     latest_json = Some((path.clone(), ts));
                                 }
                             }
@@ -422,7 +458,8 @@ pub async fn load_runs(app: AppHandle) -> Result<Vec<SavedRun>, String> {
                     if let Ok(content) = fs::read_to_string(&json_path) {
                         if let Ok(data) = serde_json::from_str::<serde_json::Value>(&content) {
                             // Check if this export was synced to personal server
-                            let synced = data.get("syncedToPersonalServer")
+                            let synced = data
+                                .get("syncedToPersonalServer")
                                 .and_then(|v| v.as_bool())
                                 .unwrap_or(false);
                             let scope = data
@@ -434,7 +471,10 @@ pub async fn load_runs(app: AppHandle) -> Result<Vec<SavedRun>, String> {
                             // (content was stripped during sync). For unsynced, parse from content.
                             let (items_exported, item_label) = if synced {
                                 let items = data.get("itemsExported").and_then(|v| v.as_i64());
-                                let label = data.get("itemLabel").and_then(|v| v.as_str()).map(|s| s.to_string());
+                                let label = data
+                                    .get("itemLabel")
+                                    .and_then(|v| v.as_str())
+                                    .map(|s| s.to_string());
                                 (items, label)
                             } else {
                                 // Extract items count and label from the content
@@ -443,7 +483,8 @@ pub async fn load_runs(app: AppHandle) -> Result<Vec<SavedRun>, String> {
                                 let content_data = content.and_then(|c| c.get("data"));
 
                                 // Try exportSummary at content.exportSummary or content.data.exportSummary
-                                let export_summary = content.and_then(|c| c.get("exportSummary"))
+                                let export_summary = content
+                                    .and_then(|c| c.get("exportSummary"))
                                     .or_else(|| content_data.and_then(|d| d.get("exportSummary")));
 
                                 let items = export_summary
@@ -451,12 +492,30 @@ pub async fn load_runs(app: AppHandle) -> Result<Vec<SavedRun>, String> {
                                     .or_else(|| {
                                         let sources = [content, content_data];
                                         for src in sources.iter().flatten() {
-                                            let count = src.get("totalConversations").and_then(|v| v.as_i64())
-                                                .or_else(|| src.get("totalPosts").and_then(|v| v.as_i64()))
-                                                .or_else(|| src.get("conversations").and_then(|v| v.as_array()).map(|a| a.len() as i64))
-                                                .or_else(|| src.get("posts").and_then(|v| v.as_array()).map(|a| a.len() as i64))
-                                                .or_else(|| src.get("memories").and_then(|v| v.as_array()).map(|a| a.len() as i64))
-                                                .or_else(|| src.get("media_count").and_then(|v| v.as_i64()));
+                                            let count = src
+                                                .get("totalConversations")
+                                                .and_then(|v| v.as_i64())
+                                                .or_else(|| {
+                                                    src.get("totalPosts").and_then(|v| v.as_i64())
+                                                })
+                                                .or_else(|| {
+                                                    src.get("conversations")
+                                                        .and_then(|v| v.as_array())
+                                                        .map(|a| a.len() as i64)
+                                                })
+                                                .or_else(|| {
+                                                    src.get("posts")
+                                                        .and_then(|v| v.as_array())
+                                                        .map(|a| a.len() as i64)
+                                                })
+                                                .or_else(|| {
+                                                    src.get("memories")
+                                                        .and_then(|v| v.as_array())
+                                                        .map(|a| a.len() as i64)
+                                                })
+                                                .or_else(|| {
+                                                    src.get("media_count").and_then(|v| v.as_i64())
+                                                });
                                             if count.is_some() {
                                                 return count;
                                             }
@@ -465,11 +524,17 @@ pub async fn load_runs(app: AppHandle) -> Result<Vec<SavedRun>, String> {
                                     });
 
                                 let label = export_summary
-                                    .and_then(|s| s.get("label").and_then(|v| v.as_str()).map(|s| s.to_string()))
+                                    .and_then(|s| {
+                                        s.get("label")
+                                            .and_then(|v| v.as_str())
+                                            .map(|s| s.to_string())
+                                    })
                                     .or_else(|| {
                                         let sources = [content, content_data];
                                         for src in sources.iter().flatten() {
-                                            if src.get("posts").is_some() || src.get("media_count").is_some() {
+                                            if src.get("posts").is_some()
+                                                || src.get("media_count").is_some()
+                                            {
                                                 return Some("posts".to_string());
                                             } else if src.get("conversations").is_some() {
                                                 return Some("conversations".to_string());
@@ -526,7 +591,10 @@ pub async fn load_runs(app: AppHandle) -> Result<Vec<SavedRun>, String> {
 
 /// Load detailed export data for a specific run (conversations, posts, etc.)
 #[tauri::command]
-pub async fn load_run_export_data(_run_id: String, export_path: String) -> Result<serde_json::Value, String> {
+pub async fn load_run_export_data(
+    _run_id: String,
+    export_path: String,
+) -> Result<serde_json::Value, String> {
     let run_path = PathBuf::from(&export_path);
 
     if !run_path.exists() {
@@ -605,8 +673,7 @@ pub async fn load_latest_source_export_full(
     name: String,
     scope: Option<String>,
 ) -> Result<Option<String>, String> {
-    let Some((json_path, _)) =
-        find_latest_source_json(&app, &company, &name, scope.as_deref())?
+    let Some((json_path, _)) = find_latest_source_json(&app, &company, &name, scope.as_deref())?
     else {
         return Ok(None);
     };
@@ -632,8 +699,7 @@ pub async fn open_platform_export_folder(
         }
     }
 
-    let candidate_dirs =
-        build_source_data_candidates(&app, &company, &name, scope.as_deref())?;
+    let candidate_dirs = build_source_data_candidates(&app, &company, &name, scope.as_deref())?;
     let existing_dir = candidate_dirs.into_iter().find(|dir| dir.exists());
     let data_dir = existing_dir.ok_or_else(|| "Export folder does not exist".to_string())?;
     super::download::open_folder(data_dir.to_string_lossy().to_string()).await
@@ -649,9 +715,15 @@ pub async fn open_personal_server_scope_folder(scope: String) -> Result<(), Stri
 
     let home = home_dir().ok_or_else(|| "Failed to get home directory".to_string())?;
     let roots = [
-        home.join("data-connect").join("personal-server").join("data"),
-        home.join("dev.dataconnect").join("personal-server").join("data"),
-        home.join(".dataconnect").join("personal-server").join("data"),
+        home.join("data-connect")
+            .join("personal-server")
+            .join("data"),
+        home.join("dev.dataconnect")
+            .join("personal-server")
+            .join("data"),
+        home.join(".dataconnect")
+            .join("personal-server")
+            .join("data"),
     ];
 
     for root in roots {
@@ -668,6 +740,38 @@ pub async fn open_personal_server_scope_folder(scope: String) -> Result<(), Stri
         "Personal server scope folder does not exist for scope: {}",
         scope
     ))
+}
+
+/// Write app quickstart handoff files into a dedicated folder under app-data.
+#[tauri::command]
+pub async fn write_app_quickstart_files(
+    app: AppHandle,
+    source_id: String,
+    app_idea: String,
+    markdown_content: String,
+    source_context_json: String,
+) -> Result<String, String> {
+    let app_data_dir = app
+        .path()
+        .app_data_dir()
+        .map_err(|e| format!("Failed to get app data dir: {}", e))?;
+
+    let source_segment = sanitize_path_component(&source_id);
+    let idea_segment = slugify_path_component(&app_idea);
+    let folder_path = app_data_dir
+        .join("app_quickstarts")
+        .join(source_segment)
+        .join(idea_segment);
+
+    fs::create_dir_all(&folder_path)
+        .map_err(|e| format!("Failed to create app quickstart folder: {}", e))?;
+
+    fs::write(folder_path.join("app-quickstart.md"), markdown_content)
+        .map_err(|e| format!("Failed to write app quickstart markdown: {}", e))?;
+    fs::write(folder_path.join("source-context.json"), source_context_json)
+        .map_err(|e| format!("Failed to write app quickstart source context: {}", e))?;
+
+    Ok(folder_path.to_string_lossy().to_string())
 }
 
 /// Mark an export as synced after successful delivery to the personal server.
@@ -706,12 +810,18 @@ pub async fn mark_export_synced(
         .join("exported_data");
 
     if !dir_path.starts_with(&data_dir) {
-        return Err(format!("Refusing to modify path outside exported_data: {}", export_path));
+        return Err(format!(
+            "Refusing to modify path outside exported_data: {}",
+            export_path
+        ));
     }
 
     // Find the JSON file in the run directory
     let mut json_path: Option<PathBuf> = None;
-    for entry in fs::read_dir(&dir_path).map_err(|e| e.to_string())?.flatten() {
+    for entry in fs::read_dir(&dir_path)
+        .map_err(|e| e.to_string())?
+        .flatten()
+    {
         let path = entry.path();
         if path.extension().map_or(false, |ext| ext == "json") {
             json_path = Some(path);
@@ -719,13 +829,14 @@ pub async fn mark_export_synced(
         }
     }
 
-    let json_path = json_path.ok_or_else(|| "No JSON file found in export directory".to_string())?;
+    let json_path =
+        json_path.ok_or_else(|| "No JSON file found in export directory".to_string())?;
 
     // Read existing JSON, strip content, add synced metadata
-    let raw = fs::read_to_string(&json_path)
-        .map_err(|e| format!("Failed to read export file: {}", e))?;
-    let mut data: serde_json::Value = serde_json::from_str(&raw)
-        .map_err(|e| format!("Failed to parse export file: {}", e))?;
+    let raw =
+        fs::read_to_string(&json_path).map_err(|e| format!("Failed to read export file: {}", e))?;
+    let mut data: serde_json::Value =
+        serde_json::from_str(&raw).map_err(|e| format!("Failed to parse export file: {}", e))?;
 
     let synced_at = chrono::Utc::now().to_rfc3339();
 
@@ -744,10 +855,13 @@ pub async fn mark_export_synced(
 
     let updated = serde_json::to_string_pretty(&data)
         .map_err(|e| format!("Failed to serialize export: {}", e))?;
-    fs::write(&json_path, &updated)
-        .map_err(|e| format!("Failed to write export: {}", e))?;
+    fs::write(&json_path, &updated).map_err(|e| format!("Failed to write export: {}", e))?;
 
-    log::info!("Marked export as synced for run {} ({})", run_id, json_path.display());
+    log::info!(
+        "Marked export as synced for run {} ({})",
+        run_id,
+        json_path.display()
+    );
     Ok(())
 }
 
@@ -775,8 +889,8 @@ pub async fn delete_exported_run(app: AppHandle, export_path: String) -> Result<
 
     let canonical_data_dir = fs::canonicalize(&data_dir)
         .map_err(|e| format!("Failed to resolve exported_data path: {}", e))?;
-    let canonical_dir_path = fs::canonicalize(&dir_path)
-        .map_err(|e| format!("Failed to resolve export path: {}", e))?;
+    let canonical_dir_path =
+        fs::canonicalize(&dir_path).map_err(|e| format!("Failed to resolve export path: {}", e))?;
 
     if !canonical_dir_path.starts_with(&canonical_data_dir) {
         return Err(format!(
@@ -856,8 +970,7 @@ pub async fn get_app_config() -> Result<AppConfig, String> {
     let content = fs::read_to_string(&config_path)
         .map_err(|e| format!("Failed to read config file: {}", e))?;
 
-    serde_json::from_str(&content)
-        .map_err(|e| format!("Failed to parse config file: {}", e))
+    serde_json::from_str(&content).map_err(|e| format!("Failed to parse config file: {}", e))
 }
 
 /// Set app configuration to ~/.dataconnect/config.json
@@ -874,8 +987,7 @@ pub async fn set_app_config(config: AppConfig) -> Result<(), String> {
     let json = serde_json::to_string_pretty(&config)
         .map_err(|e| format!("Failed to serialize config: {}", e))?;
 
-    fs::write(&config_path, json)
-        .map_err(|e| format!("Failed to write config file: {}", e))?;
+    fs::write(&config_path, json).map_err(|e| format!("Failed to write config file: {}", e))?;
 
     log::info!("App config saved to: {:?}", config_path);
     Ok(())
@@ -978,7 +1090,10 @@ mod tests {
             "null content should fall back to root export object"
         );
         assert_eq!(content["content"], serde_json::Value::Null);
-        assert_eq!(content["syncedToPersonalServer"], serde_json::Value::Bool(true));
+        assert_eq!(
+            content["syncedToPersonalServer"],
+            serde_json::Value::Bool(true)
+        );
     }
 
     #[test]

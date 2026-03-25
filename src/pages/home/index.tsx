@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react"
 import { useLocation, useNavigate } from "react-router-dom"
 import { useSelector } from "react-redux"
+import { toast } from "sonner"
 import { usePlatforms } from "@/hooks/usePlatforms"
 import { useConnector } from "@/hooks/useConnector"
 import type { Platform, RootState } from "@/types"
@@ -33,6 +34,16 @@ import {
   getAppUpdateUiDebugScenario,
   isAppUpdateUiDebugEnabled,
 } from "@/hooks/app-update/app-update-ui-debug"
+
+const getQuickstartRoute = (platform: {
+  id: string
+  name?: string
+  company?: string
+}) => {
+  const platformEntry = getPlatformRegistryEntry(platform)
+  const sourceId = platformEntry?.id ?? platform.id
+  return `${ROUTES.source.replace(":platformId", sourceId)}?intent=create-app`
+}
 
 export function Home() {
   const homeDebugScenarioLabel: Record<string, string> = {
@@ -80,9 +91,8 @@ export function Home() {
   const displayPlatforms = platforms
 
   useEffect(() => {
-    const successfulRunIds = runs
-      .filter(run => run.status === "success")
-      .map(run => run.id)
+    const successfulRuns = runs.filter(run => run.status === "success")
+    const successfulRunIds = successfulRuns.map(run => run.id)
 
     if (knownSuccessfulRunIdsRef.current === null) {
       knownSuccessfulRunIdsRef.current = new Set(successfulRunIds)
@@ -90,16 +100,38 @@ export function Home() {
     }
 
     const knownSuccessfulRunIds = knownSuccessfulRunIdsRef.current
-    const hasNewSuccess = successfulRunIds.some(runId => {
-      if (knownSuccessfulRunIds.has(runId)) return false
-      knownSuccessfulRunIds.add(runId)
+    const newSuccessfulRuns = successfulRuns.filter(run => {
+      if (knownSuccessfulRunIds.has(run.id)) return false
+      knownSuccessfulRunIds.add(run.id)
       return true
     })
 
-    if (hasNewSuccess) {
-      void refreshConnectedStatus()
+    if (newSuccessfulRuns.length === 0) {
+      return
     }
-  }, [refreshConnectedStatus, runs])
+
+    void refreshConnectedStatus()
+
+    newSuccessfulRuns.forEach(run => {
+      const platformEntry = getPlatformRegistryEntry({
+        id: run.platformId,
+        name: run.name,
+        company: run.company,
+      })
+      if (!platformEntry) return
+
+      toast("Import complete", {
+        id: `app-quickstart-${run.id}`,
+        description: `${platformEntry.displayName} data is ready for a quickstart.`,
+        action: {
+          label: "Create app",
+          onClick: () => {
+            navigate(getQuickstartRoute(run))
+          },
+        },
+      })
+    })
+  }, [navigate, refreshConnectedStatus, runs])
 
   const handleImportSource = useCallback(
     async (platform: Platform) => {
@@ -240,6 +272,13 @@ export function Home() {
     [navigate]
   )
 
+  const handleCreateApp = useCallback(
+    (platform: Platform) => {
+      navigate(getQuickstartRoute(platform))
+    },
+    [navigate]
+  )
+
   return (
     <PageContainer>
       <div className="space-y-w8">
@@ -251,6 +290,7 @@ export function Home() {
           runs={connectedSourcesRuns}
           headline="Your imported data"
           onOpenRuns={handleOpenRuns}
+          onCreateApp={handleCreateApp}
           onSyncSource={handleImportSource}
         />
         <AvailableSourcesList

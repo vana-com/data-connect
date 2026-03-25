@@ -1,4 +1,4 @@
-import { CopyIcon, FolderIcon } from "lucide-react"
+import { CopyIcon, FolderIcon, WandSparklesIcon } from "lucide-react"
 import { LoadingButton } from "@/components/elements/button-loading"
 import { Text } from "@/components/typography/text"
 import { cn } from "@/lib/classes"
@@ -7,6 +7,7 @@ import type { CopyStatus } from "../types"
 import { formatBytes } from "../utils"
 
 interface SourcePreviewCardProps {
+  sourceName: string
   isPreviewLoading: boolean
   previewError: string | null
   preview: SourceExportPreview | null
@@ -14,9 +15,11 @@ interface SourcePreviewCardProps {
   copyStatus: CopyStatus
   onCopyFullJson: () => Promise<void>
   onOpenSourcePath: () => Promise<void>
+  onOpenCreateApp: () => void
 }
 
 export function SourcePreviewCard({
+  sourceName,
   isPreviewLoading,
   previewError,
   preview,
@@ -24,10 +27,21 @@ export function SourcePreviewCard({
   copyStatus,
   onCopyFullJson,
   onOpenSourcePath,
+  onOpenCreateApp,
 }: SourcePreviewCardProps) {
   return (
     <section className="rounded-card ring ring-border bg-card overflow-hidden flex min-h-[520px] h-full flex-col">
       <div className="flex items-center justify-end gap-1.5 border-b border-border p-3">
+        <PreviewActionButton
+          icon={<WandSparklesIcon aria-hidden />}
+          className="min-w-[105px]"
+          isLoading={false}
+          isError={false}
+          loadingLabel=""
+          label="Create app"
+          ariaLabel={`Create app from ${sourceName}`}
+          onClick={onOpenCreateApp}
+        />
         <PreviewActionButton
           icon={<FolderIcon aria-hidden />}
           className="min-w-[105px]"
@@ -114,6 +128,7 @@ interface PreviewActionButtonProps {
   isError: boolean
   loadingLabel: string
   label: string
+  ariaLabel?: string
   onClick: () => void
 }
 
@@ -124,6 +139,7 @@ function PreviewActionButton({
   isError,
   loadingLabel,
   label,
+  ariaLabel,
   onClick,
 }: PreviewActionButtonProps) {
   return (
@@ -141,6 +157,7 @@ function PreviewActionButton({
         className
       )}
       onClick={onClick}
+      aria-label={ariaLabel}
     >
       {icon}
       {label}

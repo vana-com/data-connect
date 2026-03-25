@@ -13,7 +13,10 @@ const mockGetUserDataPath = vi.fn()
 const mockOpenPlatformExportFolder = vi.fn()
 const mockLoadLatestSourceExportPreview = vi.fn()
 const mockLoadLatestSourceExportFull = vi.fn()
+const mockWriteAppQuickstartFiles = vi.fn()
 const mockOpenExportFolderPath = vi.fn()
+const mockOpenLocalPath = vi.fn()
+const mockGenerateAiQuickstartArtifact = vi.fn()
 const silenceConsoleError = () =>
   vi.spyOn(console, "error").mockImplementation(() => {})
 
@@ -30,11 +33,20 @@ vi.mock("@/lib/tauri-paths", () => ({
     mockLoadLatestSourceExportPreview(...args),
   loadLatestSourceExportFull: (...args: unknown[]) =>
     mockLoadLatestSourceExportFull(...args),
+  writeAppQuickstartFiles: (...args: unknown[]) =>
+    mockWriteAppQuickstartFiles(...args),
 }))
 
 vi.mock("@/lib/open-resource", () => ({
-  openExportFolderPath: (...args: unknown[]) => mockOpenExportFolderPath(...args),
+  openExportFolderPath: (...args: unknown[]) =>
+    mockOpenExportFolderPath(...args),
+  openLocalPath: (...args: unknown[]) => mockOpenLocalPath(...args),
   toFileUrl: (path: string) => `file://${path}`,
+}))
+
+vi.mock("./app-quickstart-ai", () => ({
+  generateAiQuickstartArtifact: (...args: unknown[]) =>
+    mockGenerateAiQuickstartArtifact(...args),
 }))
 
 beforeEach(() => {
@@ -53,15 +65,20 @@ beforeEach(() => {
   }
   mockGetUserDataPath.mockResolvedValue("/tmp/dataconnect")
   mockLoadLatestSourceExportPreview.mockResolvedValue({
-    previewJson: "{\n  \"ok\": true\n}",
+    previewJson: '{\n  "ok": true\n}',
     isTruncated: false,
     filePath: "/tmp/dataconnect/exported_data/OpenAI/ChatGPT/chatgpt.json",
     fileSizeBytes: 2048,
     exportedAt: "2026-02-11T10:00:00.000Z",
   })
-  mockLoadLatestSourceExportFull.mockResolvedValue("{\"ok\":true}")
+  mockLoadLatestSourceExportFull.mockResolvedValue('{"ok":true}')
+  mockWriteAppQuickstartFiles.mockResolvedValue(
+    "/tmp/dataconnect/app_quickstarts/chatgpt/explorer"
+  )
   mockOpenExportFolderPath.mockResolvedValue(true)
+  mockOpenLocalPath.mockResolvedValue(true)
   mockOpenPlatformExportFolder.mockResolvedValue(undefined)
+  mockGenerateAiQuickstartArtifact.mockResolvedValue({ status: "unavailable" })
 })
 
 describe("useSourceOverviewPage", () => {
@@ -202,7 +219,7 @@ describe("useSourceOverviewPage", () => {
   it("falls back to preview JSON when full export load fails", async () => {
     const consoleErrorSpy = silenceConsoleError()
     mockLoadLatestSourceExportPreview.mockResolvedValue({
-      previewJson: "{\n  \"from\": \"preview\"\n}",
+      previewJson: '{\n  "from": "preview"\n}',
       isTruncated: false,
       filePath: "/tmp/dataconnect/exported_data/OpenAI/ChatGPT/chatgpt.json",
       fileSizeBytes: 2048,
@@ -221,7 +238,9 @@ describe("useSourceOverviewPage", () => {
       const { result } = renderHook(() => useSourceOverviewPage("chatgpt"))
 
       await waitFor(() => {
-        expect(result.current.preview?.previewJson).toContain("\"from\": \"preview\"")
+        expect(result.current.preview?.previewJson).toContain(
+          '"from": "preview"'
+        )
       })
 
       await act(async () => {
@@ -232,7 +251,7 @@ describe("useSourceOverviewPage", () => {
         "Failed to load full source export JSON:",
         expect.any(Error)
       )
-      expect(writeText).toHaveBeenCalledWith("{\n  \"from\": \"preview\"\n}")
+      expect(writeText).toHaveBeenCalledWith('{\n  "from": "preview"\n}')
       expect(result.current.copyStatus).toBe("copied")
     } finally {
       consoleErrorSpy.mockRestore()
@@ -279,8 +298,113 @@ describe("useSourceOverviewPage", () => {
     }
   })
 
+  it("builds a fallback quickstart artifact when AI is unavailable", async () => {
+    const { result } = renderHook(() => useSourceOverviewPage("chatgpt"))
+
+    await waitFor(() => {
+      expect(result.current.sourceEntry?.id).toBe("chatgpt")
+    })
+
+    await act(async () => {
+      result.current.handleQuickstartIdeaChange(
+        "A searchable conversation explorer"
+      )
+    })
+
+    await act(async () => {
+      await result.current.handleGenerateQuickstart()
+    })
+
+    expect(mockGenerateAiQuickstartArtifact).toHaveBeenCalledWith({
+      appIdea: "A searchable conversation explorer",
+      sourceId: "chatgpt",
+      sourceLabel: "ChatGPT",
+    })
+    expect(result.current.quickstartState.status).toBe("fallback-ready")
+    expect(result.current.createAppPrompt).toContain(
+      "Build a local-first starter app"
+    )
+    expect(result.current.sourceSummary).toContain(
+      "ChatGPT preview includes top-level keys"
+    )
+  })
+
+  it("reveals quickstart files from the dedicated app quickstart folder", async () => {
+    const { result } = renderHook(() => useSourceOverviewPage("chatgpt"))
+
+    await waitFor(() => {
+      expect(result.current.sourceEntry?.id).toBe("chatgpt")
+    })
+
+    await act(async () => {
+      result.current.handleQuickstartIdeaChange("A local portfolio site")
+    })
+
+    await act(async () => {
+      await result.current.handleGenerateQuickstart()
+    })
+
+    await act(async () => {
+      await result.current.handleRevealQuickstartFiles()
+    })
+
+    expect(mockWriteAppQuickstartFiles).toHaveBeenCalledWith(
+      "chatgpt",
+      "A local portfolio site",
+      expect.stringContaining(
+        "# A local portfolio site quickstart from ChatGPT"
+      ),
+      expect.stringContaining(
+        '"localDataLocation": "/tmp/dataconnect/exported_data/OpenAI/ChatGPT/chatgpt.json"'
+      )
+    )
+    expect(mockOpenLocalPath).toHaveBeenCalledWith(
+      "/tmp/dataconnect/app_quickstarts/chatgpt/explorer"
+    )
+    expect(result.current.revealFilesStatus).toBe("copied")
+  })
+
+  it("keeps a fallback artifact available when AI retry fails", async () => {
+    const consoleErrorSpy = silenceConsoleError()
+    mockGenerateAiQuickstartArtifact
+      .mockResolvedValueOnce({ status: "unavailable" })
+      .mockRejectedValueOnce(new Error("provider down"))
+
+    try {
+      const { result } = renderHook(() => useSourceOverviewPage("chatgpt"))
+
+      await waitFor(() => {
+        expect(result.current.sourceEntry?.id).toBe("chatgpt")
+      })
+
+      await act(async () => {
+        result.current.handleQuickstartIdeaChange("A local search UI")
+      })
+
+      await act(async () => {
+        await result.current.handleGenerateQuickstart()
+      })
+
+      expect(result.current.quickstartState.status).toBe("fallback-ready")
+
+      await act(async () => {
+        await result.current.handleGenerateQuickstart()
+      })
+
+      expect(result.current.quickstartState.status).toBe("fallback-ready")
+      expect(consoleErrorSpy).toHaveBeenCalledWith(
+        "Failed to generate app quickstart artifact:",
+        expect.any(Error)
+      )
+    } finally {
+      consoleErrorSpy.mockRestore()
+    }
+  })
+
   it("suppresses preview error in non-tauri runtime", async () => {
-    mockLoadLatestSourceExportPreview.mockRejectedValue(new Error("IPC unavailable"))
+    mockLoadLatestSourceExportPreview.mockRejectedValue(
+      new Error("IPC unavailable")
+    )
 
     const { result } = renderHook(() => useSourceOverviewPage("chatgpt"))
 
@@ -293,7 +417,9 @@ describe("useSourceOverviewPage", () => {
   })
 
   it("surfaces preview error in tauri runtime", async () => {
-    mockLoadLatestSourceExportPreview.mockRejectedValue(new Error("IPC unavailable"))
+    mockLoadLatestSourceExportPreview.mockRejectedValue(
+      new Error("IPC unavailable")
+    )
 
     const hadTauri = "__TAURI__" in window
     const previousTauri = (window as { __TAURI__?: unknown }).__TAURI__
@@ -322,5 +448,4 @@ describe("useSourceOverviewPage", () => {
       }
     }
   })
-
 })

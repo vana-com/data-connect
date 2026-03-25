@@ -1,6 +1,16 @@
 import { describe, expect, it, vi, beforeEach, afterEach } from "vitest"
-import { render, waitFor, cleanup, fireEvent, screen } from "@testing-library/react"
-import { createMemoryRouter, MemoryRouter, RouterProvider } from "react-router-dom"
+import {
+  render,
+  waitFor,
+  cleanup,
+  fireEvent,
+  screen,
+} from "@testing-library/react"
+import {
+  createMemoryRouter,
+  MemoryRouter,
+  RouterProvider,
+} from "react-router-dom"
 import { ROUTES } from "@/config/routes"
 import { TooltipProvider } from "@/components/ui/tooltip"
 import { Home } from "./index"
@@ -10,6 +20,7 @@ const mockStartImport = vi.fn()
 const mockStopExport = vi.fn()
 const mockNavigate = vi.fn()
 const mockRefreshConnectedStatus = vi.fn()
+const mockToast = vi.fn()
 let mockConnectedPlatforms: Record<string, boolean> = {}
 let mockRuns: Array<{
   id: string
@@ -27,9 +38,8 @@ let mockRuns: Array<{
 }> = []
 
 vi.mock("react-router-dom", async () => {
-  const actual = await vi.importActual<typeof import("react-router-dom")>(
-    "react-router-dom"
-  )
+  const actual =
+    await vi.importActual<typeof import("react-router-dom")>("react-router-dom")
   return {
     ...actual,
     useNavigate: () => mockNavigate,
@@ -45,6 +55,10 @@ vi.mock("@/hooks/useConnector", () => ({
     startImport: mockStartImport,
     stopExport: mockStopExport,
   }),
+}))
+
+vi.mock("sonner", () => ({
+  toast: (...args: unknown[]) => mockToast(...args),
 }))
 
 vi.mock("@/hooks/useConnectedApps", () => ({
@@ -103,6 +117,7 @@ describe("Home", () => {
     mockStopExport.mockReset()
     mockNavigate.mockReset()
     mockRefreshConnectedStatus.mockReset()
+    mockToast.mockReset()
     mockConnectedPlatforms = {}
     mockRuns = []
     mockStartImport.mockResolvedValue("run-1")
@@ -125,17 +140,13 @@ describe("Home", () => {
     const { getByRole } = renderHome()
 
     expect(getByRole("heading", { level: 1, name: /your data/i })).toBeTruthy()
-    expect(
-      getByRole("heading", { name: /your imported data/i })
-    ).toBeTruthy()
+    expect(getByRole("heading", { name: /your imported data/i })).toBeTruthy()
   })
 
   it("does not render the connected apps tab or surface", () => {
     const { container } = renderHome()
 
-    expect(
-      screen.queryByRole("tab", { name: /connected apps/i })
-    ).toBeNull()
+    expect(screen.queryByRole("tab", { name: /connected apps/i })).toBeNull()
     expect(
       container.querySelector('[data-component="connected-apps-list"]')
     ).toBeNull()
@@ -264,7 +275,9 @@ describe("Home", () => {
     expect(
       screen.queryByRole("button", { name: /connect chatgpt/i })
     ).toBeNull()
-    expect(screen.getAllByRole("button", { name: /open chatgpt/i }).length).toBeGreaterThan(0)
+    expect(
+      screen.getAllByRole("button", { name: /open chatgpt/i }).length
+    ).toBeGreaterThan(0)
   })
 
   it("shows connected source from persisted run even when connected status map is stale", async () => {
@@ -313,7 +326,9 @@ describe("Home", () => {
     expect(
       screen.queryByRole("button", { name: /connect chatgpt/i })
     ).toBeNull()
-    expect(screen.getAllByRole("button", { name: /open chatgpt/i }).length).toBeGreaterThan(0)
+    expect(
+      screen.getAllByRole("button", { name: /open chatgpt/i }).length
+    ).toBeGreaterThan(0)
   })
 
   it("syncs a connected source from the home list", () => {
@@ -353,7 +368,8 @@ describe("Home", () => {
         company: "OpenAI",
         name: "ChatGPT",
         logs: "",
-        exportPath: "/tmp/dataconnect/exported_data/OpenAI/ChatGPT/run-chatgpt-1",
+        exportPath:
+          "/tmp/dataconnect/exported_data/OpenAI/ChatGPT/run-chatgpt-1",
       },
     ]
 
@@ -367,6 +383,135 @@ describe("Home", () => {
 
     expect(mockStartImport).toHaveBeenCalledWith(
       expect.objectContaining({ id: "chatgpt" })
+    )
+  })
+
+  it("routes create app from a connected source to source quickstart", () => {
+    const chatgpt = {
+      id: "chatgpt",
+      company: "OpenAI",
+      name: "ChatGPT",
+      filename: "chatgpt",
+      description: "ChatGPT export",
+      isUpdated: false,
+      logoURL: "",
+      needsConnection: true,
+      connectURL: null,
+      connectSelector: null,
+      exportFrequency: null,
+      vectorize_config: null,
+      runtime: "playwright",
+    }
+    mockConnectedPlatforms = { chatgpt: true }
+    mockUsePlatforms.mockReturnValue({
+      platforms: [chatgpt],
+      connectedPlatforms: mockConnectedPlatforms,
+      loadPlatforms: vi.fn(),
+      refreshConnectedStatus: vi.fn(),
+      getPlatformById: vi.fn(),
+      isPlatformConnected: vi.fn(id => Boolean(mockConnectedPlatforms[id])),
+    })
+    mockRuns = [
+      {
+        id: "run-chatgpt-1",
+        platformId: "chatgpt",
+        filename: "chatgpt",
+        isConnected: true,
+        startDate: new Date().toISOString(),
+        status: "success",
+        url: "",
+        company: "OpenAI",
+        name: "ChatGPT",
+        logs: "",
+        exportPath:
+          "/tmp/dataconnect/exported_data/OpenAI/ChatGPT/run-chatgpt-1",
+      },
+    ]
+
+    renderHome()
+
+    fireEvent.click(
+      screen.getByRole("button", { name: /create app from chatgpt data/i })
+    )
+
+    expect(mockNavigate).toHaveBeenCalledWith(
+      "/sources/chatgpt?intent=create-app"
+    )
+  })
+
+  it("offers create app from the import complete toast without auto-opening quickstart", async () => {
+    const platform = {
+      id: "chatgpt",
+      company: "OpenAI",
+      name: "ChatGPT",
+      filename: "chatgpt",
+      description: "ChatGPT export",
+      isUpdated: false,
+      logoURL: "",
+      needsConnection: true,
+      connectURL: null,
+      connectSelector: null,
+      exportFrequency: null,
+      vectorize_config: null,
+      runtime: "playwright",
+    }
+    mockUsePlatforms.mockReturnValue({
+      platforms: [platform],
+      connectedPlatforms: mockConnectedPlatforms,
+      loadPlatforms: vi.fn(),
+      refreshConnectedStatus: mockRefreshConnectedStatus,
+      getPlatformById: vi.fn(),
+      isPlatformConnected: vi.fn(id => Boolean(mockConnectedPlatforms[id])),
+    })
+
+    const view = render(
+      <TooltipProvider delayDuration={120}>
+        <MemoryRouter>
+          <Home />
+        </MemoryRouter>
+      </TooltipProvider>
+    )
+
+    mockRuns = [
+      {
+        id: "run-chatgpt-1",
+        platformId: "chatgpt",
+        filename: "chatgpt",
+        isConnected: true,
+        startDate: new Date().toISOString(),
+        status: "success",
+        url: "",
+        company: "OpenAI",
+        name: "ChatGPT",
+        logs: "",
+        exportPath:
+          "/tmp/dataconnect/exported_data/OpenAI/ChatGPT/run-chatgpt-1",
+      },
+    ]
+
+    view.rerender(
+      <TooltipProvider delayDuration={120}>
+        <MemoryRouter>
+          <Home />
+        </MemoryRouter>
+      </TooltipProvider>
+    )
+
+    await waitFor(() => {
+      expect(mockRefreshConnectedStatus).toHaveBeenCalledTimes(1)
+      expect(mockToast).toHaveBeenCalledTimes(1)
+    })
+
+    const toastOptions = mockToast.mock.calls[0]?.[1] as {
+      action?: { label: string; onClick: () => void }
+    }
+    expect(toastOptions.action?.label).toBe("Create app")
+    expect(mockNavigate).not.toHaveBeenCalled()
+
+    toastOptions.action?.onClick()
+
+    expect(mockNavigate).toHaveBeenCalledWith(
+      "/sources/chatgpt?intent=create-app"
     )
   })
 
@@ -429,9 +574,11 @@ describe("Home", () => {
     renderHome()
 
     expect(
-      screen.getByRole("button", {
-        name: /fetch latest data for chatgpt/i,
-      }).hasAttribute("disabled")
+      screen
+        .getByRole("button", {
+          name: /fetch latest data for chatgpt/i,
+        })
+        .hasAttribute("disabled")
     ).toBe(true)
   })
 
@@ -628,7 +775,9 @@ describe("Home", () => {
 
     renderHome()
 
-    const spotifyButton = screen.getByRole("button", { name: /connect spotify/i })
+    const spotifyButton = screen.getByRole("button", {
+      name: /connect spotify/i,
+    })
     expect(spotifyButton.hasAttribute("disabled")).toBe(false)
 
     fireEvent.click(spotifyButton)

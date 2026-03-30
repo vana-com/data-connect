@@ -128,8 +128,11 @@ export const PLATFORM_REGISTRY: PlatformRegistryEntry[] = [
     id: "youtube",
     displayName: "YouTube",
     brandDomain: "youtube.com",
-    platformIds: ["youtube"],
-    availability: "comingSoon",
+    iconKey: "youtube",
+    platformIds: ["youtube-playwright", "youtube"],
+    availability: "requiresConnector",
+    showInConnectList: true,
+    ingestScope: "youtube.profile",
   },
   {
     id: "oura",

@@ -1,6 +1,6 @@
 {
   "version": "2.0.0",
-  "lastUpdated": "2026-02-10T00:00:00Z",
+  "lastUpdated": "2026-03-29T00:00:00Z",
   "baseUrl": "https://raw.githubusercontent.com/vana-com/data-connectors/main",
   "connectors": [
     {
@@ -14,38 +14,38 @@
         "metadata": "openai/chatgpt-playwright.json"
       },
       "checksums": {
-        "script": "sha256:ce1909cfa5eb35a3d5d58d3df3bd7e1aba63c29170200759c1832c91b8c5ee51",
-        "metadata": "sha256:8063c35a23001521430fe1f49f149da78080845f13a3c4b2823df778dd46b3d7"
+        "script": "sha256:72518dd765ff2103a0ad7dd184a9efcfac359764fca1613714400e661b2fe73a",
+        "metadata": "sha256:fac97ec68120203746863e6bb7592b9cb2c7c0f0721afe4ede75eb43bde5fd43"
       }
     },
     {
       "id": "instagram-playwright",
       "company": "meta",
-      "version": "1.0.0",
+      "version": "1.1.0",
       "name": "Instagram",
-      "description": "Exports your Instagram profile and posts using Playwright browser automation.",
+      "description": "Exports your Instagram profile, posts, and ad interests using Playwright browser automation.",
       "files": {
         "script": "meta/instagram-playwright.js",
         "metadata": "meta/instagram-playwright.json"
       },
       "checksums": {
-        "script": "sha256:2164d4689d2850acb7171a1360c8e08a1d25a11a060e47882d9fcf6118205a87",
-        "metadata": "sha256:724c2889e9ca811957ccb74e50b3e67b604d9f6802341a96768b906fc27229b8"
+        "script": "sha256:aaae0f1c62f9e2f5738a77e4fc326dd5375503b89d09c26a32bcdd482757385b",
+        "metadata": "sha256:52e18cea6927de37cab8a31dec53976fa0a0452388acf743e3bbb143f878583e"
       }
     },
     {
       "id": "linkedin-playwright",
       "company": "linkedin",
-      "version": "1.0.0",
+      "version": "5.0.0",
       "name": "LinkedIn",
-      "description": "Exports your LinkedIn profile including experience, education, and skills using Playwright browser automation.",
+      "description": "Exports your LinkedIn profile, experience, education, skills, languages, and connections using Playwright browser automation.",
       "files": {
         "script": "linkedin/linkedin-playwright.js",
         "metadata": "linkedin/linkedin-playwright.json"
       },
       "checksums": {
-        "script": "sha256:d002d0a485f6db0d681b5d89fc86519ea4e7203c09d45a76037997c475b5c8d0",
-        "metadata": "sha256:a21b8ff9517c099ca7392f9e381c76bba8e9a327d38e0ca75ffe0dc8e2413639"
+        "script": "sha256:351a1a6706903bfbd7055c332f8baa118faa1ccb556cf019005f77cde422480b",
+        "metadata": "sha256:4ea8939d310ef75c4f58d30c1a33f9256aee1c37661b655982da40be25c9ecad"
       }
     },
     {
@@ -59,8 +59,68 @@
         "metadata": "spotify/spotify-playwright.json"
       },
       "checksums": {
-        "script": "sha256:665a010ce5cc1d44a5278f010a56dafa94ff00e4dcd6458fb22afe3d01a505a4",
-        "metadata": "sha256:b556e27341f88d841cf09cf68e0f9b9fa262f64465b2aa2cf9b64c831fe0a6eb"
+        "script": "sha256:4bd74f11084c2e3950aa0b25395b3efdfead7fa4312fb4ce130279d688446586",
+        "metadata": "sha256:f2d6a4cdf12069e8f4993faee97e31fa1fa9e4b039c7d9e1bd1e3447c6a3cd09"
+      }
+    },
+    {
+      "id": "github-playwright",
+      "company": "github",
+      "version": "1.1.3",
+      "name": "GitHub",
+      "description": "Exports your GitHub profile, repositories, and starred repositories using Playwright browser automation.",
+      "files": {
+        "script": "github/github-playwright.js",
+        "metadata": "github/github-playwright.json"
+      },
+      "checksums": {
+        "script": "sha256:4a6360e652f4bec3f0c92c5651d5da818c00cca6ff0b236aa5f3d4d2a8789793",
+        "metadata": "sha256:27d81822ccf23eb3f4bf9f9868ade02a1141c78a2999cd081047da692b3f64ff"
+      }
+    },
+    {
+      "id": "youtube-playwright",
+      "company": "google",
+      "version": "1.0.0",
+      "name": "YouTube",
+      "description": "Exports your YouTube profile, subscriptions, playlists, playlist items, liked videos, watch later list, and recent watch history using Playwright browser automation.",
+      "files": {
+        "script": "google/youtube-playwright.js",
+        "metadata": "google/youtube-playwright.json"
+      },
+      "checksums": {
+        "script": "sha256:41edd09ec113ad7f9d09c9c0de76e40577087ab4600d2c8ccba4ca95c3f919c6",
+        "metadata": "sha256:c40624e50b86812f5a295ffcb99d175eb763d6de9029a4278fb026cfd67faa3f"
+      }
+    },
+    {
+      "id": "shop-playwright",
+      "company": "shopify",
+      "version": "1.0.0",
+      "name": "Shop",
+      "description": "Exports your Shop app order history using Playwright browser automation.",
+      "files": {
+        "script": "shopify/shop-playwright.js",
+        "metadata": "shopify/shop-playwright.json"
+      },
+      "checksums": {
+        "script": "sha256:d9364d7cbaf95fbf0e3130b9221195099b33afe3bb700f411d336e40a705d37f",
+        "metadata": "sha256:e0d1161c4186ea9106ac2ef0fd76b4076646b1edd597ac39812ea79d2a3fe6a8"
+      }
+    },
+    {
+      "id": "oura-playwright",
+      "company": "oura",
+      "version": "1.0.1",
+      "name": "Oura Ring",
+      "description": "Exports your Oura Ring readiness scores, sleep data, and daily activity using Playwright browser automation.",
+      "files": {
+        "script": "oura/oura-playwright.js",
+        "metadata": "oura/oura-playwright.json"
+      },
+      "checksums": {
+        "script": "sha256:8b2d087055d9dcb6d21409caecc232b440efa53fd32f538299faaa8283dfd080",
+        "metadata": "sha256:d3ff5230a6ebe6ff3f655546d834e7ed59f741febdc540dd2f89894b6e5baa7a"
       }
     }
   ]

@@ -1,6 +1,10 @@
 import { getPlatformRegistryEntry } from "@/lib/platform/utils"
 import { resolvePlatformLogo } from "@/lib/platform/resolve-platform-logo"
-import type { PlatformRegistryAvailability } from "@/lib/platform/registry"
+import {
+  PLATFORM_REGISTRY,
+  type PlatformRegistryAvailability,
+} from "@/lib/platform/registry"
+import { getPlatformLogoUrlForDomain } from "@/lib/platform/logo-provider"
 import type { Platform, Run } from "@/types"
 
 export type CardAvailability = PlatformRegistryAvailability | "unknown"
@@ -58,6 +62,33 @@ export function buildAvailableCards({
       onClick: isCardAvailable ? () => onExport(platform) : undefined,
       index,
       availability,
+    })
+  })
+
+  // Inject registry-only "comingSoon" entries that have no matching runtime platform
+  const existingCardIds = new Set(cards.map(c => c.cardId))
+
+  PLATFORM_REGISTRY.filter(
+    entry => entry.availability === "comingSoon"
+  ).forEach(entry => {
+    // Skip if a card already exists for any of this entry's platform IDs or its own ID
+    const allIds = [entry.id, ...(entry.platformIds ?? [])]
+    if (allIds.some(id => existingCardIds.has(id))) return
+
+    const iconImageSrc = entry.brandDomain
+      ? getPlatformLogoUrlForDomain(entry.brandDomain, { theme: "dark" })
+      : undefined
+
+    cards.push({
+      cardId: entry.id,
+      iconName: entry.displayName,
+      iconImageSrc,
+      label: `Connect ${entry.displayName}`,
+      isAvailable: false,
+      isConnecting: false,
+      onClick: undefined,
+      index: cards.length,
+      availability: "comingSoon",
     })
   })
 

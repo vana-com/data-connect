@@ -13,6 +13,8 @@ export interface Platform {
   vectorize_config: Record<string, unknown> | null;
   /** Runtime type: "vanilla" (default) or "network-capture" (uses network interception) */
   runtime?: string | null;
+  /** Scopes this connector can export (e.g. ["chatgpt.conversations", "chatgpt.memories"]) */
+  scopes?: string[] | null;
 }
 
 export interface ProgressPhase {

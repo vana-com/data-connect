@@ -185,7 +185,7 @@ export function useConnectPage(): UseConnectPageResult {
     : isMissingAppSelection
       ? "Missing app or scopes. Open Connect from a data app, or include scopes in the URL."
       : isMissingRegistryEntry
-      ? `Invalid scope: ${scopeSummary ?? "unknown"}. Available scopes: ${getAllAvailableScopes().join(", ")}.`
+      ? `Invalid scope: ${scopeSummary ?? "unknown"}. Available scopes: ${getAllAvailableScopes(platforms).join(", ")}.`
       : isMissingConnector
         ? `No connector installed for ${
             dataSourceLabel ?? "requested scope"

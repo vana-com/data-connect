@@ -13,6 +13,13 @@ const CHROMIUM_CDN_MIRRORS: &[&str] = &[
 ];
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
+pub struct ConnectorScope {
+    pub scope: String,
+    pub label: Option<String>,
+    pub description: Option<String>,
+}
+
+#[derive(Debug, Serialize, Deserialize, Clone)]
 pub struct ConnectorMetadata {
     pub id: Option<String>,
     pub name: String,
@@ -32,6 +39,8 @@ pub struct ConnectorMetadata {
     /// Relative path to an SVG icon (e.g. "icons/chatgpt.svg")
     #[serde(rename = "iconURL")]
     pub icon_url: Option<String>,
+    /// Scopes this connector can export (e.g. chatgpt.conversations, chatgpt.memories)
+    pub scopes: Option<Vec<ConnectorScope>>,
 }
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
@@ -56,6 +65,8 @@ pub struct Platform {
     pub vectorize_config: Option<serde_json::Value>,
     /// Runtime type: "vanilla" (default) or "network-capture" (uses network interception)
     pub runtime: Option<String>,
+    /// Scopes this connector can export (just the scope strings, e.g. ["chatgpt.conversations", "chatgpt.memories"])
+    pub scopes: Option<Vec<String>>,
 }
 
 /// Get the user connectors directory (~/.dataconnect/connectors/)
@@ -294,6 +305,10 @@ fn load_platforms_from_dir(dir: &PathBuf) -> Vec<Platform> {
                                 })
                                 .unwrap_or_else(|| filename.to_string());
 
+                            let scopes = metadata.scopes.map(|s| {
+                                s.into_iter().map(|cs| cs.scope).collect()
+                            });
+
                             platforms.push(Platform {
                                 id: metadata
                                     .id
@@ -310,6 +325,7 @@ fn load_platforms_from_dir(dir: &PathBuf) -> Vec<Platform> {
                                 export_frequency: metadata.export_frequency,
                                 vectorize_config: metadata.vectorize_config,
                                 runtime: metadata.runtime,
+                                scopes,
                             });
                         }
                         Err(e) => {

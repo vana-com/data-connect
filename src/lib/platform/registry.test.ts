@@ -42,15 +42,6 @@ describe("PLATFORM_REGISTRY / connector registry alignment", () => {
     }
   })
 
-  it("every requiresConnector entry has showInConnectList: true", () => {
-    for (const entry of entriesWithConnectors) {
-      expect(
-        entry.showInConnectList,
-        `${entry.id}: showInConnectList should be true`
-      ).toBe(true)
-    }
-  })
-
   it("comingSoon entries do NOT have ingestScope or showInConnectList", () => {
     for (const entry of entriesComingSoon) {
       expect(

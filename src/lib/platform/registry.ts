@@ -41,6 +41,16 @@ export const PLATFORM_REGISTRY: PlatformRegistryEntry[] = [
     ingestScope: "instagram.posts",
   },
   {
+    id: "instagram-ads",
+    displayName: "Instagram Ads",
+    brandDomain: "instagram.com",
+    iconKey: "instagram",
+    platformIds: ["instagram-ads-playwright", "instagram-ads"],
+    availability: "requiresConnector",
+    showInConnectList: false,
+    ingestScope: "instagram.ads",
+  },
+  {
     id: "github",
     displayName: "GitHub",
     brandDomain: "github.com",

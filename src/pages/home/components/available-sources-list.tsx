@@ -121,6 +121,7 @@ export function AvailableSourcesList({
             connectingStatusMessage,
             connectingRun,
             onClick,
+            availability,
           }) => {
             const connectingStatusLine = isConnecting
               ? getConnectingStatusLine(
@@ -208,6 +209,13 @@ export function AvailableSourcesList({
                       title="Another import is waiting for sign-in"
                     >
                       Waiting
+                    </EyebrowBadge>
+                  ) : availability === "comingSoon" ? (
+                    <EyebrowBadge
+                      variant="outline"
+                      className="text-foreground-muted"
+                    >
+                      Coming Soon
                     </EyebrowBadge>
                   ) : isAvailable ? null : (
                     <EyebrowBadge

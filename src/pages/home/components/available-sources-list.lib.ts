@@ -1,6 +1,9 @@
 import { getPlatformRegistryEntry } from "@/lib/platform/utils"
 import { resolvePlatformLogo } from "@/lib/platform/resolve-platform-logo"
+import type { PlatformRegistryAvailability } from "@/lib/platform/registry"
 import type { Platform, Run } from "@/types"
+
+export type CardAvailability = PlatformRegistryAvailability | "unknown"
 
 export interface AvailableSourceCard {
   cardId: string
@@ -13,6 +16,7 @@ export interface AvailableSourceCard {
   connectingRun?: Run
   onClick?: () => void
   index: number
+  availability: CardAvailability
 }
 
 interface BuildAvailableCardsInput {
@@ -37,6 +41,8 @@ export function buildAvailableCards({
     const displayName = entry?.displayName ?? platform.name
     const baseConnectingRun = connectingPlatforms.get(platform.id)
     const isConnecting = connectingPlatforms.has(platform.id)
+    const availability: CardAvailability = entry?.availability ?? "unknown"
+    const isCardAvailable = availability !== "comingSoon"
 
     const iconImageSrc = resolvePlatformLogo(platform, entry)
 
@@ -45,12 +51,13 @@ export function buildAvailableCards({
       iconName: displayName,
       iconImageSrc,
       label: `Connect ${displayName}`,
-      isAvailable: true,
+      isAvailable: isCardAvailable,
       isConnecting,
       connectingStatusMessage: baseConnectingRun?.statusMessage,
       connectingRun: baseConnectingRun,
-      onClick: () => onExport(platform),
+      onClick: isCardAvailable ? () => onExport(platform) : undefined,
       index,
+      availability,
     })
   })
 

@@ -191,13 +191,46 @@ describe("Connect", () => {
       expect(connectButton.hasAttribute("disabled")).toBe(true)
     })
 
-    it("shows 'No data source matches' when scopes don't match any registry entry", () => {
+    it("shows installed connectors in the missing connector message when some are available", () => {
+      const SPOTIFY_PLATFORM = {
+        id: "spotify",
+        name: "Spotify",
+        company: "Spotify",
+        filename: "spotify.js",
+        connectURL: "https://spotify.com",
+      }
+      mockUsePlatforms.mockReturnValue(
+        defaultPlatforms({ platforms: [SPOTIFY_PLATFORM] })
+      )
+      renderConnect("?scopes=%5B%22chatgpt.conversations%22%5D")
+
+      const errorEl = screen.getByText(/no connector installed for chatgpt/i)
+      expect(errorEl).toBeTruthy()
+      expect(errorEl.textContent).toContain("Installed connectors: Spotify")
+    })
+
+    it("shows invalid scope error with available scopes when scope is unrecognized", () => {
       mockUsePlatforms.mockReturnValue(defaultPlatforms())
       renderConnect("?scopes=%5B%22unknown.data%22%5D")
 
-      expect(
-        screen.getByText(/no data source matches the requested scope/i)
-      ).toBeTruthy()
+      const errorEl = screen.getByText(/invalid scope/i)
+      expect(errorEl).toBeTruthy()
+      expect(errorEl.textContent).toContain("unknown.data")
+      expect(errorEl.textContent).toContain("Available scopes:")
+      expect(errorEl.textContent).toContain("chatgpt.conversations")
+      expect(errorEl.textContent).toContain("instagram.posts")
+    })
+
+    it("shows available scopes when scope has wrong casing that does not match", () => {
+      mockUsePlatforms.mockReturnValue(defaultPlatforms())
+      // "CHATGPT" platform token resolves case-insensitively via getPrimaryScopeToken,
+      // but "UNKNOWN.data" won't resolve at all.
+      renderConnect("?scopes=%5B%22UNKNOWN.data%22%5D")
+
+      const errorEl = screen.getByText(/invalid scope/i)
+      expect(errorEl).toBeTruthy()
+      expect(errorEl.textContent).toContain("UNKNOWN.data")
+      expect(errorEl.textContent).toContain("Available scopes:")
     })
 
     it("shows platform load error when connectors fail to load", () => {

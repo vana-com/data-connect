@@ -11,6 +11,7 @@ import { ROUTES } from "@/config/routes"
 import { usePlatforms } from "@/hooks/usePlatforms"
 import { useConnector } from "@/hooks/useConnector"
 import {
+  getAllAvailableScopes,
   getPlatformRegistryEntryById,
   resolvePlatformForEntry,
 } from "@/lib/platform/utils"
@@ -184,13 +185,15 @@ export function useConnectPage(): UseConnectPageResult {
     : isMissingAppSelection
       ? "Missing app or scopes. Open Connect from a data app, or include scopes in the URL."
       : isMissingRegistryEntry
-      ? `No data source matches the requested scope${
-          scopeSummary ? `: ${scopeSummary}.` : "."
-        }`
+      ? `Invalid scope: ${scopeSummary ?? "unknown"}. Available scopes: ${getAllAvailableScopes().join(", ")}.`
       : isMissingConnector
         ? `No connector installed for ${
             dataSourceLabel ?? "requested scope"
-          }.${scopeSummary ? ` Scope: ${scopeSummary}.` : ""}`
+          }.${scopeSummary ? ` Scope: ${scopeSummary}.` : ""}${
+            platforms.length > 0
+              ? ` Installed connectors: ${platforms.map(p => p.name ?? p.id).join(", ")}.`
+              : ""
+          }`
         : null
 
   const isBusy = isCheckingPlatforms || isConnecting

@@ -43,6 +43,11 @@ export const getPlatformRegistryEntry = (platform: {
 export const getPlatformIngestScope = (platformId: string) =>
   getPlatformRegistryEntryById(platformId)?.ingestScope ?? null
 
+export const getAllAvailableScopes = (): string[] =>
+  PLATFORM_REGISTRY
+    .map(entry => entry.ingestScope)
+    .filter((scope): scope is string => Boolean(scope))
+
 export const resolvePlatformForEntry = (
   platforms: Platform[],
   entry: PlatformRegistryEntry

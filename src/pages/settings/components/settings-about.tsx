@@ -428,28 +428,7 @@ export function SettingsAbout({
             <SettingsRow
               icon={<ActivityIcon aria-hidden="true" />}
               title="Share anonymous usage & reliability data"
-              description={
-                <div className="space-y-1">
-                  <Text as="div" intent="fine" muted>
-                    Helps improve connector reliability and app quality.
-                  </Text>
-                  <Text as="div" intent="fine" muted>
-                    No payload contents, file paths, Personal Server URLs, or
-                    account-linked identity are sent by default.
-                  </Text>
-                  <Text as="div" intent="fine">
-                    <a
-                      href={LINKS.docs}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="inline-flex items-center gap-1 text-foreground/80 hover:text-foreground transition-colors"
-                    >
-                      What we collect
-                      <ArrowUpRightIcon aria-hidden="true" className="size-3.5" />
-                    </a>
-                  </Text>
-                </div>
-              }
+              description="Helps improve connector reliability and app quality."
               right={
                 <div className="pr-2">
                   <Switch
@@ -465,6 +444,25 @@ export function SettingsAbout({
                       "[&_[data-slot=switch-thumb][data-state=checked]]:translate-x-[calc(var(--switch-w)-var(--switch-border)-var(--thumb-w)-((var(--switch-h)-var(--thumb-h))/2))]"
                     )}
                   />
+                </div>
+              }
+              below={
+                <div className="px-4 pb-4 pl-[62px]">
+                  <Text as="div" intent="fine" muted>
+                    No payload contents, file paths, Personal Server URLs, or
+                    account-linked identity are sent by default.
+                  </Text>
+                  <Text as="div" intent="fine" className="mt-1">
+                    <a
+                      href={LINKS.docs}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="inline-flex items-center gap-1 text-foreground/80 hover:text-foreground transition-colors"
+                    >
+                      What we collect
+                      <ArrowUpRightIcon aria-hidden="true" className="size-3.5" />
+                    </a>
+                  </Text>
                 </div>
               }
             />

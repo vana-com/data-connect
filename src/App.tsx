@@ -13,7 +13,7 @@ import { ROUTES } from "@/config/routes"
 import { dotPatternStyle } from "@/components/elements/dot-pattern"
 import { LoadingState } from "@/components/elements/loading-state"
 import { Toaster } from "@/components/ui/sonner"
-import { flushTelemetry } from "@/lib/telemetry/client"
+import { flushTelemetry, persistAndFlush } from "@/lib/telemetry/client"
 
 // Dev loading debug:
 // - Open "/__loading" to render LoadingState directly.
@@ -51,7 +51,8 @@ function AppContent() {
     void flushTelemetry()
 
     const handlePageHide = () => {
-      void flushTelemetry()
+      persistAndFlush()
+      void flushTelemetry({ keepalive: true })
     }
 
     window.addEventListener("pagehide", handlePageHide)

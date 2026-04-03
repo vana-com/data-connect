@@ -1,22 +1,4 @@
 import { queueTelemetryEvent, classifyTelemetryError } from "@/lib/telemetry/client";
-import { capturePosthogMilestone } from "@/lib/telemetry/posthog";
-
-function mirrorMilestone(eventName: string, properties: Record<string, unknown>) {
-  capturePosthogMilestone(eventName, properties);
-}
-
-function commonMilestoneProps(args: {
-  source?: string | null;
-  connectorVersion?: string | null;
-  clientVersion?: string | null;
-  outcome?: string | null;
-}) {
-  return {
-    source: args.source ?? null,
-    connectorVersion: args.connectorVersion ?? null,
-    outcome: args.outcome ?? null,
-  };
-}
 
 export function trackCollectionRunStarted(args: {
   collectionRunId: string;
@@ -62,7 +44,6 @@ export function trackCollectionCompleted(args: {
     outcome: "collected",
     durationMs: args.durationMs ?? null,
   });
-  mirrorMilestone("collection_completed", commonMilestoneProps({ source: args.source, connectorVersion: args.connectorVersion, outcome: "collected" }));
 }
 
 export function trackCollectionFailed(args: {
@@ -73,17 +54,15 @@ export function trackCollectionFailed(args: {
   error?: unknown;
   errorClass?: Parameters<typeof queueTelemetryEvent>[0]["errorClass"];
 }) {
-  const errorClass = args.errorClass ?? classifyTelemetryError(args.error, "collection_failed");
   void queueTelemetryEvent({
     eventName: "collection_failed",
     collectionRunId: args.collectionRunId,
     source: args.source,
     connectorVersion: args.connectorVersion,
     outcome: "failed",
-    errorClass,
+    errorClass: args.errorClass ?? classifyTelemetryError(args.error, "collection_failed"),
     durationMs: args.durationMs ?? null,
   });
-  mirrorMilestone("collection_failed", commonMilestoneProps({ source: args.source, connectorVersion: args.connectorVersion, outcome: errorClass }));
 }
 
 export function trackCollectionCancelled(args: {
@@ -145,7 +124,6 @@ export function trackSyncRequestCompleted(args: {
     outcome: "requested_and_completed",
     scopeCount: args.scopeCount,
   });
-  mirrorMilestone("sync_request_completed", commonMilestoneProps({ source: args.source, outcome: "requested_and_completed" }));
 }
 
 export function trackSyncRequestFailed(args: {
@@ -155,16 +133,14 @@ export function trackSyncRequestFailed(args: {
   error?: unknown;
   errorClass?: Parameters<typeof queueTelemetryEvent>[0]["errorClass"];
 }) {
-  const errorClass = args.errorClass ?? classifyTelemetryError(args.error, "sync_request_failed");
   void queueTelemetryEvent({
     eventName: "sync_request_failed",
     collectionRunId: args.collectionRunId,
     syncRunId: args.syncRunId,
     source: args.source,
     outcome: "failed",
-    errorClass,
+    errorClass: args.errorClass ?? classifyTelemetryError(args.error, "sync_request_failed"),
   });
-  mirrorMilestone("sync_request_failed", commonMilestoneProps({ source: args.source, outcome: errorClass }));
 }
 
 export function trackSessionClaimCompleted(args: { sessionId: string; platform?: string | null }) {
@@ -213,7 +189,6 @@ export function trackGrantFlowCompleted(args: { sessionId: string; platform?: st
     platform: args.platform ?? null,
     outcome: "approved",
   });
-  mirrorMilestone("grant_flow_completed", { platform: args.platform ?? null, outcome: "approved" });
 }
 
 export function trackGrantFlowDenied(args: { sessionId: string; platform?: string | null }) {
@@ -223,17 +198,14 @@ export function trackGrantFlowDenied(args: { sessionId: string; platform?: strin
     platform: args.platform ?? null,
     outcome: "denied",
   });
-  mirrorMilestone("grant_flow_denied", { platform: args.platform ?? null, outcome: "denied" });
 }
 
 export function trackGrantFlowFailed(args: { sessionId: string; platform?: string | null; error?: unknown }) {
-  const errorClass = classifyTelemetryError(args.error, "grant_flow_failed");
   void queueTelemetryEvent({
     eventName: "grant_flow_failed",
     sessionId: args.sessionId,
     platform: args.platform ?? null,
     outcome: "failed",
-    errorClass,
+    errorClass: classifyTelemetryError(args.error, "grant_flow_failed"),
   });
-  mirrorMilestone("grant_flow_failed", { platform: args.platform ?? null, outcome: errorClass });
 }

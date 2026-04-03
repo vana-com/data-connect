@@ -16,6 +16,7 @@ const TELEMETRY_SESSION_ID_KEY = `${STORAGE_VERSION}_telemetry_app_session_id`;
 const MAX_OUTBOX_EVENTS = 500;
 const MAX_BATCH_EVENTS = 100;
 const REQUEST_TIMEOUT_MS = 3_000;
+const PERSIST_DEBOUNCE_MS = 2_000;
 
 const ENV_DISABLED = import.meta.env.VITE_TELEMETRY_DISABLED === "1";
 const ENV_DEBUG = import.meta.env.VITE_TELEMETRY_DEBUG === "1";
@@ -23,6 +24,11 @@ const ENV_DEBUG = import.meta.env.VITE_TELEMETRY_DEBUG === "1";
 let flushPromise: Promise<void> | null = null;
 let appVersionPromise: Promise<string> | null = null;
 let cachedAppVersion = "unknown";
+
+// In-memory outbox buffer — persisted to localStorage on a debounce and on pagehide.
+let memoryOutbox: DataConnectTelemetryEvent[] = [];
+let memoryOutboxLoaded = false;
+let persistTimer: ReturnType<typeof setTimeout> | null = null;
 
 function hasWindow() {
   return typeof window !== "undefined";
@@ -46,10 +52,9 @@ function safeSetItem(key: string, value: string) {
   }
 }
 
-
-function loadOutbox() {
+function loadOutboxFromStorage(): DataConnectTelemetryEvent[] {
   const raw = safeGetItem(TELEMETRY_OUTBOX_KEY);
-  if (!raw) return [] as DataConnectTelemetryEvent[];
+  if (!raw) return [];
   try {
     const parsed = JSON.parse(raw) as DataConnectTelemetryEvent[];
     return Array.isArray(parsed) ? parsed : [];
@@ -58,18 +63,53 @@ function loadOutbox() {
   }
 }
 
-function saveOutbox(events: DataConnectTelemetryEvent[]) {
-  safeSetItem(TELEMETRY_OUTBOX_KEY, JSON.stringify(events.slice(-MAX_OUTBOX_EVENTS)));
+function ensureOutboxLoaded() {
+  if (!memoryOutboxLoaded) {
+    memoryOutbox = loadOutboxFromStorage();
+    memoryOutboxLoaded = true;
+  }
+}
+
+function persistOutbox() {
+  safeSetItem(TELEMETRY_OUTBOX_KEY, JSON.stringify(memoryOutbox.slice(-MAX_OUTBOX_EVENTS)));
+}
+
+function schedulePersist() {
+  if (persistTimer !== null) return;
+  persistTimer = setTimeout(() => {
+    persistTimer = null;
+    persistOutbox();
+  }, PERSIST_DEBOUNCE_MS);
+}
+
+/**
+ * Persist immediately and flush — call on pagehide or when telemetry is disabled.
+ */
+export function persistAndFlush() {
+  if (persistTimer !== null) {
+    clearTimeout(persistTimer);
+    persistTimer = null;
+  }
+  persistOutbox();
 }
 
 function appendToOutbox(event: DataConnectTelemetryEvent) {
-  const next = [...loadOutbox(), event];
-  saveOutbox(next);
+  ensureOutboxLoaded();
+  memoryOutbox.push(event);
+  if (memoryOutbox.length > MAX_OUTBOX_EVENTS) {
+    memoryOutbox = memoryOutbox.slice(-MAX_OUTBOX_EVENTS);
+  }
+  schedulePersist();
 }
 
 function removeOutboxEvents(count: number) {
-  const next = loadOutbox().slice(count);
-  saveOutbox(next);
+  memoryOutbox = memoryOutbox.slice(count);
+  schedulePersist();
+}
+
+function getOutbox() {
+  ensureOutboxLoaded();
+  return memoryOutbox;
 }
 
 function getOrCreateLocalId(key: string, storage: Storage | null) {
@@ -96,7 +136,9 @@ export function getTelemetryEnabled() {
 export function setTelemetryEnabled(enabled: boolean) {
   safeSetItem(TELEMETRY_ENABLED_KEY, enabled ? "true" : "false");
   if (!enabled) {
-    saveOutbox([]);
+    memoryOutbox = [];
+    memoryOutboxLoaded = true;
+    persistAndFlush();
   }
 }
 
@@ -220,7 +262,7 @@ export async function queueTelemetryEvent(input: QueueTelemetryEventInput) {
   void flushTelemetry();
 }
 
-export async function flushTelemetry() {
+export async function flushTelemetry(options?: { keepalive?: boolean }) {
   if (!getTelemetryEnabled() || ENV_DEBUG) {
     return;
   }
@@ -231,30 +273,43 @@ export async function flushTelemetry() {
 
   flushPromise = (async () => {
     while (true) {
-      const next = loadOutbox();
+      const next = getOutbox();
       if (next.length === 0) {
         return;
       }
 
       const batchEvents = next.slice(0, MAX_BATCH_EVENTS);
-      const controller = new AbortController();
-      const timeout = window.setTimeout(() => controller.abort(), REQUEST_TIMEOUT_MS);
 
       try {
-        const response = await fetch(TELEMETRY_ENDPOINT, {
+        const fetchOptions: RequestInit = {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify(buildBatch(batchEvents)),
-          signal: controller.signal,
-        });
-        if (!response.ok) {
-          return;
+        };
+
+        if (options?.keepalive) {
+          fetchOptions.keepalive = true;
+        } else {
+          const controller = new AbortController();
+          const timeout = window.setTimeout(() => controller.abort(), REQUEST_TIMEOUT_MS);
+          fetchOptions.signal = controller.signal;
+          try {
+            const response = await fetch(TELEMETRY_ENDPOINT, fetchOptions);
+            if (!response.ok) return;
+          } finally {
+            window.clearTimeout(timeout);
+          }
+          removeOutboxEvents(batchEvents.length);
+          persistOutbox();
+          continue;
         }
+
+        const response = await fetch(TELEMETRY_ENDPOINT, fetchOptions);
+        if (!response.ok) return;
         removeOutboxEvents(batchEvents.length);
+        persistOutbox();
       } catch {
         return;
-      } finally {
-        window.clearTimeout(timeout);
       }
     }
   })().finally(() => {

@@ -140,6 +140,48 @@ describe("SettingsAbout", () => {
     expect(screen.queryByText(/Hostname:/)).toBeNull()
   })
 
+
+  it("shows explicit telemetry copy and docs link", () => {
+    render(
+      <TooltipProvider delayDuration={120}>
+        <SettingsAbout
+          appVersion="1.2.3"
+          logPath="/tmp/logs"
+          nodeTestStatus="idle"
+          nodeTestResult={null}
+          nodeTestError={null}
+          browserStatus={{ available: true, browser_type: "system" }}
+          pathsDebug={null}
+          personalServer={{ status: "stopped", port: null, error: null }}
+          simulateNoChrome={false}
+          onTestNodeJs={vi.fn()}
+          onCheckBrowserStatus={vi.fn()}
+          onDebugPaths={vi.fn()}
+          onClearDebugPaths={vi.fn()}
+          onRestartPersonalServer={vi.fn()}
+          onStopPersonalServer={vi.fn()}
+          onSimulateNoChromeChange={vi.fn()}
+          onOpenLogFolder={vi.fn()}
+          telemetryEnabled={true}
+          onTelemetryEnabledChange={vi.fn()}
+          clearPersonalServerDataStatus="idle"
+          clearPersonalServerDataError={null}
+          onClearPersonalServerData={vi.fn()}
+        />
+      </TooltipProvider>
+    )
+
+    expect(
+      screen.getByText("Share anonymous usage & reliability data")
+    ).toBeTruthy()
+    expect(
+      screen.getByText("Helps improve connector reliability and app quality.")
+    ).toBeTruthy()
+
+    const link = screen.getByRole("link", { name: /What we collect/i })
+    expect(link.getAttribute("href")).toBe(LINKS.docs)
+  })
+
   it("routes resource links to docs", () => {
     render(
       <TooltipProvider delayDuration={120}>

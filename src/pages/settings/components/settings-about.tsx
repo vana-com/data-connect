@@ -427,14 +427,35 @@ export function SettingsAbout({
 
             <SettingsRow
               icon={<ActivityIcon aria-hidden="true" />}
-              title="Telemetry"
-              description="Share small operational events so we can improve connector reliability. No payload contents, file paths, or account data are sent."
+              title="Share anonymous usage & reliability data"
+              description={
+                <div className="space-y-1">
+                  <Text as="div" intent="fine" muted>
+                    Helps improve connector reliability and app quality.
+                  </Text>
+                  <Text as="div" intent="fine" muted>
+                    No payload contents, file paths, Personal Server URLs, or
+                    account-linked identity are sent by default.
+                  </Text>
+                  <Text as="div" intent="fine">
+                    <a
+                      href={LINKS.docs}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="inline-flex items-center gap-1 text-foreground/80 hover:text-foreground transition-colors"
+                    >
+                      What we collect
+                      <ArrowUpRightIcon aria-hidden="true" className="size-3.5" />
+                    </a>
+                  </Text>
+                </div>
+              }
               right={
                 <div className="pr-2">
                   <Switch
                     checked={telemetryEnabled}
                     onCheckedChange={onTelemetryEnabledChange}
-                    aria-label="Enable telemetry"
+                    aria-label="Share anonymous usage and reliability data"
                     className={cn(
                       "[--switch-w:48px] [--switch-h:20px] [--thumb-w:24px] [--thumb-h:16px] [--switch-border:1px]",
                       "h-(--switch-h) w-(--switch-w)",

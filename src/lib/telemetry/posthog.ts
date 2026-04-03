@@ -1,8 +1,9 @@
+import { getTelemetryEnabled } from "@/lib/telemetry/client";
 const POSTHOG_KEY = import.meta.env.VITE_POSTHOG_KEY;
 const POSTHOG_HOST = (import.meta.env.VITE_POSTHOG_HOST || "https://us.posthog.com").replace(/\/$/, "");
 
 function isEnabled() {
-  return typeof window !== "undefined" && Boolean(POSTHOG_KEY);
+  return typeof window !== "undefined" && Boolean(POSTHOG_KEY) && getTelemetryEnabled();
 }
 
 function buildDistinctId() {

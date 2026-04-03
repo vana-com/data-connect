@@ -452,17 +452,6 @@ export function SettingsAbout({
                     No payload contents, file paths, Personal Server URLs, or
                     account-linked identity are sent by default.
                   </Text>
-                  <Text as="div" intent="fine" className="mt-1">
-                    <a
-                      href={LINKS.docs}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="inline-flex items-center gap-1 text-foreground/80 hover:text-foreground transition-colors"
-                    >
-                      What we collect
-                      <ArrowUpRightIcon aria-hidden="true" className="size-3.5" />
-                    </a>
-                  </Text>
                 </div>
               }
             />

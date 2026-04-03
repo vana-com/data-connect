@@ -141,7 +141,7 @@ describe("SettingsAbout", () => {
   })
 
 
-  it("shows explicit telemetry copy and docs link", () => {
+  it("shows explicit telemetry copy", () => {
     render(
       <TooltipProvider delayDuration={120}>
         <SettingsAbout
@@ -177,9 +177,9 @@ describe("SettingsAbout", () => {
     expect(
       screen.getByText("Helps improve connector reliability and app quality.")
     ).toBeTruthy()
-
-    const link = screen.getByRole("link", { name: /What we collect/i })
-    expect(link.getAttribute("href")).toBe(LINKS.docs)
+    expect(
+      screen.getByText(/No payload contents, file paths, Personal Server URLs/)
+    ).toBeTruthy()
   })
 
   it("routes resource links to docs", () => {

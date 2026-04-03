@@ -1,4 +1,4 @@
-import { lazy, Suspense } from "react"
+import { lazy, Suspense, useEffect } from "react"
 import { BrowserRouter, Routes, Route } from "react-router-dom"
 import { Provider } from "react-redux"
 import { store } from "./state/store"
@@ -13,6 +13,7 @@ import { ROUTES } from "@/config/routes"
 import { dotPatternStyle } from "@/components/elements/dot-pattern"
 import { LoadingState } from "@/components/elements/loading-state"
 import { Toaster } from "@/components/ui/sonner"
+import { flushTelemetry } from "@/lib/telemetry/client"
 
 // Dev loading debug:
 // - Open "/__loading" to render LoadingState directly.
@@ -45,6 +46,19 @@ function AppContent() {
   useDeepLink()
   const personalServer = usePersonalServer()
   usePendingApprovalRetry()
+
+  useEffect(() => {
+    void flushTelemetry()
+
+    const handlePageHide = () => {
+      void flushTelemetry()
+    }
+
+    window.addEventListener("pagehide", handlePageHide)
+    return () => {
+      window.removeEventListener("pagehide", handlePageHide)
+    }
+  }, [])
 
   return (
     <AppUpdateProvider>

@@ -17,6 +17,7 @@ export default defineConfig({
   },
   test: {
     environment: "happy-dom",
+    setupFiles: ["./src/test/setup.ts"],
   },
   define: {
     __COMMIT_HASH__: JSON.stringify(commitHash),

@@ -21,6 +21,18 @@ import type {
 } from '../types';
 import { normalizeExportData } from '../lib/export-data';
 import { ingestExportData } from '../services/personalServerIngest';
+import { getPlatformRegistryEntry } from '@/lib/platform/utils';
+import { durationSince } from '@/lib/telemetry/client';
+import {
+  trackCollectionCancelled,
+  trackCollectionCompleted,
+  trackCollectionFailed,
+  trackCollectionNeedsInput,
+  trackSyncRequestCompleted,
+  trackSyncRequestFailed,
+  trackSyncRequestSkipped,
+  trackSyncRequestStarted,
+} from '@/lib/telemetry/events';
 
 const isDev = import.meta.env.DEV;
 
@@ -29,25 +41,25 @@ function debugLog(...args: unknown[]) {
   console.log(...args);
 }
 
-// Extended connector status event that can handle both string and object status
 interface ConnectorStatusEventPayload {
   runId: string;
-  status: string | {
-    type: string;
-    message?: string;
-    data?: unknown;
-    phase?: ProgressPhase;
-    count?: number;
-  };
+  status:
+    | string
+    | {
+        type: string;
+        message?: string;
+        data?: unknown;
+        phase?: ProgressPhase;
+        count?: number;
+      };
   timestamp: number;
 }
 
-// Export complete event from connector (includes display name)
 interface ConnectorExportCompleteEvent {
   runId: string;
   platformId: string;
   company: string;
-  name: string; // Display name (e.g., "Instagram (Playwright)")
+  name: string;
   data: unknown;
   timestamp: number;
 }
@@ -56,21 +68,21 @@ function toExportedData(
   value: unknown,
   fallback: { platform: string; company: string }
 ): ExportedData | null {
-  if (typeof value !== "object" || value === null) return null;
+  if (typeof value !== 'object' || value === null) return null;
   const candidate = value as Record<string, unknown>;
 
   const platform =
-    typeof candidate.platform === "string" && candidate.platform.length > 0
+    typeof candidate.platform === 'string' && candidate.platform.length > 0
       ? candidate.platform
       : fallback.platform;
   const company =
-    typeof candidate.company === "string" && candidate.company.length > 0
+    typeof candidate.company === 'string' && candidate.company.length > 0
       ? candidate.company
       : fallback.company;
   const exportedAt =
-    typeof candidate.exportedAt === "string" && candidate.exportedAt.length > 0
+    typeof candidate.exportedAt === 'string' && candidate.exportedAt.length > 0
       ? candidate.exportedAt
-      : typeof candidate.timestamp === "string" && candidate.timestamp.length > 0
+      : typeof candidate.timestamp === 'string' && candidate.timestamp.length > 0
         ? candidate.timestamp
         : new Date().toISOString();
 
@@ -82,18 +94,46 @@ function toExportedData(
   } as ExportedData;
 }
 
-/**
- * Deliver a single run's export data to the personal server and mark staging as synced.
- * Returns true on success, false on failure (non-throwing).
- */
+function getRunTelemetryContext(runId: string) {
+  const run = store.getState().app.runs.find((candidate) => candidate.id === runId);
+  if (!run) return null;
+  return {
+    run,
+    source: getPlatformRegistryEntry({
+      id: run.platformId,
+      name: run.name,
+      company: run.company,
+    })?.id ?? run.platformId,
+    durationMs: durationSince(run.startDate),
+  };
+}
+
+function createSyncRunId(collectionRunId: string) {
+  return `${collectionRunId}:sync:${crypto.randomUUID()}`;
+}
+
 async function deliverRunToPersonalServer(
-  run: { id: string; platformId: string; exportPath?: string; itemsExported?: number; itemLabel?: string; syncedToPersonalServer?: boolean },
+  run: {
+    id: string;
+    platformId: string;
+    exportPath?: string;
+    itemsExported?: number;
+    itemLabel?: string;
+    syncedToPersonalServer?: boolean;
+  },
   port: number,
-  dispatch: AppDispatch,
+  dispatch: AppDispatch
 ): Promise<boolean> {
   if (!run.exportPath || run.syncedToPersonalServer) return false;
 
-  // Normalize exportPath to directory
+  const source = getPlatformRegistryEntry({ id: run.platformId })?.id ?? run.platformId;
+  const syncRunId = createSyncRunId(run.id);
+  trackSyncRequestStarted({
+    collectionRunId: run.id,
+    syncRunId,
+    source,
+  });
+
   const dirPath = run.exportPath.endsWith('.json')
     ? run.exportPath.replace(/\/[^/]+$/, '')
     : run.exportPath;
@@ -105,9 +145,16 @@ async function deliverRunToPersonalServer(
     });
     const payload = (data.content ?? data) as Record<string, unknown>;
     const ingested = await ingestExportData(port, run.platformId, payload);
-    if (ingested.length === 0) return false;
+    if (ingested.length === 0) {
+      trackSyncRequestFailed({
+        collectionRunId: run.id,
+        syncRunId,
+        source,
+        errorClass: 'sync_request_failed',
+      });
+      return false;
+    }
 
-    // Mark staging as synced (trims the large JSON)
     await invoke('mark_export_synced', {
       runId: run.id,
       exportPath: run.exportPath,
@@ -117,12 +164,24 @@ async function deliverRunToPersonalServer(
     });
 
     dispatch(markRunSynced({ runId: run.id, scope: ingested[0] }));
+    trackSyncRequestCompleted({
+      collectionRunId: run.id,
+      syncRunId,
+      source,
+      scopeCount: ingested.length,
+    });
     debugLog('[Data Delivery] Synced run', run.id, 'scopes:', ingested);
     return true;
   } catch (err) {
     if (isDev) {
       console.warn('[Data Delivery] Failed for run', run.id, '(non-blocking):', err);
     }
+    trackSyncRequestFailed({
+      collectionRunId: run.id,
+      syncRunId,
+      source,
+      error: err,
+    });
     return false;
   }
 }
@@ -148,6 +207,7 @@ async function persistAndDeliverExport({
 
   const serializedExport = JSON.stringify(exportData);
   const { itemsExported, itemLabel } = normalizeExportData(exportData);
+  const source = getPlatformRegistryEntry({ id: platformId, company, name })?.id ?? platformId;
 
   dispatch(
     updateRunExportData({
@@ -179,10 +239,33 @@ async function persistAndDeliverExport({
     );
 
     const serverStatus = await invoke<{ running: boolean; port?: number }>('get_personal_server_status');
-    if (!serverStatus.running || !serverStatus.port) return;
+    if (!serverStatus.running || !serverStatus.port) {
+      trackSyncRequestSkipped({
+        collectionRunId: runId,
+        syncRunId: createSyncRunId(runId),
+        source,
+        reason: 'skipped_server_unavailable',
+      });
+      return;
+    }
+
+    const syncRunId = createSyncRunId(runId);
+    trackSyncRequestStarted({
+      collectionRunId: runId,
+      syncRunId,
+      source,
+    });
 
     const ingested = await ingestExportData(serverStatus.port, platformId, exportData as unknown as Record<string, unknown>);
-    if (ingested.length === 0) return;
+    if (ingested.length === 0) {
+      trackSyncRequestFailed({
+        collectionRunId: runId,
+        syncRunId,
+        source,
+        errorClass: 'sync_request_failed',
+      });
+      return;
+    }
 
     await invoke('mark_export_synced', {
       runId,
@@ -192,6 +275,12 @@ async function persistAndDeliverExport({
       scope: ingested[0],
     });
     dispatch(markRunSynced({ runId, scope: ingested[0] }));
+    trackSyncRequestCompleted({
+      collectionRunId: runId,
+      syncRunId,
+      source,
+      scopeCount: ingested.length,
+    });
     debugLog('[Data Delivery] Synced run', runId, 'scopes:', ingested);
   } catch (err) {
     persistedRunIds.delete(runId);
@@ -208,6 +297,12 @@ async function persistAndDeliverExport({
         logs: `[Export Persistence Error] ${message}`,
       })
     );
+    trackSyncRequestFailed({
+      collectionRunId: runId,
+      syncRunId: createSyncRunId(runId),
+      source,
+      error: err,
+    });
     if (isDev) {
       console.warn('[Export Persistence] Deferred or failed for run', runId, err);
     }
@@ -218,19 +313,13 @@ export function useEvents() {
   const dispatch = useDispatch();
   const deliveryInProgressRef = useRef(false);
 
-  /**
-   * App-wide runtime event bridge:
-   * - subscribes to Tauri connector/server events
-   * - normalizes them into Redux run state
-   * - persists and delivers completed exports
-   */
   useEffect(() => {
     let cancelled = false;
     const unlistenFns: (() => void)[] = [];
     const persistedRunIds = new Set<string>();
+    const needsInputRunIds = new Set<string>();
+    const terminalCollectionRunIds = new Set<string>();
 
-    // Helper: register a Tauri event listener with automatic cleanup on unmount.
-    // Handles the race where unmount happens before listen() resolves.
     function addListener<T>(eventName: string, handler: (payload: T) => void) {
       listen<T>(eventName, (event) => {
         if (cancelled) return;
@@ -244,20 +333,53 @@ export function useEvents() {
       });
     }
 
-    // Listen for connector log events
+    function markCollectionCompleted(runId: string) {
+      if (terminalCollectionRunIds.has(runId)) return;
+      const context = getRunTelemetryContext(runId);
+      if (!context) return;
+      terminalCollectionRunIds.add(runId);
+      trackCollectionCompleted({
+        collectionRunId: runId,
+        source: context.source,
+        durationMs: context.durationMs,
+      });
+    }
+
+    function markCollectionFailed(runId: string, error?: unknown, errorClass?: 'needs_input' | 'collection_failed' | 'runtime_error' | 'auth_failed') {
+      if (terminalCollectionRunIds.has(runId)) return;
+      const context = getRunTelemetryContext(runId);
+      if (!context) return;
+      terminalCollectionRunIds.add(runId);
+      trackCollectionFailed({
+        collectionRunId: runId,
+        source: context.source,
+        durationMs: context.durationMs,
+        error,
+        errorClass,
+      });
+    }
+
+    function markCollectionCancelled(runId: string) {
+      if (terminalCollectionRunIds.has(runId)) return;
+      const context = getRunTelemetryContext(runId);
+      if (!context) return;
+      terminalCollectionRunIds.add(runId);
+      trackCollectionCancelled({
+        collectionRunId: runId,
+        source: context.source,
+        durationMs: context.durationMs,
+      });
+    }
+
     addListener<ConnectorLogEvent>('connector-log', ({ runId, message }) => {
       debugLog('[Connector Log]', message);
       dispatch(updateRunLogs({ runId, logs: message }));
     });
 
-    // Listen for connector status events
     addListener<ConnectorStatusEventPayload>('connector-status', ({ runId, status }) => {
       debugLog('[Connector Status]', runId, status);
 
-      // Handle both string and object status formats
       const statusType = typeof status === 'string' ? status : status.type;
-
-      // Get message, phase, and count from status if it's an object
       const statusMessage = typeof status === 'object' ? status.message : undefined;
       const fallbackStatusMessage =
         statusType === 'WAITING_FOR_USER'
@@ -268,7 +390,6 @@ export function useEvents() {
       const phase = typeof status === 'object' ? status.phase : undefined;
       const itemCount = typeof status === 'object' ? status.count : undefined;
 
-      // Helper to dispatch progress update
       const updateProgress = () => {
         dispatch(updateRunExportData({
           runId,
@@ -285,6 +406,16 @@ export function useEvents() {
       ) {
         dispatch(updateRunConnected({ runId, isConnected: false }));
         updateProgress();
+        if (!needsInputRunIds.has(runId)) {
+          const context = getRunTelemetryContext(runId);
+          if (context) {
+            needsInputRunIds.add(runId);
+            trackCollectionNeedsInput({
+              collectionRunId: runId,
+              source: context.source,
+            });
+          }
+        }
       } else if (statusType === 'DOWNLOADING' || statusType === 'COLLECTING') {
         dispatch(updateRunStatus({ runId, status: 'running' }));
         dispatch(updateRunConnected({ runId, isConnected: true }));
@@ -304,9 +435,10 @@ export function useEvents() {
           })
         );
         dispatch(updateRunConnected({ runId, isConnected: true }));
+        markCollectionCompleted(runId);
 
         if (typeof status === 'object') {
-          const activeRun = store.getState().app.runs.find(r => r.id === runId);
+          const activeRun = store.getState().app.runs.find((r) => r.id === runId);
           if (!activeRun) {
             if (isDev) {
               console.warn('[Connector Status] COMPLETE for unknown run', runId);
@@ -339,32 +471,32 @@ export function useEvents() {
         if (statusMessage) {
           dispatch(updateRunExportData({ runId, statusMessage }));
         }
+        markCollectionFailed(runId, statusMessage ?? statusType);
       } else if (statusType === 'STOPPED') {
-        // Browser was closed or process ended without completing
-        // Don't overwrite success/error status - STOPPED is only for incomplete runs
+        const currentRun = store.getState().app.runs.find((candidate) => candidate.id === runId);
         dispatch(
           updateRunStatus({
             runId,
             status: 'stopped',
             endDate: new Date().toISOString(),
-            // Flag to indicate this should only apply if not already complete
             onlyIfRunning: true,
           })
         );
         if (statusMessage) {
           dispatch(updateRunExportData({ runId, statusMessage }));
         }
+        if (currentRun?.status === 'running') {
+          markCollectionCancelled(runId);
+        }
       }
     });
 
-    // Listen for download progress events
     addListener<DownloadProgressEvent>('download-progress', ({ percent }) => {
       if (isDev) {
         console.log('[Download Progress]', percent.toFixed(1) + '%');
       }
     });
 
-    // When personal server becomes ready, deliver all pending (unsynced) exports sequentially
     addListener<{ port: number }>('personal-server-ready', async ({ port }) => {
       if (!port || deliveryInProgressRef.current) return;
       deliveryInProgressRef.current = true;
@@ -384,7 +516,6 @@ export function useEvents() {
       }
     });
 
-    // Listen for export complete events from connector
     addListener<ConnectorExportCompleteEvent>('export-complete', ({ runId, platformId, company, name, data }) => {
       const normalizedData = toExportedData(data, {
         platform: platformId,
@@ -399,6 +530,7 @@ export function useEvents() {
           endDate: new Date().toISOString(),
         })
       );
+      markCollectionCompleted(runId);
 
       void persistAndDeliverExport({
         runId,
@@ -411,7 +543,6 @@ export function useEvents() {
       });
     });
 
-    // Listen for export complete events from Rust backend (legacy format)
     addListener<ExportCompleteEvent>('export-complete-rust', ({ run_id, export_path, export_size }) => {
       debugLog('[Export Complete Rust]', run_id, export_path);
       dispatch(
@@ -421,9 +552,9 @@ export function useEvents() {
           exportSize: export_size,
         })
       );
+      markCollectionCompleted(run_id);
     });
 
-    // Cleanup: cancel stale handlers and unregister resolved listeners
     return () => {
       cancelled = true;
       unlistenFns.forEach((fn) => fn());

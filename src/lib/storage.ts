@@ -16,15 +16,38 @@ const STORAGE_VERSION = 'v1';
  * Safe localStorage write that handles quota/blocked failures.
  * Returns true if write succeeded, false otherwise.
  */
+function getStorage() {
+  return typeof window !== "undefined" ? window.localStorage : null;
+}
+
 function safeSetItem(key: string, value: string): boolean {
+  const storage = getStorage();
+  if (!storage || typeof storage.setItem !== "function") return false;
   try {
-    localStorage.setItem(key, value);
+    storage.setItem(key, value);
     return true;
   } catch (error) {
-    // QuotaExceededError or SecurityError (blocked storage)
     console.warn(`storage: failed to write ${key}`, error);
     return false;
   }
+}
+
+function safeGetItem(key: string): string | null {
+  const storage = getStorage();
+  if (!storage || typeof storage.getItem !== "function") return null;
+  try {
+    return storage.getItem(key);
+  } catch {
+    return null;
+  }
+}
+
+function safeRemoveItem(key: string): void {
+  const storage = getStorage();
+  if (!storage || typeof storage.removeItem !== "function") return;
+  try {
+    storage.removeItem(key);
+  } catch {}
 }
 
 // --- Pending approval recovery ---
@@ -59,7 +82,7 @@ export function savePendingApproval(approval: PendingApproval): void {
 }
 
 export function getPendingApproval(): PendingApproval | null {
-  const raw = localStorage.getItem(PENDING_APPROVAL_KEY);
+  const raw = safeGetItem(PENDING_APPROVAL_KEY);
   if (!raw) return null;
   try {
     const parsed = JSON.parse(raw);
@@ -71,5 +94,5 @@ export function getPendingApproval(): PendingApproval | null {
 }
 
 export function clearPendingApproval(): void {
-  localStorage.removeItem(PENDING_APPROVAL_KEY);
+  safeRemoveItem(PENDING_APPROVAL_KEY);
 }

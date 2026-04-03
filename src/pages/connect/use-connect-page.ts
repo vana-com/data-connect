@@ -8,6 +8,12 @@ import {
 } from "@/lib/grant-params"
 import { getPrimaryDataSourceLabel, getPrimaryScopeToken } from "@/lib/scope-labels"
 import { ROUTES } from "@/config/routes"
+import {
+  trackBuilderVerificationCompleted,
+  trackBuilderVerificationFailed,
+  trackSessionClaimCompleted,
+  trackSessionClaimFailed,
+} from "@/lib/telemetry/events"
 import { usePlatforms } from "@/hooks/usePlatforms"
 import { useConnector } from "@/hooks/useConnector"
 import {
@@ -71,6 +77,10 @@ export function useConnectPage(): UseConnectPageResult {
   const fallbackAppScopes = hasGrantSession ? undefined : appEntry?.scopes
   const grantScopes = requestedScopes ?? claimedScopes ?? fallbackAppScopes
   const scopesKey = grantScopes?.join("|") ?? ""
+  const telemetryPlatform = useMemo(() => {
+    const scopeToken = getPrimaryScopeToken(grantScopes)
+    return scopeToken ? getPlatformRegistryEntryById(scopeToken)?.id ?? scopeToken : null
+  }, [scopesKey])
 
   useEffect(() => {
     const sessionIdParam = params.sessionId
@@ -101,6 +111,10 @@ export function useConnectPage(): UseConnectPageResult {
           sessionId: sessionIdParam,
           secret: secretParam,
         })
+        trackSessionClaimCompleted({
+          sessionId: sessionIdParam,
+          platform: telemetryPlatform,
+        })
         session = {
           id: sessionIdParam,
           granteeAddress: claimed.granteeAddress,
@@ -109,7 +123,12 @@ export function useConnectPage(): UseConnectPageResult {
           webhookUrl: claimed.webhookUrl,
           appUserId: claimed.appUserId,
         }
-      } catch {
+      } catch (error) {
+        trackSessionClaimFailed({
+          sessionId: sessionIdParam,
+          error,
+          platform: telemetryPlatform,
+        })
         setPrefetchDone(true)
         return
       }
@@ -119,17 +138,26 @@ export function useConnectPage(): UseConnectPageResult {
           session.granteeAddress,
           session.webhookUrl
         )
+        trackBuilderVerificationCompleted({
+          sessionId: sessionIdParam,
+          platform: telemetryPlatform,
+        })
         const result: PrefetchedGrantData = { session, builderManifest }
         prefetchedDataRef.current = result
         setPrefetched(result)
-      } catch {
+      } catch (error) {
+        trackBuilderVerificationFailed({
+          sessionId: sessionIdParam,
+          error,
+          platform: telemetryPlatform,
+        })
         const result: PrefetchedGrantData = { session }
         prefetchedDataRef.current = result
         setPrefetched(result)
       }
       setPrefetchDone(true)
     })()
-  }, [params.secret, params.sessionId])
+  }, [params.secret, params.sessionId, telemetryPlatform])
 
   const { platforms, isPlatformConnected, platformsLoaded, platformLoadError } =
     usePlatforms()

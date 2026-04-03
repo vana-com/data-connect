@@ -10,6 +10,7 @@ import { usePersonalServer } from "@/hooks/usePersonalServer"
 import { useConnectedApps } from "@/hooks/useConnectedApps"
 import { ROUTES } from "@/config/routes"
 import { openLocalPath, openExternalUrl } from "@/lib/open-resource"
+import { getTelemetryEnabled, setTelemetryEnabled } from "@/lib/telemetry/client"
 import { getPersonalServerDataPath, getUserDataPath } from "@/lib/tauri-paths"
 import type {
   BrowserSession,
@@ -58,6 +59,9 @@ export function useSettingsPage() {
     useState<"idle" | "deleting" | "success" | "error">("idle")
   const [clearPersonalServerDataError, setClearPersonalServerDataError] =
     useState<string | null>(null)
+  const [telemetryEnabled, setTelemetryEnabledState] = useState<boolean>(() =>
+    getTelemetryEnabled()
+  )
 
   useEffect(() => {
     let cancelled = false
@@ -166,11 +170,14 @@ export function useSettingsPage() {
   // Persist simulateNoChrome to localStorage — only store when explicitly true.
   // Remove the key when false so a fresh profile starts with the correct default.
   useEffect(() => {
-    if (simulateNoChrome) {
-      localStorage.setItem("dataconnect_simulate_no_chrome", "true")
-    } else {
-      localStorage.removeItem("dataconnect_simulate_no_chrome")
-    }
+    if (typeof window === "undefined") return
+    try {
+      if (simulateNoChrome) {
+        window.localStorage?.setItem?.("dataconnect_simulate_no_chrome", "true")
+      } else {
+        window.localStorage?.removeItem?.("dataconnect_simulate_no_chrome")
+      }
+    } catch {}
   }, [simulateNoChrome])
 
   useEffect(() => {
@@ -285,6 +292,11 @@ export function useSettingsPage() {
     }
   }, [clearPersonalServerDataStatus, personalServer.stopServer])
 
+  const handleTelemetryEnabledChange = useCallback((enabled: boolean) => {
+    setTelemetryEnabled(enabled)
+    setTelemetryEnabledState(enabled)
+  }, [])
+
   const checkAppUpdate = useCallback(() => {
     void checkForUpdates({ ignoreDismissedVersion: true })
   }, [checkForUpdates])
@@ -335,6 +347,8 @@ export function useSettingsPage() {
     onCheckBrowserStatus: checkBrowserStatus,
     onSimulateNoChromeChange: setSimulateNoChrome,
     onClearBrowserSession: handleClearSession,
+    telemetryEnabled,
+    onTelemetryEnabledChange: handleTelemetryEnabledChange,
     clearPersonalServerDataStatus,
     clearPersonalServerDataError,
     onClearPersonalServerData: clearPersonalServerData,

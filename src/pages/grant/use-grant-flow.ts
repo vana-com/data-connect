@@ -28,6 +28,17 @@ import type {
   PrefetchedGrantData,
 } from "./types"
 import { ROUTES } from "@/config/routes"
+import { getPrimaryScopeToken } from "@/lib/scope-labels"
+import { getPlatformRegistryEntryById } from "@/lib/platform/utils"
+import {
+  trackBuilderVerificationCompleted,
+  trackBuilderVerificationFailed,
+  trackGrantFlowCompleted,
+  trackGrantFlowDenied,
+  trackGrantFlowFailed,
+  trackSessionClaimCompleted,
+  trackSessionClaimFailed,
+} from "@/lib/telemetry/events"
 
 const ACCOUNT_URL =
   import.meta.env.VITE_ACCOUNT_URL || "https://account.vana.org"
@@ -75,6 +86,10 @@ export function useGrantFlow(params: GrantFlowParams, prefetched?: PrefetchedGra
   const sessionId = params?.sessionId
   const secret = params?.secret
   const hasSuccessOverride = params?.status === "success"
+  const telemetryPlatform = (() => {
+    const scopeToken = getPrimaryScopeToken(prefetched?.session?.scopes ?? params?.scopes)
+    return scopeToken ? getPlatformRegistryEntryById(scopeToken)?.id ?? scopeToken : null
+  })()
 
   // Reset auth state when sessionId changes
   useEffect(() => {
@@ -151,10 +166,19 @@ export function useGrantFlow(params: GrantFlowParams, prefetched?: PrefetchedGra
             prefetched.session.granteeAddress,
             prefetched.session.webhookUrl,
           )
+          trackBuilderVerificationCompleted({
+            sessionId: prefetched.session.id,
+            platform: telemetryPlatform,
+          })
           if (cancelled) return
           setFlowState(prev => ({ ...prev, builderManifest }))
           setFlowState(prev => ({ ...prev, status: "consent" }))
         } catch (error) {
+          trackBuilderVerificationFailed({
+            sessionId: prefetched.session.id,
+            error,
+            platform: telemetryPlatform,
+          })
           if (cancelled) return
           console.error("[GrantFlow] Builder verification failed (pre-fetched session)", {
             sessionId: prefetched.session.id,
@@ -190,6 +214,10 @@ export function useGrantFlow(params: GrantFlowParams, prefetched?: PrefetchedGra
         console.log("[GrantFlow] Falling back to fresh claim (no pre-fetched data)", { sessionId });
         setFlowState(prev => ({ ...prev, status: "claiming" }))
         const claimed = await claimSession({ sessionId, secret })
+        trackSessionClaimCompleted({
+          sessionId,
+          platform: telemetryPlatform,
+        })
         if (cancelled) return
         const session: GrantSession = {
           id: sessionId,
@@ -214,6 +242,10 @@ export function useGrantFlow(params: GrantFlowParams, prefetched?: PrefetchedGra
           claimed.granteeAddress,
           claimed.webhookUrl,
         )
+        trackBuilderVerificationCompleted({
+          sessionId,
+          platform: telemetryPlatform,
+        })
         if (cancelled) return
         setFlowState(prev => ({ ...prev, builderManifest }))
 
@@ -221,6 +253,11 @@ export function useGrantFlow(params: GrantFlowParams, prefetched?: PrefetchedGra
         setFlowState(prev => ({ ...prev, status: "consent" }))
 
       } catch (error) {
+        if (error instanceof SessionRelayError) {
+          trackSessionClaimFailed({ sessionId, error, platform: telemetryPlatform })
+        } else if (error instanceof BuilderVerificationError) {
+          trackBuilderVerificationFailed({ sessionId, error, platform: telemetryPlatform })
+        }
         if (cancelled) return
         console.error("[GrantFlow] Flow error", {
           sessionId,
@@ -289,7 +326,8 @@ export function useGrantFlow(params: GrantFlowParams, prefetched?: PrefetchedGra
     try {
       // Skip grant creation + session approval for demo sessions
       if (isDemoSession(flowState.sessionId)) {
-        setFlowState(prev => ({ ...prev, status: "success" }))
+        trackGrantFlowCompleted({ sessionId: flowState.sessionId, platform: telemetryPlatform })
+      setFlowState(prev => ({ ...prev, status: "success" }))
         return
       }
 
@@ -368,8 +406,10 @@ export function useGrantFlow(params: GrantFlowParams, prefetched?: PrefetchedGra
         })
       )
 
+      trackGrantFlowCompleted({ sessionId: flowState.sessionId, platform: telemetryPlatform })
       setFlowState(prev => ({ ...prev, status: "success" }))
     } catch (error) {
+      trackGrantFlowFailed({ sessionId: flowState.sessionId, platform: telemetryPlatform, error })
       console.error("[GrantFlow] Approve failed:", error)
       setFlowState(prev => ({
         ...prev,
@@ -394,6 +434,7 @@ export function useGrantFlow(params: GrantFlowParams, prefetched?: PrefetchedGra
     personalServer.tunnelUrl,
     personalServer.devToken,
     dispatch,
+    telemetryPlatform,
   ])
 
   // Auto-approve after auth is ready and Personal Server is available.
@@ -474,6 +515,7 @@ export function useGrantFlow(params: GrantFlowParams, prefetched?: PrefetchedGra
   // Fire-and-forget the deny call, then navigate away immediately.
   // The user clicked Cancel — they don't need to see a confirmation screen.
   const handleDeny = useCallback(async () => {
+    trackGrantFlowDenied({ sessionId: flowState.sessionId, platform: telemetryPlatform })
     if (flowState.sessionId && flowState.secret && !isDemoSession(flowState.sessionId)) {
       try {
         await denySession(flowState.sessionId, {
@@ -487,7 +529,7 @@ export function useGrantFlow(params: GrantFlowParams, prefetched?: PrefetchedGra
     }
 
     navigate(ROUTES.home)
-  }, [flowState.sessionId, flowState.secret, navigate])
+  }, [flowState.sessionId, flowState.secret, navigate, telemetryPlatform])
 
   // Helper to get display name from builder manifest or session legacy fields
   const builderName =

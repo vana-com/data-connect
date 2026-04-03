@@ -4,6 +4,12 @@ import { useDispatch, useSelector } from 'react-redux';
 import { deleteRun, startRun, updateRunStatus, stopRun } from '../state/store';
 import type { RootState } from '../state/store';
 import type { Platform, Run } from '../types';
+import { getPlatformRegistryEntry } from '@/lib/platform/utils';
+import {
+  trackCollectionFailed,
+  trackCollectionRunStarted,
+} from '@/lib/telemetry/events';
+import { durationSince } from '@/lib/telemetry/client';
 
 const DUPLICATE_ACTIVE_RUN_ERROR_CODE = 'DUPLICATE_ACTIVE_RUN';
 
@@ -24,6 +30,7 @@ export function useConnector() {
   const startImport = useCallback(
     async (platform: Platform) => {
       const runId = `${platform.id}-${Date.now()}`;
+      const source = getPlatformRegistryEntry(platform)?.id ?? platform.id;
 
       const newRun: Run = {
         id: runId,
@@ -39,10 +46,15 @@ export function useConnector() {
       };
 
       dispatch(startRun(newRun));
+      trackCollectionRunStarted({
+        collectionRunId: runId,
+        source,
+        authMode: 'interactive',
+      });
 
       try {
-        // Check if simulate no chrome is enabled (for testing download flow)
-        const simulateNoChrome = localStorage.getItem('dataconnect_simulate_no_chrome') === 'true';
+        const simulateNoChrome =
+          typeof window !== 'undefined' && window.localStorage?.getItem?.('dataconnect_simulate_no_chrome') === 'true';
 
         await invoke('start_connector_run', {
           runId,
@@ -68,6 +80,12 @@ export function useConnector() {
             endDate: new Date().toISOString(),
           })
         );
+        trackCollectionFailed({
+          collectionRunId: runId,
+          source,
+          durationMs: durationSince(newRun.startDate),
+          error,
+        });
       }
 
       return runId;
@@ -77,14 +95,11 @@ export function useConnector() {
 
   const stopExport = useCallback(
     async (runId: string) => {
-      // Always update Redux state first to ensure UI updates
       dispatch(stopRun(runId));
 
-      // Then try to close the window (may fail if already closed)
       try {
         await invoke('stop_connector_run', { runId });
       } catch (error) {
-        // Window may already be closed, that's ok
         console.log('Stop connector run (window may be closed):', error);
       }
     },

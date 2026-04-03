@@ -78,6 +78,8 @@ export function Settings() {
     onCheckBrowserStatus,
     onSimulateNoChromeChange,
     onClearBrowserSession,
+    telemetryEnabled,
+    onTelemetryEnabledChange,
     clearPersonalServerDataStatus,
     clearPersonalServerDataError,
     onClearPersonalServerData,
@@ -147,6 +149,8 @@ export function Settings() {
         onSimulateNoChromeChange={onSimulateNoChromeChange}
         onOpenLogFolder={onOpenLogFolder}
         onCheckAppUpdate={onCheckAppUpdate}
+        telemetryEnabled={telemetryEnabled}
+        onTelemetryEnabledChange={onTelemetryEnabledChange}
         clearPersonalServerDataStatus={clearPersonalServerDataStatus}
         clearPersonalServerDataError={clearPersonalServerDataError}
         onClearPersonalServerData={onClearPersonalServerData}

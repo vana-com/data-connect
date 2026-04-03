@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useState } from "react"
 import {
+  ActivityIcon,
   ArrowUpRightIcon,
   GithubIcon,
   InfoIcon,
@@ -57,6 +58,8 @@ interface SettingsAboutProps {
   onStopPersonalServer: () => void
   onSimulateNoChromeChange: (value: boolean) => void
   onOpenLogFolder: () => void
+  telemetryEnabled: boolean
+  onTelemetryEnabledChange: (value: boolean) => void
   onCheckAppUpdate?: () => void
   clearPersonalServerDataStatus: "idle" | "deleting" | "success" | "error"
   clearPersonalServerDataError: string | null
@@ -84,6 +87,8 @@ export function SettingsAbout({
   onStopPersonalServer,
   onSimulateNoChromeChange,
   onOpenLogFolder,
+  telemetryEnabled,
+  onTelemetryEnabledChange,
   onCheckAppUpdate,
   clearPersonalServerDataStatus,
   clearPersonalServerDataError,
@@ -412,6 +417,29 @@ export function SettingsAbout({
                       "**:data-[slot=switch-thumb]:h-(--thumb-h)",
                       "**:data-[slot=switch-thumb]:w-(--thumb-w)",
                       // thumb position by state
+                      "[&_[data-slot=switch-thumb][data-state=unchecked]]:translate-x-[calc((var(--switch-h)-var(--thumb-h))/2-var(--switch-border))]",
+                      "[&_[data-slot=switch-thumb][data-state=checked]]:translate-x-[calc(var(--switch-w)-var(--switch-border)-var(--thumb-w)-((var(--switch-h)-var(--thumb-h))/2))]"
+                    )}
+                  />
+                </div>
+              }
+            />
+
+            <SettingsRow
+              icon={<ActivityIcon aria-hidden="true" />}
+              title="Telemetry"
+              description="Share small operational events so we can improve connector reliability. No payload contents, file paths, or account data are sent."
+              right={
+                <div className="pr-2">
+                  <Switch
+                    checked={telemetryEnabled}
+                    onCheckedChange={onTelemetryEnabledChange}
+                    aria-label="Enable telemetry"
+                    className={cn(
+                      "[--switch-w:48px] [--switch-h:20px] [--thumb-w:24px] [--thumb-h:16px] [--switch-border:1px]",
+                      "h-(--switch-h) w-(--switch-w)",
+                      "**:data-[slot=switch-thumb]:h-(--thumb-h)",
+                      "**:data-[slot=switch-thumb]:w-(--thumb-w)",
                       "[&_[data-slot=switch-thumb][data-state=unchecked]]:translate-x-[calc((var(--switch-h)-var(--thumb-h))/2-var(--switch-border))]",
                       "[&_[data-slot=switch-thumb][data-state=checked]]:translate-x-[calc(var(--switch-w)-var(--switch-border)-var(--thumb-w)-((var(--switch-h)-var(--thumb-h))/2))]"
                     )}

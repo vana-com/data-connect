@@ -178,7 +178,9 @@ describe("SettingsAbout", () => {
       screen.getByText("Helps improve connector reliability and app quality.")
     ).toBeTruthy()
     expect(
-      screen.getByText(/No payload contents, file paths, Personal Server URLs/)
+      screen.getByText(
+        /No payload contents, file paths, Personal Server URLs, or account-linked identity are sent\./
+      )
     ).toBeTruthy()
   })
 

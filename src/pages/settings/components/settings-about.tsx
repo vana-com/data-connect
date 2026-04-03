@@ -450,7 +450,7 @@ export function SettingsAbout({
                 <div className="px-4 pb-4 pl-[62px]">
                   <Text as="div" intent="fine" muted>
                     No payload contents, file paths, Personal Server URLs, or
-                    account-linked identity are sent by default.
+                    account-linked identity are sent.
                   </Text>
                 </div>
               }

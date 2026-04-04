@@ -341,11 +341,11 @@ export function useEvents() {
       trackCollectionCompleted({
         collectionRunId: runId,
         source: context.source,
-        durationMs: context.durationMs,
+        durationMs: context.durationMs ?? 0,
       });
     }
 
-    function markCollectionFailed(runId: string, error?: unknown, errorClass?: 'needs_input' | 'collection_failed' | 'runtime_error' | 'auth_failed') {
+    function markCollectionFailed(runId: string, error?: unknown, errorClass?: 'abandoned_waiting_for_input' | 'collection_failed' | 'runtime_error' | 'auth_failed') {
       if (terminalCollectionRunIds.has(runId)) return;
       const context = getRunTelemetryContext(runId);
       if (!context) return;
@@ -427,6 +427,12 @@ export function useEvents() {
         dispatch(updateRunStatus({ runId, status: 'running' }));
         updateProgress();
       } else if (statusType === 'COMPLETE') {
+        // COMPLETE is the authoritative terminal signal for a collection
+        // run: it fires when the connector process finishes, regardless of
+        // whether data was produced or when. Telemetry and run status are
+        // updated here. Data persistence is handled separately by the
+        // `export-complete` listener below, which fires when the connector
+        // calls `page.setData('result', ...)`.
         dispatch(
           updateRunStatus({
             runId,
@@ -437,6 +443,9 @@ export function useEvents() {
         dispatch(updateRunConnected({ runId, isConnected: true }));
         markCollectionCompleted(runId);
 
+        // Fallback persistence path for simple connectors that attach data
+        // to the COMPLETE status payload instead of calling setData('result').
+        // `persistedRunIds` dedupes against the `export-complete` path.
         if (typeof status === 'object') {
           const activeRun = store.getState().app.runs.find((r) => r.id === runId);
           if (!activeRun) {
@@ -516,21 +525,19 @@ export function useEvents() {
       }
     });
 
+    // `export-complete` carries the data payload that arrives when the
+    // connector calls `page.setData('result', ...)`. For multi-step
+    // connectors this fires BEFORE the connector process finishes, so we
+    // handle persistence here but do NOT mark the run as complete or emit
+    // `collection_completed` telemetry. The terminal signal comes from the
+    // `connector-status` COMPLETE handler above, which fires when the
+    // connector process actually exits.
     addListener<ConnectorExportCompleteEvent>('export-complete', ({ runId, platformId, company, name, data }) => {
       const normalizedData = toExportedData(data, {
         platform: platformId,
         company,
       });
       if (!normalizedData) return;
-
-      dispatch(
-        updateRunStatus({
-          runId,
-          status: 'success',
-          endDate: new Date().toISOString(),
-        })
-      );
-      markCollectionCompleted(runId);
 
       void persistAndDeliverExport({
         runId,

@@ -1,5 +1,10 @@
 import { queueTelemetryEvent, classifyTelemetryError } from "@/lib/telemetry/client";
 
+// Typed helpers over `queueTelemetryEvent`. Each helper corresponds to one
+// event in the contract (see @/lib/telemetry/contracts.ts and the upstream
+// TELEMETRY.md). The helpers encode the required fields for each event so
+// call sites can't accidentally omit them.
+
 export function trackCollectionRunStarted(args: {
   collectionRunId: string;
   source: string;
@@ -19,14 +24,15 @@ export function trackCollectionNeedsInput(args: {
   collectionRunId: string;
   source: string;
   connectorVersion?: string | null;
+  /** Machine-readable interaction kind, e.g. "login", "otp", "captcha". */
+  interactionKind?: "login" | "otp" | "captcha" | "manual_action";
 }) {
   void queueTelemetryEvent({
     eventName: "collection_needs_input",
     collectionRunId: args.collectionRunId,
     source: args.source,
     connectorVersion: args.connectorVersion,
-    outcome: "needs_input",
-    errorClass: "needs_input",
+    metadata: args.interactionKind ? { interactionKind: args.interactionKind } : null,
   });
 }
 
@@ -34,15 +40,17 @@ export function trackCollectionCompleted(args: {
   collectionRunId: string;
   source: string;
   connectorVersion?: string | null;
-  durationMs?: number | null;
+  durationMs: number;
+  /** Records produced by the connector. Zero is valid (empty account). */
+  recordCount?: number | null;
 }) {
   void queueTelemetryEvent({
     eventName: "collection_completed",
     collectionRunId: args.collectionRunId,
     source: args.source,
     connectorVersion: args.connectorVersion,
-    outcome: "collected",
-    durationMs: args.durationMs ?? null,
+    durationMs: args.durationMs,
+    recordCount: args.recordCount ?? null,
   });
 }
 
@@ -59,7 +67,6 @@ export function trackCollectionFailed(args: {
     collectionRunId: args.collectionRunId,
     source: args.source,
     connectorVersion: args.connectorVersion,
-    outcome: "failed",
     errorClass: args.errorClass ?? classifyTelemetryError(args.error, "collection_failed"),
     durationMs: args.durationMs ?? null,
   });
@@ -76,7 +83,6 @@ export function trackCollectionCancelled(args: {
     collectionRunId: args.collectionRunId,
     source: args.source,
     connectorVersion: args.connectorVersion,
-    outcome: "cancelled",
     durationMs: args.durationMs ?? null,
   });
 }
@@ -94,6 +100,8 @@ export function trackSyncRequestStarted(args: {
   });
 }
 
+// Sync skipped is standalone — do NOT emit `sync_request_started` before
+// this. The contract models skipped as "delivery was never attempted."
 export function trackSyncRequestSkipped(args: {
   collectionRunId: string;
   syncRunId: string;
@@ -105,8 +113,8 @@ export function trackSyncRequestSkipped(args: {
     collectionRunId: args.collectionRunId,
     syncRunId: args.syncRunId,
     source: args.source,
-    outcome: args.reason,
-    errorClass: args.reason === "skipped_server_unavailable" ? "personal_server_unavailable" : null,
+    errorClass:
+      args.reason === "skipped_server_unavailable" ? "personal_server_unavailable" : null,
   });
 }
 
@@ -121,7 +129,6 @@ export function trackSyncRequestCompleted(args: {
     collectionRunId: args.collectionRunId,
     syncRunId: args.syncRunId,
     source: args.source,
-    outcome: "requested_and_completed",
     scopeCount: args.scopeCount,
   });
 }
@@ -138,7 +145,6 @@ export function trackSyncRequestFailed(args: {
     collectionRunId: args.collectionRunId,
     syncRunId: args.syncRunId,
     source: args.source,
-    outcome: "failed",
     errorClass: args.errorClass ?? classifyTelemetryError(args.error, "sync_request_failed"),
   });
 }
@@ -148,7 +154,6 @@ export function trackSessionClaimCompleted(args: { sessionId: string; platform?:
     eventName: "session_claim_completed",
     sessionId: args.sessionId,
     platform: args.platform ?? null,
-    outcome: "approved",
   });
 }
 
@@ -157,7 +162,6 @@ export function trackSessionClaimFailed(args: { sessionId: string; error?: unkno
     eventName: "session_claim_failed",
     sessionId: args.sessionId,
     platform: args.platform ?? null,
-    outcome: "failed",
     errorClass: classifyTelemetryError(args.error, "session_claim_failed"),
   });
 }
@@ -167,7 +171,6 @@ export function trackBuilderVerificationCompleted(args: { sessionId: string; pla
     eventName: "builder_verification_completed",
     sessionId: args.sessionId,
     platform: args.platform ?? null,
-    outcome: "approved",
   });
 }
 
@@ -176,9 +179,16 @@ export function trackBuilderVerificationFailed(args: { sessionId: string; error?
     eventName: "builder_verification_failed",
     sessionId: args.sessionId,
     platform: args.platform ?? null,
-    outcome: "failed",
     errorClass: "builder_verification_failed",
     metadata: args.error instanceof Error ? { message: args.error.message } : null,
+  });
+}
+
+export function trackGrantFlowStarted(args: { sessionId: string; platform?: string | null }) {
+  void queueTelemetryEvent({
+    eventName: "grant_flow_started",
+    sessionId: args.sessionId,
+    platform: args.platform ?? null,
   });
 }
 
@@ -187,7 +197,6 @@ export function trackGrantFlowCompleted(args: { sessionId: string; platform?: st
     eventName: "grant_flow_completed",
     sessionId: args.sessionId,
     platform: args.platform ?? null,
-    outcome: "approved",
   });
 }
 
@@ -196,7 +205,6 @@ export function trackGrantFlowDenied(args: { sessionId: string; platform?: strin
     eventName: "grant_flow_denied",
     sessionId: args.sessionId,
     platform: args.platform ?? null,
-    outcome: "denied",
   });
 }
 
@@ -205,7 +213,14 @@ export function trackGrantFlowFailed(args: { sessionId: string; platform?: strin
     eventName: "grant_flow_failed",
     sessionId: args.sessionId,
     platform: args.platform ?? null,
-    outcome: "failed",
     errorClass: classifyTelemetryError(args.error, "grant_flow_failed"),
+  });
+}
+
+export function trackGrantFlowExpired(args: { sessionId: string; platform?: string | null }) {
+  void queueTelemetryEvent({
+    eventName: "grant_flow_expired",
+    sessionId: args.sessionId,
+    platform: args.platform ?? null,
   });
 }

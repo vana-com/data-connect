@@ -215,9 +215,11 @@ export interface QueueTelemetryEventInput {
   connectorVersion?: string | null;
   authMode?: string | null;
   platform?: string | null;
-  outcome?: string | null;
+  /** Free-form debugging context. Rollup logic must NOT depend on this. */
+  detail?: string | null;
   errorClass?: DataConnectTelemetryEvent["errorClass"];
   durationMs?: number | null;
+  recordCount?: number | null;
   scopeCount?: number | null;
   metadata?: Record<string, unknown> | null;
 }
@@ -246,9 +248,10 @@ export async function queueTelemetryEvent(input: QueueTelemetryEventInput) {
     os: detectOs(),
     arch: detectArch(),
     appVersion,
-    outcome: input.outcome ?? null,
+    detail: input.detail ?? null,
     errorClass: input.errorClass ?? null,
     durationMs: input.durationMs ?? null,
+    recordCount: input.recordCount ?? null,
     scopeCount: input.scopeCount ?? null,
     metadata: input.metadata ?? null,
   };

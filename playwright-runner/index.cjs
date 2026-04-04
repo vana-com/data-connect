@@ -429,6 +429,9 @@ function createPageApi(runState, runId) {
         log(`[error] ${value}`);
       } else if (key === 'result') {
         runState.hasResult = true;
+        // Send as proper result message so Rust emits export-complete
+        const exportData = (value && value.success && value.data) ? value.data : value;
+        send({ type: 'result', runId, data: exportData });
       }
       send({ type: 'data', runId, key, value });
     },

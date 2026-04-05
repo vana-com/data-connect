@@ -1,18 +1,36 @@
+// Telemetry client for data-connect. Sends canonical nested events to the
+// context-gateway ingest endpoint. See @/lib/telemetry/contract.ts for the
+// event shape, and the upstream TELEMETRY.md for the state machine.
+//
+// Architecture:
+//  - In-memory outbox backed by localStorage (same pattern as before; a
+//    file-backed outbox via Tauri fs is a future improvement).
+//  - Typed constructors in @/lib/telemetry/events.ts are the only way to
+//    build events at call sites — they enforce per-variant required fields.
+//  - This module owns: identity (eventId, installId, appSessionId),
+//    context (platform/os/arch/producerVersion), outbox, flush.
+
 import { getVersion } from "@tauri-apps/api/app";
 import {
-  type DataConnectTelemetryBatch,
-  type DataConnectTelemetryEvent,
-  TELEMETRY_CLIENT_NAME,
+  type TelemetryArch,
+  type TelemetryBatch,
+  type TelemetryContext,
+  type TelemetryCorrelation,
+  type TelemetryErrorClass,
+  type TelemetryEvent,
+  type TelemetryKind,
+  type TelemetryOs,
   TELEMETRY_ENDPOINT,
   TELEMETRY_EVENT_VERSION,
-  canonicalizeTelemetrySource,
-} from "@/lib/telemetry/contracts";
+  TELEMETRY_PRODUCER_NAME,
+} from "@/lib/telemetry/contract";
 
-const STORAGE_VERSION = "v1";
+const STORAGE_VERSION = "v2";
 const TELEMETRY_ENABLED_KEY = `${STORAGE_VERSION}_telemetry_enabled`;
 const TELEMETRY_INSTALL_ID_KEY = `${STORAGE_VERSION}_telemetry_install_id`;
 const TELEMETRY_OUTBOX_KEY = `${STORAGE_VERSION}_telemetry_outbox`;
 const TELEMETRY_SESSION_ID_KEY = `${STORAGE_VERSION}_telemetry_app_session_id`;
+const TELEMETRY_HOST_RUN_ID_KEY = `${STORAGE_VERSION}_telemetry_host_run_id`;
 const MAX_OUTBOX_EVENTS = 500;
 const MAX_BATCH_EVENTS = 100;
 const REQUEST_TIMEOUT_MS = 3_000;
@@ -26,9 +44,11 @@ let appVersionPromise: Promise<string> | null = null;
 let cachedAppVersion = "unknown";
 
 // In-memory outbox buffer — persisted to localStorage on a debounce and on pagehide.
-let memoryOutbox: DataConnectTelemetryEvent[] = [];
+let memoryOutbox: TelemetryEvent[] = [];
 let memoryOutboxLoaded = false;
 let persistTimer: ReturnType<typeof setTimeout> | null = null;
+
+// ── Helpers ─────────────────────────────────────────────────────────────────
 
 function hasWindow() {
   return typeof window !== "undefined";
@@ -52,11 +72,11 @@ function safeSetItem(key: string, value: string) {
   }
 }
 
-function loadOutboxFromStorage(): DataConnectTelemetryEvent[] {
+function loadOutboxFromStorage(): TelemetryEvent[] {
   const raw = safeGetItem(TELEMETRY_OUTBOX_KEY);
   if (!raw) return [];
   try {
-    const parsed = JSON.parse(raw) as DataConnectTelemetryEvent[];
+    const parsed = JSON.parse(raw) as TelemetryEvent[];
     return Array.isArray(parsed) ? parsed : [];
   } catch {
     return [];
@@ -71,7 +91,10 @@ function ensureOutboxLoaded() {
 }
 
 function persistOutbox() {
-  safeSetItem(TELEMETRY_OUTBOX_KEY, JSON.stringify(memoryOutbox.slice(-MAX_OUTBOX_EVENTS)));
+  safeSetItem(
+    TELEMETRY_OUTBOX_KEY,
+    JSON.stringify(memoryOutbox.slice(-MAX_OUTBOX_EVENTS)),
+  );
 }
 
 function schedulePersist() {
@@ -82,10 +105,9 @@ function schedulePersist() {
   }, PERSIST_DEBOUNCE_MS);
 }
 
-/**
- * Persist immediately and flush — call on pagehide or when telemetry is disabled.
- */
+/** Persist immediately and flush — call on pagehide or when telemetry is disabled. */
 export function persistAndFlush() {
+  ensureOutboxLoaded();
   if (persistTimer !== null) {
     clearTimeout(persistTimer);
     persistTimer = null;
@@ -93,7 +115,7 @@ export function persistAndFlush() {
   persistOutbox();
 }
 
-function appendToOutbox(event: DataConnectTelemetryEvent) {
+function appendToOutbox(event: TelemetryEvent) {
   ensureOutboxLoaded();
   memoryOutbox.push(event);
   if (memoryOutbox.length > MAX_OUTBOX_EVENTS) {
@@ -120,13 +142,14 @@ function getOrCreateLocalId(key: string, storage: Storage | null) {
   ) {
     return crypto.randomUUID();
   }
-
   const existing = storage.getItem(key);
   if (existing) return existing;
   const next = crypto.randomUUID();
   storage.setItem(key, next);
   return next;
 }
+
+// ── User controls ───────────────────────────────────────────────────────────
 
 export function getTelemetryEnabled() {
   if (ENV_DISABLED) return false;
@@ -142,6 +165,8 @@ export function setTelemetryEnabled(enabled: boolean) {
   }
 }
 
+// ── Identity ────────────────────────────────────────────────────────────────
+
 export function getTelemetryInstallId() {
   if (!hasWindow()) return crypto.randomUUID();
   return getOrCreateLocalId(TELEMETRY_INSTALL_ID_KEY, localStorage);
@@ -152,6 +177,19 @@ export function getTelemetryAppSessionId() {
   return getOrCreateLocalId(TELEMETRY_SESSION_ID_KEY, sessionStorage);
 }
 
+/**
+ * Per-app-launch host run ID. Desktop treats each app launch as one host run;
+ * all collection/sync events during that launch carry this as `hostRunId` so
+ * the server can correlate them. Stored in sessionStorage so it persists
+ * across page navigation but resets on restart.
+ */
+export function getHostRunId() {
+  if (!hasWindow()) return crypto.randomUUID();
+  return getOrCreateLocalId(TELEMETRY_HOST_RUN_ID_KEY, sessionStorage);
+}
+
+// ── Host context detection ──────────────────────────────────────────────────
+
 interface NavigatorWithUserAgentData extends Navigator {
   userAgentData?: {
     platform?: string;
@@ -159,26 +197,22 @@ interface NavigatorWithUserAgentData extends Navigator {
   };
 }
 
-function detectPlatform() {
-  if (!hasWindow()) return null;
-  const navigatorWithUAData = navigator as NavigatorWithUserAgentData;
-  return navigatorWithUAData.userAgentData?.platform ?? navigator.platform ?? null;
-}
-
-function detectOs() {
-  if (!hasWindow()) return null;
-  const navigatorWithUAData = navigator as NavigatorWithUserAgentData;
+function detectOs(): TelemetryOs {
+  if (!hasWindow()) return "linux";
   const userAgent = navigator.userAgent.toLowerCase();
   if (userAgent.includes("mac")) return "macos";
   if (userAgent.includes("windows")) return "windows";
-  if (userAgent.includes("linux")) return "linux";
-  return navigatorWithUAData.userAgentData?.platform?.toLowerCase() ?? null;
+  return "linux";
 }
 
-function detectArch() {
-  if (!hasWindow()) return null;
+function detectArch(): TelemetryArch {
+  if (!hasWindow()) return "x86_64";
   const navigatorWithUAData = navigator as NavigatorWithUserAgentData;
-  return navigatorWithUAData.userAgentData?.architecture ?? null;
+  const raw = (navigatorWithUAData.userAgentData?.architecture ?? "").toLowerCase();
+  if (raw.includes("arm")) return "arm64";
+  const ua = navigator.userAgent.toLowerCase();
+  if (ua.includes("arm") || ua.includes("aarch64")) return "arm64";
+  return "x86_64";
 }
 
 async function resolveAppVersion() {
@@ -194,63 +228,60 @@ async function resolveAppVersion() {
   return appVersionPromise;
 }
 
-function buildBatch(events: DataConnectTelemetryEvent[]): DataConnectTelemetryBatch {
+async function buildContext(): Promise<TelemetryContext> {
+  const os = detectOs();
+  const arch = detectArch();
+  const producerVersion = await resolveAppVersion();
   return {
-    batchId: crypto.randomUUID(),
-    sentAt: new Date().toISOString(),
-    client: {
-      name: TELEMETRY_CLIENT_NAME,
-      version: cachedAppVersion,
-    },
-    events,
+    hostPlatform: `${os}-${arch}`,
+    os,
+    arch,
+    producerVersion,
   };
 }
 
-export interface QueueTelemetryEventInput {
-  eventName: DataConnectTelemetryEvent["eventName"];
-  collectionRunId?: string | null;
-  syncRunId?: string | null;
-  sessionId?: string | null;
-  source?: string | null;
-  connectorVersion?: string | null;
-  authMode?: string | null;
-  platform?: string | null;
-  outcome?: string | null;
-  errorClass?: DataConnectTelemetryEvent["errorClass"];
-  durationMs?: number | null;
-  scopeCount?: number | null;
-  metadata?: Record<string, unknown> | null;
+// ── Event construction ──────────────────────────────────────────────────────
+
+export interface EmitEventInput {
+  correlation: TelemetryCorrelation;
+  kind: TelemetryKind;
+  durationMs?: number;
+  connectorVersion?: string;
+  authMode?: string;
+  debug?: string;
+  extensions?: Record<string, unknown>;
 }
 
-export async function queueTelemetryEvent(input: QueueTelemetryEventInput) {
-  if (!getTelemetryEnabled()) {
-    return;
+export async function emitTelemetryEvent(input: EmitEventInput): Promise<void> {
+  if (!getTelemetryEnabled()) return;
+
+  const context = await buildContext();
+  if (input.connectorVersion) {
+    context.connectorVersion = input.connectorVersion;
+  }
+  if (input.authMode) {
+    context.authMode = input.authMode;
   }
 
-  const appVersion = await resolveAppVersion();
-  const event: DataConnectTelemetryEvent = {
-    eventId: crypto.randomUUID(),
-    eventVersion: TELEMETRY_EVENT_VERSION,
-    timestamp: new Date().toISOString(),
-    producer: "data_connect",
-    installId: getTelemetryInstallId(),
-    appSessionId: getTelemetryAppSessionId(),
-    collectionRunId: input.collectionRunId ?? null,
-    syncRunId: input.syncRunId ?? null,
-    sessionId: input.sessionId ?? null,
-    eventName: input.eventName,
-    source: canonicalizeTelemetrySource(input.source),
-    connectorVersion: input.connectorVersion ?? null,
-    authMode: input.authMode ?? null,
-    platform: input.platform ?? detectPlatform(),
-    os: detectOs(),
-    arch: detectArch(),
-    appVersion,
-    outcome: input.outcome ?? null,
-    errorClass: input.errorClass ?? null,
-    durationMs: input.durationMs ?? null,
-    scopeCount: input.scopeCount ?? null,
-    metadata: input.metadata ?? null,
+  const event: TelemetryEvent = {
+    identity: {
+      eventId: crypto.randomUUID(),
+      eventVersion: TELEMETRY_EVENT_VERSION,
+    },
+    time: {
+      occurredAt: new Date().toISOString(),
+      ...(input.durationMs !== undefined ? { durationMs: input.durationMs } : {}),
+    },
+    attribution: {
+      producer: TELEMETRY_PRODUCER_NAME,
+      installId: getTelemetryInstallId(),
+      appSessionId: getTelemetryAppSessionId(),
+    },
+    context,
+    correlation: input.correlation,
+    kind: input.kind,
+    ...(input.debug ? { debug: input.debug } : {}),
+    ...(input.extensions ? { extensions: input.extensions } : {}),
   };
 
   if (ENV_DEBUG) {
@@ -262,50 +293,51 @@ export async function queueTelemetryEvent(input: QueueTelemetryEventInput) {
   void flushTelemetry();
 }
 
-export async function flushTelemetry(options?: { keepalive?: boolean }) {
-  if (!getTelemetryEnabled() || ENV_DEBUG) {
-    return;
-  }
+// ── Flush / network ─────────────────────────────────────────────────────────
 
-  if (flushPromise) {
-    return flushPromise;
-  }
+function buildBatch(events: TelemetryEvent[]): TelemetryBatch {
+  return {
+    batchId: crypto.randomUUID(),
+    sentAt: new Date().toISOString(),
+    events,
+  };
+}
+
+export async function flushTelemetry(options?: { keepalive?: boolean }) {
+  if (!getTelemetryEnabled() || ENV_DEBUG) return;
+  if (flushPromise) return flushPromise;
 
   flushPromise = (async () => {
     while (true) {
       const next = getOutbox();
-      if (next.length === 0) {
-        return;
-      }
+      if (next.length === 0) return;
 
       const batchEvents = next.slice(0, MAX_BATCH_EVENTS);
+      const fetchOptions: RequestInit = {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(buildBatch(batchEvents)),
+      };
 
       try {
-        const fetchOptions: RequestInit = {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify(buildBatch(batchEvents)),
-        };
-
         if (options?.keepalive) {
           fetchOptions.keepalive = true;
-        } else {
-          const controller = new AbortController();
-          const timeout = window.setTimeout(() => controller.abort(), REQUEST_TIMEOUT_MS);
-          fetchOptions.signal = controller.signal;
-          try {
-            const response = await fetch(TELEMETRY_ENDPOINT, fetchOptions);
-            if (!response.ok) return;
-          } finally {
-            window.clearTimeout(timeout);
-          }
+          const response = await fetch(TELEMETRY_ENDPOINT, fetchOptions);
+          if (!response.ok) return;
           removeOutboxEvents(batchEvents.length);
           persistOutbox();
           continue;
         }
 
-        const response = await fetch(TELEMETRY_ENDPOINT, fetchOptions);
-        if (!response.ok) return;
+        const controller = new AbortController();
+        const timeout = window.setTimeout(() => controller.abort(), REQUEST_TIMEOUT_MS);
+        fetchOptions.signal = controller.signal;
+        try {
+          const response = await fetch(TELEMETRY_ENDPOINT, fetchOptions);
+          if (!response.ok) return;
+        } finally {
+          window.clearTimeout(timeout);
+        }
         removeOutboxEvents(batchEvents.length);
         persistOutbox();
       } catch {
@@ -319,7 +351,13 @@ export async function flushTelemetry(options?: { keepalive?: boolean }) {
   return flushPromise;
 }
 
-export function classifyTelemetryError(error: unknown, fallback: DataConnectTelemetryEvent["errorClass"] = "unknown") {
+// ── Utilities ───────────────────────────────────────────────────────────────
+
+/** Best-effort error classification into a canonical TelemetryErrorClass. */
+export function classifyTelemetryError(
+  error: unknown,
+  fallback: TelemetryErrorClass = "unknown",
+): TelemetryErrorClass {
   const message =
     typeof error === "string"
       ? error
@@ -328,20 +366,31 @@ export function classifyTelemetryError(error: unknown, fallback: DataConnectTele
         : String(error ?? "");
   const normalized = message.toLowerCase();
 
-  if (normalized.includes("timeout")) return "timeout";
-  if (normalized.includes("network")) return "network_error";
-  if (normalized.includes("personal server") || normalized.includes("server unavailable")) {
+  if (normalized.includes("timeout") || normalized.includes("timed out")) return "timeout";
+  if (
+    normalized.includes("personal server") ||
+    normalized.includes("server unavailable") ||
+    normalized.includes("econnrefused")
+  ) {
     return "personal_server_unavailable";
   }
-  if (normalized.includes("sign in") || normalized.includes("auth")) {
+  if (normalized.includes("network") || normalized.includes("fetch failed")) {
+    return "network_error";
+  }
+  if (
+    normalized.includes("sign in") ||
+    normalized.includes("auth") ||
+    normalized.includes("unauthorized") ||
+    normalized.includes("forbidden")
+  ) {
     return "auth_failed";
   }
   return fallback;
 }
 
-export function durationSince(startedAt: string | null | undefined) {
-  if (!startedAt) return null;
+export function durationSince(startedAt: string | null | undefined): number | undefined {
+  if (!startedAt) return undefined;
   const started = new Date(startedAt).getTime();
-  if (Number.isNaN(started)) return null;
+  if (Number.isNaN(started)) return undefined;
   return Math.max(0, Date.now() - started);
 }

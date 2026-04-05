@@ -28,10 +28,10 @@ import {
   trackCollectionCompleted,
   trackCollectionFailed,
   trackCollectionNeedsInput,
-  trackSyncRequestCompleted,
-  trackSyncRequestFailed,
-  trackSyncRequestSkipped,
-  trackSyncRequestStarted,
+  trackSyncCompleted,
+  trackSyncFailed,
+  trackSyncSkipped,
+  trackSyncStarted,
 } from '@/lib/telemetry/events';
 
 const isDev = import.meta.env.DEV;
@@ -128,7 +128,7 @@ async function deliverRunToPersonalServer(
 
   const source = getPlatformRegistryEntry({ id: run.platformId })?.id ?? run.platformId;
   const syncRunId = createSyncRunId(run.id);
-  trackSyncRequestStarted({
+  trackSyncStarted({
     collectionRunId: run.id,
     syncRunId,
     source,
@@ -146,11 +146,11 @@ async function deliverRunToPersonalServer(
     const payload = (data.content ?? data) as Record<string, unknown>;
     const ingested = await ingestExportData(port, run.platformId, payload);
     if (ingested.length === 0) {
-      trackSyncRequestFailed({
+      trackSyncFailed({
         collectionRunId: run.id,
         syncRunId,
         source,
-        errorClass: 'sync_request_failed',
+        errorClass: 'runtime_error',
       });
       return false;
     }
@@ -164,11 +164,12 @@ async function deliverRunToPersonalServer(
     });
 
     dispatch(markRunSynced({ runId: run.id, scope: ingested[0] }));
-    trackSyncRequestCompleted({
+    trackSyncCompleted({
       collectionRunId: run.id,
       syncRunId,
       source,
-      scopeCount: ingested.length,
+      storedScopeCount: ingested.length,
+      failedScopeCount: 0,
     });
     debugLog('[Data Delivery] Synced run', run.id, 'scopes:', ingested);
     return true;
@@ -176,7 +177,7 @@ async function deliverRunToPersonalServer(
     if (isDev) {
       console.warn('[Data Delivery] Failed for run', run.id, '(non-blocking):', err);
     }
-    trackSyncRequestFailed({
+    trackSyncFailed({
       collectionRunId: run.id,
       syncRunId,
       source,
@@ -240,17 +241,17 @@ async function persistAndDeliverExport({
 
     const serverStatus = await invoke<{ running: boolean; port?: number }>('get_personal_server_status');
     if (!serverStatus.running || !serverStatus.port) {
-      trackSyncRequestSkipped({
+      trackSyncSkipped({
         collectionRunId: runId,
         syncRunId: createSyncRunId(runId),
         source,
-        reason: 'skipped_server_unavailable',
+        reason: 'server_unavailable',
       });
       return;
     }
 
     const syncRunId = createSyncRunId(runId);
-    trackSyncRequestStarted({
+    trackSyncStarted({
       collectionRunId: runId,
       syncRunId,
       source,
@@ -258,11 +259,11 @@ async function persistAndDeliverExport({
 
     const ingested = await ingestExportData(serverStatus.port, platformId, exportData as unknown as Record<string, unknown>);
     if (ingested.length === 0) {
-      trackSyncRequestFailed({
+      trackSyncFailed({
         collectionRunId: runId,
         syncRunId,
         source,
-        errorClass: 'sync_request_failed',
+        errorClass: 'runtime_error',
       });
       return;
     }
@@ -275,11 +276,12 @@ async function persistAndDeliverExport({
       scope: ingested[0],
     });
     dispatch(markRunSynced({ runId, scope: ingested[0] }));
-    trackSyncRequestCompleted({
+    trackSyncCompleted({
       collectionRunId: runId,
       syncRunId,
       source,
-      scopeCount: ingested.length,
+      storedScopeCount: ingested.length,
+      failedScopeCount: 0,
     });
     debugLog('[Data Delivery] Synced run', runId, 'scopes:', ingested);
   } catch (err) {
@@ -297,7 +299,7 @@ async function persistAndDeliverExport({
         logs: `[Export Persistence Error] ${message}`,
       })
     );
-    trackSyncRequestFailed({
+    trackSyncFailed({
       collectionRunId: runId,
       syncRunId: createSyncRunId(runId),
       source,
@@ -341,11 +343,15 @@ export function useEvents() {
       trackCollectionCompleted({
         collectionRunId: runId,
         source: context.source,
-        durationMs: context.durationMs,
+        durationMs: context.durationMs ?? 0,
       });
     }
 
-    function markCollectionFailed(runId: string, error?: unknown, errorClass?: 'needs_input' | 'collection_failed' | 'runtime_error' | 'auth_failed') {
+    function markCollectionFailed(
+      runId: string,
+      error?: unknown,
+      errorClass?: 'runtime_error' | 'auth_failed' | 'timeout' | 'network_error',
+    ) {
       if (terminalCollectionRunIds.has(runId)) return;
       const context = getRunTelemetryContext(runId);
       if (!context) return;
@@ -353,7 +359,7 @@ export function useEvents() {
       trackCollectionFailed({
         collectionRunId: runId,
         source: context.source,
-        durationMs: context.durationMs,
+        durationMs: context.durationMs ?? undefined,
         error,
         errorClass,
       });
@@ -516,21 +522,19 @@ export function useEvents() {
       }
     });
 
+    // `export-complete` carries the data payload that arrives when the
+    // connector calls `page.setData('result', ...)`. For multi-step connectors
+    // this fires BEFORE the connector process finishes, so we handle
+    // persistence here but do NOT mark the run as complete or emit
+    // `collection_completed` telemetry. The terminal signal comes from the
+    // `connector-status: COMPLETE` handler above, which fires when the
+    // connector process actually exits.
     addListener<ConnectorExportCompleteEvent>('export-complete', ({ runId, platformId, company, name, data }) => {
       const normalizedData = toExportedData(data, {
         platform: platformId,
         company,
       });
       if (!normalizedData) return;
-
-      dispatch(
-        updateRunStatus({
-          runId,
-          status: 'success',
-          endDate: new Date().toISOString(),
-        })
-      );
-      markCollectionCompleted(runId);
 
       void persistAndDeliverExport({
         runId,

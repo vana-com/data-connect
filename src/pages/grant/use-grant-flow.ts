@@ -35,7 +35,9 @@ import {
   trackBuilderVerificationFailed,
   trackGrantFlowCompleted,
   trackGrantFlowDenied,
+  trackGrantFlowExpired,
   trackGrantFlowFailed,
+  trackGrantFlowStarted,
   trackSessionClaimCompleted,
   trackSessionClaimFailed,
 } from "@/lib/telemetry/events"
@@ -121,6 +123,7 @@ export function useGrantFlow(params: GrantFlowParams, prefetched?: PrefetchedGra
         prefetchedHasBuilder: Boolean(prefetched?.builderManifest),
         isDemoSession: isDemoSession(sessionId),
       });
+      trackGrantFlowStarted({ sessionId, platform: telemetryPlatform })
       setFlowState({ sessionId, secret, status: "loading" })
 
       // --- Demo mode ---
@@ -336,6 +339,10 @@ export function useGrantFlow(params: GrantFlowParams, prefetched?: PrefetchedGra
       if (flowState.session.expiresAt) {
         const expiresAt = new Date(flowState.session.expiresAt).getTime()
         if (!Number.isNaN(expiresAt) && Date.now() > expiresAt) {
+          trackGrantFlowExpired({
+            sessionId: flowState.sessionId,
+            platform: telemetryPlatform,
+          })
           throw new SessionRelayError(
             "This session has expired. Please start a new request from the app.",
           )

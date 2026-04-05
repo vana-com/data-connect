@@ -7,7 +7,7 @@ import type { Platform, Run } from '../types';
 import { getPlatformRegistryEntry } from '@/lib/platform/utils';
 import {
   trackCollectionFailed,
-  trackCollectionRunStarted,
+  trackCollectionStarted,
 } from '@/lib/telemetry/events';
 import { durationSince } from '@/lib/telemetry/client';
 
@@ -46,7 +46,7 @@ export function useConnector() {
       };
 
       dispatch(startRun(newRun));
-      trackCollectionRunStarted({
+      trackCollectionStarted({
         collectionRunId: runId,
         source,
         authMode: 'interactive',

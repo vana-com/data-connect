@@ -167,12 +167,12 @@ export function setTelemetryEnabled(enabled: boolean) {
 
 // ── Identity ────────────────────────────────────────────────────────────────
 
-export function getTelemetryInstallId() {
+function getTelemetryInstallId() {
   if (!hasWindow()) return crypto.randomUUID();
   return getOrCreateLocalId(TELEMETRY_INSTALL_ID_KEY, localStorage);
 }
 
-export function getTelemetryAppSessionId() {
+function getTelemetryAppSessionId() {
   if (!hasWindow()) return crypto.randomUUID();
   return getOrCreateLocalId(TELEMETRY_SESSION_ID_KEY, sessionStorage);
 }

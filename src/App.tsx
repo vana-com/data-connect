@@ -14,6 +14,7 @@ import { dotPatternStyle } from "@/components/elements/dot-pattern"
 import { LoadingState } from "@/components/elements/loading-state"
 import { Toaster } from "@/components/ui/sonner"
 import { flushTelemetry, persistAndFlush } from "@/lib/telemetry/client"
+import { trackHostStarted, trackHostCompleted } from "@/lib/telemetry/events"
 
 // Dev loading debug:
 // - Open "/__loading" to render LoadingState directly.
@@ -48,9 +49,17 @@ function AppContent() {
   usePendingApprovalRetry()
 
   useEffect(() => {
+    // Host lifecycle: one "host run" per app launch. Mirrors the CLI's
+    // per-invocation host wrapper — every child collection, sync, and grant
+    // event rolls up under this parent.
+    const hostStartedAt = Date.now()
+    trackHostStarted({
+      channel: import.meta.env.MODE,
+    })
     void flushTelemetry()
 
     const handlePageHide = () => {
+      trackHostCompleted(Date.now() - hostStartedAt)
       persistAndFlush()
       void flushTelemetry({ keepalive: true })
     }

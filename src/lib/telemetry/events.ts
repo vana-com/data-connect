@@ -35,23 +35,6 @@ export function trackHostCompleted(durationMs?: number) {
   });
 }
 
-export function trackHostFailed(args: {
-  error?: unknown;
-  errorClass?: TelemetryErrorClass;
-  durationMs?: number;
-}) {
-  void emitTelemetryEvent({
-    correlation: { scope: "host", hostRunId: getHostRunId() },
-    kind: {
-      lifecycle: "host",
-      phase: "terminal",
-      outcome: "failure",
-      errorClass: args.errorClass ?? classifyTelemetryError(args.error),
-    },
-    durationMs: args.durationMs,
-  });
-}
-
 // ── Collection lifecycle ────────────────────────────────────────────────────
 
 export function trackCollectionStarted(args: {
@@ -382,7 +365,3 @@ export function trackBuilderVerificationFailed(args: {
   });
 }
 
-// ── Legacy alias ────────────────────────────────────────────────────────────
-
-/** @deprecated Use trackCollectionStarted instead. */
-export const trackCollectionRunStarted = trackCollectionStarted;

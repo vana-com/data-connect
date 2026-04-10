@@ -384,6 +384,35 @@ function createPageApi(runState, runId) {
   }
 
   return {
+    // ── Canonical page API minimum surface ─────────────────────────────
+    // These are thin pass-throughs to the underlying Playwright page object.
+    // See types/connector.d.ts in data-connectors for the canonical contract.
+
+    url: async () => {
+      const page = requirePage();
+      return page.url();
+    },
+
+    click: async (selector, options = {}) => {
+      const page = requirePage();
+      await page.click(selector, options);
+    },
+
+    fill: async (selector, value, options = {}) => {
+      const page = requirePage();
+      await page.fill(selector, value, options);
+    },
+
+    press: async (selector, key, options = {}) => {
+      const page = requirePage();
+      await page.press(selector, key, options);
+    },
+
+    waitForSelector: async (selector, options = {}) => {
+      const page = requirePage();
+      await page.waitForSelector(selector, options);
+    },
+
     goto: async (url, options = {}) => {
       const page = requirePage();
       log(`pageApi.goto called with: ${url}`);

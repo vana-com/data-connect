@@ -21,26 +21,44 @@ pub struct ConnectorScope {
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
 pub struct ConnectorMetadata {
-    pub id: Option<String>,
+    /// Canonical connector_id (e.g. "instagram-playwright").
+    /// The legacy `id` field is kept as an alias for backward compatibility.
+    #[serde(alias = "id")]
+    pub connector_id: Option<String>,
+    /// Canonical source_id (e.g. "instagram"). Distinct from connector_id.
+    pub source_id: Option<String>,
+    /// Version of the manifest contract itself (e.g. "1.0"). Independent of
+    /// connector version and page_api_version.
+    pub manifest_version: Option<String>,
+    /// Major version of the page API this connector targets (e.g. 1).
+    /// Independent of connector version.
+    pub page_api_version: Option<u32>,
     pub name: String,
     pub company: Option<String>,
     pub description: String,
-    #[serde(rename = "connectURL")]
+    /// Canonical connect_url; the legacy `connectURL` field is accepted as an alias.
+    #[serde(alias = "connectURL")]
     pub connect_url: String,
-    #[serde(rename = "connectSelector")]
+    /// Canonical connect_selector; the legacy `connectSelector` field is accepted as an alias.
+    #[serde(alias = "connectSelector")]
     pub connect_selector: String,
     #[serde(rename = "exportFrequency")]
     pub export_frequency: Option<String>,
     pub vectorize_config: Option<serde_json::Value>,
     /// Runtime type: "vanilla" (default) or "network-capture" (uses network interception)
     pub runtime: Option<String>,
-    /// Semantic version string (e.g. "1.0.0")
+    /// Semantic version string (e.g. "1.0.0"). This is the connector version,
+    /// not the manifest version or page API version.
     pub version: Option<String>,
-    /// Relative path to an SVG icon (e.g. "icons/chatgpt.svg")
-    #[serde(rename = "iconURL")]
+    /// Canonical icon path; the legacy `iconURL` field is accepted as an alias.
+    #[serde(alias = "iconURL", alias = "icon")]
     pub icon_url: Option<String>,
     /// Scopes this connector can export (e.g. chatgpt.conversations, chatgpt.memories)
     pub scopes: Option<Vec<ConnectorScope>>,
+    /// Declarative runtime constraints. Reserved for future use.
+    pub runtime_requirements: Option<serde_json::Value>,
+    /// Optional feature flags the connector needs.
+    pub capabilities: Option<Vec<String>>,
 }
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
@@ -220,7 +238,7 @@ pub async fn debug_connector_paths(app: AppHandle) -> Result<serde_json::Value, 
             }
             if let Ok(content) = fs::read_to_string(path) {
                 if let Ok(meta) = serde_json::from_str::<ConnectorMetadata>(&content) {
-                    let id = meta.id.unwrap_or_else(|| format!("{}-001", fname));
+                    let id = meta.connector_id.unwrap_or_else(|| format!("{}-001", fname));
                     connectors_map.insert(id.clone(), serde_json::json!({
                         "id": id,
                         "name": meta.name,
@@ -311,7 +329,7 @@ fn load_platforms_from_dir(dir: &PathBuf) -> Vec<Platform> {
 
                             platforms.push(Platform {
                                 id: metadata
-                                    .id
+                                    .connector_id
                                     .unwrap_or_else(|| format!("{}-001", filename)),
                                 company: metadata.company.unwrap_or(company),
                                 name: metadata.name.clone(),

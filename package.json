@@ -65,6 +65,7 @@
     "zod": "^3.25.76"
   },
   "devDependencies": {
+    "@opendatalabs/data-connectors-tools": "github:vana-com/data-connectors#f61f358",
     "@eslint/js": "^9.39.1",
     "@tailwindcss/postcss": "^4.1.18",
     "@tailwindcss/vite": "^4.1.18",

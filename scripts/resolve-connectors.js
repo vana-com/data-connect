@@ -1,6 +1,5 @@
 #!/usr/bin/env node
 
-import { createHash } from "crypto"
 import {
   existsSync,
   mkdirSync,
@@ -10,9 +9,15 @@ import {
   statSync,
   writeFileSync,
 } from "fs"
+import { execSync } from "child_process"
 import { dirname, join, resolve as resolvePath } from "path"
 import { fileURLToPath } from "url"
-import { execSync } from "child_process"
+import {
+  loadConnectorIndex,
+  readJson,
+  resolveConnectorArtifacts,
+  sha256Buffer,
+} from "@opendatalabs/data-connectors-tools/installer-core"
 
 const __dirname = dirname(fileURLToPath(import.meta.url))
 const ROOT = join(__dirname, "..")
@@ -21,8 +26,8 @@ const DEPENDENCIES_PATH = join(CONNECTORS_DIR, "connector-dependencies.json")
 const LOCK_PATH = join(CONNECTORS_DIR, "lock.json")
 const REGISTRY_PATH = join(CONNECTORS_DIR, "registry.json")
 const DEFAULT_LOCAL_SOURCE = join(ROOT, "..", "data-connectors")
-const DEFAULT_REGISTRY_URL =
-  "https://raw.githubusercontent.com/vana-com/data-connectors/main/registry.json"
+const DEFAULT_INDEX_URL =
+  "https://raw.githubusercontent.com/vana-com/data-connectors/main/connector-index.json"
 const NON_CONNECTOR_FILES = new Set([
   "connector-dependencies.json",
   "connector-dependencies.schema.json",
@@ -36,7 +41,7 @@ function parseArgs() {
   const out = {
     checkMode: false,
     fromLocal: process.env.CONNECTORS_PATH || null,
-    registryUrl: process.env.REGISTRY_URL || null,
+    indexUrl: process.env.CONNECTOR_INDEX_URL || null,
   }
   const args = process.argv.slice(2)
   for (let i = 0; i < args.length; i++) {
@@ -49,247 +54,11 @@ function parseArgs() {
       out.fromLocal = args[++i] ?? null
       continue
     }
-    if (arg === "--registry-url") {
-      out.registryUrl = args[++i] ?? null
+    if (arg === "--index-url" || arg === "--registry-url") {
+      out.indexUrl = args[++i] ?? null
     }
   }
   return out
-}
-
-function readJson(path) {
-  return JSON.parse(readFileSync(path, "utf8"))
-}
-
-function sha256Buffer(buffer) {
-  return `sha256:${createHash("sha256").update(buffer).digest("hex")}`
-}
-
-function parseVersion(version) {
-  const match = /^(\d+)\.(\d+)\.(\d+)$/.exec(version.trim())
-  if (!match) {
-    throw new Error(`Unsupported version format "${version}"`)
-  }
-  return {
-    major: Number(match[1]),
-    minor: Number(match[2]),
-    patch: Number(match[3]),
-  }
-}
-
-function compareVersions(a, b) {
-  const av = typeof a === "string" ? parseVersion(a) : a
-  const bv = typeof b === "string" ? parseVersion(b) : b
-  if (av.major !== bv.major) return av.major - bv.major
-  if (av.minor !== bv.minor) return av.minor - bv.minor
-  return av.patch - bv.patch
-}
-
-function evaluateComparator(version, comparator) {
-  const match = /^(>=|<=|>|<|=|\^|~)?\s*(\d+\.\d+\.\d+)$/.exec(comparator)
-  if (!match) {
-    throw new Error(`Unsupported comparator "${comparator}"`)
-  }
-  const operator = match[1] ?? "="
-  const target = parseVersion(match[2])
-  const cmp = compareVersions(version, target)
-  switch (operator) {
-    case "=":
-      return cmp === 0
-    case ">":
-      return cmp > 0
-    case ">=":
-      return cmp >= 0
-    case "<":
-      return cmp < 0
-    case "<=":
-      return cmp <= 0
-    case "^":
-      return (
-        cmp >= 0 &&
-        compareVersions(version, {
-          major: target.major + 1,
-          minor: 0,
-          patch: 0,
-        }) < 0
-      )
-    case "~":
-      return (
-        cmp >= 0 &&
-        compareVersions(version, {
-          major: target.major,
-          minor: target.minor + 1,
-          patch: 0,
-        }) < 0
-      )
-    default:
-      return false
-  }
-}
-
-function satisfies(version, range) {
-  const normalized = range.trim()
-  if (normalized === "*" || normalized === "") return true
-  const parsed = parseVersion(version)
-  return normalized
-    .split(/\s+/)
-    .filter(Boolean)
-    .every(token => evaluateComparator(parsed, token))
-}
-
-function findFirst(dir, predicate) {
-  if (!existsSync(dir)) return null
-  for (const entry of readdirSync(dir)) {
-    if (entry.startsWith(".")) continue
-    const full = join(dir, entry)
-    const st = statSync(full)
-    if (st.isDirectory()) {
-      const nested = findFirst(full, predicate)
-      if (nested) return nested
-    } else if (predicate(entry, full)) {
-      return full
-    }
-  }
-  return null
-}
-
-async function fetchJson(url) {
-  const response = await fetch(url)
-  if (!response.ok) {
-    throw new Error(
-      `Failed to fetch ${url}: ${response.status} ${response.statusText}`
-    )
-  }
-  return response.json()
-}
-
-async function fetchBinary(url) {
-  const response = await fetch(url)
-  if (!response.ok) {
-    throw new Error(
-      `Failed to fetch ${url}: ${response.status} ${response.statusText}`
-    )
-  }
-  return Buffer.from(await response.arrayBuffer())
-}
-
-async function loadRegistrySource({ fromLocal, registryUrl }) {
-  const resolvedLocal = resolvePath(fromLocal ?? DEFAULT_LOCAL_SOURCE)
-  if (existsSync(resolvedLocal)) {
-    const doc = readJson(join(resolvedLocal, "registry.json"))
-    let sourceRef = "unknown"
-    let sourceRevision = "unknown"
-    try {
-      sourceRef = execSync("git rev-parse --abbrev-ref HEAD", {
-        cwd: resolvedLocal,
-      })
-        .toString()
-        .trim()
-      sourceRevision = execSync("git rev-parse HEAD", { cwd: resolvedLocal })
-        .toString()
-        .trim()
-    } catch {}
-    return {
-      mode: "local",
-      rootDir: resolvedLocal,
-      registryUrl: null,
-      doc,
-      sourceRepo: "https://github.com/vana-com/data-connectors",
-      sourceRef,
-      sourceRevision,
-    }
-  }
-
-  const url = registryUrl ?? DEFAULT_REGISTRY_URL
-  const doc = await fetchJson(url)
-  return {
-    mode: "remote",
-    rootDir: null,
-    registryUrl: url,
-    doc,
-    sourceRepo: "https://github.com/vana-com/data-connectors",
-    sourceRef: "remote",
-    sourceRevision: "unknown",
-  }
-}
-
-function selectResolvedEntry(entries, constraint, connectorId) {
-  const matches = entries.filter(entry => satisfies(entry.version, constraint))
-  if (matches.length === 0) {
-    const available = entries.map(entry => entry.version).join(", ")
-    throw new Error(
-      `No published version for ${connectorId} satisfies "${constraint}". Available: ${available || "(none)"}`
-    )
-  }
-  return matches.sort((a, b) => compareVersions(b.version, a.version))[0]
-}
-
-function extractAvailableVersions(doc, connectorId) {
-  if (Array.isArray(doc.connectors)) {
-    const entry = doc.connectors.find(candidate => candidate.id === connectorId)
-    return entry ? [entry] : []
-  }
-  if (doc.connectors && typeof doc.connectors === "object") {
-    const entries = doc.connectors[connectorId]
-    return Array.isArray(entries) ? entries : []
-  }
-  throw new Error("Unsupported registry document shape")
-}
-
-function localRegistryFile(rootDir, relativePath) {
-  const candidates = [
-    join(rootDir, relativePath),
-    join(rootDir, "connectors", relativePath),
-  ]
-  for (const candidate of candidates) {
-    if (existsSync(candidate)) return candidate
-  }
-  return null
-}
-
-function resolveLocalFile(rootDir, entry, fileKey, extension) {
-  const relativePath = entry.files?.[fileKey]
-  if (relativePath) {
-    const exact = localRegistryFile(rootDir, relativePath)
-    if (exact) return exact
-  }
-  return findFirst(rootDir, name => name === `${entry.id}.${extension}`)
-}
-
-function verifyChecksum(label, expected, actual) {
-  if (expected && expected !== actual) {
-    throw new Error(
-      `${label} checksum mismatch: expected ${expected}, got ${actual}`
-    )
-  }
-}
-
-function verifyPublishedVersion(
-  connectorId,
-  manifestVersion,
-  publishedVersion
-) {
-  if (publishedVersion && manifestVersion !== publishedVersion) {
-    throw new Error(
-      `${connectorId} version mismatch: registry says ${publishedVersion} but manifest declares ${manifestVersion}`
-    )
-  }
-}
-
-function buildRegistryEntry(resolvedEntry, manifestChecksum, scriptChecksum) {
-  return {
-    id: resolvedEntry.id,
-    company: resolvedEntry.company,
-    version: resolvedEntry.version,
-    name: resolvedEntry.name,
-    status: resolvedEntry.status,
-    description: resolvedEntry.description,
-    consumerMetadata: resolvedEntry.consumerMetadata,
-    files: resolvedEntry.files,
-    checksums: {
-      script: scriptChecksum,
-      metadata: manifestChecksum,
-    },
-  }
 }
 
 function removeExistingConnectorDirs() {
@@ -302,33 +71,209 @@ function removeExistingConnectorDirs() {
   }
 }
 
-function buildLock(registrySource, dependencies, resolvedRegistry, resolvedAt) {
+function getSourceMeta(indexSource, resolvedConnectors) {
+  if (indexSource.mode === "local" && indexSource.rootDir) {
+    try {
+      const sourceRef = execSync("git rev-parse --abbrev-ref HEAD", {
+        cwd: indexSource.rootDir,
+      })
+        .toString()
+        .trim()
+      const sourceRevision = execSync("git rev-parse HEAD", {
+        cwd: indexSource.rootDir,
+      })
+        .toString()
+        .trim()
+      return { sourceRef, sourceRevision }
+    } catch {
+      return {
+        sourceRef: resolvePath(indexSource.rootDir),
+        sourceRevision: "unknown",
+      }
+    }
+  }
+
+  const gitRefs = [
+    ...new Set(resolvedConnectors.map(entry => entry.entry.gitRef).filter(Boolean)),
+  ]
+  if (gitRefs.length === 1) {
+    const sourceRef = gitRefs[0]
+    return {
+      sourceRef,
+      sourceRevision: /^[0-9a-f]{40}$/i.test(sourceRef) ? sourceRef : "unknown",
+    }
+  }
+
+  return { sourceRef: "remote", sourceRevision: "unknown" }
+}
+
+function getCommitish(indexSource, resolvedConnectors) {
+  const sourceMeta = getSourceMeta(indexSource, resolvedConnectors)
+  if (/^[0-9a-f]{40}$/i.test(sourceMeta.sourceRevision)) {
+    return sourceMeta.sourceRevision
+  }
+  const gitRefs = [
+    ...new Set(resolvedConnectors.map(entry => entry.entry.gitRef).filter(Boolean)),
+  ]
+  return gitRefs.length === 1 ? gitRefs[0] : "main"
+}
+
+function buildRegistryEntry(resolved) {
   return {
-    lock_version: "1.0",
+    id: resolved.entry.connectorId,
+    company: resolved.entry.company,
+    version: resolved.entry.version,
+    name: resolved.entry.name,
+    status: resolved.entry.status,
+    description: resolved.entry.description,
+    consumerMetadata: resolved.entry.consumerMetadata ?? null,
+    files: resolved.entry.sourceFiles,
+    checksums: {
+      script: sha256Buffer(resolved.scriptBuffer),
+      metadata: sha256Buffer(resolved.manifestBuffer),
+    },
+  }
+}
+
+function materializeConnectors(resolution, checkMode, existingRegistry) {
+  const writes = []
+  const registryEntries = []
+  const commitish = getCommitish(resolution.source, resolution.resolved)
+  const sourceRepo =
+    resolution.source.doc.sourceRepo ??
+    "https://github.com/vana-com/data-connectors"
+  const rawRepoBase = sourceRepo
+    .replace("https://github.com/", "https://raw.githubusercontent.com/")
+    .replace(/\/$/, "")
+
+  for (const resolved of resolution.resolved) {
+    const sourceFiles = resolved.entry.sourceFiles
+    if (!sourceFiles?.metadata || !sourceFiles?.script) {
+      throw new Error(
+        `Connector ${resolved.connectorId} is missing sourceFiles metadata/script in connector-index.json`,
+      )
+    }
+
+    writes.push({
+      path: join(CONNECTORS_DIR, sourceFiles.metadata),
+      buffer: resolved.manifestBuffer,
+    })
+    writes.push({
+      path: join(CONNECTORS_DIR, sourceFiles.script),
+      buffer: resolved.scriptBuffer,
+    })
+
+    const metadataDir = dirname(sourceFiles.metadata)
+    for (const schemaFile of resolved.schemaFiles) {
+      const schemaName = schemaFile.path.split("/").at(-1)
+      if (!schemaName || schemaName === "manifest.schema.json") continue
+      writes.push({
+        path: join(CONNECTORS_DIR, metadataDir, "schemas", schemaName),
+        buffer: schemaFile.buffer,
+      })
+    }
+
+    for (const assetFile of resolved.assetFiles) {
+      writes.push({
+        path: join(CONNECTORS_DIR, metadataDir, assetFile.path),
+        buffer: assetFile.buffer,
+      })
+    }
+
+    if (resolved.readme) {
+      writes.push({
+        path: join(CONNECTORS_DIR, metadataDir, resolved.readme.path),
+        buffer: resolved.readme.buffer,
+      })
+    }
+
+    registryEntries.push(buildRegistryEntry(resolved))
+  }
+
+  if (!checkMode) {
+    removeExistingConnectorDirs()
+    for (const write of writes) {
+      mkdirSync(dirname(write.path), { recursive: true })
+      writeFileSync(write.path, write.buffer)
+    }
+  }
+
+  return {
+    writes,
+    registry: {
+      version: "3.0.0",
+      lastUpdated:
+        existingRegistry?.lastUpdated ??
+        resolution.source.doc.generatedAt ??
+        resolution.source.doc.lastUpdated ??
+        new Date().toISOString(),
+      baseUrl: `${rawRepoBase}/${commitish}/connectors`,
+      connectors: registryEntries.sort((a, b) => a.id.localeCompare(b.id)),
+    },
+  }
+}
+
+function buildLock(indexSource, dependencies, materialized, resolution, resolvedAt) {
+  const sourceMeta = getSourceMeta(indexSource, resolution.resolved)
+  return {
+    lock_version: "2.0",
     dependency_file: "connectors/connector-dependencies.json",
     resolved_at: resolvedAt,
-    source_repo: registrySource.sourceRepo,
-    source_ref: registrySource.sourceRef,
-    source_revision: registrySource.sourceRevision,
-    registry: {
-      mode: registrySource.mode,
-      url: registrySource.registryUrl,
-      version: registrySource.doc.version ?? "unknown",
+    source_repo:
+      indexSource.doc.sourceRepo ??
+      dependencies.source_repo ??
+      "https://github.com/vana-com/data-connectors",
+    source_ref: sourceMeta.sourceRef,
+    source_revision: sourceMeta.sourceRevision,
+    index: {
+      mode: indexSource.mode,
+      path: indexSource.indexPath ?? null,
+      url: indexSource.indexUrl,
+      version: indexSource.doc.indexVersion ?? "unknown",
     },
     dependencies: dependencies.connectors,
-    connectors: resolvedRegistry.connectors.map(connector => ({
-      id: connector.id,
-      company: connector.company,
-      version: connector.version,
-      resolved_from: dependencies.connectors[connector.id],
-      files: connector.files,
-      checksums: connector.checksums,
-    })),
+    connectors: resolution.resolved
+      .map(resolved => ({
+        id: resolved.connectorId,
+        company: resolved.entry.company,
+        version: resolved.entry.version,
+        resolved_from: resolved.constraint,
+        files: resolved.entry.sourceFiles,
+        checksums: {
+          script: sha256Buffer(resolved.scriptBuffer),
+          metadata: sha256Buffer(resolved.manifestBuffer),
+          artifact: resolved.checksums.artifact,
+        },
+        artifact_path: resolved.entry.artifactPath ?? null,
+        artifact_url: resolved.entry.artifactUrl ?? null,
+        git_ref: resolved.entry.gitRef ?? null,
+      }))
+      .sort((a, b) => a.id.localeCompare(b.id)),
+  }
+}
+
+function assertWritesMatch(writes) {
+  for (const write of writes) {
+    if (!existsSync(write.path)) {
+      throw new Error(`Connector file missing: ${write.path}`)
+    }
+    const current = sha256Buffer(readFileSync(write.path))
+    const expected = sha256Buffer(write.buffer)
+    if (current !== expected) {
+      throw new Error(`Connector file drift detected: ${write.path}`)
+    }
+  }
+}
+
+function assertTextFileMatches(path, expectedText, errorMessage) {
+  const current = existsSync(path) ? readFileSync(path, "utf8") : null
+  if (current !== expectedText) {
+    throw new Error(errorMessage)
   }
 }
 
 async function main() {
-  const { checkMode, fromLocal, registryUrl } = parseArgs()
+  const { checkMode, fromLocal, indexUrl } = parseArgs()
   if (process.env.SKIP_CONNECTOR_FETCH) {
     console.log("[resolve-connectors] SKIP_CONNECTOR_FETCH set — skipping")
     return
@@ -336,132 +281,52 @@ async function main() {
 
   const dependencies = readJson(DEPENDENCIES_PATH)
   const existingLock = existsSync(LOCK_PATH) ? readJson(LOCK_PATH) : null
-  const registrySource = await loadRegistrySource({ fromLocal, registryUrl })
-  const pendingWrites = []
-  const registryEntries = []
-
-  for (const [connectorId, constraint] of Object.entries(
-    dependencies.connectors
-  )) {
-    const availableEntries = extractAvailableVersions(
-      registrySource.doc,
-      connectorId
-    )
-    const resolvedEntry = selectResolvedEntry(
-      availableEntries,
-      constraint,
-      connectorId
-    )
-
-    let manifestBuffer
-    let scriptBuffer
-    let manifest
-
-    if (registrySource.mode === "local") {
-      const manifestPath = resolveLocalFile(
-        registrySource.rootDir,
-        resolvedEntry,
-        "metadata",
-        "json"
-      )
-      const scriptPath = resolveLocalFile(
-        registrySource.rootDir,
-        resolvedEntry,
-        "script",
-        "js"
-      )
-      if (!manifestPath || !scriptPath) {
-        throw new Error(`Could not find local files for ${connectorId}`)
-      }
-      manifestBuffer = readFileSync(manifestPath)
-      scriptBuffer = readFileSync(scriptPath)
-    } else {
-      const baseUrl = registrySource.doc.baseUrl.replace(/\/$/, "")
-      manifestBuffer = await fetchBinary(
-        `${baseUrl}/${resolvedEntry.files.metadata}`
-      )
-      scriptBuffer = await fetchBinary(
-        `${baseUrl}/${resolvedEntry.files.script}`
-      )
-    }
-
-    manifest = JSON.parse(manifestBuffer.toString("utf8"))
-    const manifestChecksum = sha256Buffer(manifestBuffer)
-    const scriptChecksum = sha256Buffer(scriptBuffer)
-    verifyPublishedVersion(connectorId, manifest.version, resolvedEntry.version)
-    verifyChecksum(
-      `${connectorId} metadata`,
-      resolvedEntry.checksums?.metadata,
-      manifestChecksum
-    )
-    verifyChecksum(
-      `${connectorId} script`,
-      resolvedEntry.checksums?.script,
-      scriptChecksum
-    )
-
-    pendingWrites.push({
-      path: join(CONNECTORS_DIR, resolvedEntry.files.metadata),
-      buffer: manifestBuffer,
-    })
-    pendingWrites.push({
-      path: join(CONNECTORS_DIR, resolvedEntry.files.script),
-      buffer: scriptBuffer,
-    })
-
-    registryEntries.push(
-      buildRegistryEntry(resolvedEntry, manifestChecksum, scriptChecksum)
-    )
-  }
-
-  const nextRegistry = {
-    version: registrySource.doc.version ?? "unknown",
-    lastUpdated: registrySource.doc.lastUpdated ?? new Date().toISOString(),
-    baseUrl: registrySource.doc.baseUrl,
-    connectors: registryEntries.sort((a, b) => a.id.localeCompare(b.id)),
-  }
-
-  const nextLock = buildLock(
-    registrySource,
+  const existingRegistry = existsSync(REGISTRY_PATH) ? readJson(REGISTRY_PATH) : null
+  const indexSource = await loadConnectorIndex({
+    fromLocal,
+    indexUrl,
+    defaultLocalSource: DEFAULT_LOCAL_SOURCE,
+    defaultIndexUrl: DEFAULT_INDEX_URL,
+  })
+  const resolution = await resolveConnectorArtifacts({
     dependencies,
-    nextRegistry,
+    source: indexSource,
+  })
+  const materialized = materializeConnectors(resolution, checkMode, existingRegistry)
+  const nextRegistryText = `${JSON.stringify(materialized.registry, null, 2)}\n`
+  const nextLock = buildLock(
+    indexSource,
+    dependencies,
+    materialized,
+    resolution,
     checkMode && existingLock?.resolved_at
       ? existingLock.resolved_at
-      : new Date().toISOString()
+      : new Date().toISOString(),
   )
-
-  const nextRegistryText = `${JSON.stringify(nextRegistry, null, 2)}\n`
   const nextLockText = `${JSON.stringify(nextLock, null, 2)}\n`
 
   if (checkMode) {
-    const currentRegistry = existsSync(REGISTRY_PATH)
-      ? readFileSync(REGISTRY_PATH, "utf8")
-      : null
-    const currentLock = existsSync(LOCK_PATH)
-      ? readFileSync(LOCK_PATH, "utf8")
-      : null
-    if (currentRegistry !== nextRegistryText || currentLock !== nextLockText) {
-      throw new Error(
-        "Connector registry drift detected. Run `node scripts/resolve-connectors.js`."
-      )
-    }
+    assertWritesMatch(materialized.writes)
+    assertTextFileMatches(
+      REGISTRY_PATH,
+      nextRegistryText,
+      "Connector registry drift detected. Run `node scripts/resolve-connectors.js`.",
+    )
+    assertTextFileMatches(
+      LOCK_PATH,
+      nextLockText,
+      "Connector lock drift detected. Run `node scripts/resolve-connectors.js`.",
+    )
     console.log("[resolve-connectors] Connector registry is up to date.")
     return
   }
 
-  removeExistingConnectorDirs()
-  for (const write of pendingWrites) {
-    mkdirSync(dirname(write.path), { recursive: true })
-    writeFileSync(write.path, write.buffer)
-  }
   writeFileSync(REGISTRY_PATH, nextRegistryText)
   writeFileSync(LOCK_PATH, nextLockText)
   console.log(
-    `[resolve-connectors] Resolved ${nextRegistry.connectors.length} connector(s) from ${
-      registrySource.mode === "local"
-        ? registrySource.rootDir
-        : registrySource.registryUrl
-    }`
+    `[resolve-connectors] Resolved ${materialized.registry.connectors.length} connector(s) from ${
+      indexSource.mode === "local" ? indexSource.rootDir : indexSource.indexUrl
+    }`,
   )
 }
 

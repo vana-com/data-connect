@@ -90,6 +90,13 @@ async function build() {
   // Also provide import.meta.url shim for ESM code bundled to CJS
   // Must redirect better-sqlite3, bindings, and file-uri-to-path to external node_modules
   const nativeModulesList = ['better-sqlite3', 'bindings', 'file-uri-to-path'];
+  const runtimeExternalModules = [
+    '@opendatalabs/personal-server-ts-core/config',
+    '@opendatalabs/personal-server-ts-server',
+    '@opendatalabs/personal-server-ts-mcp',
+    '@hono/node-server',
+    'hono',
+  ];
   const nativeBanner = [
     'var _M=require("module"),_P=require("path"),_U=require("url"),_R=_M._resolveFilename;',
     // Shim for import.meta.url
@@ -167,6 +174,7 @@ async function build() {
     platform: 'node',
     format: 'cjs',
     outfile: bundlePath,
+    external: runtimeExternalModules,
     plugins: [inlinePackageJsonPlugin, dynamicNativeRequirePlugin],
     banner: { js: nativeBanner },
     inject: [shimPath],
@@ -196,6 +204,24 @@ async function build() {
     const src = join(ROOT, 'node_modules', mod);
     if (existsSync(src)) {
       const dest = join(DIST, 'node_modules', mod);
+      log(`Copying ${mod}...`);
+      cpSync(src, dest, { recursive: true });
+    } else {
+      log(`WARNING: ${mod} not found in node_modules`);
+    }
+  }
+
+  const runtimePackagesToCopy = [
+    '@opendatalabs/personal-server-ts-core',
+    '@opendatalabs/personal-server-ts-server',
+    '@opendatalabs/personal-server-ts-mcp',
+    '@hono/node-server',
+    'hono',
+  ];
+  for (const mod of runtimePackagesToCopy) {
+    const src = join(ROOT, 'node_modules', ...mod.split('/'));
+    if (existsSync(src)) {
+      const dest = join(DIST, 'node_modules', ...mod.split('/'));
       log(`Copying ${mod}...`);
       cpSync(src, dest, { recursive: true });
     } else {

@@ -3,7 +3,7 @@
 // Source: connectors/registry.json + src/lib/platform/registry.overlay.json
 // ============================================================================
 
-import type { PlatformRegistryEntry } from "./registry"
+import type { PlatformRegistryEntry } from "./registry";
 
 export const PLATFORM_REGISTRY_GENERATED: PlatformRegistryEntry[] = [
   {
@@ -15,7 +15,7 @@ export const PLATFORM_REGISTRY_GENERATED: PlatformRegistryEntry[] = [
     aliases: ["openai"],
     availability: "requiresConnector",
     showInConnectList: true,
-    ingestScope: "chatgpt.conversations",
+    ingestScope: "chatgpt.conversations"
   },
   {
     id: "github",
@@ -25,7 +25,7 @@ export const PLATFORM_REGISTRY_GENERATED: PlatformRegistryEntry[] = [
     platformIds: ["github-playwright", "github"],
     availability: "requiresConnector",
     showInConnectList: true,
-    ingestScope: "github.profile",
+    ingestScope: "github.profile"
   },
   {
     id: "instagram-ads",
@@ -35,7 +35,7 @@ export const PLATFORM_REGISTRY_GENERATED: PlatformRegistryEntry[] = [
     platformIds: ["instagram-ads-playwright", "instagram-ads", "instagram"],
     availability: "requiresConnector",
     showInConnectList: false,
-    ingestScope: "instagram.ads",
+    ingestScope: "instagram.ads"
   },
   {
     id: "instagram",
@@ -46,7 +46,7 @@ export const PLATFORM_REGISTRY_GENERATED: PlatformRegistryEntry[] = [
     aliases: ["meta"],
     availability: "requiresConnector",
     showInConnectList: true,
-    ingestScope: "instagram.posts",
+    ingestScope: "instagram.posts"
   },
   {
     id: "linkedin",
@@ -56,7 +56,7 @@ export const PLATFORM_REGISTRY_GENERATED: PlatformRegistryEntry[] = [
     platformIds: ["linkedin-playwright", "linkedin"],
     availability: "requiresConnector",
     showInConnectList: true,
-    ingestScope: "linkedin.profile",
+    ingestScope: "linkedin.profile"
   },
   {
     id: "oura",
@@ -67,7 +67,7 @@ export const PLATFORM_REGISTRY_GENERATED: PlatformRegistryEntry[] = [
     aliases: ["ouraring"],
     availability: "requiresConnector",
     showInConnectList: true,
-    ingestScope: "oura.readiness",
+    ingestScope: "oura.readiness"
   },
   {
     id: "shop",
@@ -78,7 +78,7 @@ export const PLATFORM_REGISTRY_GENERATED: PlatformRegistryEntry[] = [
     aliases: ["shopify"],
     availability: "requiresConnector",
     showInConnectList: true,
-    ingestScope: "shop.orders",
+    ingestScope: "shop.orders"
   },
   {
     id: "spotify",
@@ -88,7 +88,7 @@ export const PLATFORM_REGISTRY_GENERATED: PlatformRegistryEntry[] = [
     platformIds: ["spotify-playwright", "spotify"],
     availability: "requiresConnector",
     showInConnectList: true,
-    ingestScope: "spotify.savedTracks",
+    ingestScope: "spotify.savedTracks"
   },
   {
     id: "youtube",
@@ -98,6 +98,6 @@ export const PLATFORM_REGISTRY_GENERATED: PlatformRegistryEntry[] = [
     platformIds: ["youtube-playwright", "youtube"],
     availability: "requiresConnector",
     showInConnectList: true,
-    ingestScope: "youtube.profile",
-  },
-]
+    ingestScope: "youtube.profile"
+  }
+];

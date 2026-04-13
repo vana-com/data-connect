@@ -1,0 +1,41 @@
+{
+  "connectors": [
+    {
+      "connectorId": "chatgpt-playwright",
+      "showInConnectList": true
+    },
+    {
+      "connectorId": "instagram-playwright",
+      "showInConnectList": true
+    },
+    {
+      "connectorId": "instagram-ads-playwright",
+      "id": "instagram-ads",
+      "showInConnectList": false
+    },
+    {
+      "connectorId": "github-playwright",
+      "showInConnectList": true
+    },
+    {
+      "connectorId": "linkedin-playwright",
+      "showInConnectList": true
+    },
+    {
+      "connectorId": "spotify-playwright",
+      "showInConnectList": true
+    },
+    {
+      "connectorId": "youtube-playwright",
+      "showInConnectList": true
+    },
+    {
+      "connectorId": "oura-playwright",
+      "showInConnectList": true
+    },
+    {
+      "connectorId": "shop-playwright",
+      "showInConnectList": true
+    }
+  ]
+}

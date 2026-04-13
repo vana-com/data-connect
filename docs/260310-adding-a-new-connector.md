@@ -63,12 +63,12 @@ Verify:
 
 You do not always need a platform registry entry for app-submission logos anymore.
 
-You still need `src/lib/platform/registry.ts` when any of these are true:
+You still need local platform registry metadata when any of these are true:
 
-- the real brand domain is not the default `<token>.com`
-- you need canonical aliasing between connector ids, names, and product names
-- you want a curated display name
-- you need `ingestScope`
+- you need a local app id that intentionally differs from upstream `sourceId`
+- you need app-specific aliases beyond the canonical aliases published upstream
+- you want a local override for the default ingest scope
+- you need product-policy fields like `showInConnectList`
 - you want source/home/connect surfaces to resolve the platform consistently
 
 Examples where registry metadata matters:
@@ -77,14 +77,19 @@ Examples where registry metadata matters:
 - `oura` -> `ouraring.com`
 - `x` -> `x.com`
 
-Add a registry entry with:
+Prefer publishing connector identity metadata in `data-connectors`:
 
-- `id`
-- `displayName`
-- `brandDomain` when the domain is not trivially derivable
-- `platformIds` for connector ids
-- `aliases` when names differ
-- `ingestScope` when needed by scope-driven UI
+- `consumer_metadata.display_name`
+- `consumer_metadata.brand_domain`
+- canonical `consumer_metadata.aliases`
+- optional `consumer_metadata.default_scope`
+
+Keep local overlay metadata in `src/lib/platform/registry.overlay.json` for:
+
+- `connectorId`
+- `showInConnectList`
+- local `id` override when needed
+- app-specific alias or scope overrides
 
 ## Local icon component: optional
 
@@ -111,8 +116,8 @@ That means "add a valid connector scope" should be enough for `/apps` card sourc
 - connector metadata contains the actual protocol scopes
 - app submission uses those exact scopes
 - `/apps` shows the required-source logos you expect
-- if the brand domain is not `<token>.com`, `src/lib/platform/registry.ts` has a `brandDomain` override
-- if the runtime connector name/id is weird, `platformIds` or `aliases` are present
+- if the source needs a canonical domain, alias, or default scope, it is published upstream in `data-connectors`
+- if the runtime connector needs an app-specific id or visibility rule, `src/lib/platform/registry.overlay.json` has that override
 - if you want a handcrafted icon instead of Logo.dev, add an icon component mapping
 
 ## Decision rule

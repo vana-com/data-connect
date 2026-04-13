@@ -11,6 +11,9 @@
     "dev:app": "vite --port 5173 --strictPort",
     "build": "tsc -b && vite build",
     "prebuild:all": "node scripts/ensure-connectors.js && node scripts/ensure-playwright-runner.js && node scripts/ensure-personal-server.js",
+    "connectors:resolve": "node scripts/resolve-connectors.js",
+    "connectors:resolve:check": "node scripts/resolve-connectors.js --check",
+    "platform-registry:generate": "node scripts/generate-platform-registry.js",
     "pretauri:dev": "npm run prebuild:all",
     "lint": "eslint .",
     "format": "prettier --write \"**/*.{ts,tsx,js,jsx,json,css,scss,md}\"",
@@ -30,7 +33,7 @@
     "release:versions": "node scripts/release-github.mjs --show-versions",
     "skills:sync": "node scripts/sync-skills.js",
     "skills:watch": "node scripts/watch-skills.js",
-    "postinstall": "node scripts/sync-skills.js",
+    "postinstall": "node scripts/sync-skills.js && node scripts/fetch-connectors.js",
     "fresh-start": "bash scripts/fresh-start.sh"
   },
   "dependencies": {

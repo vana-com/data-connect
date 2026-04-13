@@ -1,0 +1,30 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "connector-dependencies.schema.json",
+  "title": "DataConnect Connector Dependencies",
+  "type": "object",
+  "required": ["dependency_version", "source_repo", "connectors"],
+  "additionalProperties": false,
+  "properties": {
+    "$schema": { "type": "string" },
+    "dependency_version": {
+      "type": "string",
+      "pattern": "^[0-9]+\\.[0-9]+$"
+    },
+    "source_repo": {
+      "type": "string",
+      "format": "uri"
+    },
+    "connectors": {
+      "type": "object",
+      "minProperties": 1,
+      "additionalProperties": false,
+      "patternProperties": {
+        "^[a-z0-9][a-z0-9-]*$": {
+          "type": "string",
+          "minLength": 1
+        }
+      }
+    }
+  }
+}

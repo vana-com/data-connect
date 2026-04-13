@@ -33,9 +33,7 @@
   "plugins": {
     "deep-link": {
       "desktop": {
-        "schemes": [
-          "vana"
-        ]
+        "schemes": ["vana"]
       }
     },
     "updater": {
@@ -48,13 +46,7 @@
   "bundle": {
     "active": true,
     "createUpdaterArtifacts": true,
-    "targets": [
-      "dmg",
-      "app",
-      "nsis",
-      "appimage",
-      "deb"
-    ],
+    "targets": ["dmg", "app", "nsis", "appimage", "deb"],
     "icon": [
       "icons/32x32.png",
       "icons/128x128.png",
@@ -67,8 +59,10 @@
       "../connectors/linkedin/**/*": "connectors/linkedin/",
       "../connectors/meta/**/*": "connectors/meta/",
       "../connectors/openai/**/*": "connectors/openai/",
+      "../connectors/google/**/*": "connectors/google/",
       "../connectors/spotify/**/*": "connectors/spotify/",
       "../connectors/oura/**/*": "connectors/oura/",
+      "../connectors/shopify/**/*": "connectors/shopify/",
       "../playwright-runner/dist/*": "playwright-runner/dist/",
       "../personal-server/dist/personal-server*": "personal-server/dist/",
       "../personal-server/dist/node_modules/": "personal-server/dist/node_modules/"

@@ -1,25 +1,32 @@
 {
-  "version": "2.0.0",
-  "lastUpdated": "2026-04-13T00:00:00Z",
-  "baseUrl": "https://raw.githubusercontent.com/vana-com/data-connectors/main/connectors",
+  "lock_version": "1.0",
+  "dependency_file": "connectors/connector-dependencies.json",
+  "resolved_at": "2026-04-13T19:52:01.131Z",
+  "source_repo": "https://github.com/vana-com/data-connectors",
+  "source_ref": "feat/connector-contract-unification",
+  "source_revision": "30c82c828659eac7f62ea688913013e7048ee3ad",
+  "registry": {
+    "mode": "local",
+    "url": null,
+    "version": "2.0.0"
+  },
+  "dependencies": {
+    "chatgpt-playwright": "2.0.0",
+    "github-playwright": "1.1.3",
+    "instagram-ads-playwright": "1.0.0",
+    "instagram-playwright": "1.1.0",
+    "linkedin-playwright": "5.0.0",
+    "oura-playwright": "1.0.1",
+    "shop-playwright": "1.0.0",
+    "spotify-playwright": "1.0.0",
+    "youtube-playwright": "1.0.0"
+  },
   "connectors": [
     {
       "id": "chatgpt-playwright",
       "company": "openai",
       "version": "2.0.0",
-      "name": "ChatGPT",
-      "status": "stable",
-      "description": "Exports your email, memories, and all conversations from ChatGPT.",
-      "consumerMetadata": {
-        "sourceId": "chatgpt",
-        "displayName": "ChatGPT",
-        "brandDomain": "chatgpt.com",
-        "aliases": [
-          "openai"
-        ],
-        "iconKey": "chatgpt",
-        "defaultScope": "chatgpt.conversations"
-      },
+      "resolved_from": "2.0.0",
       "files": {
         "script": "openai/chatgpt-playwright.js",
         "metadata": "openai/chatgpt-playwright.json"
@@ -33,16 +40,7 @@
       "id": "github-playwright",
       "company": "github",
       "version": "1.1.3",
-      "name": "GitHub",
-      "status": "stable",
-      "description": "Exports your GitHub profile, repositories, and starred repositories.",
-      "consumerMetadata": {
-        "sourceId": "github",
-        "displayName": "GitHub",
-        "brandDomain": "github.com",
-        "iconKey": "github",
-        "defaultScope": "github.profile"
-      },
+      "resolved_from": "1.1.3",
       "files": {
         "script": "github/github-playwright.js",
         "metadata": "github/github-playwright.json"
@@ -56,16 +54,7 @@
       "id": "instagram-ads-playwright",
       "company": "meta",
       "version": "1.0.0",
-      "name": "Instagram Ads",
-      "status": "beta",
-      "description": "Exports your Instagram ad interests — advertisers and ad topics.",
-      "consumerMetadata": {
-        "sourceId": "instagram",
-        "displayName": "Instagram Ads",
-        "brandDomain": "instagram.com",
-        "iconKey": "instagram",
-        "defaultScope": "instagram.ads"
-      },
+      "resolved_from": "1.0.0",
       "files": {
         "script": "meta/instagram-ads-playwright.js",
         "metadata": "meta/instagram-ads-playwright.json"
@@ -79,19 +68,7 @@
       "id": "instagram-playwright",
       "company": "meta",
       "version": "1.1.0",
-      "name": "Instagram",
-      "status": "stable",
-      "description": "Exports your Instagram profile and posts.",
-      "consumerMetadata": {
-        "sourceId": "instagram",
-        "displayName": "Instagram",
-        "brandDomain": "instagram.com",
-        "aliases": [
-          "meta"
-        ],
-        "iconKey": "instagram",
-        "defaultScope": "instagram.posts"
-      },
+      "resolved_from": "1.1.0",
       "files": {
         "script": "meta/instagram-playwright.js",
         "metadata": "meta/instagram-playwright.json"
@@ -105,16 +82,7 @@
       "id": "linkedin-playwright",
       "company": "linkedin",
       "version": "5.0.0",
-      "name": "LinkedIn",
-      "status": "stable",
-      "description": "Exports your LinkedIn profile, work experience, education, skills, languages, and connections.",
-      "consumerMetadata": {
-        "sourceId": "linkedin",
-        "displayName": "LinkedIn",
-        "brandDomain": "linkedin.com",
-        "iconKey": "linkedin",
-        "defaultScope": "linkedin.profile"
-      },
+      "resolved_from": "5.0.0",
       "files": {
         "script": "linkedin/linkedin-playwright.js",
         "metadata": "linkedin/linkedin-playwright.json"
@@ -128,19 +96,7 @@
       "id": "oura-playwright",
       "company": "oura",
       "version": "1.0.1",
-      "name": "Oura Ring",
-      "status": "stable",
-      "description": "Exports your Oura Ring readiness scores, sleep data, and daily activity.",
-      "consumerMetadata": {
-        "sourceId": "oura",
-        "displayName": "Oura Ring",
-        "brandDomain": "ouraring.com",
-        "aliases": [
-          "ouraring"
-        ],
-        "iconKey": "oura",
-        "defaultScope": "oura.readiness"
-      },
+      "resolved_from": "1.0.1",
       "files": {
         "script": "oura/oura-playwright.js",
         "metadata": "oura/oura-playwright.json"
@@ -154,19 +110,7 @@
       "id": "shop-playwright",
       "company": "shopify",
       "version": "1.0.0",
-      "name": "Shop",
-      "status": "beta",
-      "description": "Exports your Shop app order history.",
-      "consumerMetadata": {
-        "sourceId": "shop",
-        "displayName": "Shop",
-        "brandDomain": "shop.app",
-        "aliases": [
-          "shopify"
-        ],
-        "iconKey": "shop",
-        "defaultScope": "shop.orders"
-      },
+      "resolved_from": "1.0.0",
       "files": {
         "script": "shopify/shop-playwright.js",
         "metadata": "shopify/shop-playwright.json"
@@ -180,16 +124,7 @@
       "id": "spotify-playwright",
       "company": "spotify",
       "version": "1.0.0",
-      "name": "Spotify",
-      "status": "stable",
-      "description": "Exports your Spotify library, playlists, listening history, and preferences.",
-      "consumerMetadata": {
-        "sourceId": "spotify",
-        "displayName": "Spotify",
-        "brandDomain": "spotify.com",
-        "iconKey": "spotify",
-        "defaultScope": "spotify.savedTracks"
-      },
+      "resolved_from": "1.0.0",
       "files": {
         "script": "spotify/spotify-playwright.js",
         "metadata": "spotify/spotify-playwright.json"
@@ -203,16 +138,7 @@
       "id": "youtube-playwright",
       "company": "google",
       "version": "1.0.0",
-      "name": "YouTube",
-      "status": "beta",
-      "description": "Exports your YouTube profile, subscriptions, playlists, playlist items, liked videos, watch later list, and top 50 recent watch history entries.",
-      "consumerMetadata": {
-        "sourceId": "youtube",
-        "displayName": "YouTube",
-        "brandDomain": "youtube.com",
-        "iconKey": "youtube",
-        "defaultScope": "youtube.profile"
-      },
+      "resolved_from": "1.0.0",
       "files": {
         "script": "google/youtube-playwright.js",
         "metadata": "google/youtube-playwright.json"

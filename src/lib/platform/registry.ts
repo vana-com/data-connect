@@ -17,69 +17,9 @@ export interface PlatformRegistryEntry {
   ingestScope?: string
 }
 
-export const PLATFORM_REGISTRY: PlatformRegistryEntry[] = [
-  {
-    id: "chatgpt",
-    displayName: "ChatGPT",
-    brandDomain: "chatgpt.com",
-    iconKey: "chatgpt",
-    platformIds: ["chatgpt-playwright", "chatgpt"],
-    aliases: ["openai"],
-    availability: "requiresConnector",
-    showInConnectList: true,
-    ingestScope: "chatgpt.conversations",
-  },
-  {
-    id: "instagram",
-    displayName: "Instagram",
-    brandDomain: "instagram.com",
-    iconKey: "instagram",
-    platformIds: ["instagram-playwright", "instagram"],
-    aliases: ["meta"],
-    availability: "requiresConnector",
-    showInConnectList: true,
-    ingestScope: "instagram.posts",
-  },
-  {
-    id: "instagram-ads",
-    displayName: "Instagram Ads",
-    brandDomain: "instagram.com",
-    iconKey: "instagram",
-    platformIds: ["instagram-ads-playwright", "instagram-ads"],
-    availability: "requiresConnector",
-    showInConnectList: false,
-    ingestScope: "instagram.ads",
-  },
-  {
-    id: "github",
-    displayName: "GitHub",
-    brandDomain: "github.com",
-    iconKey: "github",
-    platformIds: ["github-playwright", "github"],
-    availability: "requiresConnector",
-    showInConnectList: true,
-    ingestScope: "github.profile",
-  },
-  {
-    id: "linkedin",
-    displayName: "LinkedIn",
-    brandDomain: "linkedin.com",
-    iconKey: "linkedin",
-    platformIds: ["linkedin-playwright", "linkedin"],
-    availability: "requiresConnector",
-    showInConnectList: true,
-    ingestScope: "linkedin.profile",
-  },
-  {
-    id: "spotify",
-    displayName: "Spotify",
-    brandDomain: "spotify.com",
-    iconKey: "spotify",
-    platformIds: ["spotify-playwright", "spotify"],
-    availability: "requiresConnector",
-    showInConnectList: true,
-    ingestScope: "spotify.savedTracks",
-  },
+import { PLATFORM_REGISTRY_GENERATED } from "./registry.generated"
+
+const PLATFORM_REGISTRY_COMING_SOON: PlatformRegistryEntry[] = [
   {
     id: "x",
     displayName: "X (Twitter)",
@@ -124,35 +64,9 @@ export const PLATFORM_REGISTRY: PlatformRegistryEntry[] = [
     platformIds: ["tiktok"],
     availability: "comingSoon",
   },
-  {
-    id: "youtube",
-    displayName: "YouTube",
-    brandDomain: "youtube.com",
-    iconKey: "youtube",
-    platformIds: ["youtube-playwright", "youtube"],
-    availability: "requiresConnector",
-    showInConnectList: true,
-    ingestScope: "youtube.profile",
-  },
-  {
-    id: "oura",
-    displayName: "Oura Ring",
-    brandDomain: "ouraring.com",
-    platformIds: ["oura-playwright", "oura"],
-    aliases: ["ouraring"],
-    availability: "requiresConnector",
-    showInConnectList: true,
-    ingestScope: "oura.readiness",
-  },
-  {
-    id: "shop",
-    displayName: "Shop",
-    brandDomain: "shop.app",
-    iconKey: "shop",
-    platformIds: ["shop-playwright", "shop"],
-    aliases: ["shopify"],
-    availability: "requiresConnector",
-    showInConnectList: true,
-    ingestScope: "shop.orders",
-  },
+]
+
+export const PLATFORM_REGISTRY: PlatformRegistryEntry[] = [
+  ...PLATFORM_REGISTRY_GENERATED,
+  ...PLATFORM_REGISTRY_COMING_SOON,
 ]

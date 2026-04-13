@@ -1,14 +1,14 @@
 {
   "lock_version": "2.0",
   "dependency_file": "connectors/connector-dependencies.json",
-  "resolved_at": "2026-04-13T21:14:31.403Z",
+  "resolved_at": "2026-04-13T21:53:51.935Z",
   "source_repo": "https://github.com/vana-com/data-connectors",
-  "source_ref": "feat/connector-contract-unification",
-  "source_revision": "f61f3582942eaee5beb78bd2f8184b2092b2b02e",
+  "source_ref": "aef03b4a924bb90742c8f5f64c146a765571558d",
+  "source_revision": "aef03b4a924bb90742c8f5f64c146a765571558d",
   "index": {
-    "mode": "local",
-    "path": "/home/tnunamak/code/worktrees/data-connectors-connector-contract-unification/connector-index.json",
-    "url": null,
+    "mode": "remote",
+    "path": null,
+    "url": "https://raw.githubusercontent.com/vana-com/data-connectors/f6699e3d4c6ac18c7b143c046ad0e04b5f4d7aae/connector-index.json",
     "version": "1.0"
   },
   "dependencies": {
@@ -38,8 +38,8 @@
         "artifact": "sha256:39cf00bdcb16124d9d5f0f37e77035076b62361a5cd8dea4e9eadd4d97ff8dcc"
       },
       "artifact_path": "artifacts/chatgpt-playwright/chatgpt-playwright-2.0.0.tgz",
-      "artifact_url": "https://raw.githubusercontent.com/vana-com/data-connectors/44fe82e35ff6002a9840868e27d8a6a01d65ea0d/artifacts/chatgpt-playwright/chatgpt-playwright-2.0.0.tgz",
-      "git_ref": "44fe82e35ff6002a9840868e27d8a6a01d65ea0d"
+      "artifact_url": "https://raw.githubusercontent.com/vana-com/data-connectors/aef03b4a924bb90742c8f5f64c146a765571558d/artifacts/chatgpt-playwright/chatgpt-playwright-2.0.0.tgz",
+      "git_ref": "aef03b4a924bb90742c8f5f64c146a765571558d"
     },
     {
       "id": "github-playwright",
@@ -56,8 +56,8 @@
         "artifact": "sha256:8c7b8fde1da8181b4891f0df6a186697a9f2cddb0fbdfb91d0e8fc2faf37a126"
       },
       "artifact_path": "artifacts/github-playwright/github-playwright-1.1.3.tgz",
-      "artifact_url": "https://raw.githubusercontent.com/vana-com/data-connectors/44fe82e35ff6002a9840868e27d8a6a01d65ea0d/artifacts/github-playwright/github-playwright-1.1.3.tgz",
-      "git_ref": "44fe82e35ff6002a9840868e27d8a6a01d65ea0d"
+      "artifact_url": "https://raw.githubusercontent.com/vana-com/data-connectors/aef03b4a924bb90742c8f5f64c146a765571558d/artifacts/github-playwright/github-playwright-1.1.3.tgz",
+      "git_ref": "aef03b4a924bb90742c8f5f64c146a765571558d"
     },
     {
       "id": "instagram-ads-playwright",
@@ -74,8 +74,8 @@
         "artifact": "sha256:e0f46f9791bcc336f5f0b9125da671bf0a0f5512d58a562175bf91e4584ba3dc"
       },
       "artifact_path": "artifacts/instagram-ads-playwright/instagram-ads-playwright-1.0.0.tgz",
-      "artifact_url": "https://raw.githubusercontent.com/vana-com/data-connectors/44fe82e35ff6002a9840868e27d8a6a01d65ea0d/artifacts/instagram-ads-playwright/instagram-ads-playwright-1.0.0.tgz",
-      "git_ref": "44fe82e35ff6002a9840868e27d8a6a01d65ea0d"
+      "artifact_url": "https://raw.githubusercontent.com/vana-com/data-connectors/aef03b4a924bb90742c8f5f64c146a765571558d/artifacts/instagram-ads-playwright/instagram-ads-playwright-1.0.0.tgz",
+      "git_ref": "aef03b4a924bb90742c8f5f64c146a765571558d"
     },
     {
       "id": "instagram-playwright",
@@ -92,8 +92,8 @@
         "artifact": "sha256:e3f09c4702fdbf3ff43d89f17d02919102467a568afe1005ee9851a3a2812c2b"
       },
       "artifact_path": "artifacts/instagram-playwright/instagram-playwright-1.1.0.tgz",
-      "artifact_url": "https://raw.githubusercontent.com/vana-com/data-connectors/44fe82e35ff6002a9840868e27d8a6a01d65ea0d/artifacts/instagram-playwright/instagram-playwright-1.1.0.tgz",
-      "git_ref": "44fe82e35ff6002a9840868e27d8a6a01d65ea0d"
+      "artifact_url": "https://raw.githubusercontent.com/vana-com/data-connectors/aef03b4a924bb90742c8f5f64c146a765571558d/artifacts/instagram-playwright/instagram-playwright-1.1.0.tgz",
+      "git_ref": "aef03b4a924bb90742c8f5f64c146a765571558d"
     },
     {
       "id": "linkedin-playwright",
@@ -110,8 +110,8 @@
         "artifact": "sha256:c1b059959f3d924d763abac20430328c5b5165ed37b9f8fbe538dab125e8173d"
       },
       "artifact_path": "artifacts/linkedin-playwright/linkedin-playwright-5.0.0.tgz",
-      "artifact_url": "https://raw.githubusercontent.com/vana-com/data-connectors/44fe82e35ff6002a9840868e27d8a6a01d65ea0d/artifacts/linkedin-playwright/linkedin-playwright-5.0.0.tgz",
-      "git_ref": "44fe82e35ff6002a9840868e27d8a6a01d65ea0d"
+      "artifact_url": "https://raw.githubusercontent.com/vana-com/data-connectors/aef03b4a924bb90742c8f5f64c146a765571558d/artifacts/linkedin-playwright/linkedin-playwright-5.0.0.tgz",
+      "git_ref": "aef03b4a924bb90742c8f5f64c146a765571558d"
     },
     {
       "id": "oura-playwright",
@@ -128,8 +128,8 @@
         "artifact": "sha256:4be693c69d680717fa7e3c11c511ff76ff59d46e4655a2064e2ff0aa1e6d4d25"
       },
       "artifact_path": "artifacts/oura-playwright/oura-playwright-1.0.1.tgz",
-      "artifact_url": "https://raw.githubusercontent.com/vana-com/data-connectors/44fe82e35ff6002a9840868e27d8a6a01d65ea0d/artifacts/oura-playwright/oura-playwright-1.0.1.tgz",
-      "git_ref": "44fe82e35ff6002a9840868e27d8a6a01d65ea0d"
+      "artifact_url": "https://raw.githubusercontent.com/vana-com/data-connectors/aef03b4a924bb90742c8f5f64c146a765571558d/artifacts/oura-playwright/oura-playwright-1.0.1.tgz",
+      "git_ref": "aef03b4a924bb90742c8f5f64c146a765571558d"
     },
     {
       "id": "shop-playwright",
@@ -146,8 +146,8 @@
         "artifact": "sha256:6e046ba9ba0f10e7d37b885f1e053b87db467d737f9355d58aadf98a9ecd8c51"
       },
       "artifact_path": "artifacts/shop-playwright/shop-playwright-1.0.0.tgz",
-      "artifact_url": "https://raw.githubusercontent.com/vana-com/data-connectors/44fe82e35ff6002a9840868e27d8a6a01d65ea0d/artifacts/shop-playwright/shop-playwright-1.0.0.tgz",
-      "git_ref": "44fe82e35ff6002a9840868e27d8a6a01d65ea0d"
+      "artifact_url": "https://raw.githubusercontent.com/vana-com/data-connectors/aef03b4a924bb90742c8f5f64c146a765571558d/artifacts/shop-playwright/shop-playwright-1.0.0.tgz",
+      "git_ref": "aef03b4a924bb90742c8f5f64c146a765571558d"
     },
     {
       "id": "spotify-playwright",
@@ -164,8 +164,8 @@
         "artifact": "sha256:625d1c697e49370715ef2e54358eb0832875f8314bb676ac32f34964f854a78a"
       },
       "artifact_path": "artifacts/spotify-playwright/spotify-playwright-1.0.0.tgz",
-      "artifact_url": "https://raw.githubusercontent.com/vana-com/data-connectors/44fe82e35ff6002a9840868e27d8a6a01d65ea0d/artifacts/spotify-playwright/spotify-playwright-1.0.0.tgz",
-      "git_ref": "44fe82e35ff6002a9840868e27d8a6a01d65ea0d"
+      "artifact_url": "https://raw.githubusercontent.com/vana-com/data-connectors/aef03b4a924bb90742c8f5f64c146a765571558d/artifacts/spotify-playwright/spotify-playwright-1.0.0.tgz",
+      "git_ref": "aef03b4a924bb90742c8f5f64c146a765571558d"
     },
     {
       "id": "youtube-playwright",
@@ -182,8 +182,8 @@
         "artifact": "sha256:d9c833fa1ffef8b7bb7b86abaa82a593b385541813f6cc23939ae399d95498a1"
       },
       "artifact_path": "artifacts/youtube-playwright/youtube-playwright-1.0.0.tgz",
-      "artifact_url": "https://raw.githubusercontent.com/vana-com/data-connectors/44fe82e35ff6002a9840868e27d8a6a01d65ea0d/artifacts/youtube-playwright/youtube-playwright-1.0.0.tgz",
-      "git_ref": "44fe82e35ff6002a9840868e27d8a6a01d65ea0d"
+      "artifact_url": "https://raw.githubusercontent.com/vana-com/data-connectors/aef03b4a924bb90742c8f5f64c146a765571558d/artifacts/youtube-playwright/youtube-playwright-1.0.0.tgz",
+      "git_ref": "aef03b4a924bb90742c8f5f64c146a765571558d"
     }
   ]
 }

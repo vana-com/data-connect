@@ -12,7 +12,10 @@
     "build": "tsc -b && vite build",
     "prebuild:all": "node scripts/ensure-connectors.js && node scripts/ensure-playwright-runner.js && node scripts/ensure-personal-server.js",
     "connectors:resolve": "node scripts/resolve-connectors.js",
-    "connectors:resolve:check": "node scripts/resolve-connectors.js --check",
+    "connectors:install": "npm run connectors:resolve",
+    "connectors:upgrade": "npm run connectors:resolve",
+    "connectors:check": "npm run connectors:resolve -- --check",
+    "connectors:resolve:check": "npm run connectors:check",
     "platform-registry:generate": "node scripts/generate-platform-registry.js",
     "pretauri:dev": "npm run prebuild:all",
     "lint": "eslint .",
@@ -65,8 +68,8 @@
     "zod": "^3.25.76"
   },
   "devDependencies": {
-    "@opendatalabs/data-connectors-tools": "github:vana-com/data-connectors#f61f358",
     "@eslint/js": "^9.39.1",
+    "@opendatalabs/data-connectors-tools": "github:vana-com/data-connectors#f6699e3",
     "@tailwindcss/postcss": "^4.1.18",
     "@tailwindcss/vite": "^4.1.18",
     "@testing-library/react": "^16.3.2",

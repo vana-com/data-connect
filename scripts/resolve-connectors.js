@@ -25,7 +25,6 @@ const CONNECTORS_DIR = join(ROOT, "connectors")
 const DEPENDENCIES_PATH = join(CONNECTORS_DIR, "connector-dependencies.json")
 const LOCK_PATH = join(CONNECTORS_DIR, "lock.json")
 const REGISTRY_PATH = join(CONNECTORS_DIR, "registry.json")
-const DEFAULT_LOCAL_SOURCE = join(ROOT, "..", "data-connectors")
 const DEFAULT_INDEX_URL =
   "https://raw.githubusercontent.com/vana-com/data-connectors/main/connector-index.json"
 const NON_CONNECTOR_FILES = new Set([
@@ -285,7 +284,6 @@ async function main() {
   const indexSource = await loadConnectorIndex({
     fromLocal,
     indexUrl,
-    defaultLocalSource: DEFAULT_LOCAL_SOURCE,
     defaultIndexUrl: DEFAULT_INDEX_URL,
   })
   const resolution = await resolveConnectorArtifacts({

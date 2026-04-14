@@ -30,7 +30,7 @@ export interface Run {
   isConnected: boolean;
   startDate: string;
   endDate?: string;
-  status: 'pending' | 'running' | 'success' | 'error' | 'stopped';
+  status: 'pending' | 'running' | 'success' | 'partial' | 'error' | 'stopped';
   url: string;
   exportSize?: number;
   exportPath?: string;

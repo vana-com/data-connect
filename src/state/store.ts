@@ -94,7 +94,7 @@ const appSlice = createSlice({
       if (run) {
         // If onlyIfRunning is true, don't overwrite success/error status
         // This prevents STOPPED from overwriting a completed run
-        if (action.payload.onlyIfRunning && (run.status === 'success' || run.status === 'error')) {
+        if (action.payload.onlyIfRunning && (run.status === 'success' || run.status === 'partial' || run.status === 'error')) {
           return;
         }
         run.status = action.payload.status;
@@ -113,7 +113,10 @@ const appSlice = createSlice({
     ) {
       const run = state.runs.find((r) => r.id === action.payload.runId);
       if (run) {
-        run.status = 'success';
+        // Preserve 'partial' status — don't overwrite it to 'success'
+        if (run.status !== 'partial') {
+          run.status = 'success';
+        }
         run.exportPath = action.payload.exportPath;
         run.exportSize = action.payload.exportSize;
         run.endDate = new Date().toISOString();

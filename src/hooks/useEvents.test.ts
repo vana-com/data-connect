@@ -174,7 +174,7 @@ describe("useEvents", () => {
       type: "app/updateRunStatus",
       payload: {
         runId: "chatgpt-run-1",
-        status: "success",
+        status: "partial",
         endDate: expect.any(String),
       },
     })

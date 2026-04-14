@@ -287,7 +287,7 @@ export function useConnectPage(): UseConnectPageResult {
     if (isDebugging) return
     if (!activeRun) return
 
-    if (activeRun.status === "success") {
+    if (activeRun.status === "success" || activeRun.status === "partial") {
       const grantHref = grantSearch ? `${ROUTES.grant}?${grantSearch}` : ROUTES.grant
       setConnectRunId(null)
       navigate(grantHref, {

@@ -1,5 +1,5 @@
 import { memo, useCallback } from "react"
-import { CheckIcon, LoaderCircleIcon, SquareIcon } from "lucide-react"
+import { AlertTriangleIcon, CheckIcon, LoaderCircleIcon, SquareIcon } from "lucide-react"
 import { PlatformIcon } from "@/components/icons/platform-icon"
 import { Text } from "@/components/typography/text"
 import { openExportFolderPath } from "@/lib/open-resource"
@@ -15,7 +15,7 @@ import {
 } from "./import-history-row-utils"
 
 const isTerminalRun = (status: Run["status"]) =>
-  status === "success" || status === "error" || status === "stopped"
+  status === "success" || status === "partial" || status === "error" || status === "stopped"
 
 interface ImportHistoryRowProps {
   run: Run
@@ -114,7 +114,7 @@ export const ImportHistoryRow = memo(function ImportHistoryRow({
           </div>
         }
         below={
-          run.status === "error" && isErrorExpanded && errorDetail ? (
+          (run.status === "error" || run.status === "partial") && isErrorExpanded && errorDetail ? (
             <div className="pl-[58px] pr-4 pb-3">
               <hr className="border-border/70" />
               <Text as="p" intent="fine" muted className="pt-3">
@@ -152,6 +152,15 @@ function ImportRunStateLabel({ status }: { status: Run["status"] }) {
       <Text as="span" intent="fine" withIcon muted weight="medium">
         <SquareIcon aria-hidden="true" />
         Stopped
+      </Text>
+    )
+  }
+
+  if (status === "partial") {
+    return (
+      <Text as="span" intent="fine" withIcon weight="medium" className="text-warning">
+        <AlertTriangleIcon aria-hidden="true" className="size-3.5" />
+        Partial
       </Text>
     )
   }

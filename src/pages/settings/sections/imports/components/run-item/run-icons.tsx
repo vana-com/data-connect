@@ -1,5 +1,6 @@
 import {
   ActivityIcon,
+  AlertTriangleIcon,
   CheckCircleIcon,
   Loader2Icon,
   SquareIcon,
@@ -20,6 +21,8 @@ export const getRunStatusIcon = (status: Run["status"]) => {
       )
     case "success":
       return <CheckCircleIcon aria-hidden="true" className="size-5 text-success" />
+    case "partial":
+      return <AlertTriangleIcon aria-hidden="true" className="size-5 text-warning" />
     case "error":
       return <XCircleIcon aria-hidden="true" className="size-5 text-destructive" />
     case "stopped":

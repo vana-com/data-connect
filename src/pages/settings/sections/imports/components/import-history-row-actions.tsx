@@ -60,6 +60,7 @@ const ImportHistoryRowActionsInner = ({
   const rightIconPaddingClass = "pr-1.5!"
   const hasMenuActions =
     run.status === "success" ||
+    run.status === "partial" ||
     run.status === "error" ||
     run.status === "stopped"
   const canSync = canRunAgain && Boolean(rerunPlatform)
@@ -123,7 +124,7 @@ const ImportHistoryRowActionsInner = ({
 
   return (
     <div className={cn("flex items-center gap-0", hasMenuActions && "-mr-1.5")}>
-      {run.status === "success" ? (
+      {run.status === "success" || run.status === "partial" ? (
         <>
           <SettingsRowAction
             asChild
@@ -182,7 +183,7 @@ const ImportHistoryRowActionsInner = ({
               "data-open:animate-none data-closed:animate-none duration-0"
             )}
           >
-            {run.status !== "success" && canSync && rerunPlatform ? (
+            {run.status !== "success" && run.status !== "partial" && canSync && rerunPlatform ? (
               <DropdownMenuItem
                 className={itemStyle}
                 onSelect={() => onRunAgain(rerunPlatform)}

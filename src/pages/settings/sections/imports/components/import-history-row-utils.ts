@@ -4,6 +4,7 @@ import type { Run } from "@/types"
 export const finishedImportStatusBadgeClasses = {
   running: ["border-accent/25", "text-accent"],
   success: ["border-ring", "text-foreground-dim"],
+  partial: ["border-warning/70", "text-warning"],
   error: ["border-destructive/70", "text-destructive-foreground"],
   stopped: ["border-warning/70", "text-warning"],
   default: ["border-border", "text-foreground-dim"],
@@ -13,6 +14,8 @@ export function getStatusLabel(status: Run["status"]) {
   switch (status) {
     case "success":
       return "Completed"
+    case "partial":
+      return "Partial"
     case "error":
       return "Failed"
     case "stopped":
@@ -44,6 +47,14 @@ export function getRowDescription(run: Run) {
     return `${finishedAt} · ${exportCount}`
   }
 
+  if (run.status === "partial") {
+    const exportCount =
+      run.itemsExported != null
+        ? `${run.itemsExported} ${run.itemLabel || "items"}`
+        : "Some items"
+    return `${finishedAt} · ${exportCount} (some data missing)`
+  }
+
   if (run.status === "error") {
     return `${finishedAt} · ${run.statusMessage || "Export failed"}`
   }
@@ -56,7 +67,7 @@ export function getRowDescription(run: Run) {
 }
 
 export function getErrorDetail(run: Run) {
-  if (run.status !== "error") return null
+  if (run.status !== "error" && run.status !== "partial") return null
 
   const statusMessage = run.statusMessage?.trim()
   if (statusMessage) return statusMessage

@@ -81,7 +81,7 @@ export function Home() {
 
   useEffect(() => {
     const successfulRunIds = runs
-      .filter(run => run.status === "success")
+      .filter(run => run.status === "success" || run.status === "partial")
       .map(run => run.id)
 
     if (knownSuccessfulRunIdsRef.current === null) {
@@ -171,7 +171,7 @@ export function Home() {
     () =>
       new Set(
         runs
-          .filter(run => run.status === "success" && Boolean(run.exportPath))
+          .filter(run => (run.status === "success" || run.status === "partial") && Boolean(run.exportPath))
           .map(
             run =>
               getPlatformRegistryEntry({

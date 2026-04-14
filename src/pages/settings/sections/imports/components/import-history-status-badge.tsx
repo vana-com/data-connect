@@ -25,20 +25,23 @@ export function ImportHistoryStatusBadge({
 }: ImportHistoryStatusBadgeProps) {
   const statusLabel = getStatusLabel(run.status)
 
-  if (run.status === "error") {
+  if (run.status === "error" || run.status === "partial") {
+    const badgeClasses = run.status === "partial"
+      ? finishedImportStatusBadgeClasses.partial
+      : finishedImportStatusBadgeClasses.error
     return (
       <button
         type="button"
         onClick={onToggleErrorDetail}
         aria-expanded={isErrorExpanded}
-        aria-label={`${isErrorExpanded ? "Hide" : "Show"} failed run details`}
+        aria-label={`${isErrorExpanded ? "Hide" : "Show"} ${run.status === "partial" ? "partial" : "failed"} run details`}
         className="rounded-soft focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
       >
         <EyebrowBadge
           variant="outline"
           className={cn(
             "pr-1 cursor-pointer",
-            finishedImportStatusBadgeClasses.error
+            badgeClasses
           )}
           textProps={{
             withIcon: true,

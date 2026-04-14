@@ -129,7 +129,7 @@ function estimateHistoryBand(run: Run, runs: Run[]): DurationBand | undefined {
   const throughputs = runs
     .filter(candidate => candidate.id !== run.id)
     .filter(candidate => candidate.platformId === run.platformId)
-    .filter(candidate => candidate.status === "success")
+    .filter(candidate => candidate.status === "success" || candidate.status === "partial")
     .map(candidate => {
       const items = candidate.itemsExported
       if (typeof items !== "number" || items <= 0) return null

@@ -517,7 +517,7 @@ export function useEvents() {
         dispatch(
           updateRunStatus({
             runId,
-            status: isPartial ? 'success' : 'error',
+            status: isPartial ? 'partial' : 'error',
             endDate: new Date().toISOString(),
           })
         );
@@ -574,7 +574,7 @@ export function useEvents() {
       try {
         const runs = store.getState().app.runs;
         const pending = runs.filter(
-          (r) => r.exportPath && !r.syncedToPersonalServer && r.status === 'success'
+          (r) => r.exportPath && !r.syncedToPersonalServer && (r.status === 'success' || r.status === 'partial')
         );
         debugLog('[Data Delivery]', pending.length, 'pending exports to deliver');
         for (const run of pending) {

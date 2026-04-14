@@ -48,6 +48,13 @@ export function RunItem({ run, onStop, serverPort, serverReady }: RunItemProps) 
                 {run.itemsExported} {run.itemLabel || "items"}
               </Text>
             )}
+            {run.status === "partial" && (
+              <Text as="span" intent="fine" className="ml-2 text-warning">
+                {run.itemsExported != null
+                  ? `${run.itemsExported} ${run.itemLabel || "items"} (some data missing)`
+                  : "Partial — some data missing"}
+              </Text>
+            )}
             {run.status === "error" && (
               <Text as="span" intent="fine" color="destructive" className="ml-2">
                 Failed

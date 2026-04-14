@@ -26,7 +26,7 @@ const DEPENDENCIES_PATH = join(CONNECTORS_DIR, "connector-dependencies.json")
 const LOCK_PATH = join(CONNECTORS_DIR, "lock.json")
 const REGISTRY_PATH = join(CONNECTORS_DIR, "registry.json")
 const DEFAULT_INDEX_URL =
-  "https://raw.githubusercontent.com/vana-com/data-connectors/feat/connector-contract-unification/connector-index.json"
+  "https://raw.githubusercontent.com/vana-com/data-connectors/main/connector-index.json"
 const NON_CONNECTOR_FILES = new Set([
   "connector-dependencies.json",
   "connector-dependencies.schema.json",

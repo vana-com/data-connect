@@ -1,7 +1,7 @@
 {
   "version": "3.0.0",
   "lastUpdated": "2026-04-13T20:54:47.410Z",
-  "baseUrl": "https://raw.githubusercontent.com/vana-com/data-connectors/e723a0d1df374cadfb392cb7d84b82c9e7aa0d40/connectors",
+  "baseUrl": "https://raw.githubusercontent.com/vana-com/data-connectors/feat/connector-contract-unification/connectors",
   "connectors": [
     {
       "id": "chatgpt-playwright",
@@ -48,7 +48,7 @@
         "metadata": "github/github-playwright.json"
       },
       "checksums": {
-        "script": "sha256:72e8d25f4983edd9e6e1ed3b020aa73f996ff56df9cd03c78fc9084f4d95cc52",
+        "script": "sha256:7f221ddf698383f1fbceb6bd8cb97f457fc0a4143b4c13c5135a11b8ef230516",
         "metadata": "sha256:72521c9a991f0587134214c835679de737d313a19e88478bc4ef40cf9e3fc89f"
       }
     },
@@ -146,7 +146,7 @@
         "metadata": "oura/oura-playwright.json"
       },
       "checksums": {
-        "script": "sha256:04ede6a3b54715cf6365421524e1be510df4c7597326dece6cdb10019a7d7a8d",
+        "script": "sha256:b5dd43f3381b8cc51d5cd7e48b727d6f18fa26c06577f530d54020960ff5c43f",
         "metadata": "sha256:59dd8496619999db8d6e11663a70c57189e725199e5ed9e2c70be874575542d2"
       }
     },

@@ -27,12 +27,14 @@ import {
   trackCollectionCancelled,
   trackCollectionCompleted,
   trackCollectionFailed,
+  trackCollectionPartial,
   trackCollectionNeedsInput,
   trackSyncCompleted,
   trackSyncFailed,
   trackSyncSkipped,
   trackSyncStarted,
 } from '@/lib/telemetry/events';
+import type { TelemetryErrorClass, TelemetryScopeSummary } from '@/lib/telemetry/contract';
 
 const isDev = import.meta.env.DEV;
 
@@ -43,7 +45,7 @@ function debugLog(...args: unknown[]) {
 
 interface ConnectorStatusEventPayload {
   runId: string;
-  status:
+      status:
     | string
     | {
         type: string;
@@ -51,6 +53,10 @@ interface ConnectorStatusEventPayload {
         data?: unknown;
         phase?: ProgressPhase;
         count?: number;
+        outcome?: "success" | "partial" | "failure" | "cancelled";
+        errorClass?: TelemetryErrorClass;
+        recordCount?: number;
+        scopeSummary?: TelemetryScopeSummary;
       };
   timestamp: number;
 }
@@ -335,7 +341,10 @@ export function useEvents() {
       });
     }
 
-    function markCollectionCompleted(runId: string) {
+    function markCollectionCompleted(
+      runId: string,
+      args?: { recordCount?: number; scopeSummary?: TelemetryScopeSummary }
+    ) {
       if (terminalCollectionRunIds.has(runId)) return;
       const context = getRunTelemetryContext(runId);
       if (!context) return;
@@ -344,13 +353,39 @@ export function useEvents() {
         collectionRunId: runId,
         source: context.source,
         durationMs: context.durationMs ?? 0,
+        ...(args?.recordCount !== undefined ? { recordCount: args.recordCount } : {}),
+        ...(args?.scopeSummary ? { scopeSummary: args.scopeSummary } : {}),
+      });
+    }
+
+    function markCollectionPartial(
+      runId: string,
+      args: {
+        errorClass?: TelemetryErrorClass;
+        error?: unknown;
+        recordCount?: number;
+        scopeSummary?: TelemetryScopeSummary;
+      }
+    ) {
+      if (terminalCollectionRunIds.has(runId)) return;
+      const context = getRunTelemetryContext(runId);
+      if (!context) return;
+      terminalCollectionRunIds.add(runId);
+      trackCollectionPartial({
+        collectionRunId: runId,
+        source: context.source,
+        durationMs: context.durationMs ?? 0,
+        errorClass: args.errorClass ?? 'unknown',
+        ...(args.recordCount !== undefined ? { recordCount: args.recordCount } : {}),
+        ...(args.scopeSummary ? { scopeSummary: args.scopeSummary } : {}),
       });
     }
 
     function markCollectionFailed(
       runId: string,
       error?: unknown,
-      errorClass?: 'runtime_error' | 'auth_failed' | 'timeout' | 'network_error',
+      errorClass?: TelemetryErrorClass,
+      scopeSummary?: TelemetryScopeSummary,
     ) {
       if (terminalCollectionRunIds.has(runId)) return;
       const context = getRunTelemetryContext(runId);
@@ -362,6 +397,7 @@ export function useEvents() {
         durationMs: context.durationMs ?? undefined,
         error,
         errorClass,
+        ...(scopeSummary ? { scopeSummary } : {}),
       });
     }
 
@@ -395,6 +431,13 @@ export function useEvents() {
             : undefined;
       const phase = typeof status === 'object' ? status.phase : undefined;
       const itemCount = typeof status === 'object' ? status.count : undefined;
+      const outcome = typeof status === 'object' ? status.outcome : undefined;
+      const terminalErrorClass =
+        typeof status === 'object' ? status.errorClass : undefined;
+      const recordCount =
+        typeof status === 'object' ? status.recordCount : undefined;
+      const scopeSummary =
+        typeof status === 'object' ? status.scopeSummary : undefined;
 
       const updateProgress = () => {
         dispatch(updateRunExportData({
@@ -441,7 +484,10 @@ export function useEvents() {
           })
         );
         dispatch(updateRunConnected({ runId, isConnected: true }));
-        markCollectionCompleted(runId);
+        markCollectionCompleted(runId, {
+          recordCount,
+          scopeSummary,
+        });
 
         if (typeof status === 'object') {
           const activeRun = store.getState().app.runs.find((r) => r.id === runId);
@@ -467,17 +513,35 @@ export function useEvents() {
           });
         }
       } else if (statusType === 'ERROR') {
+        const isPartial = outcome === 'partial';
         dispatch(
           updateRunStatus({
             runId,
-            status: 'error',
+            status: isPartial ? 'success' : 'error',
             endDate: new Date().toISOString(),
           })
         );
+        if (isPartial) {
+          dispatch(updateRunConnected({ runId, isConnected: true }));
+        }
         if (statusMessage) {
           dispatch(updateRunExportData({ runId, statusMessage }));
         }
-        markCollectionFailed(runId, statusMessage ?? statusType);
+        if (isPartial) {
+          markCollectionPartial(runId, {
+            errorClass: terminalErrorClass,
+            error: statusMessage ?? statusType,
+            recordCount,
+            scopeSummary,
+          });
+        } else {
+          markCollectionFailed(
+            runId,
+            statusMessage ?? statusType,
+            terminalErrorClass,
+            scopeSummary,
+          );
+        }
       } else if (statusType === 'STOPPED') {
         const currentRun = store.getState().app.runs.find((candidate) => candidate.id === runId);
         dispatch(

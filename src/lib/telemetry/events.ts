@@ -14,6 +14,7 @@ import type {
   TelemetryCancellationReason,
   TelemetryErrorClass,
   TelemetryInteractionKind,
+  TelemetryScopeSummary,
   TelemetrySyncSkipReason,
 } from "@/lib/telemetry/contract";
 
@@ -83,6 +84,7 @@ export function trackCollectionCompleted(args: {
   source: string;
   durationMs: number;
   recordCount?: number;
+  scopeSummary?: TelemetryScopeSummary;
   connectorVersion?: string;
 }) {
   void emitTelemetryEvent({
@@ -97,6 +99,36 @@ export function trackCollectionCompleted(args: {
       phase: "terminal",
       outcome: "success",
       ...(args.recordCount !== undefined ? { recordCount: args.recordCount } : {}),
+      ...(args.scopeSummary ? { scopeSummary: args.scopeSummary } : {}),
+    },
+    durationMs: args.durationMs,
+    connectorVersion: args.connectorVersion,
+  });
+}
+
+export function trackCollectionPartial(args: {
+  collectionRunId: string;
+  source: string;
+  errorClass: TelemetryErrorClass;
+  durationMs: number;
+  recordCount?: number;
+  scopeSummary?: TelemetryScopeSummary;
+  connectorVersion?: string;
+}) {
+  void emitTelemetryEvent({
+    correlation: {
+      scope: "collection",
+      hostRunId: getHostRunId(),
+      collectionRunId: args.collectionRunId,
+      source: args.source,
+    },
+    kind: {
+      lifecycle: "collection",
+      phase: "terminal",
+      outcome: "partial",
+      errorClass: args.errorClass,
+      ...(args.recordCount !== undefined ? { recordCount: args.recordCount } : {}),
+      ...(args.scopeSummary ? { scopeSummary: args.scopeSummary } : {}),
     },
     durationMs: args.durationMs,
     connectorVersion: args.connectorVersion,
@@ -109,6 +141,7 @@ export function trackCollectionFailed(args: {
   error?: unknown;
   errorClass?: TelemetryErrorClass;
   durationMs?: number;
+  scopeSummary?: TelemetryScopeSummary;
   connectorVersion?: string;
 }) {
   void emitTelemetryEvent({
@@ -123,6 +156,7 @@ export function trackCollectionFailed(args: {
       phase: "terminal",
       outcome: "failure",
       errorClass: args.errorClass ?? classifyTelemetryError(args.error),
+      ...(args.scopeSummary ? { scopeSummary: args.scopeSummary } : {}),
     },
     durationMs: args.durationMs,
     connectorVersion: args.connectorVersion,
@@ -134,6 +168,7 @@ export function trackCollectionCancelled(args: {
   source: string;
   reason?: TelemetryCancellationReason;
   durationMs?: number;
+  scopeSummary?: TelemetryScopeSummary;
   connectorVersion?: string;
 }) {
   void emitTelemetryEvent({
@@ -148,6 +183,7 @@ export function trackCollectionCancelled(args: {
       phase: "terminal",
       outcome: "cancelled",
       ...(args.reason ? { reason: args.reason } : {}),
+      ...(args.scopeSummary ? { scopeSummary: args.scopeSummary } : {}),
     },
     durationMs: args.durationMs,
     connectorVersion: args.connectorVersion,
@@ -364,4 +400,3 @@ export function trackBuilderVerificationFailed(args: {
     },
   });
 }
-

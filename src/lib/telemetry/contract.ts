@@ -32,6 +32,11 @@ export type TelemetryProducer = (typeof telemetryProducers)[number];
 
 export const telemetryErrorClasses = [
   "auth_failed",
+  "rate_limited",
+  "upstream_error",
+  "navigation_error",
+  "selector_error",
+  "protocol_violation",
   "personal_server_unavailable",
   "network_error",
   "timeout",
@@ -135,6 +140,14 @@ export interface TelemetryContext {
   authMode?: string;
 }
 
+/** Minimal per-run scope counts for honest collection classification. */
+export interface TelemetryScopeSummary {
+  requested: number;
+  produced: number;
+  degraded: number;
+  omitted: number;
+}
+
 // ── Correlation (nested tree) ───────────────────────────────────────────────
 //
 // The three in-flight entities (host run, collection run, sync attempt, grant
@@ -208,18 +221,34 @@ export type TelemetryKind =
       outcome: "success";
       /** Records produced by the connector. Zero is valid (empty account). */
       recordCount?: number;
+      /** Aggregate scope counts without enumerating individual scopes yet. */
+      scopeSummary?: TelemetryScopeSummary;
+    }
+  | {
+      lifecycle: "collection";
+      phase: "terminal";
+      outcome: "partial";
+      errorClass: TelemetryErrorClass;
+      /** Records produced by the connector, including partial results. */
+      recordCount?: number;
+      /** Aggregate scope counts without enumerating individual scopes yet. */
+      scopeSummary?: TelemetryScopeSummary;
     }
   | {
       lifecycle: "collection";
       phase: "terminal";
       outcome: "failure";
       errorClass: TelemetryErrorClass;
+      /** Aggregate scope counts without enumerating individual scopes yet. */
+      scopeSummary?: TelemetryScopeSummary;
     }
   | {
       lifecycle: "collection";
       phase: "terminal";
       outcome: "cancelled";
       reason?: TelemetryCancellationReason;
+      /** Aggregate scope counts without enumerating individual scopes yet. */
+      scopeSummary?: TelemetryScopeSummary;
     }
 
   // ── Sync lifecycle ────────────────────────────────────────────────────────
@@ -309,6 +338,7 @@ export interface TelemetryBatch {
 
 export const telemetryCollectionRollupOutcomes = [
   "success",
+  "partial",
   "failure",
   "cancelled",
   "no_terminal",

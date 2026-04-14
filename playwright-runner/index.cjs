@@ -4,7 +4,7 @@
  * Runs as a sidecar process, receives commands via stdin, sends results via stdout.
  *
  * Commands:
- * - { type: "run", runId, connectorPath, url, headless, allowHeaded }
+ * - { type: "run", runId, connectorPath, url, headless, allowHeaded, requestedScopes }
  * - { type: "stop", runId }
  * - { type: "evaluate", runId, script }
  * - { type: "input-response", runId, requestId, data?, error? }
@@ -21,6 +21,7 @@ const fs = require('fs');
 const readline = require('readline');
 const path = require('path');
 const { execSync } = require('child_process');
+const { classifyConnectorResult } = require('./result-classifier.cjs');
 
 // System Chrome paths by platform
 const CHROME_PATHS = {
@@ -282,6 +283,73 @@ function log(...args) {
   console.error('[PlaywrightRunner]', ...args);
 }
 
+function isCanonicalScopeId(scope) {
+  return (
+    typeof scope === 'string' &&
+    scope.length > 0 &&
+    scope.includes('.') &&
+    !scope.startsWith('.') &&
+    !scope.endsWith('.')
+  );
+}
+
+function normalizeRequestedScopes(requestedScopes) {
+  if (!Array.isArray(requestedScopes) || requestedScopes.length === 0) {
+    throw new Error('Resolved requestedScopes must be a non-empty array');
+  }
+
+  const deduped = [];
+  const seen = new Set();
+  for (const scope of requestedScopes) {
+    if (!isCanonicalScopeId(scope)) {
+      throw new Error(`Resolved requestedScopes contains a non-canonical scope id: ${String(scope)}`);
+    }
+    if (!seen.has(scope)) {
+      seen.add(scope);
+      deduped.push(scope);
+    }
+  }
+
+  if (deduped.length === 0) {
+    throw new Error('Resolved requestedScopes must contain at least one canonical scope id');
+  }
+
+  return deduped;
+}
+
+function storeConnectorResult(runState, result) {
+  const classification = classifyConnectorResult(result, {
+    expectedRequestedScopes: runState.requestedScopes,
+  });
+
+  runState.resultEnvelope = {
+    classification,
+    rawResult: result,
+  };
+
+  return runState.resultEnvelope;
+}
+
+function emitStoredConnectorResult(runId, runState) {
+  if (!runState.resultEnvelope) {
+    return null;
+  }
+
+  const { classification, rawResult } = runState.resultEnvelope;
+  const message = {
+    type: 'result',
+    runId,
+    classification,
+  };
+
+  if (classification.outcome === 'success' || classification.outcome === 'partial') {
+    message.data = rawResult;
+  }
+
+  send(message);
+  return classification;
+}
+
 // Resolve browser executable path
 function resolveBrowserPath() {
   let browserPath = null;
@@ -388,6 +456,10 @@ function createPageApi(runState, runId) {
     // These are thin pass-throughs to the underlying Playwright page object.
     // See types/connector.d.ts in data-connectors for the canonical contract.
 
+    requestedScopes: () => {
+      return [...runState.requestedScopes];
+    },
+
     url: async () => {
       const page = requirePage();
       return page.url();
@@ -449,10 +521,7 @@ function createPageApi(runState, runId) {
       } else if (key === 'error') {
         log(`[error] ${value}`);
       } else if (key === 'result') {
-        runState.hasResult = true;
-        // Send as proper result message so Rust emits export-complete
-        const exportData = (value && value.success && value.data) ? value.data : value;
-        send({ type: 'result', runId, data: exportData });
+        storeConnectorResult(runState, value);
       }
       send({ type: 'data', runId, key, value });
     },
@@ -737,7 +806,7 @@ function createPageApi(runState, runId) {
 }
 
 // Run a connector
-async function runConnector(runId, connectorPath, url, headless = true, allowHeaded = true) {
+async function runConnector(runId, connectorPath, url, headless = true, allowHeaded = true, requestedScopes) {
   log(`Starting run ${runId} with connector ${connectorPath} (headless: ${headless}, allowHeaded: ${allowHeaded})`);
 
   // Derive connector ID for persistent browser profile
@@ -758,6 +827,8 @@ async function runConnector(runId, connectorPath, url, headless = true, allowHea
     browserPath: null,
     requestCounter: 0,
     pendingInputs: new Map(),
+    requestedScopes: normalizeRequestedScopes(requestedScopes),
+    resultEnvelope: null,
   };
 
   try {
@@ -853,13 +924,14 @@ async function runConnector(runId, connectorPath, url, headless = true, allowHea
 
     log('Calling connector function...');
     const result = await runConnectorFn.call(null, pageApi);
-    log('Connector function completed with result:', result ? 'has result' : 'undefined');
+    log('Connector function completed with result:', result != null ? 'has result' : 'undefined');
 
-    if (!runState.hasResult && result != null) {
-      const exportData = (result && result.success && result.data) ? result.data : result;
-      send({ type: 'result', runId, data: exportData });
+    if (result !== undefined) {
+      storeConnectorResult(runState, result);
+    } else if (runState.resultEnvelope === null) {
+      storeConnectorResult(runState, result);
     }
-    send({ type: 'status', runId, status: 'COMPLETE' });
+    const classification = emitStoredConnectorResult(runId, runState);
 
     // Mark as completed to prevent disconnect handler from sending STOPPED
     runState.connectorCompleted = true;
@@ -877,9 +949,12 @@ async function runConnector(runId, connectorPath, url, headless = true, allowHea
     activeRuns.delete(runId);
 
     // Exit process after successful completion
-    log('Connector completed successfully, exiting');
+    log(
+      'Connector completed, classified outcome:',
+      classification ? classification.outcome : 'unknown',
+    );
     await drainStdout();
-    process.exit(0);
+    process.exit(classification && classification.outcome === 'failure' ? 1 : 0);
 
   } catch (error) {
     log(`Error in run ${runId}:`, error.message);
@@ -936,7 +1011,14 @@ async function main() {
 
       switch (cmd.type) {
         case 'run':
-          runConnector(cmd.runId, cmd.connectorPath, cmd.url, cmd.headless !== false, cmd.allowHeaded !== false);
+          runConnector(
+            cmd.runId,
+            cmd.connectorPath,
+            cmd.url,
+            cmd.headless !== false,
+            cmd.allowHeaded !== false,
+            cmd.requestedScopes,
+          );
           break;
 
         case 'stop':

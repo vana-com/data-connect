@@ -98,6 +98,15 @@ export interface ConnectorStatusPayload {
   phase?: ProgressPhase;
   count?: number;
   data?: unknown;
+  outcome?: 'success' | 'partial' | 'failure' | 'cancelled';
+  errorClass?: string;
+  recordCount?: number;
+  scopeSummary?: {
+    requested: number;
+    produced: number;
+    degraded: number;
+    omitted: number;
+  };
 }
 
 export interface ConnectorStatusEvent {

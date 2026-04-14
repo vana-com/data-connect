@@ -47,3 +47,16 @@ export const loadLatestSourceExportFull = (
 
 export const deleteExportedRun = (exportPath: string) =>
   invoke("delete_exported_run", { exportPath })
+
+export const writeAppQuickstartFiles = (
+  sourceId: string,
+  appIdea: string,
+  markdownContent: string,
+  sourceContextJson: string
+) =>
+  invoke<string>("write_app_quickstart_files", {
+    sourceId,
+    appIdea,
+    markdownContent,
+    sourceContextJson,
+  })

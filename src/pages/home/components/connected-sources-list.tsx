@@ -11,6 +11,7 @@ import {
   TooltipContent,
   TooltipTrigger,
 } from "@/components/ui/tooltip"
+import { Button } from "@/components/ui/button"
 import { ROUTES } from "@/config/routes"
 import { cn } from "@/lib/classes"
 import { getLastRunLabel } from "@/lib/platform/ui"
@@ -24,6 +25,7 @@ interface ConnectedSourcesListProps {
   runs: Run[]
   headline?: string
   onOpenRuns?: (platform: Platform) => void
+  onCreateApp?: (platform: Platform) => void
   onSyncSource?: (platform: Platform) => void
 }
 
@@ -43,6 +45,7 @@ export function ConnectedSourcesList({
   runs,
   headline = "Your sources at the moment.",
   onOpenRuns,
+  onCreateApp,
   onSyncSource,
 }: ConnectedSourcesListProps) {
   const inFlightSyncPlatformIdsRef = useRef<Set<string>>(new Set())
@@ -184,41 +187,56 @@ export function ConnectedSourcesList({
                 ariaLabel: `Open ${platform.name}`,
               }}
               middleSlot={
-                <Tooltip>
-                  <TooltipTrigger asChild>
-                    <SourceRowActionButton
-                      className={cn("gap-2.5 pl-3.5 pr-3.5 justify-start")}
-                      onClick={
-                        !isSyncDisabled
-                          ? () => triggerSyncFeedback(platform)
-                          : undefined
-                      }
-                      disabled={isSyncDisabled}
-                      aria-label={`Fetch latest data for ${platform.name}`}
+                <div className="flex h-full items-center gap-1 pr-1.5">
+                  {onCreateApp ? (
+                    <Button
+                      variant="outline"
+                      size="xs"
+                      className="my-2"
+                      onClick={() => onCreateApp(platform)}
+                      aria-label={`Create app from ${platform.name} data`}
                     >
-                      {syncFeedbackState ? (
-                        <Text
-                          as="span"
-                          intent="fine"
-                          muted
-                          className="mt-[0.3em]"
-                        >
-                          {syncFeedbackState === "running"
-                            ? "Fetching…"
-                            : "Backgrounding…"}
-                        </Text>
-                      ) : null}
-                      <RotateCcwIcon
-                        className={cn(
-                          syncFeedbackState &&
-                            "animate-[spin_2s_linear_infinite_reverse]"
-                        )}
-                        aria-hidden
-                      />
-                    </SourceRowActionButton>
-                  </TooltipTrigger>
-                  <TooltipContent side="top">{syncTooltipCopy}</TooltipContent>
-                </Tooltip>
+                      Create app
+                    </Button>
+                  ) : null}
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <SourceRowActionButton
+                        className={cn("gap-2.5 pl-3.5 pr-3.5 justify-start")}
+                        onClick={
+                          !isSyncDisabled
+                            ? () => triggerSyncFeedback(platform)
+                            : undefined
+                        }
+                        disabled={isSyncDisabled}
+                        aria-label={`Fetch latest data for ${platform.name}`}
+                      >
+                        {syncFeedbackState ? (
+                          <Text
+                            as="span"
+                            intent="fine"
+                            muted
+                            className="mt-[0.3em]"
+                          >
+                            {syncFeedbackState === "running"
+                              ? "Fetching..."
+                              : "Backgrounding..."}
+                          </Text>
+                        ) : null}
+                        <RotateCcwIcon
+                          className={cn(
+                            syncFeedbackState &&
+                              "animate-[spin_2s_linear_infinite_reverse]"
+                          )}
+                          aria-hidden
+                        />
+                      </SourceRowActionButton>
+                    </TooltipTrigger>
+                    <TooltipContent side="top">
+                      {syncTooltipCopy}
+                    </TooltipContent>
+                  </Tooltip>
+                </div>
               }
               endSlotClassName="[&_svg:not([class*='size-']):not([data-slot=spinner])]:size-7!"
               surface="list-item"
@@ -287,10 +305,7 @@ function PersonalServerOnboardingCopy({
   return (
     <Text as="p" intent="small" muted>
       {copy.beforeServerLink}
-      <Link
-        to={ROUTES.personalServer}
-        className="link hover:text-foreground"
-      >
+      <Link to={ROUTES.personalServer} className="link hover:text-foreground">
         {copy.serverLinkText}
       </Link>
       {copy.afterServerLink}

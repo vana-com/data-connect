@@ -1,0 +1,362 @@
+evals:
+  - id: HC-EXPERIENCE-001
+    section: Experience
+    source_order: 1
+    source_ref: "260325-builder-redesign-invariants.md > Product Invariants > Experience"
+    source_span: "lines 67-68"
+    classification: hard_constraint
+    evidence_target: test
+    hookability: harness_gate
+    check: App Quickstart starts only from explicit user intent and must not auto-open after import completion.
+    pass_if:
+      - Quickstart opens only after a user-triggered `Create app` action.
+      - Import completion UI may offer `Create app`, but does not auto-open the quickstart surface.
+    fail_if:
+      - Completing an import automatically opens the quickstart dialog, sheet, or route.
+      - Visiting an imported-source screen auto-starts quickstart without an explicit `Create app` action.
+    counterexample:
+      - A completed import toast immediately opens the quickstart dialog before the user clicks anything.
+    hook_suggestion:
+      kind: test_gate
+      reject_if:
+        - Route or interaction tests show quickstart opening without a user-triggered `Create app` action.
+
+  - id: HC-EXPERIENCE-002
+    section: Experience
+    source_order: 2
+    source_ref: "260325-builder-redesign-invariants.md > Product Invariants > Experience"
+    source_span: "lines 69-69"
+    classification: hard_constraint
+    evidence_target: manual
+    hookability: manual_only
+    check: Collect the user's app idea once before handoff generation and do not require the same intent to be re-entered later in the flow.
+    pass_if:
+      - The flow has one required free-text app-idea input before generation.
+      - Later screens focus on generated handoff review, editing, or export rather than restating the same idea.
+    fail_if:
+      - A later quickstart step requires the user to re-enter the app concept, description, or equivalent intent field.
+    counterexample:
+      - The user writes an app idea in the first screen and is later forced to fill another required product-description field with the same concept.
+    hook_suggestion:
+      kind: manual_only
+      reject_if:
+        - Manual review finds multiple required free-text app-intent entries in the same quickstart flow.
+
+  - id: HC-EXPERIENCE-003
+    section: Experience
+    source_order: 3
+    source_ref: "260325-builder-redesign-invariants.md > Product Invariants > Experience"
+    source_span: "lines 74-75"
+    classification: hard_constraint
+    evidence_target: dom
+    hookability: harness_gate
+    check: The completion state must provide a usable handoff artifact and must not imply the app is already built, deployed, or published.
+    pass_if:
+      - The completion state exposes a generated artifact the user can preview, copy, reveal, or otherwise take away immediately.
+      - UI copy describes the outcome as a handoff, prompt, quickstart, or next-step artifact rather than a built or live app.
+    fail_if:
+      - The flow ends on a checklist or congratulatory screen without a usable artifact.
+      - UI copy claims the app was built, deployed, published, or made live when the feature only generated a handoff.
+    counterexample:
+      - A success modal says "Your app is live" but only offers a list of manual next steps and no generated artifact.
+    hook_suggestion:
+      kind: dom_audit
+      reject_if:
+        - The completion state lacks artifact actions such as preview, copy, or reveal.
+        - Completion copy claims the app already exists as a built or deployed product without such a feature being implemented.
+
+  - id: HC-STRUCTURE-001
+    section: Structure
+    source_order: 4
+    source_ref: "260325-builder-redesign-invariants.md > Product Invariants > Structure"
+    source_span: "lines 79-81"
+    classification: hard_constraint
+    evidence_target: test
+    hookability: harness_gate
+    check: App Quickstart remains source-scoped and is launched within source-overview context rather than a separate builder dashboard.
+    pass_if:
+      - "`Create app` routes or UI state remain tied to a specific imported source."
+      - Quickstart opens inside source overview context or an equivalent source-scoped surface.
+    fail_if:
+      - "`Create app` launches a global builder dashboard detached from the current source."
+      - The quickstart path loses the source context needed to understand which imported data is in use.
+    counterexample:
+      - Clicking `Create app` on a source routes to `/build` with no source context and no source overview state.
+    hook_suggestion:
+      kind: test_gate
+      reject_if:
+        - Routing tests show `Create app` leaving source context instead of opening source-scoped quickstart UI.
+
+  - id: HC-RELIABILITY-001
+    section: Reliability
+    source_order: 5
+    source_ref: "260325-builder-redesign-invariants.md > Product Invariants > Reliability"
+    source_span: "lines 90-91"
+    classification: hard_constraint
+    evidence_target: test
+    hookability: harness_gate
+    check: AI generation failures degrade to a retryable, editable handoff state rather than a dead end.
+    pass_if:
+      - A failed generation keeps the user in a quickstart state where they can retry or edit the handoff inputs/artifact.
+    fail_if:
+      - A failed generation terminates the flow with no retry path, no editable state, or forced abandonment.
+    counterexample:
+      - The generation API fails and the UI only shows a blocking error screen with no retry and no editable prompt state.
+    hook_suggestion:
+      kind: test_gate
+      reject_if:
+        - Failure-path tests show no retry action and no editable recovery state after generation errors.
+
+  - id: HC-RELIABILITY-002
+    section: Reliability
+    source_order: 6
+    source_ref: "260325-builder-redesign-invariants.md > Product Invariants > Reliability"
+    source_span: "lines 93-94; lines 123-139"
+    classification: hard_constraint
+    evidence_target: output
+    hookability: repo_hook
+    check: The generated handoff artifact includes actionable source context, including source identity, local data location or reveal path, and a meaningful preview or summary.
+    pass_if:
+      - The handoff artifact identifies the source.
+      - The handoff artifact tells the user or downstream tool where the local data lives or how to reveal it.
+      - The handoff artifact includes a non-trivial preview, summary, or similar source-aware context.
+    fail_if:
+      - The artifact is a generic app-building prompt with no source identity.
+      - The artifact omits the local data path or equivalent reveal instruction.
+      - The artifact lacks any source-aware preview or summary content.
+    counterexample:
+      - The copied prompt says only "Build a starter app from user data" and provides no source name, no local path, and no preview context.
+    hook_suggestion:
+      kind: output_gate
+      reject_if:
+        - Generated quickstart artifacts omit source identity, local data location or reveal instruction, or any preview/summary field.
+
+  - id: HC-PRIVACY-001
+    section: Privacy And Trust
+    source_order: 7
+    source_ref: "260325-builder-redesign-invariants.md > Product Invariants > Privacy And Trust"
+    source_span: "lines 103-104"
+    classification: hard_constraint
+    evidence_target: diff
+    hookability: repo_hook
+    check: V1 quickstart remains local-first and does not upload exported source data to remote infrastructure.
+    pass_if:
+      - Quickstart generation and artifact handling do not send exported source contents or files to non-local services in v1.
+    fail_if:
+      - Quickstart uploads exported data, previews, or source files to a remote API, worker, or hosted generation service.
+    counterexample:
+      - Clicking `Create app` posts the full exported JSON to a hosted endpoint to generate the starter app prompt.
+    hook_suggestion:
+      kind: diff_gate
+      reject_if:
+        - Quickstart code paths send exported source file contents, previews, or file uploads to non-local endpoints.
+
+  - id: HC-PRIVACY-002
+    section: Privacy And Trust
+    source_order: 8
+    source_ref: "260325-builder-redesign-invariants.md > Product Invariants > Privacy And Trust"
+    source_span: "lines 105-105"
+    classification: hard_constraint
+    evidence_target: diff
+    hookability: repo_hook
+    check: V1 quickstart must not require detecting a specific coding agent installation before producing a usable artifact.
+    pass_if:
+      - The user can complete quickstart and obtain a usable artifact without installation checks for Claude, Codex, Lovable, Bolt, v0, or similar tools.
+    fail_if:
+      - Quickstart is blocked until the app confirms a specific external tool is installed or connected.
+    counterexample:
+      - The `Create app` flow is disabled unless Codex Desktop is detected on the machine.
+    hook_suggestion:
+      kind: diff_gate
+      reject_if:
+        - Quickstart availability or artifact generation is gated on detecting or authenticating a specific coding agent tool.
+
+  - id: HC-SCOPE-001
+    section: Scope
+    source_order: 9
+    source_ref: "260325-builder-redesign-invariants.md > Product Invariants > Scope"
+    source_span: "lines 111-112; 260325-builder-redesign-handoff.md lines 228-230"
+    classification: hard_constraint
+    evidence_target: diff
+    hookability: repo_hook
+    check: The quickstart happy path must not depend on current on-chain mechanics or registration steps before the user has a valid artifact.
+    pass_if:
+      - Quickstart can complete artifact generation, preview, copy, or reveal without on-chain registration or equivalent protocol ceremony.
+    fail_if:
+      - Quickstart invokes on-chain registration, wallet generation, relayer setup, or equivalent before the artifact exists.
+    counterexample:
+      - The user cannot copy the quickstart prompt until a grantee is registered on-chain.
+    hook_suggestion:
+      kind: diff_gate
+      reject_if:
+        - Quickstart happy-path code performs on-chain registration or related protocol setup before artifact generation is complete.
+
+  - id: HC-SCOPE-002
+    section: Scope
+    source_order: 10
+    source_ref: "260325-builder-redesign-invariants.md > Product Invariants > Scope"
+    source_span: "lines 112-112; lines 168-170"
+    classification: hard_constraint
+    evidence_target: diff
+    hookability: repo_hook
+    check: The quickstart happy path must not require CMS persistence before the user can access the generated artifact.
+    pass_if:
+      - The artifact can be previewed, copied, or revealed without saving to Sanity or another CMS.
+    fail_if:
+      - Quickstart blocks on CMS save success before showing the artifact.
+    counterexample:
+      - The flow hides the generated prompt until a remote draft record is persisted.
+    hook_suggestion:
+      kind: diff_gate
+      reject_if:
+        - Quickstart completion depends on remote CMS persistence before artifact actions are available.
+
+  - id: HC-SCOPE-003
+    section: Scope
+    source_order: 11
+    source_ref: "260325-builder-redesign-invariants.md > Product Invariants > Scope"
+    source_span: "lines 114-115; lines 165-170"
+    classification: hard_constraint
+    evidence_target: diff
+    hookability: repo_hook
+    check: V1 quickstart must not become hosted one-click app generation, deployment, or app management.
+    pass_if:
+      - V1 quickstart ends with a local-first handoff artifact rather than a hosted generation job, deployment, or management dashboard.
+    fail_if:
+      - V1 quickstart provisions remote jobs, auto-deploys an app, or merges into app-management workflows as its primary outcome.
+    counterexample:
+      - Clicking `Create app` starts a hosted build-and-deploy job and then routes the user into a generated-app dashboard.
+    hook_suggestion:
+      kind: diff_gate
+      reject_if:
+        - V1 quickstart code provisions hosted app-generation jobs, deployment automation, or app-management surfaces as part of the primary flow.
+
+  - id: HC-FIRST-SLICE-001
+    section: First Build Slice
+    source_order: 12
+    source_ref: "260325-builder-redesign-invariants.md > First Build Slice"
+    source_span: "lines 154-156"
+    classification: hard_constraint
+    evidence_target: dom
+    hookability: harness_gate
+    check: Imported-source surfaces expose `Create app`, and that action enters source-overview quickstart UI.
+    pass_if:
+      - Imported-source rows, cards, or equivalent surfaces expose a `Create app` action.
+      - Activating that action opens or routes into source-overview quickstart UI for the current source.
+    fail_if:
+      - Imported sources lack a `Create app` action.
+      - "`Create app` bypasses source overview and opens an unrelated flow."
+    counterexample:
+      - Imported-source cards show `View data` only, with no way to start quickstart from the imported source.
+    hook_suggestion:
+      kind: dom_audit
+      reject_if:
+        - Imported-source surfaces do not render a `Create app` action tied to the current source.
+
+  - id: HC-FIRST-SLICE-002
+    section: First Build Slice
+    source_order: 13
+    source_ref: "260325-builder-redesign-invariants.md > First Build Slice"
+    source_span: "lines 157-160"
+    classification: hard_constraint
+    evidence_target: dom
+    hookability: harness_gate
+    check: The source-overview quickstart UI exposes a prompt preview, `Copy prompt`, and `Reveal handoff files`.
+    pass_if:
+      - The quickstart surface shows the generated prompt or equivalent artifact preview.
+      - The quickstart surface includes direct actions for `Copy prompt` and `Reveal handoff files`.
+    fail_if:
+      - The artifact is hidden until export.
+      - The quickstart surface omits either preview, copy, or reveal actions.
+    counterexample:
+      - The quickstart dialog shows only a single "Continue" button and no prompt preview or reveal-files action.
+    hook_suggestion:
+      kind: dom_audit
+      reject_if:
+        - Quickstart UI lacks a visible prompt preview or is missing `Copy prompt` or `Reveal handoff files` actions.
+
+  - id: HC-ADJACENT-001
+    section: Adjacent Thread / Existing Starter Apps
+    source_order: 14
+    source_ref: "260325-builder-redesign-handoff.md > Recommended DataConnect Product Shape > Adjacent Thread: Existing Starter Apps"
+    source_span: "lines 123-140"
+    classification: hard_constraint
+    evidence_target: dom
+    hookability: manual_only
+    check: When both quickstart and existing starter-app paths are surfaced, the UI clearly distinguishes generating a new app handoff from opening an existing app, template, or example.
+    pass_if:
+      - "`Create app` is reserved for generating a new quickstart handoff."
+      - Existing app/template/example actions use distinct copy and intent from `Create app`.
+    fail_if:
+      - Existing starter apps are surfaced using `Create app` copy or otherwise blur the difference between generation and opening an existing app.
+    counterexample:
+      - A source-overview panel labels an existing starter app link as `Create app`, making it unclear whether the user is generating something new or opening something prebuilt.
+    hook_suggestion:
+      kind: manual_only
+      reject_if:
+        - Manual UX review finds starter-app actions and quickstart generation actions conflated in copy or interaction intent.
+
+  - id: SS-EXPERIENCE-001
+    section: Experience
+    source_order: 15
+    source_ref: "260325-builder-redesign-invariants.md > Product Invariants > Experience"
+    source_span: "lines 72-73"
+    classification: soft_score
+    evidence_target: dom
+    hookability: manual_only
+    check: Prefer a generated handoff as the default path instead of a long empty form.
+    pass_if:
+      - The default quickstart path quickly produces a generated artifact or draft the user can react to.
+    fail_if:
+      - The main quickstart flow presents a large empty form as the primary experience.
+    counterexample:
+      - After clicking `Create app`, the user lands on a multi-field blank wizard before any generated handoff appears.
+
+  - id: SS-EXPERIENCE-002
+    section: Experience
+    source_order: 16
+    source_ref: "260325-builder-redesign-invariants.md > Product Invariants > Experience"
+    source_span: "lines 73-73; 260325-builder-redesign-handoff.md lines 94-95"
+    classification: soft_score
+    evidence_target: dom
+    hookability: manual_only
+    check: Keep advanced configuration collapsed or visually secondary by default.
+    pass_if:
+      - Advanced prompt or data-processing controls are hidden, collapsed, or clearly secondary on first render.
+    fail_if:
+      - Advanced controls dominate the first quickstart view or compete with the primary happy path.
+    counterexample:
+      - The quickstart opens with a full advanced data-processing editor expanded above the main prompt preview.
+
+  - id: SS-RELIABILITY-001
+    section: Reliability
+    source_order: 17
+    source_ref: "260325-builder-redesign-invariants.md > Product Invariants > Reliability"
+    source_span: "lines 96-97; 260325-builder-redesign-handoff.md lines 193-195"
+    classification: soft_score
+    evidence_target: dom
+    hookability: manual_only
+    check: Advanced prompt inspection should be available as an optional layer without becoming a mandatory step in the happy path.
+    pass_if:
+      - Users can reach artifact generation and export actions without editing advanced prompt controls.
+      - Advanced inspection exists for users who need it.
+    fail_if:
+      - The user must open, edit, or acknowledge advanced prompt controls to complete quickstart.
+    counterexample:
+      - The flow blocks `Copy prompt` until the user visits and confirms an advanced prompt step.
+
+  - id: SS-DEFINITION-001
+    section: Definition Of Success
+    source_order: 18
+    source_ref: "260325-builder-redesign-invariants.md > Definition Of Success"
+    source_span: "lines 189-194; 260325-builder-redesign-handoff.md lines 314-319"
+    classification: soft_score
+    evidence_target: output
+    hookability: manual_only
+    check: The generated handoff should feel source-specific and make the next step obvious.
+    pass_if:
+      - The artifact reads as tailored to the current source and clearly tells the user what to do next.
+    fail_if:
+      - The artifact feels generic enough to work for any source and leaves the next step ambiguous.
+    counterexample:
+      - The prompt could apply equally to any export and does not tell the user how to proceed with the local source data.

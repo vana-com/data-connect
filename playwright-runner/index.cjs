@@ -440,14 +440,6 @@ function createPageApi(runState, runId) {
       return buffer.toString('base64');
     },
 
-    requestInput: async (payload) => {
-      const requestId = `input-${++runState.requestCounter}`;
-      send({ type: 'request-input', runId, requestId, payload });
-      return new Promise((resolve, reject) => {
-        runState.pendingInputs.set(requestId, { resolve, reject });
-      });
-    },
-
     sleep: (ms) => new Promise(resolve => setTimeout(resolve, ms)),
 
     setData: async (key, value) => {

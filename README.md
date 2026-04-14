@@ -61,36 +61,24 @@ npm run tauri:dev
 cp .env.example .env
 ```
 
-### Connector lifecycle (important)
+### Connector management
 
-Connector files have two locations in dev:
+Connector scripts live upstream in [`vana-com/data-connectors`](https://github.com/vana-com/data-connectors). This repo consumes them as pinned dependencies.
 
-- Repo source: `./connectors/`
-- User runtime copy: `~/.dataconnect/connectors/`
-
-How they get there:
-
-- `npm install` no longer fetches connectors.
-- `npm run tauri:dev` and `tauri dev` run `node scripts/ensure-connectors.js`
-  - If required connector dirs are missing, they are fetched automatically.
-- `npm run tauri:dev` runs `node scripts/sync-connectors-dev.js` first
-  - This copies repo connectors into `~/.dataconnect/connectors/`.
-
-Key point:
-
-- `tauri:dev` syncs repo connectors into `~/.dataconnect/connectors/`.
-- `ensure-connectors` auto-fetches missing required repo connectors first.
-
-If you deleted connector folders and need to recover:
+#### Updating connectors
 
 ```bash
-npm run tauri:dev
+npm run connectors:resolve
+# Review the diff in connectors/, commit, push.
 ```
 
-Optional environment flags:
+This fetches the latest matching versions from the data-connectors index, verifies checksums, and writes them to `connectors/`. Version constraints are declared in `connectors/connector-dependencies.json`.
 
-- `SKIP_CONNECTOR_FETCH=1` -> skip connector fetch in `ensure-connectors`/`fetch-connectors`.
-- `CONNECTORS_PATH=/path/to/local/connectors` -> skip remote fetch and use local connector source.
+#### How it works at runtime
+
+- `tauri dev` runs `ensure-connectors.js` which populates `connectors/` if missing.
+- The Rust backend loads connectors from `connectors/` (bundled) and `~/.dataconnect/connectors/` (user-installed). User connectors take precedence.
+- The `playwright-runner` executes connector scripts with a local Chromium browser.
 
 ### Agent config files
 

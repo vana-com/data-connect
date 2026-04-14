@@ -4,7 +4,7 @@
   "source_repo": "https://github.com/vana-com/data-connectors",
   "connectors": {
     "chatgpt-playwright": "2.0.0",
-    "github-playwright": "1.1.3",
+    "github-playwright": "1.1.4",
     "instagram-ads-playwright": "1.0.0",
     "instagram-playwright": "1.1.0",
     "linkedin-playwright": "5.0.0",

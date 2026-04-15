@@ -17,6 +17,7 @@
     "connectors:check": "npm run connectors:resolve -- --check",
     "connectors:resolve:check": "npm run connectors:check",
     "platform-registry:generate": "node scripts/generate-platform-registry.js",
+    "test:honest-telemetry-conformance": "node playwright-runner/result-classifier.conformance.test.cjs",
     "pretauri:dev": "npm run prebuild:all",
     "lint": "eslint .",
     "format": "prettier --write \"**/*.{ts,tsx,js,jsx,json,css,scss,md}\"",

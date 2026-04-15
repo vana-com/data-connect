@@ -1,14 +1,14 @@
 {
   "lock_version": "2.0",
   "dependency_file": "connectors/connector-dependencies.json",
-  "resolved_at": "2026-04-15T16:25:07.181Z",
+  "resolved_at": "2026-04-15T16:37:09.091Z",
   "source_repo": "https://github.com/vana-com/data-connectors",
   "source_ref": "remote",
   "source_revision": "unknown",
   "index": {
     "mode": "remote",
     "path": null,
-    "url": "https://raw.githubusercontent.com/vana-com/data-connectors/fix/heb-wholefoods-consumer-metadata/connector-index.json",
+    "url": "https://raw.githubusercontent.com/vana-com/data-connectors/main/connector-index.json",
     "version": "1.0"
   },
   "dependencies": {
@@ -40,8 +40,8 @@
         "artifact": "sha256:39cf00bdcb16124d9d5f0f37e77035076b62361a5cd8dea4e9eadd4d97ff8dcc"
       },
       "artifact_path": "artifacts/chatgpt-playwright/chatgpt-playwright-2.0.0.tgz",
-      "artifact_url": "https://raw.githubusercontent.com/vana-com/data-connectors/fix/heb-wholefoods-consumer-metadata/artifacts/chatgpt-playwright/chatgpt-playwright-2.0.0.tgz",
-      "git_ref": "fix/heb-wholefoods-consumer-metadata"
+      "artifact_url": "https://raw.githubusercontent.com/vana-com/data-connectors/main/artifacts/chatgpt-playwright/chatgpt-playwright-2.0.0.tgz",
+      "git_ref": "main"
     },
     {
       "id": "github-playwright",
@@ -76,8 +76,8 @@
         "artifact": "sha256:6fb666e7d053820e92a78b4cb70b7fb47cfdc7f57c45f5988ebb6d29c878cd96"
       },
       "artifact_path": "artifacts/heb-playwright/heb-playwright-1.1.0.tgz",
-      "artifact_url": "https://raw.githubusercontent.com/vana-com/data-connectors/fix/heb-wholefoods-consumer-metadata/artifacts/heb-playwright/heb-playwright-1.1.0.tgz",
-      "git_ref": "fix/heb-wholefoods-consumer-metadata"
+      "artifact_url": "https://raw.githubusercontent.com/vana-com/data-connectors/main/artifacts/heb-playwright/heb-playwright-1.1.0.tgz",
+      "git_ref": "main"
     },
     {
       "id": "instagram-ads-playwright",
@@ -94,8 +94,8 @@
         "artifact": "sha256:e0f46f9791bcc336f5f0b9125da671bf0a0f5512d58a562175bf91e4584ba3dc"
       },
       "artifact_path": "artifacts/instagram-ads-playwright/instagram-ads-playwright-1.0.0.tgz",
-      "artifact_url": "https://raw.githubusercontent.com/vana-com/data-connectors/fix/heb-wholefoods-consumer-metadata/artifacts/instagram-ads-playwright/instagram-ads-playwright-1.0.0.tgz",
-      "git_ref": "fix/heb-wholefoods-consumer-metadata"
+      "artifact_url": "https://raw.githubusercontent.com/vana-com/data-connectors/main/artifacts/instagram-ads-playwright/instagram-ads-playwright-1.0.0.tgz",
+      "git_ref": "main"
     },
     {
       "id": "instagram-playwright",
@@ -130,8 +130,8 @@
         "artifact": "sha256:c1b059959f3d924d763abac20430328c5b5165ed37b9f8fbe538dab125e8173d"
       },
       "artifact_path": "artifacts/linkedin-playwright/linkedin-playwright-5.0.0.tgz",
-      "artifact_url": "https://raw.githubusercontent.com/vana-com/data-connectors/fix/heb-wholefoods-consumer-metadata/artifacts/linkedin-playwright/linkedin-playwright-5.0.0.tgz",
-      "git_ref": "fix/heb-wholefoods-consumer-metadata"
+      "artifact_url": "https://raw.githubusercontent.com/vana-com/data-connectors/main/artifacts/linkedin-playwright/linkedin-playwright-5.0.0.tgz",
+      "git_ref": "main"
     },
     {
       "id": "oura-playwright",
@@ -166,8 +166,8 @@
         "artifact": "sha256:6e046ba9ba0f10e7d37b885f1e053b87db467d737f9355d58aadf98a9ecd8c51"
       },
       "artifact_path": "artifacts/shop-playwright/shop-playwright-1.0.0.tgz",
-      "artifact_url": "https://raw.githubusercontent.com/vana-com/data-connectors/fix/heb-wholefoods-consumer-metadata/artifacts/shop-playwright/shop-playwright-1.0.0.tgz",
-      "git_ref": "fix/heb-wholefoods-consumer-metadata"
+      "artifact_url": "https://raw.githubusercontent.com/vana-com/data-connectors/main/artifacts/shop-playwright/shop-playwright-1.0.0.tgz",
+      "git_ref": "main"
     },
     {
       "id": "spotify-playwright",
@@ -184,8 +184,8 @@
         "artifact": "sha256:625d1c697e49370715ef2e54358eb0832875f8314bb676ac32f34964f854a78a"
       },
       "artifact_path": "artifacts/spotify-playwright/spotify-playwright-1.0.0.tgz",
-      "artifact_url": "https://raw.githubusercontent.com/vana-com/data-connectors/fix/heb-wholefoods-consumer-metadata/artifacts/spotify-playwright/spotify-playwright-1.0.0.tgz",
-      "git_ref": "fix/heb-wholefoods-consumer-metadata"
+      "artifact_url": "https://raw.githubusercontent.com/vana-com/data-connectors/main/artifacts/spotify-playwright/spotify-playwright-1.0.0.tgz",
+      "git_ref": "main"
     },
     {
       "id": "wholefoods-playwright",
@@ -202,8 +202,8 @@
         "artifact": "sha256:be3b92af410b1ea1fe18f834de3e914c0a18d0105c639c46f02348e21c164df6"
       },
       "artifact_path": "artifacts/wholefoods-playwright/wholefoods-playwright-1.0.0.tgz",
-      "artifact_url": "https://raw.githubusercontent.com/vana-com/data-connectors/fix/heb-wholefoods-consumer-metadata/artifacts/wholefoods-playwright/wholefoods-playwright-1.0.0.tgz",
-      "git_ref": "fix/heb-wholefoods-consumer-metadata"
+      "artifact_url": "https://raw.githubusercontent.com/vana-com/data-connectors/main/artifacts/wholefoods-playwright/wholefoods-playwright-1.0.0.tgz",
+      "git_ref": "main"
     },
     {
       "id": "youtube-playwright",
@@ -220,8 +220,8 @@
         "artifact": "sha256:d9c833fa1ffef8b7bb7b86abaa82a593b385541813f6cc23939ae399d95498a1"
       },
       "artifact_path": "artifacts/youtube-playwright/youtube-playwright-1.0.0.tgz",
-      "artifact_url": "https://raw.githubusercontent.com/vana-com/data-connectors/fix/heb-wholefoods-consumer-metadata/artifacts/youtube-playwright/youtube-playwright-1.0.0.tgz",
-      "git_ref": "fix/heb-wholefoods-consumer-metadata"
+      "artifact_url": "https://raw.githubusercontent.com/vana-com/data-connectors/main/artifacts/youtube-playwright/youtube-playwright-1.0.0.tgz",
+      "git_ref": "main"
     }
   ]
 }

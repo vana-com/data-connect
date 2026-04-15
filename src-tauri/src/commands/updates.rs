@@ -285,21 +285,32 @@ fn verify_sigstore_bundle(
     Ok(())
 }
 
-fn get_index_cache_path() -> Option<PathBuf> {
+fn get_index_cache_dir() -> Option<PathBuf> {
     let home = std::env::var("HOME")
         .or_else(|_| std::env::var("USERPROFILE"))
         .ok()?;
     Some(
         PathBuf::from(home)
             .join(".dataconnect")
-            .join("cache")
-            .join("connector-index.json"),
+            .join("cache"),
     )
+}
+
+fn get_index_cache_path() -> Option<PathBuf> {
+    Some(get_index_cache_dir()?.join("connector-index.json"))
+}
+
+fn get_index_bundle_cache_path() -> Option<PathBuf> {
+    Some(get_index_cache_dir()?.join("connector-index.sigstore.json"))
 }
 
 fn load_cached_index() -> Option<ConnectorIndex> {
     let cache_path = get_index_cache_path()?;
+    let bundle_cache_path = get_index_bundle_cache_path()?;
     if !cache_path.exists() {
+        return None;
+    }
+    if !bundle_cache_path.exists() {
         return None;
     }
 
@@ -310,20 +321,27 @@ fn load_cached_index() -> Option<ConnectorIndex> {
         return None;
     }
 
-    let content = fs::read_to_string(&cache_path).ok()?;
-    serde_json::from_str(&content).ok()
-}
-
-fn save_index_cache(index: &ConnectorIndex) -> Result<(), String> {
-    let cache_path = get_index_cache_path().ok_or("Could not determine cache path")?;
-    if let Some(parent) = cache_path.parent() {
-        fs::create_dir_all(parent)
-            .map_err(|e| format!("Failed to create cache directory: {}", e))?;
+    let index_bytes = fs::read(&cache_path).ok()?;
+    let bundle_bytes = fs::read(&bundle_cache_path).ok()?;
+    if verify_sigstore_bundle(index_bytes.as_ref(), bundle_bytes.as_ref(), "Cached connector index")
+        .is_err()
+    {
+        return None;
     }
 
-    let content = serde_json::to_string_pretty(index)
-        .map_err(|e| format!("Failed to serialize connector index: {}", e))?;
-    fs::write(&cache_path, content).map_err(|e| format!("Failed to write cache: {}", e))?;
+    serde_json::from_slice(index_bytes.as_ref()).ok()
+}
+
+fn save_index_cache(index_bytes: &[u8], bundle_bytes: &[u8]) -> Result<(), String> {
+    let cache_dir = get_index_cache_dir().ok_or("Could not determine cache path")?;
+    fs::create_dir_all(&cache_dir)
+        .map_err(|e| format!("Failed to create cache directory: {}", e))?;
+
+    let cache_path = cache_dir.join("connector-index.json");
+    let bundle_cache_path = cache_dir.join("connector-index.sigstore.json");
+    fs::write(&cache_path, index_bytes).map_err(|e| format!("Failed to write cache: {}", e))?;
+    fs::write(&bundle_cache_path, bundle_bytes)
+        .map_err(|e| format!("Failed to write signature cache: {}", e))?;
     Ok(())
 }
 
@@ -376,7 +394,7 @@ async fn fetch_index(force: bool) -> Result<ConnectorIndex, String> {
         "Connector index",
     )?;
 
-    if let Err(err) = save_index_cache(&index) {
+    if let Err(err) = save_index_cache(index_bytes.as_ref(), bundle_bytes.as_ref()) {
         log::warn!("Failed to cache connector index: {}", err);
     }
 

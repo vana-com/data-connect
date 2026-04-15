@@ -98,7 +98,7 @@ pub struct Platform {
     pub scopes: Option<Vec<String>>,
 }
 
-#[derive(Debug, Deserialize, Clone)]
+#[derive(Debug, Serialize, Deserialize, Clone)]
 #[serde(rename_all = "camelCase")]
 struct ConnectorResultScopeSummary {
     requested: u32,
@@ -107,7 +107,7 @@ struct ConnectorResultScopeSummary {
     omitted: u32,
 }
 
-#[derive(Debug, Deserialize, Clone)]
+#[derive(Debug, Serialize, Deserialize, Clone)]
 #[serde(rename_all = "camelCase")]
 struct ConnectorResultClassification {
     outcome: String,

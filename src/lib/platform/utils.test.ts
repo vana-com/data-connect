@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest"
-import { getAllAvailableScopes } from "./utils"
+import { getAllAvailableScopes, getPlatformRegistryEntryById } from "./utils"
 import { PLATFORM_REGISTRY } from "./registry"
 import type { Platform } from "@/types"
 
@@ -106,5 +106,20 @@ describe("getAllAvailableScopes", () => {
     // No scopes on platforms, so falls back to registry
     expect(scopes).toContain("chatgpt.conversations")
     expect(scopes).toContain("instagram.posts")
+  })
+})
+
+describe("getPlatformRegistryEntryById", () => {
+  it('resolves the generic "instagram" token to Instagram, not Instagram Ads', () => {
+    expect(getPlatformRegistryEntryById("instagram")?.id).toBe("instagram")
+  })
+
+  it("still resolves Instagram Ads tokens to the Instagram Ads entry", () => {
+    expect(getPlatformRegistryEntryById("instagram-ads")?.id).toBe(
+      "instagram-ads"
+    )
+    expect(getPlatformRegistryEntryById("instagram-ads-playwright")?.id).toBe(
+      "instagram-ads"
+    )
   })
 })

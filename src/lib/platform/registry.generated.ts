@@ -32,7 +32,7 @@ export const PLATFORM_REGISTRY_GENERATED: PlatformRegistryEntry[] = [
     displayName: "Instagram Ads",
     brandDomain: "instagram.com",
     iconKey: "instagram",
-    platformIds: ["instagram-ads-playwright", "instagram-ads", "instagram"],
+    platformIds: ["instagram-ads-playwright", "instagram-ads"],
     availability: "requiresConnector",
     showInConnectList: false,
     ingestScope: "instagram.ads"

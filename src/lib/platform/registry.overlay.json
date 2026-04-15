@@ -11,6 +11,7 @@
     {
       "connectorId": "instagram-ads-playwright",
       "id": "instagram-ads",
+      "platformIds": ["instagram-ads-playwright", "instagram-ads"],
       "showInConnectList": false
     },
     {

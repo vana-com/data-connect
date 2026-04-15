@@ -10,6 +10,12 @@ use tar::Archive;
 use tauri::{AppHandle, Manager};
 use tempfile::tempdir_in;
 
+use super::connector_store::{
+    get_active_connector_install, get_connectors_store_dir, get_legacy_user_connectors_dir,
+    read_active_connector_manifest, write_active_connector_manifest, ActiveConnectorInstall,
+    ActiveConnectorManifest,
+};
+
 const DEFAULT_INDEX_URL: &str =
     "https://raw.githubusercontent.com/vana-com/data-connectors/main/connector-index.json";
 
@@ -75,10 +81,20 @@ struct ArtifactBundle {
 }
 
 fn get_user_connectors_dir() -> Option<PathBuf> {
-    let home = std::env::var("HOME")
-        .or_else(|_| std::env::var("USERPROFILE"))
-        .ok()?;
-    Some(PathBuf::from(home).join(".dataconnect").join("connectors"))
+    get_legacy_user_connectors_dir()
+}
+
+fn activate_connector_install(install: ActiveConnectorInstall) -> Result<(), String> {
+    let mut manifest = read_active_connector_manifest().unwrap_or(ActiveConnectorManifest {
+        version: "1.0".to_string(),
+        updated_at: chrono::Utc::now().to_rfc3339(),
+        connectors: HashMap::new(),
+    });
+    manifest.updated_at = chrono::Utc::now().to_rfc3339();
+    manifest
+        .connectors
+        .insert(install.connector_id.clone(), install);
+    write_active_connector_manifest(&manifest)
 }
 
 fn get_bundled_connectors_dir(app: &AppHandle) -> PathBuf {
@@ -127,6 +143,10 @@ fn get_installed_connector_version(
     connector_id: &str,
     company: &str,
 ) -> Option<String> {
+    if let Some(install) = get_active_connector_install(connector_id) {
+        return Some(install.version);
+    }
+
     if let Some(user_dir) = get_user_connectors_dir() {
         let metadata_path =
             find_installed_metadata_path(&user_dir.join(company.to_lowercase()), connector_id);
@@ -150,6 +170,10 @@ fn get_installed_connector_version(
 }
 
 fn is_connector_installed(app: &AppHandle, connector_id: &str, company: &str) -> bool {
+    if get_active_connector_install(connector_id).is_some() {
+        return true;
+    }
+
     if let Some(user_dir) = get_user_connectors_dir() {
         if find_installed_metadata_path(&user_dir.join(company.to_lowercase()), connector_id)
             .exists()
@@ -373,91 +397,6 @@ fn connector_path_within_root(path: &str, connector: &IndexedConnector) -> Resul
         })
 }
 
-fn collect_owned_paths(
-    root_dir: &Path,
-    manifest_path: &Path,
-    connector: &IndexedConnector,
-    manifest: &serde_json::Value,
-) -> Vec<PathBuf> {
-    let mut owned = vec![manifest_path.to_path_buf()];
-
-    for extension in ["js", "mjs", "cjs"] {
-        owned.push(root_dir.join(format!("{}.{}", connector.connector_id, extension)));
-    }
-
-    if let Ok(script_relative) =
-        connector_path_within_root(&connector.source_files.script, connector)
-    {
-        owned.push(root_dir.join(script_relative));
-    }
-
-    if let Some(scopes) = manifest.get("scopes").and_then(|value| value.as_array()) {
-        for scope_entry in scopes {
-            let scope = match scope_entry {
-                serde_json::Value::String(value) => Some(value.as_str()),
-                serde_json::Value::Object(map) => map.get("scope").and_then(|value| value.as_str()),
-                _ => None,
-            };
-            if let Some(scope) = scope {
-                owned.push(root_dir.join("schemas").join(format!("{}.json", scope)));
-            }
-        }
-    }
-
-    for asset_value in [manifest.get("icon"), manifest.get("iconURL")] {
-        if let Some(relative_path) = asset_value.and_then(|value| value.as_str()) {
-            owned.push(root_dir.join(relative_path));
-        }
-    }
-
-    owned.push(root_dir.join("README.md"));
-    owned
-}
-
-fn remove_owned_paths(paths: &[PathBuf], stop_dir: &Path) -> Result<(), String> {
-    let mut parents = Vec::new();
-
-    for path in paths {
-        if !path.exists() {
-            continue;
-        }
-
-        if path.is_dir() {
-            fs::remove_dir_all(path)
-                .map_err(|e| format!("Failed to remove stale directory {:?}: {}", path, e))?;
-        } else {
-            fs::remove_file(path)
-                .map_err(|e| format!("Failed to remove stale file {:?}: {}", path, e))?;
-        }
-
-        if let Some(parent) = path.parent() {
-            parents.push(parent.to_path_buf());
-        }
-    }
-
-    cleanup_empty_dirs(parents, stop_dir);
-    Ok(())
-}
-
-fn cleanup_empty_dirs(mut dirs: Vec<PathBuf>, stop_dir: &Path) {
-    while let Some(dir) = dirs.pop() {
-        if dir == stop_dir || !dir.starts_with(stop_dir) {
-            continue;
-        }
-
-        let is_empty = match fs::read_dir(&dir) {
-            Ok(mut entries) => entries.next().is_none(),
-            Err(_) => false,
-        };
-
-        if is_empty && fs::remove_dir(&dir).is_ok() {
-            if let Some(parent) = dir.parent() {
-                dirs.push(parent.to_path_buf());
-            }
-        }
-    }
-}
-
 fn unpack_artifact_bundle(bytes: &[u8]) -> Result<ArtifactBundle, String> {
     let mut archive = Archive::new(GzDecoder::new(Cursor::new(bytes)));
     let mut manifest = None;
@@ -659,102 +598,54 @@ pub async fn download_connector(_app: AppHandle, id: String) -> Result<(), Strin
         ));
     }
 
-    let user_dir =
-        get_user_connectors_dir().ok_or("Could not determine user connectors directory")?;
-    let company_dir = user_dir.join(connector.company.to_lowercase());
-    fs::create_dir_all(&company_dir)
-        .map_err(|e| format!("Failed to create connector directory: {}", e))?;
+    let store_dir =
+        get_connectors_store_dir().ok_or("Could not determine connectors store directory")?;
+    let connector_store_dir = store_dir.join(&connector.connector_id);
+    fs::create_dir_all(&connector_store_dir)
+        .map_err(|e| format!("Failed to create connector store directory: {}", e))?;
 
-    let install_root = company_dir.join(connector_root_relative_path(connector)?);
-    let existing_manifest_path =
-        find_installed_metadata_path(&company_dir, &connector.connector_id);
-    let existing_root = existing_manifest_path
-        .exists()
-        .then(|| existing_manifest_path.parent().map(Path::to_path_buf))
-        .flatten();
+    let install_root = connector_store_dir.join(&connector.version);
+    let metadata_relative =
+        connector_path_within_root(&connector.source_files.metadata, connector)?;
+    let script_relative =
+        connector_path_within_root(&connector.source_files.script, connector)?;
 
-    let temp_dir = tempdir_in(&company_dir)
-        .map_err(|e| format!("Failed to create connector staging directory: {}", e))?;
-    write_artifact_bundle(temp_dir.path(), connector, bundle)?;
+    if !install_root.exists() {
+        let temp_dir = tempdir_in(&connector_store_dir)
+            .map_err(|e| format!("Failed to create connector staging directory: {}", e))?;
+        write_artifact_bundle(temp_dir.path(), connector, bundle)?;
 
-    log::info!(
-        "Installing connector artifact for {} to {:?} (manifest {}, script {})",
-        connector.connector_id,
-        install_root,
-        metadata_checksum,
-        script_checksum
-    );
+        log::info!(
+            "Installing connector artifact for {} to {:?} (manifest {}, script {})",
+            connector.connector_id,
+            install_root,
+            metadata_checksum,
+            script_checksum
+        );
 
-    if let Some(existing_manifest_path) = existing_manifest_path
-        .exists()
-        .then_some(existing_manifest_path)
-    {
-        if let Ok(existing_manifest_bytes) = fs::read(&existing_manifest_path) {
-            if let Ok(existing_manifest_json) =
-                serde_json::from_slice::<serde_json::Value>(&existing_manifest_bytes)
-            {
-                let existing_root = existing_root.clone().unwrap_or_else(|| company_dir.clone());
-                let owned_paths = collect_owned_paths(
-                    &existing_root,
-                    &existing_manifest_path,
-                    connector,
-                    &existing_manifest_json,
-                );
-                remove_owned_paths(&owned_paths, &company_dir)?;
-            }
-        }
+        let staged_root = temp_dir.keep();
+        fs::rename(&staged_root, &install_root).map_err(|e| {
+            format!(
+                "Failed to promote staged connector artifact into {:?}: {}",
+                install_root, e
+            )
+        })?;
+    } else {
+        log::info!(
+            "Connector {} v{} already present in store, activating existing install",
+            connector.connector_id,
+            connector.version
+        );
     }
 
-    if let Some(existing_root) = existing_root {
-        if existing_root != install_root && existing_root.exists() {
-            cleanup_empty_dirs(vec![existing_root], &company_dir);
-        }
-    }
-
-    for entry in fs::read_dir(temp_dir.path())
-        .map_err(|e| format!("Failed to read connector staging directory: {}", e))?
-    {
-        let entry = entry.map_err(|e| format!("Failed to read staged connector entry: {}", e))?;
-        let source = entry.path();
-        let destination = install_root.join(entry.file_name());
-        if let Some(parent) = destination.parent() {
-            fs::create_dir_all(parent)
-                .map_err(|e| format!("Failed to create install directory {:?}: {}", parent, e))?;
-        }
-        fs::rename(&source, &destination)
-            .or_else(|_| {
-                if source.is_dir() {
-                    fs::create_dir_all(&destination)?;
-                    for child in fs::read_dir(&source)? {
-                        let child = child?;
-                        let child_source = child.path();
-                        let child_destination = destination.join(child.file_name());
-                        if child_source.is_dir() {
-                            fs::create_dir_all(&child_destination)?;
-                            fs::remove_dir_all(&child_destination).ok();
-                            fs::rename(&child_source, &child_destination)?;
-                        } else {
-                            if let Some(parent) = child_destination.parent() {
-                                fs::create_dir_all(parent)?;
-                            }
-                            fs::rename(&child_source, &child_destination)?;
-                        }
-                    }
-                    fs::remove_dir_all(&source)
-                } else {
-                    if let Some(parent) = destination.parent() {
-                        fs::create_dir_all(parent)?;
-                    }
-                    fs::rename(&source, &destination)
-                }
-            })
-            .map_err(|e| {
-                format!(
-                    "Failed to install connector artifact into {:?}: {}",
-                    destination, e
-                )
-            })?;
-    }
+    activate_connector_install(ActiveConnectorInstall {
+        connector_id: connector.connector_id.clone(),
+        company: connector.company.clone(),
+        version: connector.version.clone(),
+        root_path: install_root.to_string_lossy().to_string(),
+        metadata_relative_path: metadata_relative.to_string_lossy().to_string(),
+        script_relative_path: script_relative.to_string_lossy().to_string(),
+    })?;
 
     log::info!(
         "=== Successfully installed connector: {} ===",
@@ -771,6 +662,12 @@ pub fn get_registry_url() -> String {
 #[tauri::command]
 pub async fn get_installed_connectors(app: AppHandle) -> Result<HashMap<String, String>, String> {
     let mut versions = HashMap::new();
+
+    if let Some(active_manifest) = read_active_connector_manifest() {
+        for (connector_id, install) in active_manifest.connectors {
+            versions.insert(connector_id, install.version);
+        }
+    }
 
     if let Some(user_dir) = get_user_connectors_dir() {
         if user_dir.exists() {

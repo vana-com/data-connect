@@ -1,16 +1,16 @@
 import { describe, expect, it } from "vitest"
 import { PLATFORM_REGISTRY } from "./registry"
-import connectorRegistry from "../../../connectors/registry.json"
+import connectorLock from "../../../connectors/lock.json"
 
 /**
  * These tests verify that the frontend PLATFORM_REGISTRY stays in sync
- * with the bundled connector registry (connectors/registry.json).
+ * with the bundled connector lock (connectors/lock.json).
  *
  * BUI-296: Spotify connector must define spotify.savedTracks
  * BUI-297: Shop connector must exist and define shop.orders
  */
 
-const connectorIds = connectorRegistry.connectors.map((c) => c.id)
+const connectorIds = connectorLock.connectors.map((c) => c.connectorId)
 
 const entriesWithConnectors = PLATFORM_REGISTRY.filter(
   (entry) => entry.availability === "requiresConnector"

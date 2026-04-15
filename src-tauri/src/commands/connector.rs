@@ -5,6 +5,10 @@ use std::io::Write;
 use std::path::PathBuf;
 use tauri::{AppHandle, Emitter, Manager, WebviewUrl, WebviewWindowBuilder};
 
+use super::connector_store::{
+    get_active_connector_install, get_legacy_user_connectors_dir,
+};
+
 // Chromium download constants
 const CHROMIUM_REVISION: &str = "1200";
 const CHROMIUM_CDN_MIRRORS: &[&str] = &[
@@ -126,13 +130,20 @@ struct PlaywrightRunnerResultEnvelope {
 
 /// Get the user connectors directory (~/.dataconnect/connectors/)
 fn get_user_connectors_dir() -> Option<PathBuf> {
-    let home = std::env::var("HOME")
-        .or_else(|_| std::env::var("USERPROFILE"))
-        .ok()?;
-    let path = PathBuf::from(home).join(".dataconnect").join("connectors");
+    let path = get_legacy_user_connectors_dir()?;
     if path.exists() {
         log::info!("Found user connectors at: {:?}", path);
         Some(path)
+    } else {
+        None
+    }
+}
+
+fn active_install_path(root_path: &str, relative_path: &str) -> Option<PathBuf> {
+    let root = PathBuf::from(root_path);
+    let full_path = root.join(relative_path);
+    if full_path.exists() {
+        Some(full_path)
     } else {
         None
     }
@@ -446,7 +457,6 @@ pub async fn get_platforms(app: AppHandle) -> Result<Vec<Platform>, String> {
             platforms.push(platform);
         }
     }
-
     log::info!("Loaded {} total platforms", platforms.len());
     Ok(platforms)
 }
@@ -521,6 +531,8 @@ fn load_connector_metadata(
     let json_name = format!("{}.json", filename);
 
     let candidates: Vec<PathBuf> = [
+        get_active_connector_install(filename)
+            .and_then(|install| active_install_path(&install.root_path, &install.metadata_relative_path)),
         get_user_connectors_dir().map(|d| d.join(&company_lower).join(&json_name)),
         Some(
             get_connectors_dir(app)
@@ -658,6 +670,15 @@ fn emit_connector_terminal_status(
 /// Checks user directory first, then bundled directory
 fn load_connector_script(app: &AppHandle, company: &str, filename: &str) -> Option<String> {
     let company_lower = company.to_lowercase();
+
+    if let Some(install) = get_active_connector_install(filename) {
+        if let Some(script_path) = active_install_path(&install.root_path, &install.script_relative_path) {
+            log::info!("Loaded connector script from active install: {:?}", script_path);
+            if let Ok(content) = fs::read_to_string(&script_path) {
+                return Some(content);
+            }
+        }
+    }
 
     // First check user directory
     if let Some(user_dir) = get_user_connectors_dir() {
@@ -981,7 +1002,11 @@ async fn start_playwright_run(
 
     // Phase 2: Find the connector script (check user dir first, then bundled)
     let company_lower = company.to_lowercase();
-    let connector_path = if let Some(user_dir) = get_user_connectors_dir() {
+    let connector_path = if let Some(install) = get_active_connector_install(&filename) {
+        let active_path = PathBuf::from(install.root_path).join(install.script_relative_path);
+        log::info!("Found connector in active install: {:?}", active_path);
+        active_path
+    } else if let Some(user_dir) = get_user_connectors_dir() {
         let user_path = user_dir
             .join(&company_lower)
             .join(format!("{}.js", filename));

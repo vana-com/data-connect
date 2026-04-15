@@ -1,15 +1,16 @@
 {
-  "lock_version": "2.0",
-  "dependency_file": "connectors/connector-dependencies.json",
-  "resolved_at": "2026-04-15T16:37:09.091Z",
-  "source_repo": "https://github.com/vana-com/data-connectors",
-  "source_ref": "remote",
-  "source_revision": "unknown",
+  "lockVersion": "1.0",
+  "dependencyFile": "connectors/connector-dependencies.json",
+  "generatedAt": "2026-04-15T22:36:15.367Z",
+  "sourceRepo": "https://github.com/vana-com/data-connectors",
+  "sourceTag": "feat/connector-distribution-consolidation",
+  "sourceCommit": "6861fbfe8e7264b9734d4c5a607d89f903e89fa1",
   "index": {
-    "mode": "remote",
-    "path": null,
-    "url": "https://raw.githubusercontent.com/vana-com/data-connectors/main/connector-index.json",
-    "version": "1.0"
+    "mode": "local",
+    "path": "/tmp/data-connectors-local-source/connector-index.json",
+    "url": null,
+    "version": "2.0",
+    "signatureVerified": false
   },
   "dependencies": {
     "chatgpt-playwright": "2.0.0",
@@ -26,202 +27,246 @@
   },
   "connectors": [
     {
-      "id": "chatgpt-playwright",
+      "connectorId": "chatgpt-playwright",
       "company": "openai",
       "version": "2.0.0",
-      "resolved_from": "2.0.0",
-      "files": {
+      "resolvedFrom": "2.0.0",
+      "sourceFiles": {
         "script": "openai/chatgpt-playwright.js",
         "metadata": "openai/chatgpt-playwright.json"
       },
-      "checksums": {
-        "script": "sha256:72518dd765ff2103a0ad7dd184a9efcfac359764fca1613714400e661b2fe73a",
-        "metadata": "sha256:be7140f442a11a4475f1778e8e32e93d3a633d4ad515ed925bf7ecca461d793d",
-        "artifact": "sha256:39cf00bdcb16124d9d5f0f37e77035076b62361a5cd8dea4e9eadd4d97ff8dcc"
-      },
-      "artifact_path": "artifacts/chatgpt-playwright/chatgpt-playwright-2.0.0.tgz",
-      "artifact_url": "https://raw.githubusercontent.com/vana-com/data-connectors/main/artifacts/chatgpt-playwright/chatgpt-playwright-2.0.0.tgz",
-      "git_ref": "main"
+      "artifactUrl": "https://raw.githubusercontent.com/vana-com/data-connectors/c6138f964e6e3b7971d1394a1c9b24f8883e4109/artifacts/chatgpt-playwright/chatgpt-playwright-2.0.0.tgz",
+      "artifactPath": "artifacts/chatgpt-playwright/chatgpt-playwright-2.0.0.tgz",
+      "artifactSha256": "sha256:39cf00bdcb16124d9d5f0f37e77035076b62361a5cd8dea4e9eadd4d97ff8dcc",
+      "artifactSignature": null,
+      "manifestSha256": "sha256:be7140f442a11a4475f1778e8e32e93d3a633d4ad515ed925bf7ecca461d793d",
+      "scriptSha256": "sha256:72518dd765ff2103a0ad7dd184a9efcfac359764fca1613714400e661b2fe73a",
+      "sourceTag": "feat/connector-distribution-consolidation",
+      "sourceCommit": "c6138f964e6e3b7971d1394a1c9b24f8883e4109",
+      "releaseId": "connectors-c6138f964e6e",
+      "publishedAt": "2026-04-13T00:00:00Z",
+      "name": "ChatGPT",
+      "description": "Exports your email, memories, and all conversations from ChatGPT."
     },
     {
-      "id": "github-playwright",
+      "connectorId": "github-playwright",
       "company": "github",
       "version": "1.1.4",
-      "resolved_from": "1.1.4",
-      "files": {
+      "resolvedFrom": "1.1.4",
+      "sourceFiles": {
         "script": "github/github-playwright.js",
         "metadata": "github/github-playwright.json"
       },
-      "checksums": {
-        "script": "sha256:7f221ddf698383f1fbceb6bd8cb97f457fc0a4143b4c13c5135a11b8ef230516",
-        "metadata": "sha256:72521c9a991f0587134214c835679de737d313a19e88478bc4ef40cf9e3fc89f",
-        "artifact": "sha256:9d98daed4c11795320b5be94bd4fee24080513253db423d0a0800c3cd6472fcd"
-      },
-      "artifact_path": "artifacts/github-playwright/github-playwright-1.1.4.tgz",
-      "artifact_url": "https://raw.githubusercontent.com/vana-com/data-connectors/feat/connector-contract-unification/artifacts/github-playwright/github-playwright-1.1.4.tgz",
-      "git_ref": "feat/connector-contract-unification"
+      "artifactUrl": "https://raw.githubusercontent.com/vana-com/data-connectors/1097ceddc8bff1c60e29ed60cd8af9f65c594646/artifacts/github-playwright/github-playwright-1.1.4.tgz",
+      "artifactPath": "artifacts/github-playwright/github-playwright-1.1.4.tgz",
+      "artifactSha256": "sha256:9d98daed4c11795320b5be94bd4fee24080513253db423d0a0800c3cd6472fcd",
+      "artifactSignature": null,
+      "manifestSha256": "sha256:72521c9a991f0587134214c835679de737d313a19e88478bc4ef40cf9e3fc89f",
+      "scriptSha256": "sha256:7f221ddf698383f1fbceb6bd8cb97f457fc0a4143b4c13c5135a11b8ef230516",
+      "sourceTag": "1097ceddc8bff1c60e29ed60cd8af9f65c594646",
+      "sourceCommit": "1097ceddc8bff1c60e29ed60cd8af9f65c594646",
+      "releaseId": null,
+      "publishedAt": "2026-04-13T00:00:00Z",
+      "name": "GitHub",
+      "description": "Exports your GitHub profile, repositories, and starred repositories."
     },
     {
-      "id": "heb-playwright",
+      "connectorId": "heb-playwright",
       "company": "HEB",
       "version": "1.1.0",
-      "resolved_from": "1.1.0",
-      "files": {
+      "resolvedFrom": "1.1.0",
+      "sourceFiles": {
         "script": "heb/heb-playwright.js",
         "metadata": "heb/heb-playwright.json"
       },
-      "checksums": {
-        "script": "sha256:83919643aaebe8e59386acc2868fd89e1ac94dc3464e26f5afedb570e96a7b9f",
-        "metadata": "sha256:27082d90d8ec77fe906e2a4cb1af0ed43fbd0c883a43ae31d9cb513c15501dc9",
-        "artifact": "sha256:6fb666e7d053820e92a78b4cb70b7fb47cfdc7f57c45f5988ebb6d29c878cd96"
-      },
-      "artifact_path": "artifacts/heb-playwright/heb-playwright-1.1.0.tgz",
-      "artifact_url": "https://raw.githubusercontent.com/vana-com/data-connectors/main/artifacts/heb-playwright/heb-playwright-1.1.0.tgz",
-      "git_ref": "main"
+      "artifactUrl": "https://raw.githubusercontent.com/vana-com/data-connectors/c6138f964e6e3b7971d1394a1c9b24f8883e4109/artifacts/heb-playwright/heb-playwright-1.1.0.tgz",
+      "artifactPath": "artifacts/heb-playwright/heb-playwright-1.1.0.tgz",
+      "artifactSha256": "sha256:6fb666e7d053820e92a78b4cb70b7fb47cfdc7f57c45f5988ebb6d29c878cd96",
+      "artifactSignature": null,
+      "manifestSha256": "sha256:27082d90d8ec77fe906e2a4cb1af0ed43fbd0c883a43ae31d9cb513c15501dc9",
+      "scriptSha256": "sha256:83919643aaebe8e59386acc2868fd89e1ac94dc3464e26f5afedb570e96a7b9f",
+      "sourceTag": "feat/connector-distribution-consolidation",
+      "sourceCommit": "c6138f964e6e3b7971d1394a1c9b24f8883e4109",
+      "releaseId": "connectors-c6138f964e6e",
+      "publishedAt": "2026-04-13T00:00:00Z",
+      "name": "H-E-B",
+      "description": "Exports your H-E-B account profile, order history, and product nutrition data."
     },
     {
-      "id": "instagram-ads-playwright",
+      "connectorId": "instagram-ads-playwright",
       "company": "meta",
       "version": "1.0.0",
-      "resolved_from": "1.0.0",
-      "files": {
+      "resolvedFrom": "1.0.0",
+      "sourceFiles": {
         "script": "meta/instagram-ads-playwright.js",
         "metadata": "meta/instagram-ads-playwright.json"
       },
-      "checksums": {
-        "script": "sha256:ef759279f73e52a05b063cf8e6a6bceb63409039f35f529b342bc1af004c972d",
-        "metadata": "sha256:7403ddd375b61c5b0f5d078bdc90207e85fcf476542bba85b39c49fe3e9c51b2",
-        "artifact": "sha256:e0f46f9791bcc336f5f0b9125da671bf0a0f5512d58a562175bf91e4584ba3dc"
-      },
-      "artifact_path": "artifacts/instagram-ads-playwright/instagram-ads-playwright-1.0.0.tgz",
-      "artifact_url": "https://raw.githubusercontent.com/vana-com/data-connectors/main/artifacts/instagram-ads-playwright/instagram-ads-playwright-1.0.0.tgz",
-      "git_ref": "main"
+      "artifactUrl": "https://raw.githubusercontent.com/vana-com/data-connectors/c6138f964e6e3b7971d1394a1c9b24f8883e4109/artifacts/instagram-ads-playwright/instagram-ads-playwright-1.0.0.tgz",
+      "artifactPath": "artifacts/instagram-ads-playwright/instagram-ads-playwright-1.0.0.tgz",
+      "artifactSha256": "sha256:e0f46f9791bcc336f5f0b9125da671bf0a0f5512d58a562175bf91e4584ba3dc",
+      "artifactSignature": null,
+      "manifestSha256": "sha256:7403ddd375b61c5b0f5d078bdc90207e85fcf476542bba85b39c49fe3e9c51b2",
+      "scriptSha256": "sha256:ef759279f73e52a05b063cf8e6a6bceb63409039f35f529b342bc1af004c972d",
+      "sourceTag": "feat/connector-distribution-consolidation",
+      "sourceCommit": "c6138f964e6e3b7971d1394a1c9b24f8883e4109",
+      "releaseId": "connectors-c6138f964e6e",
+      "publishedAt": "2026-04-13T00:00:00Z",
+      "name": "Instagram Ads",
+      "description": "Exports your Instagram ad interests — advertisers and ad topics."
     },
     {
-      "id": "instagram-playwright",
+      "connectorId": "instagram-playwright",
       "company": "meta",
       "version": "1.1.0",
-      "resolved_from": "1.1.0",
-      "files": {
+      "resolvedFrom": "1.1.0",
+      "sourceFiles": {
         "script": "meta/instagram-playwright.js",
         "metadata": "meta/instagram-playwright.json"
       },
-      "checksums": {
-        "script": "sha256:b22a21d76e08bb78acd873cacf25afb6cc5c501820649214b48374509bb3e903",
-        "metadata": "sha256:cafc2a147f64dea779ae8ead2df4547241f8fec90afc08718f253f710a15e0bc",
-        "artifact": "sha256:cb595642f4148c2a68109378a88c3a14ebf0ff2f8ce44f1340f4d4704b6d3fe0"
-      },
-      "artifact_path": "artifacts/instagram-playwright/instagram-playwright-1.1.0.tgz",
-      "artifact_url": "https://raw.githubusercontent.com/vana-com/data-connectors/feat/connector-contract-unification/artifacts/instagram-playwright/instagram-playwright-1.1.0.tgz",
-      "git_ref": "feat/connector-contract-unification"
+      "artifactUrl": "https://raw.githubusercontent.com/vana-com/data-connectors/1097ceddc8bff1c60e29ed60cd8af9f65c594646/artifacts/instagram-playwright/instagram-playwright-1.1.0.tgz",
+      "artifactPath": "artifacts/instagram-playwright/instagram-playwright-1.1.0.tgz",
+      "artifactSha256": "sha256:cb595642f4148c2a68109378a88c3a14ebf0ff2f8ce44f1340f4d4704b6d3fe0",
+      "artifactSignature": null,
+      "manifestSha256": "sha256:cafc2a147f64dea779ae8ead2df4547241f8fec90afc08718f253f710a15e0bc",
+      "scriptSha256": "sha256:b22a21d76e08bb78acd873cacf25afb6cc5c501820649214b48374509bb3e903",
+      "sourceTag": "1097ceddc8bff1c60e29ed60cd8af9f65c594646",
+      "sourceCommit": "1097ceddc8bff1c60e29ed60cd8af9f65c594646",
+      "releaseId": null,
+      "publishedAt": "2026-04-13T00:00:00Z",
+      "name": "Instagram",
+      "description": "Exports your Instagram profile and posts."
     },
     {
-      "id": "linkedin-playwright",
+      "connectorId": "linkedin-playwright",
       "company": "linkedin",
       "version": "5.0.0",
-      "resolved_from": "5.0.0",
-      "files": {
+      "resolvedFrom": "5.0.0",
+      "sourceFiles": {
         "script": "linkedin/linkedin-playwright.js",
         "metadata": "linkedin/linkedin-playwright.json"
       },
-      "checksums": {
-        "script": "sha256:351a1a6706903bfbd7055c332f8baa118faa1ccb556cf019005f77cde422480b",
-        "metadata": "sha256:7e0a1f8ff7d4572a7e09f507011025bbe8c84c59f550628879aacf8900a4624e",
-        "artifact": "sha256:c1b059959f3d924d763abac20430328c5b5165ed37b9f8fbe538dab125e8173d"
-      },
-      "artifact_path": "artifacts/linkedin-playwright/linkedin-playwright-5.0.0.tgz",
-      "artifact_url": "https://raw.githubusercontent.com/vana-com/data-connectors/main/artifacts/linkedin-playwright/linkedin-playwright-5.0.0.tgz",
-      "git_ref": "main"
+      "artifactUrl": "https://raw.githubusercontent.com/vana-com/data-connectors/c6138f964e6e3b7971d1394a1c9b24f8883e4109/artifacts/linkedin-playwright/linkedin-playwright-5.0.0.tgz",
+      "artifactPath": "artifacts/linkedin-playwright/linkedin-playwright-5.0.0.tgz",
+      "artifactSha256": "sha256:c1b059959f3d924d763abac20430328c5b5165ed37b9f8fbe538dab125e8173d",
+      "artifactSignature": null,
+      "manifestSha256": "sha256:7e0a1f8ff7d4572a7e09f507011025bbe8c84c59f550628879aacf8900a4624e",
+      "scriptSha256": "sha256:351a1a6706903bfbd7055c332f8baa118faa1ccb556cf019005f77cde422480b",
+      "sourceTag": "feat/connector-distribution-consolidation",
+      "sourceCommit": "c6138f964e6e3b7971d1394a1c9b24f8883e4109",
+      "releaseId": "connectors-c6138f964e6e",
+      "publishedAt": "2026-04-13T00:00:00Z",
+      "name": "LinkedIn",
+      "description": "Exports your LinkedIn profile, work experience, education, skills, languages, and connections."
     },
     {
-      "id": "oura-playwright",
+      "connectorId": "oura-playwright",
       "company": "oura",
       "version": "1.0.1",
-      "resolved_from": "1.0.1",
-      "files": {
+      "resolvedFrom": "1.0.1",
+      "sourceFiles": {
         "script": "oura/oura-playwright.js",
         "metadata": "oura/oura-playwright.json"
       },
-      "checksums": {
-        "script": "sha256:b5dd43f3381b8cc51d5cd7e48b727d6f18fa26c06577f530d54020960ff5c43f",
-        "metadata": "sha256:59dd8496619999db8d6e11663a70c57189e725199e5ed9e2c70be874575542d2",
-        "artifact": "sha256:a3363983002e99d166cd53bc2640361ddea32551dac3c4da2324b5fb12435b35"
-      },
-      "artifact_path": "artifacts/oura-playwright/oura-playwright-1.0.1.tgz",
-      "artifact_url": "https://raw.githubusercontent.com/vana-com/data-connectors/feat/connector-contract-unification/artifacts/oura-playwright/oura-playwright-1.0.1.tgz",
-      "git_ref": "feat/connector-contract-unification"
+      "artifactUrl": "https://raw.githubusercontent.com/vana-com/data-connectors/1097ceddc8bff1c60e29ed60cd8af9f65c594646/artifacts/oura-playwright/oura-playwright-1.0.1.tgz",
+      "artifactPath": "artifacts/oura-playwright/oura-playwright-1.0.1.tgz",
+      "artifactSha256": "sha256:a3363983002e99d166cd53bc2640361ddea32551dac3c4da2324b5fb12435b35",
+      "artifactSignature": null,
+      "manifestSha256": "sha256:59dd8496619999db8d6e11663a70c57189e725199e5ed9e2c70be874575542d2",
+      "scriptSha256": "sha256:b5dd43f3381b8cc51d5cd7e48b727d6f18fa26c06577f530d54020960ff5c43f",
+      "sourceTag": "1097ceddc8bff1c60e29ed60cd8af9f65c594646",
+      "sourceCommit": "1097ceddc8bff1c60e29ed60cd8af9f65c594646",
+      "releaseId": null,
+      "publishedAt": "2026-04-13T00:00:00Z",
+      "name": "Oura Ring",
+      "description": "Exports your Oura Ring readiness scores, sleep data, and daily activity."
     },
     {
-      "id": "shop-playwright",
+      "connectorId": "shop-playwright",
       "company": "shopify",
       "version": "1.0.0",
-      "resolved_from": "1.0.0",
-      "files": {
+      "resolvedFrom": "1.0.0",
+      "sourceFiles": {
         "script": "shopify/shop-playwright.js",
         "metadata": "shopify/shop-playwright.json"
       },
-      "checksums": {
-        "script": "sha256:d9364d7cbaf95fbf0e3130b9221195099b33afe3bb700f411d336e40a705d37f",
-        "metadata": "sha256:5eded7e19e3381743d2935a4f6ee41b3ef77524357bcade27bad754791b5cf4c",
-        "artifact": "sha256:6e046ba9ba0f10e7d37b885f1e053b87db467d737f9355d58aadf98a9ecd8c51"
-      },
-      "artifact_path": "artifacts/shop-playwright/shop-playwright-1.0.0.tgz",
-      "artifact_url": "https://raw.githubusercontent.com/vana-com/data-connectors/main/artifacts/shop-playwright/shop-playwright-1.0.0.tgz",
-      "git_ref": "main"
+      "artifactUrl": "https://raw.githubusercontent.com/vana-com/data-connectors/c6138f964e6e3b7971d1394a1c9b24f8883e4109/artifacts/shop-playwright/shop-playwright-1.0.0.tgz",
+      "artifactPath": "artifacts/shop-playwright/shop-playwright-1.0.0.tgz",
+      "artifactSha256": "sha256:6e046ba9ba0f10e7d37b885f1e053b87db467d737f9355d58aadf98a9ecd8c51",
+      "artifactSignature": null,
+      "manifestSha256": "sha256:5eded7e19e3381743d2935a4f6ee41b3ef77524357bcade27bad754791b5cf4c",
+      "scriptSha256": "sha256:d9364d7cbaf95fbf0e3130b9221195099b33afe3bb700f411d336e40a705d37f",
+      "sourceTag": "feat/connector-distribution-consolidation",
+      "sourceCommit": "c6138f964e6e3b7971d1394a1c9b24f8883e4109",
+      "releaseId": "connectors-c6138f964e6e",
+      "publishedAt": "2026-04-13T00:00:00Z",
+      "name": "Shop",
+      "description": "Exports your Shop app order history."
     },
     {
-      "id": "spotify-playwright",
+      "connectorId": "spotify-playwright",
       "company": "spotify",
       "version": "1.0.0",
-      "resolved_from": "1.0.0",
-      "files": {
+      "resolvedFrom": "1.0.0",
+      "sourceFiles": {
         "script": "spotify/spotify-playwright.js",
         "metadata": "spotify/spotify-playwright.json"
       },
-      "checksums": {
-        "script": "sha256:35d879b28c1e3b2bb7c84e97985b8edb4e80dbd61d2dae17c969ad02ff5e3e37",
-        "metadata": "sha256:1803a12843e4b5bb022d1dfea580c830db9b1267e0d8b75855a5499d6760515b",
-        "artifact": "sha256:625d1c697e49370715ef2e54358eb0832875f8314bb676ac32f34964f854a78a"
-      },
-      "artifact_path": "artifacts/spotify-playwright/spotify-playwright-1.0.0.tgz",
-      "artifact_url": "https://raw.githubusercontent.com/vana-com/data-connectors/main/artifacts/spotify-playwright/spotify-playwright-1.0.0.tgz",
-      "git_ref": "main"
+      "artifactUrl": "https://raw.githubusercontent.com/vana-com/data-connectors/c6138f964e6e3b7971d1394a1c9b24f8883e4109/artifacts/spotify-playwright/spotify-playwright-1.0.0.tgz",
+      "artifactPath": "artifacts/spotify-playwright/spotify-playwright-1.0.0.tgz",
+      "artifactSha256": "sha256:625d1c697e49370715ef2e54358eb0832875f8314bb676ac32f34964f854a78a",
+      "artifactSignature": null,
+      "manifestSha256": "sha256:1803a12843e4b5bb022d1dfea580c830db9b1267e0d8b75855a5499d6760515b",
+      "scriptSha256": "sha256:35d879b28c1e3b2bb7c84e97985b8edb4e80dbd61d2dae17c969ad02ff5e3e37",
+      "sourceTag": "feat/connector-distribution-consolidation",
+      "sourceCommit": "c6138f964e6e3b7971d1394a1c9b24f8883e4109",
+      "releaseId": "connectors-c6138f964e6e",
+      "publishedAt": "2026-04-13T00:00:00Z",
+      "name": "Spotify",
+      "description": "Exports your Spotify library, playlists, listening history, and preferences."
     },
     {
-      "id": "wholefoods-playwright",
+      "connectorId": "wholefoods-playwright",
       "company": "wholefoods",
       "version": "1.0.0",
-      "resolved_from": "1.0.0",
-      "files": {
+      "resolvedFrom": "1.0.0",
+      "sourceFiles": {
         "script": "wholefoods/wholefoods-playwright.js",
         "metadata": "wholefoods/wholefoods-playwright.json"
       },
-      "checksums": {
-        "script": "sha256:2ebb4426258b87a8e3699b9609c36ff69b03f050e747ed530c54ee1e7f84c59b",
-        "metadata": "sha256:bbeb1748b6964a1b564788744eed1ddbbf5ea9c7d0a423639dfa5313c653fbe9",
-        "artifact": "sha256:be3b92af410b1ea1fe18f834de3e914c0a18d0105c639c46f02348e21c164df6"
-      },
-      "artifact_path": "artifacts/wholefoods-playwright/wholefoods-playwright-1.0.0.tgz",
-      "artifact_url": "https://raw.githubusercontent.com/vana-com/data-connectors/main/artifacts/wholefoods-playwright/wholefoods-playwright-1.0.0.tgz",
-      "git_ref": "main"
+      "artifactUrl": "https://raw.githubusercontent.com/vana-com/data-connectors/c6138f964e6e3b7971d1394a1c9b24f8883e4109/artifacts/wholefoods-playwright/wholefoods-playwright-1.0.0.tgz",
+      "artifactPath": "artifacts/wholefoods-playwright/wholefoods-playwright-1.0.0.tgz",
+      "artifactSha256": "sha256:be3b92af410b1ea1fe18f834de3e914c0a18d0105c639c46f02348e21c164df6",
+      "artifactSignature": null,
+      "manifestSha256": "sha256:bbeb1748b6964a1b564788744eed1ddbbf5ea9c7d0a423639dfa5313c653fbe9",
+      "scriptSha256": "sha256:2ebb4426258b87a8e3699b9609c36ff69b03f050e747ed530c54ee1e7f84c59b",
+      "sourceTag": "feat/connector-distribution-consolidation",
+      "sourceCommit": "c6138f964e6e3b7971d1394a1c9b24f8883e4109",
+      "releaseId": "connectors-c6138f964e6e",
+      "publishedAt": "2026-04-13T00:00:00Z",
+      "name": "Whole Foods Market",
+      "description": "Exports your Whole Foods Market order history (via Amazon) and product nutrition data."
     },
     {
-      "id": "youtube-playwright",
+      "connectorId": "youtube-playwright",
       "company": "google",
       "version": "1.0.0",
-      "resolved_from": "1.0.0",
-      "files": {
+      "resolvedFrom": "1.0.0",
+      "sourceFiles": {
         "script": "google/youtube-playwright.js",
         "metadata": "google/youtube-playwright.json"
       },
-      "checksums": {
-        "script": "sha256:41edd09ec113ad7f9d09c9c0de76e40577087ab4600d2c8ccba4ca95c3f919c6",
-        "metadata": "sha256:8af6a9623851d2f0db9f86cdce50a3e60f2fee5387c5922f11c064043298ec6f",
-        "artifact": "sha256:d9c833fa1ffef8b7bb7b86abaa82a593b385541813f6cc23939ae399d95498a1"
-      },
-      "artifact_path": "artifacts/youtube-playwright/youtube-playwright-1.0.0.tgz",
-      "artifact_url": "https://raw.githubusercontent.com/vana-com/data-connectors/main/artifacts/youtube-playwright/youtube-playwright-1.0.0.tgz",
-      "git_ref": "main"
+      "artifactUrl": "https://raw.githubusercontent.com/vana-com/data-connectors/c6138f964e6e3b7971d1394a1c9b24f8883e4109/artifacts/youtube-playwright/youtube-playwright-1.0.0.tgz",
+      "artifactPath": "artifacts/youtube-playwright/youtube-playwright-1.0.0.tgz",
+      "artifactSha256": "sha256:d9c833fa1ffef8b7bb7b86abaa82a593b385541813f6cc23939ae399d95498a1",
+      "artifactSignature": null,
+      "manifestSha256": "sha256:8af6a9623851d2f0db9f86cdce50a3e60f2fee5387c5922f11c064043298ec6f",
+      "scriptSha256": "sha256:41edd09ec113ad7f9d09c9c0de76e40577087ab4600d2c8ccba4ca95c3f919c6",
+      "sourceTag": "feat/connector-distribution-consolidation",
+      "sourceCommit": "c6138f964e6e3b7971d1394a1c9b24f8883e4109",
+      "releaseId": "connectors-c6138f964e6e",
+      "publishedAt": "2026-04-13T00:00:00Z",
+      "name": "YouTube",
+      "description": "Exports your YouTube profile, subscriptions, playlists, playlist items, liked videos, watch later list, and top 50 recent watch history entries."
     }
   ]
 }

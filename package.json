@@ -70,7 +70,7 @@
   },
   "devDependencies": {
     "@eslint/js": "^9.39.1",
-    "@opendatalabs/data-connectors-tools": "github:vana-com/data-connectors#data-connectors-tools-v0.1.0-sigstore.1",
+    "@opendatalabs/data-connectors-tools": "github:vana-com/data-connectors#data-connectors-tools-v0.1.0-sigstore.2",
     "@tailwindcss/postcss": "^4.1.18",
     "@tailwindcss/vite": "^4.1.18",
     "@testing-library/react": "^16.3.2",

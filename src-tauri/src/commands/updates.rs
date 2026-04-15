@@ -2,6 +2,7 @@ use flate2::read::GzDecoder;
 use semver::Version;
 use serde::{Deserialize, Serialize};
 use sha2::{Digest, Sha256};
+use sigstore::bundle::verify::{blocking::Verifier, policy};
 use std::collections::HashMap;
 use std::fs;
 use std::io::{Cursor, Read};
@@ -17,7 +18,19 @@ use super::connector_store::{
 };
 
 const DEFAULT_INDEX_URL: &str =
-    "https://raw.githubusercontent.com/vana-com/data-connectors/main/connector-index.json";
+    "https://github.com/vana-com/data-connectors/releases/download/connectors-latest/connector-index.json";
+const DEFAULT_SIGSTORE_CERTIFICATE_ISSUER: &str = "https://token.actions.githubusercontent.com";
+const DEFAULT_SIGSTORE_CERTIFICATE_IDENTITY: &str =
+    "https://github.com/vana-com/data-connectors/.github/workflows/publish-connector-release-index.yml@refs/heads/main";
+
+#[derive(Debug, Serialize, Deserialize, Clone)]
+#[serde(rename_all = "camelCase")]
+pub struct SignatureInfo {
+    #[serde(rename = "type")]
+    pub signature_type: String,
+    pub bundle_path: Option<String>,
+    pub bundle_url: Option<String>,
+}
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
 #[serde(rename_all = "camelCase")]
@@ -25,6 +38,7 @@ pub struct ConnectorIndex {
     pub index_version: String,
     pub generated_at: String,
     pub source_repo: Option<String>,
+    pub signature: Option<SignatureInfo>,
     pub connectors: HashMap<String, Vec<IndexedConnector>>,
 }
 
@@ -41,6 +55,7 @@ pub struct IndexedConnector {
     pub script_sha256: String,
     pub artifact_sha256: String,
     pub artifact_url: String,
+    pub artifact_signature: Option<SignatureInfo>,
 }
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
@@ -225,6 +240,51 @@ fn verify_checksum(data: &[u8], expected: &str) -> bool {
     calculate_checksum(data) == expected
 }
 
+fn resolve_bundle_url(subject_url: &str, signature: &SignatureInfo) -> Result<String, String> {
+    if signature.signature_type != "sigstoreBundle" {
+        return Err(format!(
+            "Unsupported signature type {} for {}",
+            signature.signature_type, subject_url
+        ));
+    }
+
+    if let Some(bundle_url) = &signature.bundle_url {
+        return Ok(bundle_url.clone());
+    }
+
+    if let Some(bundle_path) = &signature.bundle_path {
+        let subject = reqwest::Url::parse(subject_url)
+            .map_err(|e| format!("Invalid signed artifact URL {}: {}", subject_url, e))?;
+        return subject
+            .join(bundle_path)
+            .map(|url| url.to_string())
+            .map_err(|e| format!("Invalid signature bundle path {}: {}", bundle_path, e));
+    }
+
+    Ok(format!("{}.sigstore.json", subject_url))
+}
+
+fn verify_sigstore_bundle(
+    payload: &[u8],
+    bundle_bytes: &[u8],
+    subject_label: &str,
+) -> Result<(), String> {
+    let bundle: sigstore::bundle::Bundle = serde_json::from_slice(bundle_bytes)
+        .map_err(|e| format!("Failed to parse {} signature bundle: {}", subject_label, e))?;
+    let verifier = Verifier::production()
+        .map_err(|e| format!("Failed to initialize Sigstore verifier: {}", e))?;
+    let policy = policy::Identity::new(
+        DEFAULT_SIGSTORE_CERTIFICATE_IDENTITY,
+        DEFAULT_SIGSTORE_CERTIFICATE_ISSUER,
+    );
+
+    verifier
+        .verify(Cursor::new(payload), bundle, &policy, true)
+        .map_err(|e| format!("{} signature verification failed: {}", subject_label, e))?;
+
+    Ok(())
+}
+
 fn get_index_cache_path() -> Option<PathBuf> {
     let home = std::env::var("HOME")
         .or_else(|_| std::env::var("USERPROFILE"))
@@ -286,10 +346,35 @@ async fn fetch_index(force: bool) -> Result<ConnectorIndex, String> {
         ));
     }
 
-    let index: ConnectorIndex = response
-        .json()
+    let index_bytes = response
+        .bytes()
         .await
+        .map_err(|e| format!("Failed to read connector index: {}", e))?;
+    let index: ConnectorIndex = serde_json::from_slice(index_bytes.as_ref())
         .map_err(|e| format!("Failed to parse connector index: {}", e))?;
+    let signature = index
+        .signature
+        .as_ref()
+        .ok_or("Connector index is missing Sigstore bundle metadata")?;
+    let bundle_url = resolve_bundle_url(DEFAULT_INDEX_URL, signature)?;
+    let bundle_response = reqwest::get(&bundle_url)
+        .await
+        .map_err(|e| format!("Failed to fetch connector index signature bundle: {}", e))?;
+    if !bundle_response.status().is_success() {
+        return Err(format!(
+            "Connector index signature bundle fetch failed with status: {}",
+            bundle_response.status()
+        ));
+    }
+    let bundle_bytes = bundle_response
+        .bytes()
+        .await
+        .map_err(|e| format!("Failed to read connector index signature bundle: {}", e))?;
+    verify_sigstore_bundle(
+        index_bytes.as_ref(),
+        bundle_bytes.as_ref(),
+        "Connector index",
+    )?;
 
     if let Err(err) = save_index_cache(&index) {
         log::warn!("Failed to cache connector index: {}", err);
@@ -559,6 +644,29 @@ pub async fn download_connector(_app: AppHandle, id: String) -> Result<(), Strin
         .bytes()
         .await
         .map_err(|e| format!("Failed to read connector artifact: {}", e))?;
+    let artifact_signature = connector
+        .artifact_signature
+        .as_ref()
+        .ok_or_else(|| format!("Connector {} is missing Sigstore bundle metadata", id))?;
+    let artifact_bundle_url = resolve_bundle_url(&connector.artifact_url, artifact_signature)?;
+    let artifact_bundle_response = reqwest::get(&artifact_bundle_url)
+        .await
+        .map_err(|e| format!("Failed to fetch connector signature bundle: {}", e))?;
+    if !artifact_bundle_response.status().is_success() {
+        return Err(format!(
+            "Connector signature bundle fetch failed with status: {}",
+            artifact_bundle_response.status()
+        ));
+    }
+    let artifact_bundle_bytes = artifact_bundle_response
+        .bytes()
+        .await
+        .map_err(|e| format!("Failed to read connector signature bundle: {}", e))?;
+    verify_sigstore_bundle(
+        artifact_bytes.as_ref(),
+        artifact_bundle_bytes.as_ref(),
+        &format!("Connector artifact {}@{}", connector.connector_id, connector.version),
+    )?;
     if !verify_checksum(artifact_bytes.as_ref(), &connector.artifact_sha256) {
         return Err(format!(
             "Connector artifact checksum verification failed. Expected: {}, Got: {}",
@@ -760,6 +868,7 @@ mod tests {
             script_sha256: "sha256:test".to_string(),
             artifact_sha256: "sha256:test".to_string(),
             artifact_url: "https://example.com/goodreads.tgz".to_string(),
+            artifact_signature: None,
         }
     }
 

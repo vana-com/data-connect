@@ -13,7 +13,7 @@ One place for platform metadata and the helpers that render it.
 
 ## Data flow (mental model)
 
-1. **data-connectors** publishes canonical connector artifacts plus `connector-index.json`.
+1. **data-connectors** publishes canonical signed connector artifacts plus `connector-index.json`.
 2. **connectors/lock.json** pins the bundled connector versions this app vendors.
 3. **Bundled connector manifests** provide the canonical consumer metadata used at runtime.
 4. **registry.overlay.json** adds Data Connect policy fields like `showInConnectList`.

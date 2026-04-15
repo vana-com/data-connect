@@ -4,6 +4,7 @@ import { existsSync, readFileSync, readdirSync, rmSync, statSync, writeFileSync 
 import { dirname, join } from "path"
 import { fileURLToPath } from "url"
 import {
+  DEFAULT_CONNECTOR_INDEX_URL,
   generateLock,
   installFromLock,
   loadConnectorIndex,
@@ -16,8 +17,6 @@ const ROOT = join(__dirname, "..")
 const CONNECTORS_DIR = join(ROOT, "connectors")
 const DEPENDENCIES_PATH = join(CONNECTORS_DIR, "connector-dependencies.json")
 const LOCK_PATH = join(CONNECTORS_DIR, "lock.json")
-const DEFAULT_INDEX_URL =
-  "https://raw.githubusercontent.com/vana-com/data-connectors/main/connector-index.json"
 const NON_CONNECTOR_FILES = new Set([
   "connector-dependencies.json",
   "connector-dependencies.schema.json",
@@ -74,7 +73,7 @@ async function main() {
   const source = await loadConnectorIndex({
     fromLocal,
     indexUrl,
-    defaultIndexUrl: DEFAULT_INDEX_URL,
+    defaultIndexUrl: DEFAULT_CONNECTOR_INDEX_URL,
   })
   const lock = await generateLock({
     dependencies,

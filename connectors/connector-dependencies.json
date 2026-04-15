@@ -5,12 +5,14 @@
   "connectors": {
     "chatgpt-playwright": "2.0.0",
     "github-playwright": "1.1.4",
+    "heb-playwright": "1.1.0",
     "instagram-ads-playwright": "1.0.0",
     "instagram-playwright": "1.1.0",
     "linkedin-playwright": "5.0.0",
     "oura-playwright": "1.0.1",
     "shop-playwright": "1.0.0",
     "spotify-playwright": "1.0.0",
+    "wholefoods-playwright": "1.0.0",
     "youtube-playwright": "1.0.0"
   }
 }

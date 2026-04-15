@@ -89,3 +89,23 @@ describe("BUI-297: Shop connector supports shop.orders", () => {
     expect(amazon).toBeUndefined()
   })
 })
+
+describe("Legacy metadata fallback connectors", () => {
+  it("includes H-E-B with the expected connect surface metadata", () => {
+    const heb = PLATFORM_REGISTRY.find((entry) => entry.id === "heb")
+    expect(heb).toBeDefined()
+    expect(heb?.brandDomain).toBe("heb.com")
+    expect(heb?.ingestScope).toBe("heb.orders")
+    expect(heb?.showInConnectList).toBe(true)
+  })
+
+  it("includes Whole Foods Market with the expected connect surface metadata", () => {
+    const wholeFoods = PLATFORM_REGISTRY.find(
+      (entry) => entry.id === "wholefoods"
+    )
+    expect(wholeFoods).toBeDefined()
+    expect(wholeFoods?.brandDomain).toBe("wholefoodsmarket.com")
+    expect(wholeFoods?.ingestScope).toBe("wholefoods.orders")
+    expect(wholeFoods?.showInConnectList).toBe(true)
+  })
+})

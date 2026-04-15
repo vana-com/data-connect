@@ -1,7 +1,7 @@
 {
   "version": "3.0.0",
   "lastUpdated": "2026-04-13T20:54:47.410Z",
-  "baseUrl": "https://raw.githubusercontent.com/vana-com/data-connectors/feat/connector-contract-unification/connectors",
+  "baseUrl": "https://raw.githubusercontent.com/vana-com/data-connectors/main/connectors",
   "connectors": [
     {
       "id": "chatgpt-playwright",
@@ -50,6 +50,29 @@
       "checksums": {
         "script": "sha256:7f221ddf698383f1fbceb6bd8cb97f457fc0a4143b4c13c5135a11b8ef230516",
         "metadata": "sha256:72521c9a991f0587134214c835679de737d313a19e88478bc4ef40cf9e3fc89f"
+      }
+    },
+    {
+      "id": "heb-playwright",
+      "company": "HEB",
+      "version": "1.1.0",
+      "name": "H-E-B",
+      "status": "experimental",
+      "description": "Exports your H-E-B account profile, order history, and product nutrition data.",
+      "consumerMetadata": {
+        "sourceId": "heb",
+        "displayName": "H-E-B",
+        "brandDomain": "heb.com",
+        "iconKey": "heb",
+        "defaultScope": "heb.orders"
+      },
+      "files": {
+        "script": "heb/heb-playwright.js",
+        "metadata": "heb/heb-playwright.json"
+      },
+      "checksums": {
+        "script": "sha256:83919643aaebe8e59386acc2868fd89e1ac94dc3464e26f5afedb570e96a7b9f",
+        "metadata": "sha256:27082d90d8ec77fe906e2a4cb1af0ed43fbd0c883a43ae31d9cb513c15501dc9"
       }
     },
     {
@@ -197,6 +220,32 @@
       "checksums": {
         "script": "sha256:35d879b28c1e3b2bb7c84e97985b8edb4e80dbd61d2dae17c969ad02ff5e3e37",
         "metadata": "sha256:1803a12843e4b5bb022d1dfea580c830db9b1267e0d8b75855a5499d6760515b"
+      }
+    },
+    {
+      "id": "wholefoods-playwright",
+      "company": "wholefoods",
+      "version": "1.0.0",
+      "name": "Whole Foods Market",
+      "status": "experimental",
+      "description": "Exports your Whole Foods Market order history (via Amazon) and product nutrition data.",
+      "consumerMetadata": {
+        "sourceId": "wholefoods",
+        "displayName": "Whole Foods Market",
+        "brandDomain": "wholefoodsmarket.com",
+        "aliases": [
+          "whole foods"
+        ],
+        "iconKey": "wholefoods",
+        "defaultScope": "wholefoods.orders"
+      },
+      "files": {
+        "script": "wholefoods/wholefoods-playwright.js",
+        "metadata": "wholefoods/wholefoods-playwright.json"
+      },
+      "checksums": {
+        "script": "sha256:2ebb4426258b87a8e3699b9609c36ff69b03f050e747ed530c54ee1e7f84c59b",
+        "metadata": "sha256:bbeb1748b6964a1b564788744eed1ddbbf5ea9c7d0a423639dfa5313c653fbe9"
       }
     },
     {

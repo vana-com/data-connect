@@ -28,6 +28,16 @@ export const PLATFORM_REGISTRY_GENERATED: PlatformRegistryEntry[] = [
     ingestScope: "github.profile"
   },
   {
+    id: "heb",
+    displayName: "H-E-B",
+    brandDomain: "heb.com",
+    iconKey: "heb",
+    platformIds: ["heb-playwright", "heb"],
+    availability: "requiresConnector",
+    showInConnectList: true,
+    ingestScope: "heb.orders"
+  },
+  {
     id: "instagram-ads",
     displayName: "Instagram Ads",
     brandDomain: "instagram.com",
@@ -89,6 +99,17 @@ export const PLATFORM_REGISTRY_GENERATED: PlatformRegistryEntry[] = [
     availability: "requiresConnector",
     showInConnectList: true,
     ingestScope: "spotify.savedTracks"
+  },
+  {
+    id: "wholefoods",
+    displayName: "Whole Foods Market",
+    brandDomain: "wholefoodsmarket.com",
+    iconKey: "wholefoods",
+    platformIds: ["wholefoods-playwright", "wholefoods"],
+    aliases: ["whole foods"],
+    availability: "requiresConnector",
+    showInConnectList: true,
+    ingestScope: "wholefoods.orders"
   },
   {
     id: "youtube",

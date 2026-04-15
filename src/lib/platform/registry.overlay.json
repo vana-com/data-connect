@@ -18,6 +18,10 @@
       "showInConnectList": true
     },
     {
+      "connectorId": "heb-playwright",
+      "showInConnectList": true
+    },
+    {
       "connectorId": "linkedin-playwright",
       "showInConnectList": true
     },
@@ -35,6 +39,10 @@
     },
     {
       "connectorId": "shop-playwright",
+      "showInConnectList": true
+    },
+    {
+      "connectorId": "wholefoods-playwright",
       "showInConnectList": true
     }
   ]

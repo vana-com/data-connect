@@ -90,22 +90,15 @@ async function build() {
   // Also provide import.meta.url shim for ESM code bundled to CJS
   // Must redirect better-sqlite3, bindings, and file-uri-to-path to external node_modules
   const nativeModulesList = ['better-sqlite3', 'bindings', 'file-uri-to-path'];
-  const runtimeExternalModules = [
-    '@opendatalabs/personal-server-ts-core/config',
-    '@opendatalabs/personal-server-ts-server',
-    '@opendatalabs/personal-server-ts-mcp',
-    '@hono/node-server',
-    'hono',
-  ];
   const nativeBanner = [
     'var _M=require("module"),_P=require("path"),_U=require("url"),_R=_M._resolveFilename;',
     // Shim for import.meta.url
     'if(typeof globalThis.__importMetaUrl==="undefined"){globalThis.__importMetaUrl=_U.pathToFileURL(__filename).href;}',
-    // Patch require resolution for native modules
-    // _resolveFilename(request, parent, isMain, options) - paths goes in options (4th param)
+    // Patch require resolution so native addons load from beside the executable
     `var _NM=${JSON.stringify(nativeModulesList)};`,
+    'var _np=_P.join(_P.dirname(process.execPath),"node_modules");',
     '_M._resolveFilename=function(r,p,m,o){',
-    'if(_NM.includes(r)){var _np=_P.join(_P.dirname(process.execPath),"node_modules");',
+    'if(_NM.includes(r)){',
     'try{return _R.call(this,r,p,m,Object.assign({},o||{},{paths:[_np]}));}catch(e){}}',
     'return _R.call(this,r,p,m,o);};',
   ].join('');
@@ -174,7 +167,7 @@ async function build() {
     platform: 'node',
     format: 'cjs',
     outfile: bundlePath,
-    external: runtimeExternalModules,
+    external: nativeModulesList,
     plugins: [inlinePackageJsonPlugin, dynamicNativeRequirePlugin],
     banner: { js: nativeBanner },
     inject: [shimPath],
@@ -211,23 +204,8 @@ async function build() {
     }
   }
 
-  const runtimePackagesToCopy = [
-    '@opendatalabs/personal-server-ts-core',
-    '@opendatalabs/personal-server-ts-server',
-    '@opendatalabs/personal-server-ts-mcp',
-    '@hono/node-server',
-    'hono',
-  ];
-  for (const mod of runtimePackagesToCopy) {
-    const src = join(ROOT, 'node_modules', ...mod.split('/'));
-    if (existsSync(src)) {
-      const dest = join(DIST, 'node_modules', ...mod.split('/'));
-      log(`Copying ${mod}...`);
-      cpSync(src, dest, { recursive: true });
-    } else {
-      log(`WARNING: ${mod} not found in node_modules`);
-    }
-  }
+  // @opendatalabs/*, @hono/node-server, and hono are bundled by esbuild
+  // (no longer external), so no copy step is needed for them.
 
   // Re-download the better-sqlite3 prebuilt binary for the pkg target Node version.
   // The local npm install compiles for the host Node.js, which may differ from the

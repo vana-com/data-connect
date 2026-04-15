@@ -10,13 +10,6 @@
     "build": "node scripts/build.js"
   },
   "pkg": {
-    "assets": [
-      "node_modules/@opendatalabs/personal-server-ts-*/dist/**/*",
-      "node_modules/@opendatalabs/personal-server-ts-*/package.json",
-      "node_modules/@hono/node-server/dist/**/*",
-      "node_modules/@hono/node-server/package.json",
-      "node_modules/hono/**/*"
-    ],
     "targets": [
       "node22-macos-arm64",
       "node22-macos-x64",

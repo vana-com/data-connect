@@ -736,7 +736,7 @@ function createPageApi(runState, runId) {
       setupNetworkCapture(page);
 
       // Navigate to establish browser context
-      await page.goto('https://chatgpt.com/', { waitUntil: 'domcontentloaded' });
+      await page.goto('about:blank', { waitUntil: 'domcontentloaded' });
 
       send({ type: 'log', runId, message: 'Switched to headless mode for background data collection' });
       log('Switched to headless mode');

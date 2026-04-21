@@ -1,6 +1,13 @@
 import { memo, useCallback } from "react"
-import { AlertTriangleIcon, CheckIcon, LoaderCircleIcon, SquareIcon } from "lucide-react"
+import {
+  AlertTriangleIcon,
+  CheckIcon,
+  LoaderCircleIcon,
+  SquareIcon,
+} from "lucide-react"
 import { PlatformIcon } from "@/components/icons/platform-icon"
+import { resolvePlatformLogo } from "@/lib/platform/resolve-platform-logo"
+import { getPlatformRegistryEntry } from "@/lib/platform/utils"
 import { Text } from "@/components/typography/text"
 import { openExportFolderPath } from "@/lib/open-resource"
 import { openPersonalServerScopeFolder } from "@/lib/tauri-paths"
@@ -15,10 +22,14 @@ import {
 } from "./import-history-row-utils"
 
 const isTerminalRun = (status: Run["status"]) =>
-  status === "success" || status === "partial" || status === "error" || status === "stopped"
+  status === "success" ||
+  status === "partial" ||
+  status === "error" ||
+  status === "stopped"
 
 interface ImportHistoryRowProps {
   run: Run
+  platform?: Platform
   isStopping: boolean
   isRemoving: boolean
   canRunAgain: boolean
@@ -32,6 +43,7 @@ interface ImportHistoryRowProps {
 
 export const ImportHistoryRow = memo(function ImportHistoryRow({
   run,
+  platform,
   isStopping,
   isRemoving,
   canRunAgain,
@@ -45,6 +57,9 @@ export const ImportHistoryRow = memo(function ImportHistoryRow({
   const canRevealExport = Boolean(run.exportPath && isTerminalRun(run.status))
   const needsStopConfirm = shouldConfirmStop(run)
   const errorDetail = getErrorDetail(run)
+  const iconImageSrc = platform
+    ? resolvePlatformLogo(platform, getPlatformRegistryEntry(platform))
+    : undefined
 
   const handleRevealExport = useCallback(async () => {
     const scope = run.scope
@@ -70,7 +85,13 @@ export const ImportHistoryRow = memo(function ImportHistoryRow({
   return (
     <SettingsCard>
       <SettingsRow
-        icon={<PlatformIcon iconName={run.platformId} size={24} />}
+        icon={
+          <PlatformIcon
+            iconName={run.platformId}
+            imageSrc={iconImageSrc}
+            size={24}
+          />
+        }
         title={
           <div className="flex items-center gap-2">
             <Text as="div" intent="body" weight="semi">
@@ -105,6 +126,7 @@ export const ImportHistoryRow = memo(function ImportHistoryRow({
               needsStopConfirm={needsStopConfirm}
               canRunAgain={canRunAgain}
               rerunPlatform={rerunPlatform}
+              iconImageSrc={iconImageSrc}
               isErrorExpanded={isErrorExpanded}
               onStop={handleStop}
               onRunAgain={onRunAgain}
@@ -114,7 +136,9 @@ export const ImportHistoryRow = memo(function ImportHistoryRow({
           </div>
         }
         below={
-          (run.status === "error" || run.status === "partial") && isErrorExpanded && errorDetail ? (
+          (run.status === "error" || run.status === "partial") &&
+          isErrorExpanded &&
+          errorDetail ? (
             <div className="pl-[58px] pr-4 pb-3">
               <hr className="border-border/70" />
               <Text as="p" intent="fine" muted className="pt-3">
@@ -158,7 +182,13 @@ function ImportRunStateLabel({ status }: { status: Run["status"] }) {
 
   if (status === "partial") {
     return (
-      <Text as="span" intent="fine" withIcon weight="medium" className="text-warning">
+      <Text
+        as="span"
+        intent="fine"
+        withIcon
+        weight="medium"
+        className="text-warning"
+      >
         <AlertTriangleIcon aria-hidden="true" className="size-3.5" />
         Partial
       </Text>

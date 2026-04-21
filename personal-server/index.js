@@ -17,13 +17,20 @@
 // This avoids "unable to determine transport target" errors in bundled binary
 process.env.NODE_ENV = 'production';
 
-import { join } from 'node:path';
+import { dirname, join } from 'node:path';
 import { readFileSync, writeFileSync } from 'node:fs';
 import { randomUUID } from 'node:crypto';
 import { execSync, spawn } from 'node:child_process';
-import { loadConfig } from '@opendatalabs/personal-server-ts-core/config';
-import { createServer } from '@opendatalabs/personal-server-ts-server';
-import { serve } from '@hono/node-server';
+import { pathToFileURL } from 'node:url';
+
+const PACKAGED_RUNTIME_ENTRYPOINTS = {
+  '@opendatalabs/personal-server-ts-core/config':
+    '@opendatalabs/personal-server-ts-core/dist/config/index.js',
+  '@opendatalabs/personal-server-ts-server':
+    '@opendatalabs/personal-server-ts-server/dist/api.js',
+  '@hono/node-server':
+    '@hono/node-server/dist/index.js',
+};
 
 function send(msg) {
   let json;
@@ -34,6 +41,20 @@ function send(msg) {
     json = JSON.stringify({ type: msg?.type || 'error', message: String(msg?.message ?? 'Serialization error') });
   }
   process.stdout.write(json + '\n');
+}
+
+async function importRuntimeModule(specifier) {
+  const packagedEntrypoint = PACKAGED_RUNTIME_ENTRYPOINTS[specifier];
+  if (process.pkg && packagedEntrypoint) {
+    const filesystemEntrypoint = join(
+      dirname(process.execPath),
+      'node_modules',
+      ...packagedEntrypoint.split('/')
+    );
+    return import(pathToFileURL(filesystemEntrypoint).href);
+  }
+
+  return import(specifier);
 }
 
 /**
@@ -261,6 +282,12 @@ async function main() {
   const tunnelServerPort = process.env.TUNNEL_SERVER_PORT ? parseInt(process.env.TUNNEL_SERVER_PORT, 10) : undefined;
 
   try {
+    const [{ loadConfig }, { createServer }, { serve }] = await Promise.all([
+      importRuntimeModule('@opendatalabs/personal-server-ts-core/config'),
+      importRuntimeModule('@opendatalabs/personal-server-ts-server'),
+      importRuntimeModule('@hono/node-server'),
+    ]);
+
     // Load config from file (creates default if missing)
     const configPath = configDir ? join(configDir, 'server.json') : undefined;
     const config = await loadConfig({ configPath });

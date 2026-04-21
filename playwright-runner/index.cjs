@@ -22,6 +22,10 @@ const readline = require('readline');
 const path = require('path');
 const { execSync } = require('child_process');
 const { classifyConnectorResult } = require('./result-classifier.cjs');
+const {
+  normalizeConnectorResult,
+  resolveHeadlessResumeUrl,
+} = require('./runner-compat.cjs');
 
 // System Chrome paths by platform
 const CHROME_PATHS = {
@@ -317,14 +321,74 @@ function normalizeRequestedScopes(requestedScopes) {
   return deduped;
 }
 
+function sleep(ms) {
+  return new Promise((resolve) => setTimeout(resolve, ms));
+}
+
+function shouldRetryNavigationError(error) {
+  const message = String(error && error.message ? error.message : error || '').toLowerCase();
+  return (
+    message.includes('err_name_not_resolved') ||
+    message.includes('err_internet_disconnected') ||
+    message.includes('err_network_changed') ||
+    message.includes('err_connection_reset') ||
+    message.includes('err_connection_closed') ||
+    message.includes('timeout')
+  );
+}
+
+async function gotoWithRetries(page, url, options = {}) {
+  const {
+    attempts = 3,
+    delayMs = 1500,
+    context = 'navigation',
+    waitUntil = 'domcontentloaded',
+    timeout,
+  } = options;
+
+  const gotoOptions = { waitUntil };
+  if (timeout != null) {
+    gotoOptions.timeout = timeout;
+  }
+
+  let lastError = null;
+  for (let attempt = 1; attempt <= attempts; attempt += 1) {
+    try {
+      await page.goto(url, gotoOptions);
+      return;
+    } catch (error) {
+      lastError = error;
+      if (attempt === attempts || !shouldRetryNavigationError(error)) {
+        throw error;
+      }
+      log(
+        `${context} attempt ${attempt}/${attempts} failed for ${url}: ${error.message}. Retrying...`,
+      );
+      await sleep(delayMs * attempt);
+    }
+  }
+
+  throw lastError;
+}
+
 function storeConnectorResult(runState, result) {
-  const classification = classifyConnectorResult(result, {
+  const normalizedResult = normalizeConnectorResult(result, {
+    requestedScopes: runState.requestedScopes,
+  });
+  const classification = classifyConnectorResult(normalizedResult, {
     expectedRequestedScopes: runState.requestedScopes,
   });
 
+  if (classification.outcome === 'failure') {
+    log(
+      `Connector result classified as failure: ${classification.errorClass}` +
+        (classification.debug ? ` (${classification.debug})` : ''),
+    );
+  }
+
   runState.resultEnvelope = {
     classification,
-    rawResult: result,
+    rawResult: normalizedResult,
   };
 
   return runState.resultEnvelope;
@@ -688,13 +752,18 @@ function createPageApi(runState, runId) {
     // Switch to headless mode — browser becomes invisible but stays running.
     // Use this after credentials are captured so the user doesn't see the browser
     // during data collection, while preserving the TLS fingerprint for Cloudflare.
-    goHeadless: async () => {
+    goHeadless: async (options = {}) => {
       if (runState.headless && !runState.browserClosed) {
         log('Already in headless mode');
         return;
       }
 
       log('Switching to headless mode');
+      const currentUrl = runState.page ? runState.page.url() : null;
+      const resumeUrl = resolveHeadlessResumeUrl({
+        resumeUrl: options.resumeUrl,
+        currentUrl,
+      });
 
       // Close existing headed browser
       if (runState.context && !runState.browserClosed) {
@@ -735,11 +804,15 @@ function createPageApi(runState, runId) {
       // Re-setup network capture on new page
       setupNetworkCapture(page);
 
-      // Navigate to establish browser context
-      await page.goto('about:blank', { waitUntil: 'domcontentloaded' });
+      // Restore the current browser location when possible so connectors that
+      // authenticate in headed mode can resume collection without re-implementing
+      // their own login handoff logic.
+      await gotoWithRetries(page, resumeUrl, {
+        context: 'goHeadless resume navigation',
+      });
 
       send({ type: 'log', runId, message: 'Switched to headless mode for background data collection' });
-      log('Switched to headless mode');
+      log(`Switched to headless mode (resumeUrl: ${resumeUrl})`);
     },
 
     // Direct HTTP fetch from Node.js — no browser needed.
@@ -884,7 +957,9 @@ async function runConnector(runId, connectorPath, url, headless = true, allowHea
 
     // Navigate to starting URL
     log(`Navigating to initial URL: ${url}`);
-    await page.goto(url, { waitUntil: 'domcontentloaded' });
+    await gotoWithRetries(page, url, {
+      context: 'initial navigation',
+    });
     log('Initial navigation complete');
     send({ type: 'status', runId, status: 'RUNNING' });
 

@@ -5,11 +5,12 @@
  * 2. Uses @yao-pkg/pkg to create a standalone binary with Node.js
  */
 
-import { execSync } from 'child_process';
-import { existsSync, mkdirSync, rmSync, readdirSync, statSync, lstatSync, readlinkSync, cpSync, writeFileSync } from 'fs';
-import { join, dirname, resolve } from 'path';
+import { execSync, spawnSync } from 'child_process';
+import { existsSync, mkdirSync, rmSync, readdirSync, statSync, lstatSync, readlinkSync, cpSync, writeFileSync, readFileSync } from 'fs';
+import { join, dirname, resolve, relative } from 'path';
 import { fileURLToPath } from 'url';
 import { platform, arch } from 'os';
+import { createRequire } from 'module';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const ROOT = join(__dirname, '..');
@@ -71,6 +72,125 @@ function dereferenceSymlinks() {
   }
 }
 
+function collectJsFiles(dir, files = []) {
+  if (!existsSync(dir)) return files;
+  for (const entry of readdirSync(dir, { withFileTypes: true })) {
+    const entryPath = join(dir, entry.name);
+    if (entry.isDirectory()) {
+      collectJsFiles(entryPath, files);
+      continue;
+    }
+    if (entry.isFile() && entry.name.endsWith('.js')) {
+      files.push(entryPath);
+    }
+  }
+  return files;
+}
+
+function toImportPath(fromFile, toFile) {
+  const rel = relative(dirname(fromFile), toFile).replace(/\\/g, '/');
+  return rel.startsWith('.') ? rel : `./${rel}`;
+}
+
+function resolveWorkspaceSpecifier(specifier, packageJsonCache) {
+  const workspacePackages = [
+    '@opendatalabs/personal-server-ts-core',
+    '@opendatalabs/personal-server-ts-mcp',
+  ];
+  const packageName = workspacePackages.find(
+    candidate => specifier === candidate || specifier.startsWith(`${candidate}/`)
+  );
+  if (!packageName) return null;
+
+  const packageRoot = join(DIST, 'node_modules', ...packageName.split('/'));
+  const packageJsonPath = join(packageRoot, 'package.json');
+  const packageJson =
+    packageJsonCache.get(packageJsonPath) ??
+    JSON.parse(readFileSync(packageJsonPath, 'utf8'));
+  packageJsonCache.set(packageJsonPath, packageJson);
+
+  const exportKey =
+    specifier === packageName ? '.' : `./${specifier.slice(packageName.length + 1)}`;
+  const exportEntry = packageJson.exports?.[exportKey];
+  const importTarget =
+    typeof exportEntry === 'string'
+      ? exportEntry
+      : exportEntry?.import ?? exportEntry?.default ?? null;
+
+  if (!importTarget) {
+    throw new Error(`Missing export mapping for ${specifier} in ${packageJsonPath}`);
+  }
+
+  return join(packageRoot, importTarget);
+}
+
+function resolveCopiedImportSpecifier(specifier, fromFile, packageJsonCache) {
+  if (
+    !specifier ||
+    specifier.startsWith('.') ||
+    specifier.startsWith('/') ||
+    specifier.startsWith('node:')
+  ) {
+    return null;
+  }
+
+  if (
+    specifier === '@opendatalabs/personal-server-ts-core' ||
+    specifier.startsWith('@opendatalabs/personal-server-ts-core/') ||
+    specifier === '@opendatalabs/personal-server-ts-mcp' ||
+    specifier.startsWith('@opendatalabs/personal-server-ts-mcp/')
+  ) {
+    return resolveWorkspaceSpecifier(specifier, packageJsonCache);
+  }
+
+  const requireFromFile = createRequire(fromFile);
+  return requireFromFile.resolve(specifier);
+}
+
+function rewriteCopiedPackageImports() {
+  const packageJsonCache = new Map();
+  const jsFiles = [
+    ...collectJsFiles(
+      join(DIST, 'node_modules', '@opendatalabs', 'personal-server-ts-core', 'dist')
+    ),
+    ...collectJsFiles(
+      join(DIST, 'node_modules', '@opendatalabs', 'personal-server-ts-server', 'dist')
+    ),
+    ...collectJsFiles(
+      join(DIST, 'node_modules', '@opendatalabs', 'personal-server-ts-mcp', 'dist')
+    ),
+  ];
+
+  for (const file of jsFiles) {
+    const original = readFileSync(file, 'utf8');
+    const rewritten = original
+      .split('\n')
+      .map(line => {
+        const trimmed = line.trimStart();
+        if (
+          !(trimmed.startsWith('import ') || trimmed.startsWith('export ')) ||
+          !trimmed.includes(' from ')
+        ) {
+          return line;
+        }
+
+        return line.replace(/from\s+(["'])([^"'`]+)\1/, (match, quote, specifier) => {
+          const target = resolveCopiedImportSpecifier(specifier, file, packageJsonCache);
+          if (!target) {
+            return match;
+          }
+          const importPath = toImportPath(file, target);
+          return match.replace(specifier, importPath);
+        });
+      })
+      .join('\n');
+
+    if (rewritten !== original) {
+      writeFileSync(file, rewritten);
+    }
+  }
+}
+
 async function build() {
   log('Starting personal-server build...');
 
@@ -101,8 +221,9 @@ async function build() {
     'var _M=require("module"),_P=require("path"),_U=require("url"),_R=_M._resolveFilename;',
     // Shim for import.meta.url
     'if(typeof globalThis.__importMetaUrl==="undefined"){globalThis.__importMetaUrl=_U.pathToFileURL(__filename).href;}',
-    // Patch require resolution for native modules
-    // _resolveFilename(request, parent, isMain, options) - paths goes in options (4th param)
+    // Patch require resolution for native modules.
+    // pkg runs the bundle from a snapshot path, so native addons must be
+    // resolved from dist/node_modules beside the executable.
     `var _NM=${JSON.stringify(nativeModulesList)};`,
     '_M._resolveFilename=function(r,p,m,o){',
     'if(_NM.includes(r)){var _np=_P.join(_P.dirname(process.execPath),"node_modules");',
@@ -197,37 +318,31 @@ async function build() {
   // Clean up intermediate bundle
   rmSync(bundlePath, { force: true });
 
-  // Copy better-sqlite3 and its runtime dependencies alongside the binary.
-  // pkg cannot bundle native addons; they must be on the real filesystem.
-  const nativeModules = ['better-sqlite3', 'bindings', 'file-uri-to-path'];
-  for (const mod of nativeModules) {
-    const src = join(ROOT, 'node_modules', mod);
-    if (existsSync(src)) {
-      const dest = join(DIST, 'node_modules', mod);
-      log(`Copying ${mod}...`);
-      cpSync(src, dest, { recursive: true });
-    } else {
-      log(`WARNING: ${mod} not found in node_modules`);
-    }
+  // Copy the full production dependency tree beside the binary.
+  // The pkg snapshot cannot host native addons, and the external runtime
+  // packages we intentionally leave on disk need their transitive deps too.
+  const productionTree = spawnSync('npm', ['ls', '--omit=dev', '--all', '--parseable'], {
+    cwd: ROOT,
+    encoding: 'utf8',
+  });
+  if (productionTree.status !== 0) {
+    throw new Error(`Failed to list production dependencies: ${productionTree.stderr || productionTree.stdout}`);
+  }
+  const dependencyPaths = productionTree.stdout
+    .split('\n')
+    .map(line => line.trim())
+    .filter(Boolean)
+    .filter(line => line !== ROOT)
+    .filter(line => line.startsWith(join(ROOT, 'node_modules')));
+
+  for (const src of dependencyPaths) {
+    const relative = src.slice(ROOT.length + 1);
+    const dest = join(DIST, relative);
+    mkdirSync(dirname(dest), { recursive: true });
+    cpSync(src, dest, { recursive: true, force: true });
   }
 
-  const runtimePackagesToCopy = [
-    '@opendatalabs/personal-server-ts-core',
-    '@opendatalabs/personal-server-ts-server',
-    '@opendatalabs/personal-server-ts-mcp',
-    '@hono/node-server',
-    'hono',
-  ];
-  for (const mod of runtimePackagesToCopy) {
-    const src = join(ROOT, 'node_modules', ...mod.split('/'));
-    if (existsSync(src)) {
-      const dest = join(DIST, 'node_modules', ...mod.split('/'));
-      log(`Copying ${mod}...`);
-      cpSync(src, dest, { recursive: true });
-    } else {
-      log(`WARNING: ${mod} not found in node_modules`);
-    }
-  }
+  rewriteCopiedPackageImports();
 
   // Re-download the better-sqlite3 prebuilt binary for the pkg target Node version.
   // The local npm install compiles for the host Node.js, which may differ from the

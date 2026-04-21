@@ -212,6 +212,7 @@ export function ImportHistoryPanel() {
             <ImportHistoryRow
               key={run.id}
               run={run}
+              platform={platformById.get(run.platformId)}
               isStopping={effectiveStoppingRunIds.has(run.id)}
               isRemoving={effectiveRemovingRunIds.has(run.id)}
               canRunAgain={!activePlatformIds.has(run.platformId)}
@@ -234,8 +235,9 @@ export function ImportHistoryPanel() {
                 key={scenario}
                 size="xs"
                 variant={
-                  new URLSearchParams(location.search).get("importsScenario") ===
-                  scenario
+                  new URLSearchParams(location.search).get(
+                    "importsScenario"
+                  ) === scenario
                     ? "default"
                     : "outline"
                 }
@@ -246,7 +248,11 @@ export function ImportHistoryPanel() {
             ))}
             <Button
               size="xs"
-              variant={isImportHistoryUiDebugEnabled(location.search) ? "outline" : "default"}
+              variant={
+                isImportHistoryUiDebugEnabled(location.search)
+                  ? "outline"
+                  : "default"
+              }
               onClick={() => setImportsDebugScenario(null)}
             >
               real

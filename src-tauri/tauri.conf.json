@@ -68,9 +68,11 @@
       "../connectors/meta/**/*": "connectors/meta/",
       "../connectors/openai/**/*": "connectors/openai/",
       "../connectors/google/**/*": "connectors/google/",
+      "../connectors/heb/**/*": "connectors/heb/",
       "../connectors/spotify/**/*": "connectors/spotify/",
       "../connectors/oura/**/*": "connectors/oura/",
       "../connectors/shopify/**/*": "connectors/shopify/",
+      "../connectors/wholefoods/**/*": "connectors/wholefoods/",
       "../playwright-runner/dist/*": "playwright-runner/dist/",
       "../personal-server/dist/personal-server*": "personal-server/dist/",
       "../personal-server/dist/node_modules/": "personal-server/dist/node_modules/"

@@ -28,6 +28,7 @@ interface ImportHistoryRowActionsProps {
   needsStopConfirm: boolean
   canRunAgain: boolean
   rerunPlatform?: Platform
+  iconImageSrc?: string
   isErrorExpanded: boolean
   onStop: () => void
   onRunAgain: (platform: Platform) => void
@@ -42,6 +43,7 @@ const ImportHistoryRowActionsInner = ({
   needsStopConfirm,
   canRunAgain,
   rerunPlatform,
+  iconImageSrc,
   isErrorExpanded,
   onStop,
   onRunAgain,
@@ -91,6 +93,7 @@ const ImportHistoryRowActionsInner = ({
             media={
               <PlatformIcon
                 iconName={run.platformId}
+                imageSrc={iconImageSrc}
                 size={24}
                 aria-hidden="true"
               />
@@ -183,7 +186,10 @@ const ImportHistoryRowActionsInner = ({
               "data-open:animate-none data-closed:animate-none duration-0"
             )}
           >
-            {run.status !== "success" && run.status !== "partial" && canSync && rerunPlatform ? (
+            {run.status !== "success" &&
+            run.status !== "partial" &&
+            canSync &&
+            rerunPlatform ? (
               <DropdownMenuItem
                 className={itemStyle}
                 onSelect={() => onRunAgain(rerunPlatform)}
@@ -214,7 +220,12 @@ const ImportHistoryRowActionsInner = ({
         onOpenChange={setIsRemoveConfirmOpen}
         showTrigger={false}
         media={
-          <PlatformIcon iconName={run.platformId} size={24} aria-hidden="true" />
+          <PlatformIcon
+            iconName={run.platformId}
+            imageSrc={iconImageSrc}
+            size={24}
+            aria-hidden="true"
+          />
         }
       />
     </div>
@@ -235,6 +246,7 @@ function areImportHistoryRowActionsPropsEqual(
     prev.needsStopConfirm === next.needsStopConfirm &&
     prev.canRunAgain === next.canRunAgain &&
     prev.rerunPlatform?.id === next.rerunPlatform?.id &&
+    prev.iconImageSrc === next.iconImageSrc &&
     prev.isErrorExpanded === next.isErrorExpanded &&
     prev.onStop === next.onStop &&
     prev.onRunAgain === next.onRunAgain &&

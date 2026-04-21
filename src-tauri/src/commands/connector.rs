@@ -2,7 +2,7 @@ use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 use std::fs;
 use std::io::Write;
-use std::path::PathBuf;
+use std::path::{Path, PathBuf};
 use tauri::{AppHandle, Emitter, Manager, WebviewUrl, WebviewWindowBuilder};
 
 use super::connector_store::{
@@ -147,6 +147,32 @@ fn active_install_path(root_path: &str, relative_path: &str) -> Option<PathBuf> 
     } else {
         None
     }
+}
+
+fn manifest_looks_like_connector(metadata: &ConnectorMetadata) -> bool {
+    metadata
+        .connector_id
+        .as_deref()
+        .or(metadata.id.as_deref())
+        .is_some()
+        && metadata.scopes.as_ref().is_some_and(|scopes| !scopes.is_empty())
+}
+
+fn resolve_icon_path(dir: &Path, icon_path: &str) -> Option<PathBuf> {
+    let canonical = dir.join(icon_path);
+    if canonical.exists() {
+        return Some(canonical);
+    }
+
+    let flattened = Path::new(icon_path)
+        .file_name()
+        .map(|name| dir.join(name))
+        .filter(|path| path.exists());
+    if flattened.is_some() {
+        return flattened;
+    }
+
+    None
 }
 
 /// Get the bundled connectors directory path
@@ -371,6 +397,11 @@ fn load_platforms_from_dir(dir: &PathBuf) -> Vec<Platform> {
                                 .unwrap_or_else(|| "Unknown".to_string());
 
                             // Resolve icon: read SVG from disk and convert to data URI
+                            if !manifest_looks_like_connector(&metadata) {
+                                log::debug!("Skipping non-connector manifest at {:?}", path);
+                                continue;
+                            }
+
                             let resolved_icon = metadata
                                 .icon_url
                                 .or(metadata.icon_url_legacy)
@@ -378,7 +409,7 @@ fn load_platforms_from_dir(dir: &PathBuf) -> Vec<Platform> {
                             let logo_url = resolved_icon
                                 .as_ref()
                                 .and_then(|icon_path| {
-                                    let svg_path = dir.join(icon_path);
+                                    let svg_path = resolve_icon_path(dir, icon_path)?;
                                     fs::read_to_string(&svg_path).ok().map(|svg| {
                                         use base64::{
                                             engine::general_purpose::STANDARD, Engine as _,
@@ -2530,4 +2561,70 @@ pub async fn download_chromium_rust(app: AppHandle) -> Result<String, String> {
     );
 
     Ok(final_exe_path.to_string_lossy().to_string())
+}
+
+#[cfg(test)]
+mod tests {
+    use super::{manifest_looks_like_connector, resolve_icon_path, ConnectorMetadata};
+    use tempfile::tempdir;
+
+    fn connector_metadata() -> ConnectorMetadata {
+        ConnectorMetadata {
+            connector_id: Some("github-playwright".to_string()),
+            id: Some("github-playwright".to_string()),
+            source_id: Some("github".to_string()),
+            manifest_version: Some("1.0".to_string()),
+            page_api_version: Some(1),
+            name: "GitHub".to_string(),
+            company: Some("github".to_string()),
+            description: "Exports GitHub data".to_string(),
+            connect_url: None,
+            connect_url_legacy: None,
+            connect_selector: None,
+            connect_selector_legacy: None,
+            export_frequency: None,
+            vectorize_config: None,
+            runtime: None,
+            version: Some("1.0.0".to_string()),
+            icon_url: None,
+            icon_url_legacy: None,
+            icon: Some("icons/github.svg".to_string()),
+            scopes: Some(vec![super::ConnectorScope {
+                scope: "github.profile".to_string(),
+                label: Some("Profile".to_string()),
+                description: Some("GitHub profile".to_string()),
+            }]),
+            runtime_requirements: None,
+            capabilities: None,
+        }
+    }
+
+    #[test]
+    fn manifest_filter_accepts_real_connector_manifest() {
+        assert!(manifest_looks_like_connector(&connector_metadata()));
+    }
+
+    #[test]
+    fn manifest_filter_rejects_scope_schema_shape() {
+        let mut metadata = connector_metadata();
+        metadata.connector_id = None;
+        metadata.id = None;
+        metadata.scopes = None;
+        metadata.name = "LinkedIn Education".to_string();
+        metadata.description = "Schema file".to_string();
+
+        assert!(!manifest_looks_like_connector(&metadata));
+    }
+
+    #[test]
+    fn resolve_icon_path_falls_back_to_flattened_filename() {
+        let temp = tempdir().expect("tempdir");
+        let flattened = temp.path().join("github.svg");
+        std::fs::write(&flattened, "<svg />").expect("write icon");
+
+        let resolved =
+            resolve_icon_path(temp.path(), "icons/github.svg").expect("resolved flattened icon");
+
+        assert_eq!(resolved, flattened);
+    }
 }

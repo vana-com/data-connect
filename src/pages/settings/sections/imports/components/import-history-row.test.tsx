@@ -8,7 +8,8 @@ const mockOpenExportFolderPath = vi.fn()
 const mockOpenPersonalServerScopeFolder = vi.fn()
 
 vi.mock("@/lib/open-resource", () => ({
-  openExportFolderPath: (...args: unknown[]) => mockOpenExportFolderPath(...args),
+  openExportFolderPath: (...args: unknown[]) =>
+    mockOpenExportFolderPath(...args),
 }))
 
 vi.mock("@/lib/tauri-paths", () => ({
@@ -23,7 +24,7 @@ const platform: Platform = {
   filename: "github",
   description: "GitHub export",
   isUpdated: false,
-  logoURL: "",
+  logoURL: "https://cdn.example.com/github.png",
   needsConnection: true,
   connectURL: null,
   connectSelector: null,
@@ -84,5 +85,28 @@ describe("ImportHistoryRow reveal action", () => {
       "github.conversations"
     )
     expect(mockOpenExportFolderPath).not.toHaveBeenCalled()
+  })
+
+  it("prefers the resolved platform logo when platform metadata is available", () => {
+    const { container } = render(
+      <MemoryRouter>
+        <ImportHistoryRow
+          run={buildRun()}
+          platform={platform}
+          isStopping={false}
+          isRemoving={false}
+          canRunAgain
+          rerunPlatform={platform}
+          isErrorExpanded={false}
+          onStop={vi.fn()}
+          onRunAgain={vi.fn()}
+          onRemove={vi.fn().mockResolvedValue(undefined)}
+          onToggleErrorDetail={vi.fn()}
+        />
+      </MemoryRouter>
+    )
+
+    const image = container.querySelector("img")
+    expect(image?.getAttribute("src")).toBe(platform.logoURL)
   })
 })

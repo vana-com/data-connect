@@ -264,7 +264,7 @@ fn resolve_bundle_url(subject_url: &str, signature: &SignatureInfo) -> Result<St
     Ok(format!("{}.sigstore.json", subject_url))
 }
 
-fn verify_sigstore_bundle(
+fn verify_sigstore_bundle_blocking(
     payload: &[u8],
     bundle_bytes: &[u8],
     subject_label: &str,
@@ -283,6 +283,24 @@ fn verify_sigstore_bundle(
         .map_err(|e| format!("{} signature verification failed: {}", subject_label, e))?;
 
     Ok(())
+}
+
+async fn verify_sigstore_bundle_async(
+    payload: Vec<u8>,
+    bundle_bytes: Vec<u8>,
+    subject_label: String,
+) -> Result<(), String> {
+    let label_for_join = subject_label.clone();
+    tauri::async_runtime::spawn_blocking(move || {
+        verify_sigstore_bundle_blocking(&payload, &bundle_bytes, &subject_label)
+    })
+    .await
+    .map_err(|e| {
+        format!(
+            "Sigstore verification task failed for {}: {}",
+            label_for_join, e
+        )
+    })?
 }
 
 fn get_index_cache_dir() -> Option<PathBuf> {
@@ -304,7 +322,7 @@ fn get_index_bundle_cache_path() -> Option<PathBuf> {
     Some(get_index_cache_dir()?.join("connector-index.sigstore.json"))
 }
 
-fn load_cached_index() -> Option<ConnectorIndex> {
+async fn load_cached_index() -> Option<ConnectorIndex> {
     let cache_path = get_index_cache_path()?;
     let bundle_cache_path = get_index_bundle_cache_path()?;
     if !cache_path.exists() {
@@ -323,8 +341,13 @@ fn load_cached_index() -> Option<ConnectorIndex> {
 
     let index_bytes = fs::read(&cache_path).ok()?;
     let bundle_bytes = fs::read(&bundle_cache_path).ok()?;
-    if verify_sigstore_bundle(index_bytes.as_ref(), bundle_bytes.as_ref(), "Cached connector index")
-        .is_err()
+    if verify_sigstore_bundle_async(
+        index_bytes.clone(),
+        bundle_bytes.clone(),
+        "Cached connector index".to_string(),
+    )
+    .await
+    .is_err()
     {
         return None;
     }
@@ -347,7 +370,7 @@ fn save_index_cache(index_bytes: &[u8], bundle_bytes: &[u8]) -> Result<(), Strin
 
 async fn fetch_index(force: bool) -> Result<ConnectorIndex, String> {
     if !force {
-        if let Some(cached) = load_cached_index() {
+        if let Some(cached) = load_cached_index().await {
             log::info!("Using cached connector index");
             return Ok(cached);
         }
@@ -388,11 +411,12 @@ async fn fetch_index(force: bool) -> Result<ConnectorIndex, String> {
         .bytes()
         .await
         .map_err(|e| format!("Failed to read connector index signature bundle: {}", e))?;
-    verify_sigstore_bundle(
-        index_bytes.as_ref(),
-        bundle_bytes.as_ref(),
-        "Connector index",
-    )?;
+    verify_sigstore_bundle_async(
+        index_bytes.to_vec(),
+        bundle_bytes.to_vec(),
+        "Connector index".to_string(),
+    )
+    .await?;
 
     if let Err(err) = save_index_cache(index_bytes.as_ref(), bundle_bytes.as_ref()) {
         log::warn!("Failed to cache connector index: {}", err);
@@ -680,11 +704,15 @@ pub async fn download_connector(_app: AppHandle, id: String) -> Result<(), Strin
         .bytes()
         .await
         .map_err(|e| format!("Failed to read connector signature bundle: {}", e))?;
-    verify_sigstore_bundle(
-        artifact_bytes.as_ref(),
-        artifact_bundle_bytes.as_ref(),
-        &format!("Connector artifact {}@{}", connector.connector_id, connector.version),
-    )?;
+    verify_sigstore_bundle_async(
+        artifact_bytes.to_vec(),
+        artifact_bundle_bytes.to_vec(),
+        format!(
+            "Connector artifact {}@{}",
+            connector.connector_id, connector.version
+        ),
+    )
+    .await?;
     if !verify_checksum(artifact_bytes.as_ref(), &connector.artifact_sha256) {
         return Err(format!(
             "Connector artifact checksum verification failed. Expected: {}, Got: {}",
@@ -869,7 +897,8 @@ fn scan_connectors_dir_no_overwrite(dir: &PathBuf, versions: &mut HashMap<String
 mod tests {
     use super::{
         calculate_checksum, connector_path_within_root, connector_root_relative_path,
-        verify_checksum, verify_sigstore_bundle, ConnectorFiles, IndexedConnector,
+        verify_checksum, verify_sigstore_bundle_async, verify_sigstore_bundle_blocking,
+        ConnectorFiles, IndexedConnector,
     };
 
     fn nested_connector() -> IndexedConnector {
@@ -941,7 +970,8 @@ mod tests {
         let payload = b"connector-index bytes";
         let malformed_bundle = b"not a sigstore bundle";
 
-        let result = verify_sigstore_bundle(payload, malformed_bundle, "tampered bundle");
+        let result =
+            verify_sigstore_bundle_blocking(payload, malformed_bundle, "tampered bundle");
 
         assert!(
             result.is_err(),
@@ -952,6 +982,24 @@ mod tests {
             err.contains("signature bundle"),
             "error message should name the signature bundle, got: {}",
             err
+        );
+    }
+
+    #[tokio::test(flavor = "current_thread")]
+    async fn verify_sigstore_bundle_async_rejects_malformed_bundle() {
+        let payload = b"connector-index bytes".to_vec();
+        let malformed_bundle = b"not a sigstore bundle".to_vec();
+
+        let result = verify_sigstore_bundle_async(
+            payload,
+            malformed_bundle,
+            "tampered bundle".to_string(),
+        )
+        .await;
+
+        assert!(
+            result.is_err(),
+            "malformed signature bundle must be rejected without panicking in async context"
         );
     }
 }

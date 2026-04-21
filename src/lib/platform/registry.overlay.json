@@ -11,7 +11,10 @@
     {
       "connectorId": "instagram-ads-playwright",
       "id": "instagram-ads",
-      "platformIds": ["instagram-ads-playwright", "instagram-ads"],
+      "platformIds": [
+        "instagram-ads-playwright",
+        "instagram-ads"
+      ],
       "showInConnectList": false
     },
     {
@@ -20,8 +23,6 @@
     },
     {
       "connectorId": "heb-playwright",
-      "brandDomain": "heb.com",
-      "defaultScope": "heb.orders",
       "showInConnectList": true
     },
     {
@@ -46,9 +47,6 @@
     },
     {
       "connectorId": "wholefoods-playwright",
-      "brandDomain": "wholefoodsmarket.com",
-      "aliases": ["whole foods"],
-      "defaultScope": "wholefoods.orders",
       "showInConnectList": true
     }
   ]

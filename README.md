@@ -72,12 +72,14 @@ npm run connectors:resolve
 # Review the diff in connectors/, commit, push.
 ```
 
-This fetches the latest matching versions from the data-connectors index, verifies checksums, and writes them to `connectors/`. Version constraints are declared in `connectors/connector-dependencies.json`.
+This fetches the latest matching versions from the signed data-connectors index, verifies checksums, and writes them to `connectors/`. Version constraints are declared in `connectors/connector-dependencies.json`.
+
+If you only want to verify the lockfile and bundled connector tree without mutating them, run `npm run connectors:check`.
 
 #### How it works at runtime
 
-- `tauri dev` runs `ensure-connectors.js` which populates `connectors/` if missing.
-- The Rust backend loads connectors from `connectors/` (bundled) and `~/.dataconnect/connectors/` (user-installed). User connectors take precedence.
+- `tauri dev` runs `ensure-connectors.js`, which restores missing bundled connectors from `~/.dataconnect/connectors/` first and then resolves them from the signed connector index if needed.
+- The Rust backend loads connectors from active installs in `~/.dataconnect/connectors-store/` via `connectors-active.json`, then legacy `~/.dataconnect/connectors/`, then bundled `connectors/`.
 - The `playwright-runner` executes connector scripts with a local Chromium browser.
 
 ### Agent config files
@@ -165,9 +167,9 @@ Connectors are JavaScript files that automate data export. Located in the [Data 
 
 ```javascript
 // Available in connector scripts:
-page.goto(url)           // Navigate to URL
-page.evaluate(script)    // Run JS in page context
-page.sleep(ms)           // Wait for milliseconds
+page.goto(url) // Navigate to URL
+page.evaluate(script) // Run JS in page context
+page.sleep(ms) // Wait for milliseconds
 page.setData(key, value) // Send data back to app
 page.promptUser(message, checkFn) // Wait for user action
 ```

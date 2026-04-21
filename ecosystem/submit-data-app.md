@@ -81,21 +81,21 @@ If you omit it, DataConnect tries `/icon.svg`, `/icon.png`, `/favicon.ico`, and 
 
 You have probably already seen this while building the app, usually via the starter and connector metadata. This is just the refresh.
 
-- Index: [vana-com/data-connectors signed `connector-index.json`](https://github.com/vana-com/data-connectors/releases/download/connectors-latest/connector-index.json)
 - Repo: [vana-com/data-connectors](https://github.com/vana-com/data-connectors)
+- Connector metadata: `connectors/<company>/<connector-id>.json`
+- Published index: [vana-com/data-connectors signed `connector-index.json`](https://github.com/vana-com/data-connectors/releases/download/connectors-latest/connector-index.json)
 
 Here's how to get the exact scopes you used in your app:
 
-1. Open the signed `connector-index.json`.
-2. Find the connector you use.
-3. Locate its manifest under the connector's source directory in the repo.
-4. Open that JSON file in the connectors repo.
-5. Copy the scope names from that connector manifest into your submission.
+1. Open the `vana-com/data-connectors` repo.
+2. Search for the connector id you use.
+3. Open its metadata JSON under `connectors/<company>/<connector-id>.json`.
+4. Copy the scope names from that connector manifest into your submission.
 
 Example:
 
-- `linkedin-playwright` -> `linkedin/linkedin-playwright.json`
-- `chatgpt-playwright` -> `openai/chatgpt-playwright.json`
+- `linkedin-playwright` -> `connectors/linkedin/linkedin-playwright.json`
+- `chatgpt-playwright` -> `connectors/openai/chatgpt-playwright.json`
 - `oura` connector metadata should make the exact Oura scope obvious the same way.
 
 Use the actual protocol-style scope strings from connector metadata, like `chatgpt.conversations` or `linkedin.profile`.

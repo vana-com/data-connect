@@ -23,7 +23,7 @@ function log(msg) {
   console.log(`[sync-connectors-dev] ${msg}`);
 }
 
-// Only sync company/connector dirs (skip schemas/, types/, lib/, registry.json, etc.)
+// Only sync connector source dirs (skip schemas/, types/, lib/, lock.json, connector-dependencies.json, etc.)
 function isConnectorDir(name) {
   const skipDirs = ['schemas', 'types', 'lib', 'node_modules'];
   if (skipDirs.includes(name)) return false;

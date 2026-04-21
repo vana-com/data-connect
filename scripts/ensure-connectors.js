@@ -2,7 +2,8 @@
 
 /**
  * Ensures connector directories required by tauri.conf.json exist.
- * If any required directory is missing, run fetch-connectors automatically.
+ * If any required directory is missing, resolve connectors from the
+ * signed index (via scripts/resolve-connectors.js) automatically.
  */
 
 import {
@@ -23,7 +24,7 @@ const ROOT = join(__dirname, "..");
 const CONNECTORS_DIR = join(ROOT, "connectors");
 const USER_CONNECTORS_DIR = join(homedir(), ".dataconnect", "connectors");
 const TAURI_CONFIG = join(ROOT, "src-tauri", "tauri.conf.json");
-const FETCH_SCRIPT = join(ROOT, "scripts", "fetch-connectors.js");
+const RESOLVE_SCRIPT = join(ROOT, "scripts", "resolve-connectors.js");
 
 function log(message) {
   console.log(`[ensure-connectors] ${message}`);
@@ -75,8 +76,8 @@ function restoreMissingFromUserCache(missingDirs) {
   }
 }
 
-function runFetchConnectors() {
-  const result = spawnSync(process.execPath, [FETCH_SCRIPT], {
+function runResolveConnectors() {
+  const result = spawnSync(process.execPath, [RESOLVE_SCRIPT], {
     stdio: "inherit",
     cwd: ROOT,
     env: process.env,
@@ -86,7 +87,7 @@ function runFetchConnectors() {
     throw result.error;
   }
   if (result.status !== 0) {
-    throw new Error(`fetch-connectors exited with status ${result.status}`);
+    throw new Error(`resolve-connectors exited with status ${result.status}`);
   }
 }
 
@@ -99,7 +100,7 @@ function main() {
 
   const missing = getMissingConnectorDirs(requiredDirs);
   if (missing.length === 0) {
-    log("connectors present -> skip fetch");
+    log("connectors present -> skip resolve");
     return;
   }
 
@@ -108,16 +109,16 @@ function main() {
 
   const afterRestore = getMissingConnectorDirs(requiredDirs);
   if (afterRestore.length === 0) {
-    log("connectors present -> skip fetch");
+    log("connectors present -> skip resolve");
     return;
   }
 
   try {
-    runFetchConnectors();
+    runResolveConnectors();
   } catch (error) {
-    const stillMissingAfterFetchError = getMissingConnectorDirs(requiredDirs);
-    if (stillMissingAfterFetchError.length === 0) {
-      log("connectors present -> skip fetch");
+    const stillMissingAfterResolveError = getMissingConnectorDirs(requiredDirs);
+    if (stillMissingAfterResolveError.length === 0) {
+      log("connectors present -> skip resolve");
       return;
     }
     throw error;
@@ -126,11 +127,11 @@ function main() {
   const stillMissing = getMissingConnectorDirs(requiredDirs);
   if (stillMissing.length > 0) {
     throw new Error(
-      `Connector fetch completed, but required dirs are still missing: ${stillMissing.join(", ")}`,
+      `Connector resolve completed, but required dirs are still missing: ${stillMissing.join(", ")}`,
     );
   }
 
-  log("connectors missing -> fetched from registry");
+  log("connectors missing -> resolved from signed index");
 }
 
 main();

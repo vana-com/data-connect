@@ -37,9 +37,9 @@ Add the connector in `vana-com/data-connectors`:
 
 - add the connector script
 - add the connector metadata JSON
-- add the connector entry to upstream `registry.json`
+- publish the connector via the `data-connectors` release pipeline so it appears in the signed `connector-index.json`
 
-DataConnect reads connector availability from the connector registry/metadata, not from app submissions.
+DataConnect reads connector availability from the signed connector index published by `data-connectors`, not from app submissions.
 
 ## Local runtime verification
 

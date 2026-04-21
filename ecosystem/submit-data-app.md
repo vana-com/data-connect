@@ -81,16 +81,16 @@ If you omit it, DataConnect tries `/icon.svg`, `/icon.png`, `/favicon.ico`, and 
 
 You have probably already seen this while building the app, usually via the starter and connector metadata. This is just the refresh.
 
-- Registry: [vana-com/data-connectors `registry.json`](https://raw.githubusercontent.com/vana-com/data-connectors/main/registry.json)
+- Index: [vana-com/data-connectors signed `connector-index.json`](https://github.com/vana-com/data-connectors/releases/download/connectors-latest/connector-index.json)
 - Repo: [vana-com/data-connectors](https://github.com/vana-com/data-connectors)
 
 Here's how to get the exact scopes you used in your app:
 
-1. Open `registry.json`.
+1. Open the signed `connector-index.json`.
 2. Find the connector you use.
-3. Copy its `files.metadata` path.
+3. Locate its manifest under the connector's source directory in the repo.
 4. Open that JSON file in the connectors repo.
-5. Copy the scope names from that connector metadata into your submission.
+5. Copy the scope names from that connector manifest into your submission.
 
 Example:
 

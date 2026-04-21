@@ -100,7 +100,7 @@ function main() {
 
   const missing = getMissingConnectorDirs(requiredDirs);
   if (missing.length === 0) {
-    log("connectors present -> skip resolve");
+    log("connectors present -> skip resolution");
     return;
   }
 
@@ -109,7 +109,7 @@ function main() {
 
   const afterRestore = getMissingConnectorDirs(requiredDirs);
   if (afterRestore.length === 0) {
-    log("connectors present -> skip resolve");
+    log("connectors present -> skip resolution");
     return;
   }
 
@@ -118,7 +118,7 @@ function main() {
   } catch (error) {
     const stillMissingAfterResolveError = getMissingConnectorDirs(requiredDirs);
     if (stillMissingAfterResolveError.length === 0) {
-      log("connectors present -> skip resolve");
+      log("connectors present -> skip resolution");
       return;
     }
     throw error;
@@ -127,7 +127,7 @@ function main() {
   const stillMissing = getMissingConnectorDirs(requiredDirs);
   if (stillMissing.length > 0) {
     throw new Error(
-      `Connector resolve completed, but required dirs are still missing: ${stillMissing.join(", ")}`,
+      `Connector resolution completed, but required dirs are still missing: ${stillMissing.join(", ")}`,
     );
   }
 

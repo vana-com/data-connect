@@ -1,5 +1,7 @@
 #!/usr/bin/env node
 
+// Legacy wrapper kept for existing install/dev entrypoints during the migration.
+
 import { spawnSync } from "child_process"
 import { dirname, join } from "path"
 import { fileURLToPath } from "url"
@@ -32,6 +34,6 @@ try {
   }
   run(generateScript)
 } catch (error) {
-  console.error(`[fetch-connectors] ERROR: ${error.message}`)
+  console.error(`[fetch-connectors] legacy wrapper failed: ${error.message}`)
   process.exit(1)
 }

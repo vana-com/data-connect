@@ -868,7 +868,8 @@ fn scan_connectors_dir_no_overwrite(dir: &PathBuf, versions: &mut HashMap<String
 #[cfg(test)]
 mod tests {
     use super::{
-        connector_path_within_root, connector_root_relative_path, ConnectorFiles, IndexedConnector,
+        calculate_checksum, connector_path_within_root, connector_root_relative_path,
+        verify_checksum, verify_sigstore_bundle, ConnectorFiles, IndexedConnector,
     };
 
     fn nested_connector() -> IndexedConnector {
@@ -907,5 +908,50 @@ mod tests {
 
         assert_eq!(metadata.to_string_lossy(), "goodreads-playwright.json");
         assert_eq!(script.to_string_lossy(), "goodreads-playwright.js");
+    }
+
+    #[test]
+    fn verify_checksum_rejects_tampered_payload() {
+        let original = b"connector artifact contents";
+        let expected = calculate_checksum(original);
+
+        assert!(verify_checksum(original, &expected));
+
+        let mut tampered = original.to_vec();
+        tampered[0] ^= 0x01;
+        assert!(
+            !verify_checksum(&tampered, &expected),
+            "tampered payload must not match the original checksum"
+        );
+    }
+
+    #[test]
+    fn verify_checksum_rejects_mismatched_expected() {
+        let payload = b"connector index bytes";
+        let wrong = "sha256:0000000000000000000000000000000000000000000000000000000000000000";
+
+        assert!(
+            !verify_checksum(payload, wrong),
+            "mismatched checksum must be rejected"
+        );
+    }
+
+    #[test]
+    fn verify_sigstore_bundle_rejects_malformed_bundle() {
+        let payload = b"connector-index bytes";
+        let malformed_bundle = b"not a sigstore bundle";
+
+        let result = verify_sigstore_bundle(payload, malformed_bundle, "tampered bundle");
+
+        assert!(
+            result.is_err(),
+            "malformed signature bundle must be rejected before reaching verification"
+        );
+        let err = result.unwrap_err();
+        assert!(
+            err.contains("signature bundle"),
+            "error message should name the signature bundle, got: {}",
+            err
+        );
     }
 }

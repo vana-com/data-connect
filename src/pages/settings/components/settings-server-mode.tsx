@@ -2,6 +2,7 @@ import { Text } from "@/components/typography/text"
 import { useVanaLogin } from "@/hooks/useVanaLogin"
 import { setAppConfig } from "@/state/store"
 import type { RootState } from "@/state/store"
+import { invoke } from "@tauri-apps/api/core"
 import { useState } from "react"
 import { useDispatch, useSelector } from "react-redux"
 
@@ -102,9 +103,29 @@ export function SettingsServerModeSection() {
                   <div>
                     Code: <span className="font-mono">{pending.user_code}</span>
                   </div>
-                  <div className="mt-1 break-all text-xs text-muted-foreground">
-                    {pending.verification_uri_complete ??
-                      pending.verification_uri}
+                  <div className="mt-1">
+                    <button
+                      type="button"
+                      className="break-all text-left text-xs text-primary underline hover:no-underline"
+                      onClick={async () => {
+                        const url =
+                          pending.verification_uri_complete ??
+                          pending.verification_uri
+                        if (!url) return
+                        try {
+                          await invoke("plugin:opener|open_url", { url })
+                        } catch {
+                          // Tauri opener plugin not available (e.g. dev web build).
+                          // Fall back to standard navigation; in a Tauri webview
+                          // this opens in the embedded view, but at least the
+                          // URL is reachable without a copy/paste.
+                          window.open(url, "_blank", "noopener,noreferrer")
+                        }
+                      }}
+                    >
+                      {pending.verification_uri_complete ??
+                        pending.verification_uri}
+                    </button>
                   </div>
                 </div>
               ) : null}

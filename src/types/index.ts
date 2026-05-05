@@ -171,6 +171,27 @@ export interface ConnectedApp {
 
 export interface AppConfig {
   storageProvider: 'local' | 'vana' | 'gdrive' | 'dropbox';
-  serverMode: 'cloud' | 'self-hosted';
-  selfHostedUrl?: string;
+  /**
+   * - `local` (default): start the bundled Personal Server as a Tauri
+   *   subprocess and point ingest at it.
+   * - `remote`: skip local startup and point ingest at `remoteServerUrl`.
+   *   Ingest sends `Authorization: Bearer <vanaAccessToken>` and the
+   *   remote PS verifies it via account.vana.org's introspection proxy
+   *   (Vana session auth). The user obtains the access token via the
+   *   "Connect with Vana" Hydra device-code flow.
+   */
+  serverMode: 'local' | 'remote';
+  /** Required when `serverMode === 'remote'`. e.g. `https://0xabc….myvana.app`. */
+  remoteServerUrl?: string;
+  /**
+   * Vana session access token for the remote PS. Stored in plaintext for
+   * dev simplicity; production should move to Tauri Stronghold or OS
+   * Keychain. Refreshed on demand via the refresh token at
+   * `vanaRefreshToken`.
+   */
+  vanaAccessToken?: string;
+  /** Vana session refresh token. */
+  vanaRefreshToken?: string;
+  /** Unix epoch (seconds) when `vanaAccessToken` expires. */
+  vanaAccessTokenExpiresAt?: number;
 }

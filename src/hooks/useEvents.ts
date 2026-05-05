@@ -20,7 +20,11 @@ import type {
   ProgressPhase,
 } from '../types';
 import { normalizeExportData } from '../lib/export-data';
-import { ingestExportData } from '../services/personalServerIngest';
+import {
+  ingestExportData,
+  type IngestTarget,
+} from '../services/personalServerIngest';
+import { refreshAccessToken } from '../services/vanaSession';
 import { getPlatformRegistryEntry } from '@/lib/platform/utils';
 import { durationSince } from '@/lib/telemetry/client';
 import {
@@ -118,6 +122,73 @@ function createSyncRunId(collectionRunId: string) {
   return `${collectionRunId}:sync:${crypto.randomUUID()}`;
 }
 
+/**
+ * Resolve the active IngestTarget from the live Redux state.
+ *
+ * Local mode → ask Tauri for the running PS port. Remote mode → use the
+ * configured remoteServerUrl + a fresh access token (refreshed from the
+ * stored refresh token if the cached one is within 60s of expiry).
+ *
+ * Returns null when configuration is incomplete; callers should treat
+ * null as "skip ingest, surface the reason via telemetry."
+ */
+async function resolveIngestTarget(): Promise<{
+  target: IngestTarget;
+  refreshedTokens?: { access: string; refresh?: string; expiresAt: number };
+} | { error: string } | null> {
+  const state = store.getState();
+  const cfg = state.app.appConfig;
+
+  if (cfg.serverMode === 'remote') {
+    if (!cfg.remoteServerUrl) {
+      return { error: 'remote_url_missing' };
+    }
+    const access = cfg.vanaAccessToken;
+    const expiresAt = cfg.vanaAccessTokenExpiresAt ?? 0;
+    const now = Math.floor(Date.now() / 1000);
+    if (access && expiresAt > now + 60) {
+      return {
+        target: {
+          kind: 'remote',
+          baseUrl: cfg.remoteServerUrl,
+          bearerToken: access,
+        },
+      };
+    }
+    if (!cfg.vanaRefreshToken) {
+      return { error: 'not_connected_to_vana' };
+    }
+    try {
+      const tokens = await refreshAccessToken(cfg.vanaRefreshToken);
+      return {
+        target: {
+          kind: 'remote',
+          baseUrl: cfg.remoteServerUrl,
+          bearerToken: tokens.access_token,
+        },
+        refreshedTokens: {
+          access: tokens.access_token,
+          refresh: tokens.refresh_token,
+          expiresAt: now + tokens.expires_in,
+        },
+      };
+    } catch (err) {
+      return {
+        error: err instanceof Error ? err.message : 'refresh_failed',
+      };
+    }
+  }
+
+  // local mode
+  const serverStatus = await invoke<{ running: boolean; port?: number }>(
+    'get_personal_server_status'
+  );
+  if (!serverStatus.running || !serverStatus.port) {
+    return null;
+  }
+  return { target: { kind: 'local', port: serverStatus.port } };
+}
+
 async function deliverRunToPersonalServer(
   run: {
     id: string;
@@ -127,7 +198,7 @@ async function deliverRunToPersonalServer(
     itemLabel?: string;
     syncedToPersonalServer?: boolean;
   },
-  port: number,
+  target: IngestTarget,
   dispatch: AppDispatch
 ): Promise<boolean> {
   if (!run.exportPath || run.syncedToPersonalServer) return false;
@@ -150,7 +221,7 @@ async function deliverRunToPersonalServer(
       exportPath: dirPath,
     });
     const payload = (data.content ?? data) as Record<string, unknown>;
-    const ingested = await ingestExportData(port, run.platformId, payload);
+    const ingested = await ingestExportData(target, run.platformId, payload);
     if (ingested.length === 0) {
       trackSyncFailed({
         collectionRunId: run.id,
@@ -245,8 +316,8 @@ async function persistAndDeliverExport({
       })
     );
 
-    const serverStatus = await invoke<{ running: boolean; port?: number }>('get_personal_server_status');
-    if (!serverStatus.running || !serverStatus.port) {
+    const resolved = await resolveIngestTarget();
+    if (!resolved) {
       trackSyncSkipped({
         collectionRunId: runId,
         syncRunId: createSyncRunId(runId),
@@ -255,6 +326,31 @@ async function persistAndDeliverExport({
       });
       return;
     }
+    if ('error' in resolved) {
+      // Remote-mode errors (URL missing, not connected to Vana, refresh
+      // failed) all fall under "server_unavailable" for the existing
+      // telemetry enum. Detail logged separately for diagnosis.
+      console.warn('[useEvents] Remote ingest target unavailable:', resolved.error);
+      trackSyncSkipped({
+        collectionRunId: runId,
+        syncRunId: createSyncRunId(runId),
+        source,
+        reason: 'server_unavailable',
+      });
+      return;
+    }
+    if (resolved.refreshedTokens) {
+      // Persist rotated refresh token + new access token expiry.
+      dispatch({
+        type: 'app/setAppConfig',
+        payload: {
+          vanaAccessToken: resolved.refreshedTokens.access,
+          vanaRefreshToken: resolved.refreshedTokens.refresh,
+          vanaAccessTokenExpiresAt: resolved.refreshedTokens.expiresAt,
+        },
+      });
+    }
+    const target = resolved.target;
 
     const syncRunId = createSyncRunId(runId);
     trackSyncStarted({
@@ -263,7 +359,7 @@ async function persistAndDeliverExport({
       source,
     });
 
-    const ingested = await ingestExportData(serverStatus.port, platformId, exportData as unknown as Record<string, unknown>);
+    const ingested = await ingestExportData(target, platformId, exportData as unknown as Record<string, unknown>);
     if (ingested.length === 0) {
       trackSyncFailed({
         collectionRunId: runId,
@@ -579,7 +675,16 @@ export function useEvents() {
         debugLog('[Data Delivery]', pending.length, 'pending exports to deliver');
         for (const run of pending) {
           if (cancelled) break;
-          await deliverRunToPersonalServer(run, port, dispatch);
+          // The personal-server-ready event fires from the local Tauri
+          // subprocess, so we hardcode local mode here. Remote-mode
+          // delivery is wired through the connector-run completion path
+          // below (which uses ingestExportData with the Vana session
+          // bearer when serverMode === 'remote').
+          await deliverRunToPersonalServer(
+            run,
+            { kind: "local", port },
+            dispatch
+          );
         }
       } finally {
         deliveryInProgressRef.current = false;

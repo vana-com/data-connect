@@ -8,6 +8,7 @@ import { Text } from "@/components/typography/text"
 import { Button } from "@/components/ui/button"
 import { LINKS } from "@/config/links"
 import { SettingsPersonalServer } from "@/pages/settings/components/settings-personal-server"
+import { SettingsServerModeSection } from "@/pages/settings/components/settings-server-mode"
 import { useSettingsPage } from "@/pages/settings/use-settings-page"
 import {
   getPersonalServerUiDebugStateOverride,
@@ -104,6 +105,7 @@ export function PersonalServer() {
           </Text>
         </div>
       </header>
+      <SettingsServerModeSection />
       <SettingsPersonalServer
         personalServer={effectivePersonalServer}
         onRestartPersonalServer={personalServer.startServer}

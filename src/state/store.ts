@@ -14,7 +14,7 @@ const initialAuthState: AuthState = {
 
 const initialAppConfig: AppConfig = {
   storageProvider: 'local',
-  serverMode: 'cloud',
+  serverMode: 'local',
 };
 
 const initialState: AppState = {

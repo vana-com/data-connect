@@ -66,6 +66,7 @@ const ImportHistoryRowActionsInner = ({
     run.status === "error" ||
     run.status === "stopped"
   const canSync = canRunAgain && Boolean(rerunPlatform)
+  const syncLabel = "Collect again"
 
   if (isRemoving) {
     return (
@@ -141,7 +142,7 @@ const ImportHistoryRowActionsInner = ({
               className={cn(actionSvgClass, rightIconPaddingClass)}
               onClick={() => onRunAgain(rerunPlatform)}
             >
-              Sync
+              {syncLabel}
             </SettingsRowAction>
           ) : null}
         </>
@@ -194,7 +195,7 @@ const ImportHistoryRowActionsInner = ({
                 className={itemStyle}
                 onSelect={() => onRunAgain(rerunPlatform)}
               >
-                Sync
+                {syncLabel}
               </DropdownMenuItem>
             ) : null}
             <DropdownMenuItem

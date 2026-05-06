@@ -3,7 +3,7 @@ import { useVanaLogin } from "@/hooks/useVanaLogin"
 import { setAppConfig } from "@/state/store"
 import type { RootState } from "@/state/store"
 import { invoke } from "@tauri-apps/api/core"
-import { useState } from "react"
+import { useEffect, useState } from "react"
 import { useDispatch, useSelector } from "react-redux"
 
 import {
@@ -27,9 +27,15 @@ export function SettingsServerModeSection() {
   const appConfig = useSelector((state: RootState) => state.app.appConfig)
   const { connect, disconnect, pending, error, busy, isConnected } =
     useVanaLogin()
-  const [manualUrl, setManualUrl] = useState(
-    appConfig.remoteServerUrl ?? ""
-  )
+  const [manualUrl, setManualUrl] = useState(appConfig.remoteServerUrl ?? "")
+
+  // Sync the editable input whenever Redux's remoteServerUrl changes from
+  // outside this component — most importantly when auto-discovery populates
+  // it after Connect with Vana succeeds. Without this, the field stays
+  // showing whatever value was present at first mount.
+  useEffect(() => {
+    setManualUrl(appConfig.remoteServerUrl ?? "")
+  }, [appConfig.remoteServerUrl])
 
   const isRemote = appConfig.serverMode === "remote"
 
@@ -71,9 +77,11 @@ export function SettingsServerModeSection() {
                 <div className="min-w-0 flex-1">
                   <Text className="font-medium">Connect with Vana</Text>
                   <Text className="mt-0.5 text-sm text-muted-foreground">
-                    {isConnected
+                    {isConnected && appConfig.remoteServerUrl
                       ? "Signed in. Your Personal Server URL was discovered automatically."
-                      : "Open your browser to authorize this device. Your Personal Server URL will be auto-discovered."}
+                      : isConnected
+                        ? "Signed in. Paste your Personal Server URL below to deliver saved exports."
+                        : "Open your browser to authorize this device. Your Personal Server URL will be auto-discovered."}
                   </Text>
                 </div>
                 <SettingsRowAction>
@@ -137,12 +145,10 @@ export function SettingsServerModeSection() {
               ) : null}
 
               <div>
-                <Text className="text-sm font-medium">
-                  Personal Server URL
-                </Text>
+                <Text className="text-sm font-medium">Personal Server URL</Text>
                 <Text className="mb-1 text-xs text-muted-foreground">
-                  Auto-populated when you Connect with Vana. You can override
-                  it manually here.
+                  Auto-populated when you Connect with Vana. You can override it
+                  manually here.
                 </Text>
                 <input
                   className="w-full rounded-md border bg-background px-3 py-1.5 text-sm font-mono"
@@ -155,7 +161,7 @@ export function SettingsServerModeSection() {
                       )
                     }
                   }}
-                  onChange={(e) => setManualUrl(e.target.value)}
+                  onChange={e => setManualUrl(e.target.value)}
                   placeholder="https://0xabc.myvana.app"
                   spellCheck={false}
                   value={manualUrl}

@@ -88,11 +88,22 @@ export function useVanaLogin() {
               remoteServerUrl: ps.url,
             })
           )
+        } else {
+          setError(
+            "Connected to Vana, but no Personal Server URL was found. Paste it below to deliver saved exports."
+          )
         }
-      } catch {
-        // Discovery failure isn't fatal — the user can paste the PS URL
-        // manually in Settings. Surface via console.
-        console.warn("[vana-login] PS auto-discovery failed")
+      } catch (err) {
+        const message =
+          err instanceof VanaDeviceFlowError
+            ? err.message
+            : err instanceof Error
+              ? err.message
+              : String(err)
+        setError(
+          `Connected to Vana, but Personal Server URL discovery failed: ${message}. Paste it below to deliver saved exports.`
+        )
+        console.warn("[vana-login] PS auto-discovery failed", err)
       }
 
       setPending(null)

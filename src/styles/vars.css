@@ -22,8 +22,8 @@
 
   font-synthesis: none;
   text-rendering: optimizeLegibility;
-  -webkit-font-smoothing: auto;
-  -moz-osx-font-smoothing: auto;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
 
   --radius: 9px;
   --spacing: 4px;

@@ -311,21 +311,16 @@
   ::selection {
     @apply bg-foreground text-background;
   }
-  html,
-  body,
-  #root {
-    /* The Tauri shell scrolls through <main>; document scrolling causes focus jumps. */
-    height: 100%;
-  }
   html {
     @apply bg-background text-foreground;
     @apply font-sans;
-    overflow: hidden;
+    @apply scroll-smooth; /* Smooth scrolling everywhere */
+    height: 100%;
+    overflow-y: scroll; /* Force scrollbar to prevent layout shift; makes html the scroll container for sticky */
   }
   body {
     @apply bg-muted text-foreground;
-    @apply text-body font-sans font-normal subpixel-antialiased;
-    overflow: hidden;
+    @apply text-body font-sans font-normal antialiased;
     /* transition everywhere: do NOT use tailwind's @apply here as the variables are inherited on every child transition */
     transition:
       color var(--motion-lg) var(--ease-standard),

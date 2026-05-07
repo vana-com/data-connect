@@ -72,11 +72,11 @@ function AppContent() {
 
   return (
     <AppUpdateProvider>
-      <div className="flex h-screen">
+      <div className="flex h-full">
         {/* Tauri app shell layout: fixed header, scrollable main */}
-        <div className="flex flex-1 flex-col overflow-hidden">
+        <div className="flex min-h-0 flex-1 flex-col overflow-hidden">
           <TopNav personalServerStatus={personalServer.status} />
-          <main className="flex-1 overflow-auto">
+          <main className="min-h-0 flex-1 overflow-auto">
             <Suspense fallback={<LoadingState />}>
               {/* Routes config: keep @/config/routes.ts in sync when adding/removing routes */}
               <Routes>
@@ -105,7 +105,7 @@ function AppContent() {
 function App() {
   return (
     <Provider store={store}>
-      <div style={dotPatternStyle} className="min-h-screen">
+      <div style={dotPatternStyle} className="h-full">
         <BrowserRouter>
           <AppContent />
         </BrowserRouter>

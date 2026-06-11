@@ -120,5 +120,16 @@ export const PLATFORM_REGISTRY_GENERATED: PlatformRegistryEntry[] = [
     availability: "requiresConnector",
     showInConnectList: true,
     ingestScope: "wholefoods.orders"
+  },
+  {
+    id: "claude",
+    displayName: "Claude",
+    brandDomain: "claude.ai",
+    iconKey: "claude",
+    platformIds: ["claude-export-playwright", "claude"],
+    aliases: ["anthropic"],
+    availability: "requiresConnector",
+    showInConnectList: true,
+    ingestScope: "claude.conversations"
   }
 ];

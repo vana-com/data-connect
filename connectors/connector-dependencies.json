@@ -13,6 +13,7 @@
     "shop-playwright": "1.0.0",
     "spotify-playwright": "1.0.0",
     "wholefoods-playwright": "1.0.0",
-    "youtube-playwright": "1.0.0"
+    "youtube-playwright": "1.0.0",
+    "claude-export-playwright": "1.0.0"
   }
 }

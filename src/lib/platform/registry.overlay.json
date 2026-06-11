@@ -48,6 +48,11 @@
     {
       "connectorId": "wholefoods-playwright",
       "showInConnectList": true
+    },
+    {
+      "connectorId": "claude-export-playwright",
+      "id": "claude",
+      "showInConnectList": true
     }
   ]
 }

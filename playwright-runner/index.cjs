@@ -895,12 +895,17 @@ function createPageApi(runState, runId) {
       const download = await downloadPromise;
       if (!download) return { ok: false, ready: false, error: 'no download within timeout' };
       try {
-        const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'dc-dl-'));
+        // Persist captured downloads to a durable, known location rather than a
+        // temp dir, so they survive as a local archive (e.g. the raw Claude
+        // export ZIP a connector keeps out of the Personal Server). Caller can
+        // override with options.persistDir.
+        const dir = options.persistDir || path.join(os.homedir(), '.dataconnect', 'raw-exports');
+        fs.mkdirSync(dir, { recursive: true });
         const name = download.suggestedFilename() || 'download.bin';
         const dest = path.join(dir, name);
         await download.saveAs(dest);
         const size = fs.statSync(dest).size;
-        log(`[captureDownload] saved ${name} (${size} bytes) from ${url.substring(0, 80)}`);
+        log(`[captureDownload] saved ${name} (${size} bytes) to ${dest}`);
         return { ok: true, ready: true, path: dest, name, size };
       } catch (err) {
         return { ok: false, ready: true, error: err.message };

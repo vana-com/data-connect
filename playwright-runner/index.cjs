@@ -18,9 +18,11 @@
 
 const { chromium } = require('playwright');
 const fs = require('fs');
+const os = require('os');
 const readline = require('readline');
 const path = require('path');
 const { execSync } = require('child_process');
+const { readZipJsonEntries } = require('./zip-reader.cjs');
 const { classifyConnectorResult } = require('./result-classifier.cjs');
 const {
   normalizeConnectorResult,
@@ -447,7 +449,7 @@ async function launchPersistentContext(userDataDir, headless, browserPath) {
       '--disable-features=MediaRouter,DialMediaRouteProvider',
     ],
     viewport: { width: 1280, height: 800 },
-    userAgent: 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
+    userAgent: 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/148.0.0.0 Safari/537.36',
   };
 
   if (browserPath) {
@@ -873,6 +875,49 @@ function createPageApi(runState, runId) {
           json: null,
           error: err.message,
         };
+      }
+    },
+
+    // Trigger a browser download by navigating to `url` and capture it to a temp
+    // file. Works for both direct attachment URLs (navigation aborts, download
+    // fires) and SPA-mediated downloads (the page hydrates and JS starts the
+    // download). Returns { ok, ready, path, name, size }. ready:false means no
+    // download fired within the timeout (e.g. an async export still preparing).
+    captureDownload: async (url, options = {}) => {
+      const page = requirePage();
+      const timeout = options.timeout || 60000;
+      const downloadPromise = page.waitForEvent('download', { timeout }).catch(() => null);
+      try {
+        await page.goto(url, { timeout, waitUntil: 'commit' });
+      } catch (e) {
+        // ERR_ABORTED is expected when the URL serves a direct attachment.
+      }
+      const download = await downloadPromise;
+      if (!download) return { ok: false, ready: false, error: 'no download within timeout' };
+      try {
+        const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'dc-dl-'));
+        const name = download.suggestedFilename() || 'download.bin';
+        const dest = path.join(dir, name);
+        await download.saveAs(dest);
+        const size = fs.statSync(dest).size;
+        log(`[captureDownload] saved ${name} (${size} bytes) from ${url.substring(0, 80)}`);
+        return { ok: true, ready: true, path: dest, name, size };
+      } catch (err) {
+        return { ok: false, ready: true, error: err.message };
+      }
+    },
+
+    // Read JSON entries out of a ZIP on disk (e.g. a captured export archive).
+    // `options.include` is an optional list of name substrings to select; when
+    // omitted, all .json entries are parsed. Returns { ok, names, json }.
+    extractZipEntries: async (zipPath, options = {}) => {
+      try {
+        const buffer = fs.readFileSync(zipPath);
+        const { names, json } = readZipJsonEntries(buffer, options.include || null);
+        log(`[extractZipEntries] ${names.length} entries, ${Object.keys(json).length} json parsed from ${path.basename(zipPath)}`);
+        return { ok: true, names, json };
+      } catch (err) {
+        return { ok: false, error: err.message };
       }
     },
   };

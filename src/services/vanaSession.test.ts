@@ -52,6 +52,32 @@ describe("startDeviceAuthorization", () => {
     expect(String((init as RequestInit).body)).toContain(
       "client_id=data-connect"
     )
+    // Audience defaults to the stable family identifier — not a per-user
+    // PS URL. URLSearchParams encodes the literal hyphen as-is.
+    expect(String((init as RequestInit).body)).toContain(
+      "audience=vana-personal-server"
+    )
+  })
+
+  it("allows callers to override the audience", async () => {
+    vi.mocked(fetch).mockResolvedValueOnce(
+      new Response(
+        JSON.stringify({
+          device_code: "dev-2",
+          user_code: "WXYZ-1234",
+          verification_uri: `${HYDRA_PUBLIC}/oauth2/device/verify`,
+          expires_in: 600,
+          interval: 5,
+        }),
+        { status: 200 }
+      )
+    )
+    await startDeviceAuthorization({ audience: ["custom-aud"] })
+    const [, init] = vi.mocked(fetch).mock.calls[0]
+    expect(String((init as RequestInit).body)).toContain("audience=custom-aud")
+    expect(String((init as RequestInit).body)).not.toContain(
+      "vana-personal-server"
+    )
   })
 
   it("throws on non-2xx response", async () => {

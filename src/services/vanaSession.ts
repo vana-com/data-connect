@@ -30,6 +30,12 @@ const DATA_CONNECT_CLIENT_ID =
 // refresh token. 'openid' triggers an id_token in the response too, useful
 // for downstream surfaces.
 const DEFAULT_SCOPE = "openid offline"
+// Audience requested for the access token. This is a stable family-level
+// identifier shared by every user's Personal Server — not the user's
+// per-PS URL. The PS gates incoming requests by validating this audience
+// plus a wallet-ownership check on the token's subject. Hydra's
+// `data-connect` client whitelist must include this value.
+const VANA_PS_AUDIENCE = "vana-personal-server"
 
 export type DeviceAuthorization = {
   device_code: string
@@ -71,9 +77,11 @@ export async function startDeviceAuthorization(opts?: {
   const body = new URLSearchParams()
   body.set("client_id", DATA_CONNECT_CLIENT_ID)
   body.set("scope", opts?.scope ?? DEFAULT_SCOPE)
-  if (opts?.audience && opts.audience.length > 0) {
-    body.set("audience", opts.audience.join(" "))
-  }
+  const audience =
+    opts?.audience && opts.audience.length > 0
+      ? opts.audience
+      : [VANA_PS_AUDIENCE]
+  body.set("audience", audience.join(" "))
   const res = await tauriFetch(
     `${HYDRA_PUBLIC_URL.replace(/\/+$/, "")}/oauth2/device/auth`,
     {

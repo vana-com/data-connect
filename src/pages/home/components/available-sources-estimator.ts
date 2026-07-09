@@ -30,12 +30,6 @@ import { isBlockingRun } from "./available-sources-list.policy"
  * - No per-second countdown.
  * - No claim of exact completion time.
  * - No account-identity keyed modeling yet (platform + size is enough for v1 scaffold).
- *
- * Provenance (archived design docs)
- *
- * - docs/_archive/260224-home-connector-blocking-and-parallelization.md
- * - docs/_archive/260222-home-connectors-info-message-matrix.md
- * - docs/_archive/260222-home-available-sources-status-slot.md
  */
 type ExpectationConfidence = "weak" | "heuristic" | "history"
 

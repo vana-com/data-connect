@@ -39,14 +39,11 @@
 - `connectedSourcesScenario=<name>` remains separate.
 - Import sources debug now uses an explicit debug view model (platforms, runs, connected ids) and does not mutate real Home state.
 
-## Archived design docs (provenance)
+## Design rationale (provenance)
 
-- `docs/_archive/260224-home-connector-blocking-and-parallelization.md`
-  - Defines blocking vs background run policy and ETA guardrails.
-- `docs/_archive/260222-home-connectors-info-message-matrix.md`
-  - Defines `infoSlot` line priority and connector status copy rules.
-- `docs/_archive/260222-home-available-sources-status-slot.md`
-  - Records why volatile status copy moved out of CTA label into top-right slot.
+- Blocking vs background run policy and ETA guardrails.
+- `infoSlot` line priority and connector status copy rules.
+- Volatile status copy lives in the top-right slot, not the CTA label.
 
 ## Notes
 

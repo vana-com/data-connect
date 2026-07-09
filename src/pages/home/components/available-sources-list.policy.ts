@@ -4,8 +4,8 @@ export function getConnectingStatusLine(
   statusMessage: string | undefined,
   phaseLabel: string | undefined
 ): string {
-  // Keep this logic in sync with:
-  // docs/260222-home-connectors-info-message-matrix.md
+  // Keep the info-message priority and connector status copy rules in sync
+  // across the connecting-status surfaces.
   const normalizedPhaseLabel = phaseLabel?.trim()
   if (normalizedPhaseLabel) return normalizedPhaseLabel
   if (!statusMessage) return "Opening browser…"

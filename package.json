@@ -3,6 +3,12 @@
   "private": true,
   "version": "0.0.0",
   "type": "module",
+  "license": "Apache-2.0",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/vana-com/data-connect.git"
+  },
+  "homepage": "https://github.com/vana-com/data-connect#readme",
   "engines": {
     "node": ">=20 <24"
   },
@@ -35,9 +41,7 @@
     "tauri:build": "node scripts/build-prod.js",
     "release:github": "node scripts/release-github.mjs",
     "release:versions": "node scripts/release-github.mjs --show-versions",
-    "skills:sync": "node scripts/sync-skills.js",
-    "skills:watch": "node scripts/watch-skills.js",
-    "postinstall": "node scripts/sync-skills.js && node scripts/fetch-connectors.js",
+    "postinstall": "node scripts/fetch-connectors.js",
     "fresh-start": "bash scripts/fresh-start.sh"
   },
   "dependencies": {

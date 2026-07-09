@@ -9,8 +9,12 @@ updated: 2026-02-10
 ## Overview
 
 DataConnect is a desktop client that coordinates data export runs and app grants.
-It is not a protocol participant; if a Personal Server is bundled, that server is
-the on-chain participant.
+It is the reference implementation for interacting with the Vana protocol —
+analogous to an email client. It is the protocol client: it runs connectors,
+orchestrates grants, and configures the Personal Server. It is not a protocol
+participant (not registered on-chain); if a Personal Server is bundled, that
+server (not the client) is the on-chain participant and must be registered
+on-chain.
 
 This architecture exists to implement the Data Portability Protocol:
 `docs/260121-data-portability-protocol-spec.md`. DataConnect extracts and stores

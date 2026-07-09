@@ -114,4 +114,4 @@ For that workflow, use [`docs/260310-adding-a-new-connector.md`](../docs/260310-
 
 ## Fallback
 
-If GitHub is a blocker, email [callum+apps@opendatalabs.xyz](mailto:callum+apps@opendatalabs.xyz) with the same information.
+If GitHub is a blocker, email [apps@opendatalabs.xyz](mailto:apps@opendatalabs.xyz) with the same information.

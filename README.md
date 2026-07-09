@@ -36,7 +36,7 @@ The downloaded browser is stored in `~/.dataconnect/browsers/` and persists acro
 
 ## Supported Platforms
 
-DataConnect currently supports exporting data from ChatGPT, GitHub, Instagram, LinkedIn, Spotify,YouTube, and Shop (Shopify) — covering your conversations, social profiles, listening history, watch history, order history, and more.
+DataConnect currently supports exporting data from ChatGPT, GitHub, Instagram, LinkedIn, Spotify, YouTube, and Shop (Shopify) — covering your conversations, social profiles, listening history, watch history, order history, and more.
 
 For the latest available connectors, visit the [Data Connectors repository](https://github.com/vana-com/data-connectors).
 
@@ -81,25 +81,6 @@ If you only want to verify the lockfile and bundled connector tree without mutat
 - `tauri dev` runs `ensure-connectors.js`, which restores missing bundled connectors from `~/.dataconnect/connectors/` first and then resolves them from the signed connector index if needed.
 - The Rust backend loads connectors from active installs in `~/.dataconnect/connectors-store/` via `connectors-active.json`, then legacy `~/.dataconnect/connectors/`, then bundled `connectors/`.
 - The `playwright-runner` executes connector scripts with a local Chromium browser.
-
-### Agent config files
-
-This repo keeps both `AGENTS.md` and `CLAUDE.md`: Claude Code auto‑loads `CLAUDE.md` but not `AGENTS.md`, and Cursor does the opposite. Keep them aligned.
-
-### Agent skills sync
-
-Skills are stored in `.agents/skills` (source of truth). Cursor reads them via per-skill symlinks in `.cursor/skills`. The sync script rebuilds those symlinks so any manually created skills show up in Cursor.
-
-```bash
-# One-off sync (default is .cursor/skills)
-npm run skills:sync
-
-# Sync to Claude instead
-npm run skills:sync -- --target=claude
-
-# Auto-sync on changes
-npm run skills:watch
-```
 
 ### Building for production
 

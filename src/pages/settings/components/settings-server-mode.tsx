@@ -11,12 +11,46 @@ import {
   SettingsRowAction,
   SettingsSection,
 } from "@/pages/settings/components/settings-shared"
+import { SettingsSingleSelectRowGroup } from "@/pages/settings/components/settings-single-select-row-group"
+
+type ServerMode = "local-only" | "local" | "remote"
+
+const modeOptions = [
+  {
+    id: "local-only" as const,
+    label: "Local only",
+    description:
+      "Exports are written to local disk only. No Personal Server is running and no Vana connection is used.",
+    available: true,
+  },
+  {
+    id: "local" as const,
+    label: "Bundled local server",
+    description:
+      "Data is ingested into the Personal Server bundled with this app.",
+    available: true,
+  },
+  {
+    id: "remote" as const,
+    label: "Remote (Vana)",
+    description:
+      "Data is ingested into a Personal Server you've connected to via Vana.",
+    available: true,
+  },
+]
 
 /**
- * Server-mode toggle: bundled-local vs remote (with "Connect with Vana"
- * device-code flow against Hydra). When connected, the user's PS URL is
- * auto-discovered via account.vana.org/api/servers and populated into
- * remoteServerUrl. The user can also paste a URL manually as a fallback.
+ * Server-mode selector: local-only vs bundled-local vs remote (with
+ * "Connect with Vana" device-code flow against Hydra). When connected, the
+ * user's PS URL is auto-discovered via account.vana.org/api/servers and
+ * populated into remoteServerUrl. The user can also paste a URL manually as
+ * a fallback.
+ *
+ * Kept in sync with the storage picker's terminology
+ * (src/pages/settings/sections/storage/components/settings-storage.tsx),
+ * which collapses "local" and "remote" into a single "Vana Storage" choice.
+ * This screen exposes the same three underlying appConfig.serverMode values
+ * so the two settings surfaces never disagree about what mode is active.
  *
  * See docs/auth-redesign/01-architecture.md §10.2 (PR-X) and §1.8 (Hydra
  * device flow).
@@ -30,37 +64,22 @@ export function SettingsServerModeSection() {
     appConfig.remoteServerUrl ?? ""
   )
 
-  const isRemote = appConfig.serverMode === "remote"
+  const serverMode: ServerMode = appConfig.serverMode
+  const isRemote = serverMode === "remote"
 
   return (
     <SettingsSection title="Server mode">
       <SettingsCardStack>
         <SettingsCard>
-          <div className="flex items-center justify-between gap-4 px-4 py-3">
-            <div className="min-w-0 flex-1">
-              <Text className="font-medium">Mode</Text>
-              <Text className="mt-0.5 text-sm text-muted-foreground">
-                {isRemote
-                  ? "Remote: data is ingested into a Personal Server you've connected to via Vana."
-                  : "Local: data is ingested into the Personal Server bundled with this app."}
-              </Text>
-            </div>
-            <SettingsRowAction>
-              <button
-                className="rounded-md border px-3 py-1 text-sm hover:bg-muted"
-                onClick={() => {
-                  dispatch(
-                    setAppConfig({
-                      serverMode: isRemote ? "local" : "remote",
-                    })
-                  )
-                }}
-                type="button"
-              >
-                {isRemote ? "Switch to local" : "Switch to remote"}
-              </button>
-            </SettingsRowAction>
-          </div>
+          <SettingsSingleSelectRowGroup
+            ariaLabel="Server mode"
+            options={modeOptions}
+            value={serverMode}
+            onChange={nextValue => {
+              if (!nextValue || nextValue === serverMode) return
+              dispatch(setAppConfig({ serverMode: nextValue }))
+            }}
+          />
         </SettingsCard>
 
         {isRemote ? (

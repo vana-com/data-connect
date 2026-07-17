@@ -1,4 +1,5 @@
 import { useState } from "react"
+import { useDispatch, useSelector } from "react-redux"
 import type { usePersonalServer } from "@/hooks/usePersonalServer"
 import { LINKS } from "@/config/links"
 import {
@@ -8,10 +9,8 @@ import {
 import { LoadingButton } from "@/components/elements/button-loading"
 import { Button } from "@/components/ui/button"
 import { SettingsConfirmAction } from "@/pages/settings/components/settings-confirm-action"
-import {
-  SettingsBadgeActive,
-  SettingsBadgeNone,
-} from "./settings-status-badge"
+import { setAppConfig, type RootState } from "@/state/store"
+import { SettingsBadgeActive } from "./settings-status-badge"
 import {
   SettingsCard,
   SettingsCardStack,
@@ -33,11 +32,18 @@ export interface SettingsStorageProps {
 
 const storageOptions = [
   {
+    id: "local-only",
+    label: "Local Only",
+    description:
+      "Keep exports on this device only. No sign-in required. This is the default.",
+    available: true,
+  },
+  {
     id: "vana-storage",
     label: "Vana Storage",
     description: (
       <>
-        The free storage solution by{" "}
+        Optional. Sync exports to a Personal Server via{" "}
         <OpenExternalLink href={LINKS.vana}>Vana</OpenExternalLink>.
       </>
     ),
@@ -59,6 +65,21 @@ const storageOptions = [
 
 type StorageOptionId = (typeof storageOptions)[number]["id"]
 
+/** Map a selectable storage option to the underlying appConfig.serverMode. */
+function storageOptionToServerMode(
+  option: StorageOptionId
+): "local-only" | "local" {
+  return option === "vana-storage" ? "local" : "local-only"
+}
+
+function serverModeToStorageOption(
+  serverMode: "local-only" | "local" | "remote"
+): StorageOptionId | null {
+  if (serverMode === "local-only") return "local-only"
+  if (serverMode === "local" || serverMode === "remote") return "vana-storage"
+  return null
+}
+
 export function SettingsStorage({
   dataPath,
   onOpenDataFolder,
@@ -68,19 +89,28 @@ export function SettingsStorage({
   onSignIn,
   personalServer,
 }: SettingsStorageProps) {
+  const dispatch = useDispatch()
+  const serverMode = useSelector(
+    (state: RootState) => state.app.appConfig.serverMode
+  )
   const [draftStorageOption, setDraftStorageOption] =
     useState<StorageOptionId | null>(null)
-  const [activeStorageOption, setActiveStorageOption] =
-    useState<StorageOptionId | null>(null)
   const [isSavingStorage, setIsSavingStorage] = useState(false)
-  const selectedStorageOption = activeStorageOption ?? draftStorageOption
-  const showSaveStorage = !activeStorageOption && !!draftStorageOption
+  const activeStorageOption = serverModeToStorageOption(serverMode)
+  const selectedStorageOption = draftStorageOption ?? activeStorageOption
+  const showSaveStorage =
+    !!draftStorageOption && draftStorageOption !== activeStorageOption
 
   const handleSaveStorage = async () => {
     if (!draftStorageOption || isSavingStorage) return
     setIsSavingStorage(true)
     try {
-      setActiveStorageOption(draftStorageOption)
+      dispatch(
+        setAppConfig({
+          serverMode: storageOptionToServerMode(draftStorageOption),
+        })
+      )
+      setDraftStorageOption(null)
     } finally {
       setIsSavingStorage(false)
     }
@@ -112,32 +142,28 @@ export function SettingsStorage({
         <SettingsCard>
           <SettingsMetaRow
             title="Storage"
-            description="Optional. Choose a hosted option for always-on access."
-            badge={
-              activeStorageOption ? (
-                <SettingsBadgeActive />
-              ) : (
-                <SettingsBadgeNone />
-              )
-            }
+            description="Local Only requires no sign-in. Vana Storage is an optional add-on for always-on access."
+            badge={<SettingsBadgeActive />}
           />
           <SettingsSingleSelectRowGroup
             ariaLabel="Storage"
             options={storageOptions}
             value={selectedStorageOption}
             onChange={nextValue => {
-              if (activeStorageOption) return
+              if (!nextValue || nextValue === activeStorageOption) return
               setDraftStorageOption(nextValue)
             }}
             renderRight={(item, selected) =>
-              activeStorageOption === item.id && selected ? (
+              activeStorageOption === item.id &&
+              selected &&
+              item.id !== "local-only" ? (
                 <SettingsConfirmAction
                   trigger={<SettingsRowAction>Remove</SettingsRowAction>}
-                  title="Remove storage provider?"
-                  description="This will clear the active storage selection. You can set it again later."
+                  title="Switch back to Local Only?"
+                  description="This will stop syncing exports to Vana Storage. Your local exports are unaffected. You can reconnect later."
                   actionLabel="Remove"
                   onAction={() => {
-                    setActiveStorageOption(null)
+                    dispatch(setAppConfig({ serverMode: "local-only" }))
                     setDraftStorageOption(null)
                   }}
                 />

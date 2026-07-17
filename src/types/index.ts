@@ -172,15 +172,20 @@ export interface ConnectedApp {
 export interface AppConfig {
   storageProvider: 'local' | 'vana' | 'gdrive' | 'dropbox';
   /**
-   * - `local` (default): start the bundled Personal Server as a Tauri
-   *   subprocess and point ingest at it.
-   * - `remote`: skip local startup and point ingest at `remoteServerUrl`.
-   *   Ingest sends `Authorization: Bearer <vanaAccessToken>` and the
-   *   remote PS verifies it via account.vana.org's introspection proxy
-   *   (Vana session auth). The user obtains the access token via the
-   *   "Connect with Vana" Hydra device-code flow.
+   * - `local-only` (default): no backend provider is configured. Exports
+   *   land on local disk only (`write_export_data`, always unconditional)
+   *   and no Vana Personal Server is started or synced to. This is the
+   *   local-first boot path — it requires no Vana sign-in.
+   * - `local`: opt-in. Start the bundled Personal Server as a Tauri
+   *   subprocess (requires Vana credentials) and point ingest at it.
+   * - `remote`: opt-in. Skip local startup and point ingest at
+   *   `remoteServerUrl`. Ingest sends `Authorization: Bearer
+   *   <vanaAccessToken>` and the remote PS verifies it via
+   *   account.vana.org's introspection proxy (Vana session auth). The
+   *   user obtains the access token via the "Connect with Vana" Hydra
+   *   device-code flow.
    */
-  serverMode: 'local' | 'remote';
+  serverMode: 'local-only' | 'local' | 'remote';
   /** Required when `serverMode === 'remote'`. e.g. `https://0xabc….myvana.app`. */
   remoteServerUrl?: string;
   /**

@@ -125,12 +125,18 @@ function createSyncRunId(collectionRunId: string) {
 /**
  * Resolve the active IngestTarget from the live Redux state.
  *
+ * `local-only` mode (the default, no Vana backend configured) → always
+ * returns null; there is nothing to sync to, and this is not an error.
  * Local mode → ask Tauri for the running PS port. Remote mode → use the
  * configured remoteServerUrl + a fresh access token (refreshed from the
  * stored refresh token if the cached one is within 60s of expiry).
  *
- * Returns null when configuration is incomplete; callers should treat
- * null as "skip ingest, surface the reason via telemetry."
+ * Returns null when there is no backend to sync to (either because none
+ * is configured, or because local-mode config is incomplete); callers
+ * should treat null as "skip ingest, surface the reason via telemetry."
+ * The local file export (`write_export_data`) has already completed
+ * unconditionally before this is ever called — sync is a best-effort
+ * secondary step.
  */
 async function resolveIngestTarget(): Promise<{
   target: IngestTarget;
@@ -138,6 +144,10 @@ async function resolveIngestTarget(): Promise<{
 } | { error: string } | null> {
   const state = store.getState();
   const cfg = state.app.appConfig;
+
+  if (cfg.serverMode === 'local-only') {
+    return null;
+  }
 
   if (cfg.serverMode === 'remote') {
     if (!cfg.remoteServerUrl) {

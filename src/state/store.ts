@@ -14,7 +14,10 @@ const initialAuthState: AuthState = {
 
 const initialAppConfig: AppConfig = {
   storageProvider: 'local',
-  serverMode: 'local',
+  // Local-first default: no Vana backend configured, exports stay on disk.
+  // Vana (serverMode 'local' or 'remote') is an opt-in the user selects in
+  // Settings > Storage.
+  serverMode: 'local-only',
 };
 
 const initialState: AppState = {

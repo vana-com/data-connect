@@ -1,5 +1,7 @@
 # DataConnect
 
+> DataConnect is being made local-first and vendor-neutral. The app runs and exports your data to disk with no sign-in and no external account. Vana is one optional storage and sync provider you can enable in Settings, not a bundled default. Some code paths, URLs, and package names still assume Vana; we are actively generalizing these as the project moves toward a neutral, provider-agnostic architecture.
+
 Desktop app for exporting your data from various platforms.
 <img width="2466" height="1372" alt="Screenshot 2026-02-24 at 8 10 08 PM" src="https://github.com/user-attachments/assets/c3d72ca7-866d-4629-8f24-51b782a820e8" />
 

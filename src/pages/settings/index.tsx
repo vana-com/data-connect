@@ -36,8 +36,9 @@ const settingsSections: Array<{
   label: string
   icon: ReactNode
 }> = SETTINGS_SECTION_ORDER
-  // Temporarily hide Account and Storage in nav; keep section implementations intact.
-  .filter(section => section !== "account" && section !== "storage")
+  // Account remains hidden pending a dedicated design pass; Storage is
+  // reactivated so users can see and choose the local-vs-Vana provider.
+  .filter(section => section !== "account")
   .map(section => ({
     key: section,
     label: SETTINGS_SECTION_META[section].navLabel,

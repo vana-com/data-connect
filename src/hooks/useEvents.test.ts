@@ -13,6 +13,7 @@ const trackSyncFailed = vi.fn()
 const trackSyncSkipped = vi.fn()
 const trackSyncStarted = vi.fn()
 let currentRuns: Array<Record<string, unknown>> = []
+let currentAppConfig: Record<string, unknown> = { serverMode: "local-only" }
 
 type EventHandler<T = unknown> = (event: { payload: T }) => void
 const listeners = new Map<string, EventHandler>()
@@ -58,7 +59,9 @@ vi.mock("../state/store", async importOriginal => {
     ...actual,
     store: {
       ...actual.store,
-      getState: () => ({ app: { runs: currentRuns } }),
+      getState: () => ({
+        app: { runs: currentRuns, appConfig: currentAppConfig },
+      }),
     },
   }
 })
@@ -82,6 +85,7 @@ describe("useEvents", () => {
     vi.clearAllMocks()
     listeners.clear()
     currentRuns = []
+    currentAppConfig = { serverMode: "local-only" }
   })
 
   it("persists export-complete payloads missing company using event metadata", async () => {
@@ -130,6 +134,63 @@ describe("useEvents", () => {
         exportSize: expect.any(Number),
       },
     })
+  })
+
+  it("local-first: local-only serverMode writes the export without requiring Vana or a running Personal Server", async () => {
+    const useEvents = await importHook()
+    const exportPath = "/tmp/dataconnect/exported_data/LinkedIn/LinkedIn/run-1"
+
+    currentAppConfig = { serverMode: "local-only" }
+    mockInvoke.mockImplementation((command: string) => {
+      if (command === "write_export_data") {
+        return Promise.resolve(exportPath)
+      }
+      // The local-only path must not need to ask about Personal Server
+      // status or any Vana credential at all; fail loudly if it does.
+      if (command === "get_personal_server_status") {
+        throw new Error("local-only mode must not query personal server status")
+      }
+      return Promise.resolve(null)
+    })
+
+    renderHook(() => useEvents())
+
+    await act(async () => {
+      emit("export-complete", {
+        runId: "linkedin-playwright-1",
+        platformId: "linkedin-playwright",
+        company: "LinkedIn",
+        name: "LinkedIn",
+        data: {
+          platform: "linkedin",
+          exportSummary: { count: 3, label: "profile items" },
+        },
+        timestamp: Date.now(),
+      })
+      await Promise.resolve()
+    })
+
+    // Local file export still happens unconditionally — this is the
+    // local-first baseline and must not regress.
+    expect(mockInvoke).toHaveBeenCalledWith(
+      "write_export_data",
+      expect.objectContaining({ runId: "linkedin-playwright-1" })
+    )
+    // No credential/PS/network calls were attempted for sync.
+    expect(mockInvoke).not.toHaveBeenCalledWith(
+      "get_personal_server_status",
+      expect.anything()
+    )
+    expect(mockInvoke).not.toHaveBeenCalledWith(
+      "mark_export_synced",
+      expect.anything()
+    )
+    // Sync is skipped cleanly (not treated as a failure) when no backend
+    // is configured.
+    expect(trackSyncSkipped).toHaveBeenCalledWith(
+      expect.objectContaining({ reason: "server_unavailable" })
+    )
+    expect(trackSyncFailed).not.toHaveBeenCalled()
   })
 
   it("treats terminal partial as partial telemetry without overwriting the run to error", async () => {

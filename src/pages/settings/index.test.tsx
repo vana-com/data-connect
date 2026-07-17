@@ -1,6 +1,10 @@
 import { describe, expect, it, beforeEach, vi } from "vitest"
 import { cleanup, fireEvent, render } from "@testing-library/react"
-import { createMemoryRouter, RouterProvider, useLocation } from "react-router-dom"
+import {
+  createMemoryRouter,
+  RouterProvider,
+  useLocation,
+} from "react-router-dom"
 import { Provider } from "react-redux"
 import { ROUTES } from "@/config/routes"
 import { store } from "@/state/store"
@@ -159,7 +163,9 @@ describe("Settings", () => {
       walletAddress: null,
     })
 
-    const { getAllByText } = renderSettings(`${ROUTES.settings}?section=account`)
+    const { getAllByText } = renderSettings(
+      `${ROUTES.settings}?section=account`
+    )
 
     expect(getAllByText("Sign out").length).toBeGreaterThan(0)
   })
@@ -186,5 +192,41 @@ describe("Settings", () => {
     fireEvent.click(credentialsButton)
 
     expect(getByTestId("search").textContent).toBe("?section=credentials")
+  })
+
+  it("shows Storage in the sidebar nav (local-first: reactivated provider picker)", () => {
+    const { getAllByRole } = renderSettings()
+    expect(
+      getAllByRole("button", { name: "Storage & Server" }).length
+    ).toBeGreaterThan(0)
+  })
+
+  it("defaults the Storage section to Local Only with no Vana sign-in", () => {
+    const { getByRole } = renderSettings(`${ROUTES.settings}?section=storage`)
+
+    const localOnlyRadio = getByRole("radio", { name: /Local Only/ })
+    expect(localOnlyRadio.getAttribute("aria-checked")).toBe("true")
+
+    const vanaRadio = getByRole("radio", { name: /Vana Storage/ })
+    expect(vanaRadio.getAttribute("aria-checked")).toBe("false")
+  })
+
+  it("selecting Vana Storage and saving switches appConfig.serverMode away from local-only", () => {
+    const { getByRole, getByText } = renderSettings(
+      `${ROUTES.settings}?section=storage`
+    )
+
+    expect(store.getState().app.appConfig.serverMode).toBe("local-only")
+
+    fireEvent.click(getByRole("radio", { name: /Vana Storage/ }))
+    fireEvent.click(getByText("Save & create"))
+
+    expect(store.getState().app.appConfig.serverMode).toBe("local")
+
+    // Reset shared store state so later tests see the local-first default.
+    store.dispatch({
+      type: "app/setAppConfig",
+      payload: { serverMode: "local-only" },
+    })
   })
 })

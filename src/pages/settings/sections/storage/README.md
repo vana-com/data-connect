@@ -1,16 +1,18 @@
 # Settings Storage Section
 
 ## Status
-- This section is currently not in active use in the Settings UI.
-- It is intentionally retained for potential future reactivation.
-
-## Why it remains
-- It contains prior Storage + Server UI composition work.
-- Keeping it in-repo preserves implementation context and reduces rebuild effort if the section returns.
+- Reactivated (Slice 1, local-first): visible in the Settings sidebar.
+- Exposes the local-vs-Vana storage provider choice: "Local Only" (default,
+  no sign-in) vs "Vana Storage" (opt-in, starts the bundled Personal Server
+  and requires Vana sign-in).
 
 ## Current integration
 - Route surface: `/settings` section implementation via `index.tsx`.
-- Nav visibility is currently disabled in `src/pages/settings/index.tsx` (the `storage` section is filtered out from sidebar items).
+- Nav visibility is enabled in `src/pages/settings/index.tsx`.
+- Selecting a storage option dispatches `appConfig.serverMode` in
+  `src/state/store.ts` (`'local-only' | 'local' | 'remote'`), which is the
+  single choke point `resolveIngestTarget()` (`src/hooks/useEvents.ts`)
+  reads to decide whether to sync exports anywhere beyond local disk.
 
 ## Notes
 - This section is unrelated to the grant-connect flow.

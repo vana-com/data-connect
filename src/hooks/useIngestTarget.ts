@@ -8,6 +8,12 @@ import type { RootState } from "@/state/store"
 /**
  * Resolve the active IngestTarget based on appConfig.serverMode.
  *
+ * - `local-only` mode (default, no Vana backend configured): throws.
+ *   Callers that may run in local-only mode should check
+ *   `appConfig.serverMode` before calling `resolve()` and skip ingest
+ *   entirely — there is no target to resolve. Local file export
+ *   (`write_export_data`) is unaffected and always happens first,
+ *   regardless of serverMode.
  * - `local` mode: returns `{ kind: 'local', port }` for the running
  *   bundled PS. Caller passes the port from usePersonalServer().
  * - `remote` mode: returns `{ kind: 'remote', baseUrl, bearerToken }`
@@ -23,6 +29,11 @@ export function useIngestTarget() {
 
   const resolve = useCallback(
     async (localPort: number | null): Promise<IngestTarget> => {
+      if (appConfig.serverMode === "local-only") {
+        throw new Error(
+          "No backend configured (local-only mode). Select a storage provider in Settings to sync exports."
+        )
+      }
       if (appConfig.serverMode === "remote") {
         if (!appConfig.remoteServerUrl) {
           throw new Error(
